@@ -1,0 +1,89 @@
+# Pipeline sidecar — typed contract paired with skill_tessellum_search_notes.md.
+#
+# Three CORE steps mirror the canonical's section_id anchors:
+#
+#     step_1_parse_intent     — classify_query(query) → RouterDecision
+#     step_2_dispatch          — route() → (decision, hits)
+#     step_3_return_hits       — render hits + diagnostics for the user
+#
+# All three are aggregation=corpus_wide because the search operates on the
+# whole indexed vault (not per-leaf). materializer=no_op because the skill
+# is read-only — no filesystem effects, only return values to the caller.
+
+version: "1.0"
+
+pipeline:
+  - section_id: step_1_parse_intent
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: decision
+    expected_output_schema:
+      type: object
+      required: [strategy, reason]
+      properties:
+        strategy:
+          type: string
+          enum: [metadata, bfs, bm25, dense, hybrid]
+        reason:
+          type: string
+    prompt_template: |
+      Classify the query intent for retrieval routing. Use these heuristics:
+
+        - vault-relative .md path → "bfs" (graph traversal from a seed)
+        - single short token (≤ 30 chars, no spaces) → "bm25" (lexical)
+        - question-shaped (ends with ?) or ≥ 4 tokens → "hybrid"
+        - empty / unrecognized → "hybrid" (default fallback)
+
+      Return: { "strategy": "...", "reason": "..." }
+
+      Query: {{leaf.query}}
+
+  - section_id: step_2_dispatch
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_1_parse_intent]
+    materializer: no_op
+    output_key: hits
+    expected_output_schema:
+      type: object
+      required: [hits]
+      properties:
+        hits:
+          type: array
+          items:
+            type: object
+            required: [note_id, note_name, score]
+    prompt_template: |
+      Run the recommended retrieval primitive against the index DB.
+
+      Strategy: {{upstream.decision.strategy}}
+      Query: {{leaf.query}}
+      k: {{leaf.k}}
+
+      Dispatch to the primitive (bm25_search / dense_search / hybrid_search /
+      best_first_bfs / metadata_search) and return its results in the
+      uniform shape: list of { note_id, note_name, score, ... }.
+
+  - section_id: step_3_return_hits
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_2_dispatch]
+    materializer: no_op
+    output_key: response
+    expected_output_schema:
+      type: object
+      required: [decision, hits]
+    prompt_template: |
+      Render the final response combining the router's decision and the
+      ranked hits. Surface:
+        - decision.strategy + decision.reason
+        - top-N hits with note_name, score, and per-strategy diagnostics
+        - empty-result fallback hint (try alternate strategy / widen k)
+
+      decision: {{upstream.decision}}
+      hits: {{upstream.hits}}

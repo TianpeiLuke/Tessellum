@@ -40,6 +40,7 @@ from tessellum.retrieval.dense import DenseHit, dense_search
 from tessellum.retrieval.graph import GraphHit, best_first_bfs
 from tessellum.retrieval.hybrid import HybridHit, hybrid_search
 from tessellum.retrieval.metadata import MetadataHit, metadata_search
+from tessellum.retrieval.router import RouterDecision, Strategy, classify_query, route
 
 __all__ = [
     "bm25_search",
@@ -52,4 +53,8 @@ __all__ = [
     "GraphHit",
     "metadata_search",
     "MetadataHit",
+    "classify_query",
+    "route",
+    "RouterDecision",
+    "Strategy",
 ]

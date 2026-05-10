@@ -16,6 +16,115 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.18] — 2026-05-10
+
+### Added — Retrieval Wave 5: skill orchestration (v0.1 retrieval scope COMPLETE)
+
+The last item in `plans/plan_retrieval_port.md`. Two skill canonicals + two pipeline sidecars + one router module close the v0.1 retrieval track:
+
+```
+vault/resources/skills/skill_tessellum_search_notes.md           ← decision-tree router
+vault/resources/skills/skill_tessellum_search_notes.pipeline.yaml ← typed contract (3 steps)
+vault/resources/skills/skill_tessellum_answer_query.md           ← 5-stage QA pipeline
+vault/resources/skills/skill_tessellum_answer_query.pipeline.yaml ← typed contract (5 steps)
+src/tessellum/retrieval/router.py                                ← classify_query + route
+```
+
+Three skills now validate via `tessellum composer validate`:
+
+```
+$ tessellum composer validate vault/resources/skills/
+OK   skill_tessellum_answer_query.md (5 steps)
+OK   skill_tessellum_format_check.md (pipeline_metadata: none)
+OK   skill_tessellum_search_notes.md (3 steps)
+```
+
+#### `tessellum.retrieval.router`
+
+```python
+from tessellum.retrieval import classify_query, route
+
+decision = classify_query("How does Composer compile?")
+# RouterDecision(strategy="hybrid",
+#                reason="multi-word / question-shaped: hybrid wins on ...")
+
+decision, hits = route("data/tessellum.db", "composer", k=5)
+# decision.strategy == "bm25" (single token)
+# hits = list[BM25Hit]
+```
+
+Heuristic decision tree:
+
+| Query shape | Strategy | Why |
+|---|---|---|
+| Vault `.md` path with `/` | `bfs` | Treat as seed for graph traversal |
+| Single short token (≤30 chars, no spaces) | `bm25` | Lexical lookup beats fusion overhead |
+| `?`-suffixed or ≥4 tokens | `hybrid` | Wave 3's +12pp winner on real questions |
+| Empty or unrecognized | `hybrid` (fallback) | Default of last resort |
+
+The router is **heuristic, not ML-routed** — cheap, transparent, deterministic. Override by calling the primitive directly when intent is mis-classified.
+
+#### `skill_tessellum_search_notes.md`
+
+3-step canonical encoding the decision tree as agent-readable procedure. Steps mirror `tessellum.retrieval.router`'s logic (`classify_query` → `route` → render). Sidecar declares CORE / no_op / corpus_wide step contracts.
+
+#### `skill_tessellum_answer_query.md`
+
+5-stage QA pipeline canonical:
+
+1. **Query expansion** — acronym detection + synonym variants + term-promotion seeds
+2. **Multi-strategy retrieval** — calls `skill_tessellum_search_notes` for each variant
+3. **Working memory** — score by strategy presence × in-degree × recency × BB priority; truncate to top 20
+4. **Context assembly** — token-budgeted (default 6K) hierarchical context: grounded terms + primary sources + supporting excerpts
+5. **Synthesis with citations** — every load-bearing claim cites a note inline; "see also" footer
+
+Sidecar declares 5 CORE steps with full `expected_output_schema` + `prompt_template` for each.
+
+End-to-end execution requires **Composer Wave 4 (LLM bridge)** which ships later. Until then, this skill is documentation: a typed-contract spec any LLM agent can follow procedurally. The validator (`tessellum composer validate`) confirms the canonical's section_id anchors and the sidecar's step structure are well-formed.
+
+#### Tests
+
+8 new tests in `tests/smoke/test_retrieval_router.py`:
+- empty/whitespace query → hybrid fallback with reason
+- vault path → BFS
+- single token → BM25
+- short identifier → BM25
+- question → hybrid
+- multi-word → hybrid
+- typed `RouterDecision` returned
+- strategy is in the closed enum
+
+**340 total tests passing** (332 prior + 8 new).
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.18"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.18"`.
+- 340/340 tests pass.
+
+### v0.1 retrieval scope — COMPLETE
+
+| Wave | Component | Version |
+|---|---|---|
+| 1 | BM25 + FTS5 | v0.0.13 |
+| 2 | Dense + sqlite-vec | v0.0.14 |
+| 3 | Hybrid RRF (default) | v0.0.15 |
+| 4 | Best-first BFS (no PPR) | v0.0.16 |
+| 4.5 | Metadata filter (`tessellum filter`) | v0.0.17 |
+| **5** | **Skill orchestration (router + 2 skills)** | **v0.0.18 ← this release** |
+
+Five retrieval surfaces (BM25 / dense / hybrid / BFS / metadata) all live, all CLI-accessible, all wrapped in agent-facing skill canonicals.
+
+### What remains for v0.1
+
+The Composer track is the only major remaining v0.1 scope:
+
+- **Composer Wave 2** — Compiler (~600 LOC, zero LLM calls). Builds the typed DAG from skill+sidecar pairs; validates contracts at compile time.
+- **Composer Wave 3** — Executor (~1200 LOC). Resolves placeholders, dispatches LLM calls, applies materializers.
+- **Composer Wave 4** — LLM bridge (~300 LOC + extras). Anthropic SDK wrapper + optional MCP dispatcher. **This is what makes the answer-query and search-notes skills actually executable.**
+
+Composer Waves 5+ (multi-corpus batch + eval framework) are deferred to v0.2.
+
 ## [0.0.17] — 2026-05-10
 
 ### Added — `tessellum filter` — metadata search (Retrieval Wave 4.5)
@@ -1380,7 +1489,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.17...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.18...HEAD
+[0.0.18]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.15...v0.0.16
 [0.0.15]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.14...v0.0.15
