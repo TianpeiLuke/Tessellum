@@ -101,46 +101,11 @@ Notes are created and used during active work:
 - Topic aggregation
 - Query entry points
 
-## Application in Abuse Prevention
-### Abuse slipbox
-The **Abuse slipbox** project applies Zettelkasten principles to the domain:
+## Context Engineering for LLMs
 
-```
-Traditional Approach (Event-Oriented):
-├── Order events (scattered)
-├── Concession events (scattered)
-├── Chat events (scattered)
-├── Risk evaluation events (scattered)
-└── SOP documents (separate)
-slipbox Approach (Note-Oriented):
-├── All notes in ONE place
-├── Standardized format
-├── Explicitly linked
-└── Graph-traversable
-```
+A Zettelkasten provides superior structure for LLM memory vs traditional RAG:
 
-### Benefits for Abuse Prevention
-1. **Unified Context Engine**
-   - Customer contacts, ARI annotations, SOPs in same format
-   - Simplifies digestion of heterogeneous sources
-
-2. **LLM Enhancement**
-   - Efficient in-context learning from atomic notes
-   - Token-efficient context delivery
-   - Maximizes information reusability
-3. **Pattern Discovery**
-   - Graph mining reveals clusters of related entities
-   - Network structure exposes a domain workflow patterns
-   - Connected notes show shared patterns across accounts
-
-4. **Consistency Detection**
-   - Connects ARI decisions with SOPs
-   - Spots inconsistencies in enforcement
-   - Links decisions to policy
-### Context Engineering
-
-slipbox provides superior structure for LLM memory vs traditional RAG:
-| Aspect | Traditional RAG | slipbox |
+| Aspect | Traditional RAG | Zettelkasten |
 |--------|----------------|----------|
 | **Chunking** | Arbitrary text splits | Atomic concepts |
 | **Retrieval** | Similarity-based | Graph traversal |
@@ -184,26 +149,21 @@ Over time:
 3. Patterns become visible
 4. Knowledge compounds exponentially
 ```
-### Internal Examples
+### Public Implementations
 
-1. **Abuse slipbox** (the project domain ML)
-   - Wiki: <internal-link-removed>
-   - Context engine for agentic workflows
-   - 4000+ notes, 80K+ edges
-2. **Goodreads Mobile Zettelkasten**
-   - Wiki: <internal-link-removed>
-   - Collective team knowledge
-
-3. **ROAR Knowledge Management**
-   - Wiki: <internal-link-removed>
-   - Explored Zettelkasten for team documentation
+1. **Tessellum** — a public typed-knowledge Zettelkasten implementation
+   - Source: https://github.com/TianpeiLuke/Tessellum
+   - Adds the Building Block ontology, Folgezettel trails, and DKS dialectic on top of the Zettelkasten foundation
 ### Tools Supporting Zettelkasten
 
-|------|------|------------|
-| **Quip** | Internal | Document collaboration |
-| **Obsidian** | External | Markdown + graph view |
-| **Roam** | External | Online, collaborative |
-| **Foam** | External | VS Code extension |
+| Tool | Notes |
+|------|-------|
+| **Obsidian** | Markdown + graph view; popular OSS desktop client |
+| **Roam Research** | Online, collaborative, block-level |
+| **Foam** | VS Code extension; Markdown + wikilinks |
+| **Logseq** | OSS outliner with bidirectional links |
+| **Tessellum** | Typed-knowledge slipbox (this project) |
+
 ## Key Benefits
 
 ### For Individuals
@@ -273,12 +233,6 @@ Over time:
 **Key Insight**: Zettelkasten transforms note-taking from passive storage to active thinking. By forcing atomicity and explicit linking, it creates a "second brain" that grows more valuable over time. In the context of LLM and typed-knowledge work, slipbox provides superior context engineering compared to traditional RAG by delivering atomic, interconnected, human-readable knowledge that maximizes both token efficiency and retrieval relevance.
 
 ## References
-### Internal Wiki
-- **[Abuse slipbox](<internal-link-removed>)** - Multi-Modal Abuse Identification via Automatic Smart Note-Taking
-- **[Abuse Slipbox Context Engine](<internal-link-removed>)** - Unified Context Engine for Agentic Workflow
-- **[Effective Note-Taking](<internal-link-removed>)** - Your Notes as External Knowledge
-- **[Goodreads Zettelkasten](<internal-link-removed>)** - Mobile team collective knowledge
-
 ### External Resources
 - **[Wikipedia: Zettelkasten](https://en.wikipedia.org/wiki/Zettelkasten)** - Overview and history
 - **"How to Take Smart Notes" by Sönke Ahrens** - Definitive guide to Zettelkasten
@@ -290,8 +244,8 @@ Over time:
 - [Digest: Search Alone Is Not Enough](../digest/digest_search_not_enough_christian.md) — Christian's connection hierarchy (links > tags > search); why manual linking is the primary knowledge-creation mechanism
 ---
 
-**Last Updated**: January 30, 2026  
-**Status**: Active - Core methodology for Abuse slipbox project  
+**Last Updated**: 2026-05-10
+**Status**: Active
 **Contact**: the project domain ML Team
 ### Related Code Repos
 - [Tessellum](https://github.com/TianpeiLuke/Tessellum) — 8,700+ note Zettelkasten implementation

@@ -50,14 +50,6 @@ Also known as:
 3. **Connectionism** - Explicit links reveal relationships
 4. **Workflow-Driven** - Notes serve thinking, not storage
 
-### Abuse slipbox
-The **Abuse slipbox** project applies Slipbox/Zettelkasten principles to the domain:
-
-- Growing knowledge graph of atomic notes and explicit edges
-- Context engine for agentic workflows
-- LLM enhancement through token-efficient atomic notes
-- Pattern discovery via graph mining
-
 ### vs Traditional RAG
 
 | Aspect | Traditional RAG | Slipbox |
@@ -85,10 +77,6 @@ The **Abuse slipbox** project applies Slipbox/Zettelkasten principles to the dom
 
 ## References
 
-### Internal Wiki
-- **[Abuse slipbox](<internal-link-removed>)** - Multi-Modal Abuse Identification via Automatic Smart Note-Taking
-- **[Abuse Slipbox Context Engine](<internal-link-removed>)** - Unified Context Engine for Agentic Workflow
-
 ### External Resources
 - **[Wikipedia: Zettelkasten](https://en.wikipedia.org/wiki/Zettelkasten)** - Overview and history
 - **"How to Take Smart Notes" by Sönke Ahrens** - Definitive guide
@@ -105,13 +93,9 @@ The **Abuse slipbox** project applies Slipbox/Zettelkasten principles to the dom
 - Benefits for individuals, teams, and AI/LLM
 
 ### Related Code Repos
-- a QA chatbot — Slack chatbot that searches the tessellum vault knowledge base via LangGraph agent
+- [Tessellum](https://github.com/TianpeiLuke/Tessellum) — public typed-knowledge Slipbox implementation
 
 ---
 
-**Last Updated**: January 30, 2026  
-**Status**: Active - Alias for Zettelkasten  
-**Contact**: the project domain ML Team
-
-### Related Code Repos
-- [Tessellum](https://github.com/TianpeiLuke/Tessellum) — The tessellum vault implementation
+**Last Updated**: 2026-05-10
+**Status**: Active
