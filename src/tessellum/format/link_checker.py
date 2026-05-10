@@ -28,10 +28,16 @@ _EXTERNAL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 _NON_MD_EXTS: frozenset[str] = frozenset(
     {
+        # Images
         ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
+        # Documents
         ".pdf", ".docx", ".xlsx", ".pptx", ".csv",
+        # Code + data
         ".py", ".sh", ".sql", ".json", ".yaml", ".yml",
         ".xml", ".html", ".txt", ".zip", ".ipynb",
+        # Configuration
+        ".toml", ".cfg", ".ini", ".lock", ".env",
+        # LaTeX + bibliography
         ".drawio", ".tex", ".bib", ".sty", ".cls",
     }
 )
