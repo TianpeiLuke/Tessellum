@@ -131,7 +131,7 @@ related_wiki: null             # external reference URL or null (kept for parent
 
 ### Optional type-specific fields
 
-#### Folgezettel-trail notes (under `vault/resources/analysis_thoughts/` — and sometimes elsewhere)
+#### Folgezettel-trail notes (type-specific — NOT universally required)
 
 ```yaml
 folgezettel: "14d1d"           # the FZ ID — string, can include letters/digits/sub-letters
@@ -140,12 +140,25 @@ folgezettel_parent: "14d1"     # parent FZ ID, or null for trail roots
 
 The canonical field name is `folgezettel_parent:` (long form). The shorter `fz_parent:` is accepted as an alias for backwards compatibility with some legacy notes, but `folgezettel_parent:` is preferred and used in all Tessellum templates.
 
-| Note type | FZ usage |
+**Expected vs omitted**:
+
+| Note type | FZ fields |
 |---|---|
-| Trail root (top of a trail) | `folgezettel: "<root-id>"`, `folgezettel_parent: null` |
-| Trail child (most cases) | `folgezettel: "<id>"`, `folgezettel_parent: "<parent-id>"` |
-| Non-trail note (most term/how-to/skill notes) | omit both FZ fields entirely |
-| Trail member outside `analysis_thoughts/` (e.g., archived experiment) | both FZ fields, with `tags[0]` reflecting the actual PARA bucket |
+| Argument / counter_argument / hypothesis / empirical_observation under `analysis_thoughts/` | **Expected** — most participate in trails |
+| Experiment under `archives/experiments/` | **Expected** — usually tied to upstream argument |
+| Term notes, how-tos, skills, code repos, FAQs, papers, digests, models, navigation entries | **Omitted** — these are reference material, not trail nodes |
+
+**Trail-position rule**:
+
+| Trail position | `folgezettel:` | `folgezettel_parent:` |
+|---|---|---|
+| Trail root | `"<root-id>"` | `null` |
+| Trail child | `"<child-id>"` | `"<parent-id>"` |
+| Non-trail note | omit | omit |
+
+**Both-or-neither rule** (validator-enforced): if `folgezettel:` is present, `folgezettel_parent:` must also be present (value-or-`null`). If `folgezettel:` is absent, `folgezettel_parent:` must also be absent. Setting one without the other is a validation error — the partial-fill bug.
+
+**Why FZ fields are NOT universally required**: FZ trails are a specific dialectic-tracking mechanism, not a universal note property. The ~10–20% of notes that participate in trails benefit from FZ fields; the other ~80–90% do not. Forcing `folgezettel: null` on every term note would add noise and dilute the meaningful signal (presence of the field implies trail participation). For more on this design choice, see the *Why FZ fields are NOT required universally* section in [`vault/resources/templates/template_yaml_header.md`](vault/resources/templates/template_yaml_header.md).
 
 #### Skill canonical bodies (under `vault/resources/skills/`)
 

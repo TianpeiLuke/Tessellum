@@ -154,13 +154,38 @@ folgezettel: "<id>"             # the FZ ID — string; can include letters/digi
 folgezettel_parent: "<id>"      # the parent FZ ID — or null for trail roots; or omit both fields for non-trail notes
 ```
 
+#### When are FZ fields expected vs omitted
+
+| Note type | FZ fields |
+|---|---|
+| Argument / counter_argument / hypothesis / empirical_observation in `vault/resources/analysis_thoughts/` | **Expected** — most participate in dialectic trails |
+| Experiment in `vault/archives/experiments/` | **Expected** — almost always tied to upstream argument or hypothesis |
+| Trail-root navigation note (rare; e.g., `entry_<trail>_trail.md` for a major argument trail) | Optional — usually omitted; presence indicates the entry point itself is the trail root |
+| Term notes, how-tos, skill canonicals, code-repo docs, FAQs, papers, digests, models | **Omitted** — these are reference material, not trail nodes |
+
+#### Trail-position rule
+
 | Trail position | `folgezettel:` | `folgezettel_parent:` |
 |---|---|---|
-| Trail root | `"<root-id>"` (e.g., `"14"`) | `null` |
-| Trail child | `"<child-id>"` (e.g., `"14d1"`) | `"<parent-id>"` (e.g., `"14d"`) |
+| Trail root (top of an argument chain) | `"<root-id>"` (e.g., `"14"`) | `null` |
+| Trail child (mid-chain or leaf) | `"<child-id>"` (e.g., `"14d1"`) | `"<parent-id>"` (e.g., `"14d"`) |
 | Non-trail note | omit | omit |
 
-The canonical key is `folgezettel_parent:` (long form). The shorter `fz_parent:` is accepted as an alias; long form is preferred.
+#### Both-or-neither rule (validator-enforced)
+
+The two fields travel as a pair. Three valid configurations:
+
+1. **Both filled** (trail child): `folgezettel: "14d1"`, `folgezettel_parent: "14d"`
+2. **Filled-with-null** (trail root): `folgezettel: "14"`, `folgezettel_parent: null`
+3. **Both omitted** (non-trail note): neither key present in YAML
+
+**Invalid**: setting `folgezettel:` without `folgezettel_parent:` (or vice versa). The validator flags this as an error — it's the partial-fill bug, where an author forgot the second field.
+
+The canonical key is `folgezettel_parent:` (long form). The shorter `fz_parent:` is accepted as an alias for backwards compatibility, but `folgezettel_parent:` is preferred and used in all Tessellum templates.
+
+#### Why FZ fields are NOT required universally
+
+FZ fields encode dialectic argument descent — a specific mechanism, not a universal note property. Forcing `folgezettel: null` on every term note adds noise without information; it would also dilute the signal (the *presence* of the field is meaningful precisely because it's selective). The 7 required fields are the ones every note benefits from; FZ fields benefit only the ~10–20% of notes participating in trails.
 
 ### Skill canonical bodies (`vault/resources/skills/skill_*.md`)
 
@@ -215,6 +240,8 @@ folgezettel_parent: "<parent-id>"
 7. **Year-like strings must be quoted.** `year: "2026"`, NOT `year: 2026` (the latter is parsed as integer).
 
 8. **Tags must form a list.** Use the YAML list syntax (one tag per line with `-` prefix). Avoid inline `[a, b, c]` syntax — the validator prefers the multiline form.
+
+9. **FZ fields travel as a pair.** If `folgezettel:` is present, `folgezettel_parent:` must also be present (with a value or `null` for trail roots). If `folgezettel:` is absent, `folgezettel_parent:` must also be absent. Setting one without the other is a validation error — the partial-fill bug.
 
 ## Validation
 
