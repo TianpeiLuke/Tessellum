@@ -1,12 +1,16 @@
 """``tessellum search <query>`` — query the indexed vault.
 
-v0.0.15 ships **hybrid as the default** — `tessellum search foo` runs
-BM25 + dense fused via Reciprocal Rank Fusion (RRF). Pass ``--bm25``,
-``--dense``, or ``--hybrid`` to select an explicit strategy.
+Four retrieval strategies in v0.0.16:
 
-The default flip is per ``plans/plan_retrieval_port.md`` Wave 3: the
-parent project's experiments measured +12pp Hit@5 lift for hybrid over
-the best single strategy on real queries (FZ 5e1c3a1a1).
+    --bm25     Lexical (FTS5)
+    --dense    Semantic (sqlite-vec)
+    --hybrid   BM25 + dense fused via RRF (default)
+    --bfs      Best-first BFS from a seed note over the note_links graph
+
+The default ``hybrid`` was set in v0.0.15 (Wave 3) per the +12pp
+production lift measured in the parent project (FZ 5e1c3a1a1). ``--bfs``
+ships in v0.0.16 — its argument is interpreted as a *seed note_id*
+(vault-relative path), not a free-text query.
 
 Exit codes:
     0  search ran (results may be empty if no match)
@@ -24,7 +28,9 @@ from pathlib import Path
 from tessellum.retrieval import (
     BM25Hit,
     DenseHit,
+    GraphHit,
     HybridHit,
+    best_first_bfs,
     bm25_search,
     dense_search,
     hybrid_search,
@@ -34,11 +40,12 @@ from tessellum.retrieval import (
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     search = subparsers.add_parser(
         "search",
-        help="Query the indexed vault (hybrid by default; --bm25 / --dense for ablation).",
+        help="Query the indexed vault (hybrid by default; --bm25 / --dense / --bfs for explicit strategy).",
     )
     search.add_argument(
         "query",
-        help="Search query. FTS5 MATCH syntax for --bm25; natural language otherwise.",
+        help="Search query. FTS5 MATCH for --bm25; natural language for "
+        "hybrid/--dense; vault-relative note path for --bfs.",
     )
 
     strategy = search.add_mutually_exclusive_group()
@@ -63,6 +70,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         const="dense",
         help="Use dense semantic retrieval only.",
     )
+    strategy.add_argument(
+        "--bfs",
+        dest="strategy",
+        action="store_const",
+        const="bfs",
+        help="Best-first BFS from a seed note over the note_links graph. "
+        "The query argument is interpreted as a vault-relative note_id.",
+    )
 
     search.add_argument(
         "--db",
@@ -75,6 +90,19 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=int,
         default=20,
         help="Maximum number of results (default: 20).",
+    )
+    search.add_argument(
+        "--depth",
+        type=int,
+        default=3,
+        help="(BFS only) Maximum hops from seed (default: 3).",
+    )
+    search.add_argument(
+        "--hub-threshold",
+        type=int,
+        default=50,
+        help="(BFS only) Nodes with in-degree > this don't expand "
+        "neighbors. Default 50.",
     )
     search.add_argument(
         "--no-snippet",
@@ -111,6 +139,14 @@ def run_search(args: argparse.Namespace) -> int:
             hits = bm25_search(
                 db, args.query, k=args.k, snippet_length=snippet_length
             )
+        elif strategy == "bfs":
+            hits = best_first_bfs(
+                db,
+                args.query,
+                k=args.k,
+                max_depth=args.depth,
+                hub_threshold=args.hub_threshold,
+            )
         else:  # hybrid
             hits = hybrid_search(db, args.query, k=args.k)
     except FileNotFoundError as e:
@@ -146,6 +182,8 @@ def _emit_human(hits: list, query: str, strategy: str) -> int:
                 ranks.append(f"dense=#{hit.dense_rank}")
             if ranks:
                 print(f"      [{' '.join(ranks)}]")
+        elif isinstance(hit, GraphHit):
+            print(f"      [depth={hit.depth}  path={' → '.join(hit.path)}]")
         snippet = getattr(hit, "snippet", None)
         if snippet:
             cleaned = snippet.replace("\n", " ").strip()
@@ -169,6 +207,9 @@ def _emit_json(hits: list, query: str, strategy: str) -> int:
         elif isinstance(h, HybridHit):
             record["bm25_rank"] = h.bm25_rank
             record["dense_rank"] = h.dense_rank
+        elif isinstance(h, GraphHit):
+            record["depth"] = h.depth
+            record["path"] = list(h.path)
         payload_hits.append(record)
 
     payload = {

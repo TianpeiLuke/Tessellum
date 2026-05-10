@@ -16,6 +16,116 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.16] — 2026-05-10
+
+### Added — Retrieval Wave 4: Best-first BFS over `note_links`
+
+`tessellum search --bfs <seed_note_id>` ships the fourth retrieval strategy. Per `plans/plan_retrieval_port.md` Wave 4. **No PPR** — FZ 5e2b1c established that PPR optimizes Hit@K (correlation with answer-quality only ρ=0.37) and is Pareto-dominated by best-first BFS in production.
+
+```bash
+$ tessellum search --bfs resources/term_dictionary/term_cqrs.md --k 5 --depth 2
+BFS matches for 'resources/term_dictionary/term_cqrs.md'  (5 hits)
+
+   1. thought_synthesis_two_systems_cqrs_value_proposition  (0.5000)
+       [depth=1  path=term_cqrs.md → thought_synthesis_two_systems_cqrs_value_proposition.md]
+
+   2. term_circle_of_influence  (0.5000)
+       [depth=1  path=term_cqrs.md → term_circle_of_influence.md]
+
+   3. term_dual_paradigm_framework  (0.5000)
+       ...
+```
+
+#### `tessellum.retrieval.best_first_bfs`
+
+```python
+from tessellum.retrieval import best_first_bfs, GraphHit
+
+hits = best_first_bfs(
+    "data/tessellum.db",
+    seed="resources/term_dictionary/term_cqrs.md",
+    k=20,
+    max_depth=3,
+    hub_threshold=50,
+)
+# [GraphHit(note_id=..., note_name=..., score=0.5, depth=1, path=(seed, hit)), ...]
+```
+
+Four design points worth knowing:
+
+1. **Undirected adjacency for traversal.** Note-link relationships flow conceptually both ways: if A links to B, B is also "near" A. We walk the undirected projection of the directed `note_links` graph. So BFS from B will reach A even though the edge is A→B.
+
+2. **Directed in-degree as hub signal.** A note with many *inbound* links is a popular hub (`term_zettelkasten`, `term_cqrs`, etc.). Hub-skip prevents combinatorial blowup ("everything connects to everything via the most-linked note") by NOT expanding neighbors of nodes whose in-degree exceeds `hub_threshold` (default 50). Hub nodes still appear as hits — only their onward connections are suppressed.
+
+3. **Priority queue keyed depth-major, hub-minor.** Closer-to-seed surfaces first; among ties, less-popular (= more-specific) notes are preferred. This produces focused, contextually-relevant traversal.
+
+4. **Score is `1 / (1 + depth)`.** Depth 1 → 0.5; depth 2 → 0.333; depth 3 → 0.25. Higher = closer to seed. Hub-skip affects priority-queue ordering only; the displayed score stays interpretable.
+
+`GraphHit` carries diagnostic `depth` and `path` fields. Path is a tuple of note_ids from seed to hit (inclusive of both endpoints). `len(path) == depth + 1`.
+
+#### CLI `--bfs` flag
+
+```bash
+tessellum search <query>                               # hybrid (default)
+tessellum search --bm25 <query>                        # lexical
+tessellum search --dense <query>                       # semantic
+tessellum search --bfs <seed_note_id>                  # graph traversal
+tessellum search --bfs <seed> --depth 2 --k 10         # tune traversal
+tessellum search --bfs <seed> --hub-threshold 100      # less aggressive hub-skip
+```
+
+The `query` positional is interpreted as a vault-relative `note_id` when `--bfs` is set (e.g. `resources/term_dictionary/term_cqrs.md`). All four strategy flags are in one `argparse` mutex group.
+
+JSON output includes `depth` and `path` per hit:
+
+```json
+{
+  "strategy": "bfs",
+  "hits": [
+    {
+      "note_id": "...",
+      "note_name": "term_epistemic_function",
+      "score": 0.5,
+      "depth": 1,
+      "path": [
+        "resources/term_dictionary/term_zettelkasten.md",
+        "resources/term_dictionary/term_epistemic_function.md"
+      ]
+    }
+  ]
+}
+```
+
+#### Tests
+
+19 new tests, all passing. **298 total** (279 prior + 19 new).
+
+- `tests/smoke/test_retrieval_graph.py` (16 tests):
+  - typed return; seed excluded from results; depth-1 neighbors correct; `max_depth` limits traversal; depth-2 reachable when allowed; islands skipped; **score formula verified** (`1 / (1 + depth)`); path is `(seed, ..., hit)`; `k` limits; `k=0` and `max_depth=0` → empty; unknown seed → empty; missing DB → FileNotFoundError; **undirected traversal verified** (BFS from a target reaches its source via the inbound edge); **hub-skip verified** (popular hub appears as hit, but its grandchildren don't); integration test against real vault.
+- `tests/cli/test_search_cli.py` (3 new):
+  - `--bfs` flag → "BFS matches" output
+  - Unknown seed → exit 0 with "no matches"
+  - `--bfs --format json` exposes `depth` + `path` fields
+  - All 4 strategy flags mutually exclusive (verified for `--bm25 --bfs` and `--hybrid --bfs` as well as previous combos).
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.16"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.16"`.
+- 298/298 tests pass (279 prior + 19 new).
+
+### What's NOT in this release (Wave 5)
+
+- **Wave 5 (v0.0.17)** — Skill orchestration: `skill_tessellum_search_notes` (8-strategy decision-tree router invoking the 4 retrieval primitives) + `skill_tessellum_answer_query` (5-stage QA pipeline). The first user-facing answer-the-question capability. Closes the v0.1 retrieval scope.
+
+### Why no PPR?
+
+Per `plans/plan_retrieval_port.md` § Three lessons:
+
+> Per FZ 5e2b1c — the **Hit@K-to-answer-quality disconnect** (correlation ρ=0.37). Hit@5 measures whether the right note is in the top-5; answer quality measures whether the LLM's response is actually good. PPR optimizes Hit@K through expensive multi-hop walks (αat 0.85, ~250ms per query). Best-first BFS is simpler (single hop, priority-queue frontier), faster (~30ms), and yields equivalent or better answer quality on real queries. PPR's "lift" is largely benchmark theater; BFS is Pareto-optimal in production.
+
+Best-first BFS is the production graph strategy. Users who want PPR can add it as a custom retrieval module — `tessellum.retrieval.best_first_bfs` is a function call, easy to compose with alternative implementations.
+
 ## [0.0.15] — 2026-05-10
 
 ### Added — Retrieval Wave 3: Hybrid RRF (now the default)
@@ -1172,7 +1282,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.15...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.16...HEAD
+[0.0.16]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.15...v0.0.16
 [0.0.15]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.14...v0.0.15
 [0.0.14]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.13...v0.0.14
 [0.0.13]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.12...v0.0.13

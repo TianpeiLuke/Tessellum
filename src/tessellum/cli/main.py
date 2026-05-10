@@ -62,8 +62,8 @@ def _print_banner() -> None:
     print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
     print()
     print("Roadmap:")
-    print("  tessellum search --bfs              — Retrieval Wave 4 (best-first BFS)")
-    print("  tessellum composer compile/run       — Composer Waves 2-3")
+    print("  tessellum search skill orchestration  — Retrieval Wave 5")
+    print("  tessellum composer compile/run        — Composer Waves 2-3")
     print()
     print("See https://github.com/TianpeiLuke/Tessellum for the v0.1 plan.")
 
