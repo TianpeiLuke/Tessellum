@@ -34,27 +34,39 @@ See [`DEVELOPING.md`](DEVELOPING.md) for the full layout discussion.
 
 ## Note Format Standards
 
-Every typed atomic note ("tessellum") MUST have:
+Every typed atomic note ("tessellum") MUST have **7 required YAML fields**:
 
 ```yaml
 ---
-tags:
-  - <category-tag>            # First tag describes the note's role (resource, area, project, archive)
-  - <building-block-tag>      # Second tag describes BB type (concept, procedure, model, argument, ...)
-  - <topic-tag>               # Additional topic tags for retrieval
-keywords:
+tags:                          # ≥ 2 items, list format
+  - <para-bucket>              # tags[0]: closed enum {resource, area, project, archive, entry_point}
+  - <second-category>          # tags[1]: open routing label {terminology, skill, how_to, code, papers, analysis, digest, faq, code_repo, tool, team, ...}
+  - <topic-tag>                # tags[2..]: free-form, lowercase + underscore
+keywords:                      # ≥ 3 recommended, list
   - <key-term-1>
   - <key-term-2>
-topics:
+  - <key-term-3>
+topics:                        # ≥ 2 recommended, list
   - <topic-1>
-language: markdown
-date of note: YYYY-MM-DD
-status: active
-building_block: <concept|procedure|model|argument|counter_argument|hypothesis|empirical_observation|navigation>
+  - <topic-2>
+language: markdown             # almost always markdown
+date of note: YYYY-MM-DD       # NOTE: key uses spaces (not date_of_note)
+status: active                 # closed enum — see DEVELOPING.md for full list
+building_block: <bb>           # closed 8-element enum
 ---
 ```
 
-Required H2 sections vary by BB type — see `docs/note-format.md`. The validator runs as a pre-commit hook:
+**Three orthogonal axes encoded across two YAML structures**:
+
+| Axis | YAML location | Closed? | Vocabulary |
+|---|---|---|---|
+| **Epistemic** (BB) | `building_block:` field | ✅ closed | 8 types |
+| **Temporal** (PARA) | `tags[0]` | ✅ closed | 5 buckets |
+| **Contextual** (second category) | `tags[1]` | ❌ open | extensible folksonomy |
+
+**Do NOT add a separate `note_second_category:` field** — `tags[1]` is the canonical SoT. The full spec lives in [DEVELOPING.md § YAML Frontmatter Specification](DEVELOPING.md#yaml-frontmatter-specification).
+
+Required H2 sections vary by BB type. The validator runs as a pre-commit hook:
 
 ```bash
 python scripts/check_yaml_frontmatter.py --path vault/<your-note>.md
