@@ -16,6 +16,54 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.31] — 2026-05-10
+
+### Added — Architecture FZ trail (an example trail in the seed vault)
+
+Every Tessellum install now ships **Trail 1 — Architecture**, a 4-note Folgezettel descent that documents how Tessellum's CQRS architecture was reasoned into shape. The trail exists for two purposes simultaneously:
+
+1. **Architectural reasoning record** — a contributor asking "why two systems and not three?" reads the trail and gets the explicit argument.
+2. **Worked FZ example** — a user authoring their first trail copies the trail's shape (linear descent, both-or-neither parent/child IDs, master-map row in `entry_folgezettel_trails.md`).
+
+#### The 4-note descent
+
+```
+  1       Building Block Ontology Relationships  (substrate)
+  └── 1a  How the CQRS Architecture Evolved      (four-step narrative)
+      └── 1a1   Two-Systems CQRS Synthesis       (pivot — the moment of clarity)
+          └── 1a1a   The Essence of CQRS for Tessellum  (distilled thesis)
+```
+
+| FZ ID | Note | Role |
+|-------|------|------|
+| `1` | `thought_building_block_ontology_relationships.md` | The 8 BB types + 10 epistemic edges Sascha-extension graph that everything else descends from. Pre-existed in v0.0.28+; v0.0.31 adds FZ fields (`folgezettel: "1"`, `folgezettel_parent: ""`) to mark it as trail root. |
+| `1a` | `thought_cqrs_design_evolution.md` (NEW) | The four-step descent: substrate → three-regime framing (rejected) → two-systems counter → CQRS synthesis. The "what was tried and why" record. |
+| `1a1` | `thought_synthesis_two_systems_cqrs_value_proposition.md` | The pivotal synthesis — System P (Ontology + DKS, prescriptive) ⊥ System D (Retrieval, descriptive) ⊥ one shared substrate. Pre-existed in v0.0.28+; v0.0.31 renumbers from AB's `7g1a1a1a1a1` to Tessellum-native `1a1`. |
+| `1a1a` | `thought_cqrs_essence_for_tessellum.md` (NEW) | The distilled user-facing thesis: one boundary (declaration vs computation), two disciplines, one substrate. Plus the 5 rules that fall out, and the explicit "what CQRS is *not*" carve-outs. |
+
+#### `entry_folgezettel_trails.md` — the trail map (NEW)
+
+The new entry point indexes all FZ trails in the vault (currently just Trail 1) and demonstrates the convention:
+
+- Per-trail table row with root link, node count, reading time, subject.
+- ASCII descent diagram showing `1 → 1a → 1a1 → 1a1a`.
+- Detailed per-node table (FZ ID, note link, BB type, role).
+- "How to grow a trail" — concrete instructions for adding child nodes.
+- Reading order — top-down for the first read, leaf-up for re-reads.
+
+#### Seed manifest + wheel
+
+- `pyproject.toml` — 5 new `force-include` entries (4 thoughts + 1 entry point).
+- `init.py` — `_SEED_VAULT_MANIFEST` extended from 21 to 26 relative paths.
+- `tessellum init` now scaffolds **44 markdown files** (was 39 in v0.0.30).
+
+#### Verification
+
+- All 4 trail notes pass `tessellum format check` with **0 errors**. Warnings are only `LINK-003` (links to non-shipped notes — expected).
+- FZ parent/child consistency: every `folgezettel_parent:` resolves to a shipped sibling node. Trail-root note uses `folgezettel_parent: ""` per the validator's both-or-neither rule.
+- Editable + wheel install parity: both produce 44 files.
+- Full suite: 468 passed, 1 skipped.
+
 ## [0.0.30] — 2026-05-10
 
 ### Added — System-regularization layer in the seed vault

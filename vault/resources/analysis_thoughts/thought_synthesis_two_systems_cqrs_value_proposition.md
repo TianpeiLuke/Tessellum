@@ -30,12 +30,11 @@ language: markdown
 date of note: 2026-04-24
 status: active
 building_block: argument
-folgezettel: "7g1a1a1a1a1"
-folgezettel_parent: "7g1a1a1a1a"
-author: lukexie
+folgezettel: "1a1"
+folgezettel_parent: "1a"
 ---
 
-# ★ Synthesis: The Vault Is a CQRS Knowledge System — Sharpened System Diagram and Value Proposition (FZ 7g1a1a1a1a1)
+# ★ Synthesis: The Vault Is a CQRS Knowledge System — Sharpened System Diagram and Value Proposition
 
 ## Thesis
 
