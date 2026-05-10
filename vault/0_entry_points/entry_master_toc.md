@@ -34,6 +34,7 @@ building_block: navigation
 | Install and try it | [`howto_getting_started.md`](../resources/how_to/howto_getting_started.md) — install + init vault + first capture + first query |
 | Understand the typed substrate | [`term_building_block.md`](../resources/term_dictionary/term_building_block.md) — the 8 BB types + 10 directed edges |
 | Author your first note | [`howto_note_format.md`](../resources/how_to/howto_note_format.md) — YAML frontmatter spec + per-BB section requirements |
+| Pick a template to copy | [`templates/README.md`](../resources/templates/README.md) — 9 ready-to-fill skeletons (one per BB type + skill canonical) |
 | Plug Tessellum into Claude Code / Cursor / etc. | [`howto_agent_integration.md`](../resources/how_to/howto_agent_integration.md) — MCP setup recipes |
 
 ---
@@ -76,6 +77,27 @@ Each entry point indexes one type of content:
 | [`entry_code_repos.md`](entry_code_repos.md) | Code-repository documentation notes |
 | [`entry_code_snippets.md`](entry_code_snippets.md) | Reusable code snippets (master TOC pointing at per-package entries) |
 | [`entry_dks.md`](entry_dks.md) | The Dialectic Knowledge System — protocol, agents, runtime |
+
+---
+
+## Templates — Copy-and-Fill Skeletons
+
+The canonical executable form of the YAML frontmatter spec. Pick the template matching your BB type, copy it, fill placeholders. The validator checks the templates against the spec, so they cannot drift apart.
+
+| Template | BB Type | Common Destination |
+|---|---|---|
+| [`template_concept`](../resources/templates/template_concept.md) | concept | `vault/resources/term_dictionary/` |
+| [`template_procedure`](../resources/templates/template_procedure.md) | procedure | `vault/resources/how_to/` |
+| [`template_skill`](../resources/templates/template_skill.md) | procedure (skill flavor) | `vault/resources/skills/` |
+| [`template_model`](../resources/templates/template_model.md) | model | `vault/areas/code_repos/` |
+| [`template_argument`](../resources/templates/template_argument.md) | argument | `vault/resources/analysis_thoughts/` |
+| [`template_counter_argument`](../resources/templates/template_counter_argument.md) | counter_argument | `vault/resources/analysis_thoughts/` |
+| [`template_hypothesis`](../resources/templates/template_hypothesis.md) | hypothesis | `vault/resources/analysis_thoughts/` |
+| [`template_empirical_observation`](../resources/templates/template_empirical_observation.md) | empirical_observation (inline) | `vault/resources/analysis_thoughts/` |
+| [`template_experiment`](../resources/templates/template_experiment.md) | empirical_observation (full pre-reg) | `vault/archives/experiments/` |
+| [`template_navigation`](../resources/templates/template_navigation.md) | navigation | `vault/0_entry_points/` |
+
+See [`templates/README.md`](../resources/templates/README.md) for full guidance.
 
 ---
 
