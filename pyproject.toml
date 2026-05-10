@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "0.0.6"
+version = "0.0.7"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -120,6 +120,14 @@ tessellum = "tessellum.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tessellum"]
+
+# Graft templates from the dogfooded vault into the wheel so `pip install
+# tessellum` users get the canonical BB-type skeletons without cloning the
+# repo. Source of truth stays in vault/resources/templates/; the wheel sees
+# them at tessellum/data/templates/. tessellum.data.templates_dir() resolves
+# either location depending on install mode (editable vs wheel).
+[tool.hatch.build.targets.wheel.force-include]
+"vault/resources/templates" = "src/tessellum/data/templates"
 
 [tool.hatch.build.targets.sdist]
 # Tessellum dogfoods itself — there is no separate `docs/` directory; public
