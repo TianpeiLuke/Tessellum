@@ -123,9 +123,9 @@ my-vault/
    - **Done (v0.0.3)** — `tessellum format check` (out-of-order; depends only on validator from step 2).
    - **Done (v0.0.8)** — `tessellum capture <flavor> <slug>`.
    - Pending — `tessellum init` (depends on seed vault content from step 3).
-5. Ship `indexer/` — DB build is the gateway to all retrieval/composer work.
-6. Ship `retrieval/` — at least BM25 + dense + RRF for `tessellum search`.
-7. Ship `composer/` and `mcp/`. **The Composer port is its own substantial subsystem** — see [`plan_composer_port.md`](plan_composer_port.md) for the 5-wave porting plan (Foundation → Compiler → Executor → LLM bridge → Scale). v0.1 should ship at least Composer Wave 1 (foundation: schema + contracts + extractor + loader + `tessellum composer validate` CLI + `tessellum capture skill` paired-sidecar emission).
+5. **Done (v0.0.12)** — ship `indexer/` substrate (notes + note_links tables, build CLI). FTS5 + sqlite-vec layer in step 6. See `tessellum.indexer.Database` for the typed query API.
+6. Ship `retrieval/`. **The retrieval port is its own substantial subsystem** — see [`plan_retrieval_port.md`](plan_retrieval_port.md) for the 5-wave plan (BM25+FTS5 → Dense+sqlite-vec → Hybrid RRF → Best-first BFS → Skill orchestration). Important lessons encoded there: hybrid is the default (+12pp lift); skip PPR (best-first BFS is Pareto-optimal); validate on answer quality, not Hit@K.
+7. Ship `composer/` and `mcp/`. **The Composer port is its own substantial subsystem** — see [`plan_composer_port.md`](plan_composer_port.md) for the 5-wave porting plan (Foundation → Compiler → Executor → LLM bridge → Scale). Composer Wave 1 already shipped (v0.0.9 + v0.0.10); Waves 2-4 pending.
 
 Each step is independently releasable. v0.1 doesn't need all seven done — a credible v0.1 minimum is steps 1-4 (format library + CLI scaffold + capture, all already shipped) plus step 7 Wave 1 (Composer foundation). Indexer/retrieval (steps 5-6) and Composer Waves 2-5 can be v0.2-0.5.
 
