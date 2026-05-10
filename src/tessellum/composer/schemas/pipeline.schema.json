@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tessellum/composer/schemas/pipeline.schema.json",
+  "title": "Tessellum Composer Pipeline Sidecar",
+  "description": "Per-step pipeline declarations for a Tessellum capture/digest skill. Loaded by `tessellum.composer.skill_extractor.load_pipeline_metadata` when a skill canonical's frontmatter declares `pipeline_metadata: ./<skill>.pipeline.yaml`. The sidecar is the typed contract; the canonical is the human-readable procedure. Both are authoritative — Composer pairs them via section_id anchors.",
+  "type": "object",
+  "required": ["pipeline"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Sidecar format version. Default '1.0' if omitted.",
+      "default": "1.0"
+    },
+    "pipeline": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of step declarations.",
+      "items": { "$ref": "#/definitions/Step" }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "Step": {
+      "type": "object",
+      "required": ["section_id", "role", "aggregation", "batchable", "depends_on"],
+      "properties": {
+        "section_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Anchor id matching `<!-- :: section_id = X :: -->` in the skill canonical."
+        },
+        "role": {
+          "enum": ["CORE", "DEFERRED", "INFRA"],
+          "description": "CORE = compiled into pipeline_dag (LLM-dispatched); DEFERRED = visible to compiler but not auto-dispatched; INFRA = dropped, no LLM call (informational/glue)."
+        },
+        "aggregation": {
+          "enum": ["per_leaf", "cross_leaf", "corpus_wide"],
+          "description": "How the step instance is multiplied — once per leaf, once across all leaves of a cross_leaf scope, or once for the whole corpus."
+        },
+        "batchable": {
+          "type": "boolean",
+          "description": "If true, scheduler may batch multiple per_leaf instances into a single LLM call (column-oriented dispatch)."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "section_ids this step depends on. Forward references not allowed; compiler enforces topological order."
+        },
+        "materializer": {
+          "enum": [
+            "body_markdown_to_file",
+            "body_markdown_frontmatter_to_file",
+            "edits_apply_to_files",
+            "edits_apply_xml_tags",
+            "no_op"
+          ],
+          "description": "Materializer key. Resolves via `tessellum.composer.contracts.MATERIALIZER_CONTRACTS`. Required for CORE/DEFERRED steps; INFRA steps default to no_op."
+        },
+        "wire_format": {
+          "enum": ["json", "markdown_with_frontmatter", "xml_tag_list", "none"],
+          "description": "Optional override of the materializer contract's declared wire_format. Usually omitted — the contract is authoritative."
+        },
+        "operation_verb": {
+          "enum": ["PRODUCE", "APPLY", "DESCRIBE"],
+          "description": "Optional override of the materializer contract's declared operation_verb. PRODUCE = write new; APPLY = overwrite existing; DESCRIBE = informational, no side effect."
+        },
+        "applies_to_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Static list of vault-relative paths the step applies to. APPLY-mode steps require non-empty."
+        },
+        "applies_to_files_query": {
+          "$ref": "#/definitions/Query",
+          "description": "Declarative query resolved against the unified DB at compile time. Mutually informative with `applies_to_files`. Requires the indexer (not shipped in v0.0.9 — Wave 1 loaders accept the field but cannot resolve it until the indexer ships)."
+        },
+        "expected_output_schema": {
+          "type": "object",
+          "description": "JSON Schema the agent's response must conform to. Required for CORE/DEFERRED steps. The compiler pre-validates declarations before LLM dispatch."
+        },
+        "prompt_template": {
+          "type": "string",
+          "description": "Jinja-style template the compiler renders into the agent's user message. `{{leaf.X}}` resolves at compile time; `{{upstream.Y}}` at runtime; `{{existing.Z}}` from APPLY-mode ground-truth files."
+        },
+        "output_key": {
+          "type": "string",
+          "description": "Identifier for this step's output that downstream `{{upstream.<key>}}` placeholders resolve against."
+        },
+        "mcp_dependencies": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/MCPDependency" },
+          "description": "MCPs this step depends on. Compiler resolves each entry against `tessellum.composer.contracts.MCP_CONTRACTS` and raises ContractViolation on drift before any LLM call fires."
+        }
+      },
+      "additionalProperties": true
+    },
+    "MCPDependency": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "description": "Stable MCP identifier (lowercase, hyphens/underscores allowed). Matches a key in `tessellum.composer.contracts.MCP_CONTRACTS`. The default registry is empty — Tessellum has no built-in MCPs; users register their own at runtime."
+        },
+        "calls": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Specific MCP tool names this step invokes. Each name MUST appear in the corresponding `MCPContract.available_tools` (loaded from a co-located JSON snapshot when registered); the compiler raises UNKNOWN_MCP_TOOL otherwise."
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true (default), missing MCP at runtime fails the step. If false, the dispatcher returns a degraded result and the step's prompt_template MUST include a degradation branch handling the absence."
+        }
+      },
+      "additionalProperties": false
+    },
+    "Query": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "term_backlink_candidates",
+            "related_term_notes",
+            "related_notes_by_keywords"
+          ],
+          "description": "Query kind handled by the compiler's `_resolve_applies_to_files_query`. Resolution depends on the indexer (not shipped in v0.0.9)."
+        },
+        "max_files": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Per-call cap on resolved paths. Default 10."
+        },
+        "exclude_dirs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Vault-relative directory prefixes to exclude. Defaults vary by kind."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

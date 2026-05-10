@@ -16,6 +16,97 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.9] — 2026-05-10
+
+### Added — Composer Wave 1 Foundation (library only)
+
+Per `plans/plan_composer_port.md`. **Pure data + library.** No CLI yet, no LLM dispatch, no compiler. The library lets you load and validate skill pipeline sidecars in Python:
+
+```python
+from tessellum.composer import load_pipeline, Pipeline, ContractViolation
+pipeline = load_pipeline("vault/resources/skills/skill_foo.md")
+```
+
+CLI subcommand (`tessellum composer validate`) and `tessellum capture skill` paired-sidecar emission ship in v0.0.10 (Wave 1 user-facing surface).
+
+#### `src/tessellum/composer/schemas/pipeline.schema.json`
+
+JSON Schema (draft-07) for the pipeline sidebar YAML format. Ported from the parent project with parent-internal references scrubbed:
+
+- `$id` rewrites to `https://tessellum/composer/...`
+- `MCPDependency.name` enum → open `pattern: ^[a-z][a-z0-9_-]*$` (Tessellum has no built-in MCPs; users register their own)
+- FZ-trail-specific descriptions replaced with neutral language
+
+The schema declares the structure: `version`, `pipeline` array of `Step` items, with required `section_id`/`role`/`aggregation`/`batchable`/`depends_on` per step. Materializer enum (5 values) covers the universal materializers; `applies_to_files_query` is documented as indexer-dependent (not yet shipped).
+
+#### `src/tessellum/composer/contracts.py`
+
+Three contract families as Pydantic V2 frozen models:
+
+- **MaterializerContract** + 5 concrete subclasses (`BodyMarkdownToFileContract`, `BodyMarkdownFrontmatterToFileContract`, `EditsApplyToFilesContract`, `EditsApplyXmlTagsContract`, `NoOpContract`). Module-level registry `MATERIALIZER_CONTRACTS` keyed by materializer name.
+- **LLMBackendContract** — declares backend capabilities (allowed_tools, max_user_message_chars, batching support). Default registry ships only `mock` for testing; real backends (Anthropic, OpenAI) ship with the LLM bridge in Wave 4.
+- **MCPContract** — declares MCP server capabilities (available_tools, auth_required, rate_limit_qps, fallback_strategy). **Empty registry by default** — Tessellum is generic; users register their own MCPs.
+
+`ContractViolation` exception with 10 violation kinds — defined here so library users can catch it the same way they import the contract types. The compiler (Wave 2) raises this on declaration drift.
+
+#### `src/tessellum/composer/skill_extractor.py`
+
+Three functions for working with skill canonicals:
+
+- `load_skill_section(skill_path, section_id) -> str` — extracts the body text of a section identified by `<!-- :: section_id = X :: -->` anchor. Excludes the heading line; stops at the next H2 (anchored or not).
+- `load_pipeline_metadata(skill_path) -> Path | None` — resolves the canonical's frontmatter `pipeline_metadata:` field. Returns `None` for the `"none"` sentinel or absent field; otherwise returns the absolute path to the sidecar (relative paths resolve against the skill's parent directory).
+- `list_section_ids(skill_path) -> list[str]` — all section_ids in document order. Used by the loader for cross-file consistency checks.
+
+#### `src/tessellum/composer/loader.py`
+
+`load_pipeline(skill_path) -> Pipeline | None` — three-stage validation:
+
+1. **JSON Schema** validation against `pipeline.schema.json` (structural — required keys, enum membership, pattern match)
+2. **Pydantic V2** model construction (`Pipeline` and `PipelineStep` with typed access)
+3. **Cross-file consistency** — every step's `section_id` must have a matching anchor in the canonical; orphan section_ids raise `PipelineValidationError`
+
+Returns `None` if the canonical declares `pipeline_metadata: none` (skill has no Composer dispatch — e.g. `skill_tessellum_format_check.md` which is a CLI wrapper, not LLM-dispatched).
+
+`Pipeline`, `PipelineStep`, `MCPDependency`, `Query` are Pydantic V2 frozen models mirroring the JSON schema's shape.
+
+#### Tests
+
+40 new tests across three files, all passing:
+
+- `tests/smoke/test_composer_contracts.py` (18) — registry contents, contract immutability, extra-fields-forbidden, ContractViolation message format, parametrized round-trip serialization for all 5 materializer concrete classes.
+- `tests/smoke/test_composer_skill_extractor.py` (11) — section extraction, body-text isolation (stops at next H2 with or without anchor), unknown section_id → error, no-anchors skill → error, document-order listing, pipeline_metadata resolution (relative path / `none` sentinel / absent field). Plus an integration test against the shipped `skill_tessellum_format_check.md` verifying its 10 anchored H2s yield non-empty bodies.
+- `tests/smoke/test_composer_loader.py` (11) — happy path returns typed `Pipeline`, dependencies preserved, MCP dependencies typed, `pipeline_metadata: none` → `None`, missing sidecar → error, invalid YAML → error, schema violation (bad enum / missing required field) → error, orphan section_id → error, top-level non-mapping → error.
+
+Total tests now 157/157 passing (117 prior + 40 new).
+
+#### Wheel-build verification
+
+```bash
+$ python -m build --wheel
+$ unzip -l dist/tessellum-0.0.9-py3-none-any.whl | grep composer
+  tessellum/composer/__init__.py
+  tessellum/composer/contracts.py
+  tessellum/composer/loader.py
+  tessellum/composer/skill_extractor.py
+  tessellum/composer/schemas/pipeline.schema.json
+```
+
+Schema ships automatically because `src/tessellum/composer/schemas/` is inside `src/tessellum/` — no `force-include` needed (correctly noted in the revised plan after the post-research adjustments).
+
+#### What's NOT in this release
+
+Per the plan, the following ship in subsequent versions:
+
+- v0.0.10 (Wave 1 user-facing): `tessellum composer validate` CLI; `template_skill.pipeline.yaml` starter; `tessellum capture skill` paired-sidecar emission.
+- Wave 2: compiler (DAG build, contract validation, zero LLM calls).
+- Wave 3: executor + materializer implementations.
+- Wave 4: LLM backends (Anthropic SDK, optional MCP dispatcher).
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.9"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.9"`.
+
 ## [0.0.8] — 2026-05-10
 
 ### Added — `tessellum capture <flavor> <slug>` CLI subcommand
@@ -402,7 +493,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.8...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.9...HEAD
+[0.0.9]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.5...v0.0.6
