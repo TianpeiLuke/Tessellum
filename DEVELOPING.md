@@ -19,11 +19,18 @@ The top-level folders map to **CQRS workflow roles**: System P (capture) writes 
 | Generated DBs / indexes | `data/` | System D build output | Regenerable; gitignored |
 | **Runtime traces** | `runs/` | both — runtime forensics | Capture / retrieval / composer run artifacts; gitignored |
 | Experiment outputs | `experiments/` | mostly System D | Per-run subdirs |
-| Operational scripts | `scripts/` | both | Build / update / format utilities |
+| One-off operational utilities | `scripts/` | meta — dev/maintenance | Vault migrations, repo maintenance, contributor helpers; *not* shipped in the wheel. Core capabilities go in `src/tessellum/cli/` as subcommands instead. See [`scripts/README.md`](scripts/README.md). |
 | Tests | `tests/` | both | Mirrors `src/tessellum/` structure |
 | Repo-meta files | repo root | meta | `README.md`, `CHANGELOG.md`, `LICENSE`, `CONTRIBUTING.md`, `DEVELOPING.md`, `pyproject.toml`, `.gitignore`, `.github/` |
 
-**Decision rule for new files**: if it would be useful to *anyone using Tessellum*, it goes in `vault/` as a typed atomic note. If it's a *project-management decision about how Tessellum gets built*, it goes in `plans/`. If it's a *runtime trace of a pipeline run*, it goes in `runs/<subsystem>/` (gitignored). If it's only useful to *people working on Tessellum's code*, it goes at repo root or in `scripts/`.
+**Decision rule for new files**:
+
+- *Useful to anyone using Tessellum, knowledge-shaped* → `vault/` as a typed atomic note.
+- *Capability users will run repeatedly via the `tessellum` command* → `src/tessellum/cli/<subcommand>.py` (with supporting library code in `src/tessellum/<module>/`).
+- *Project-management decision about how Tessellum gets built* → `plans/`.
+- *Runtime trace of a pipeline run* → `runs/<subsystem>/` (gitignored).
+- *One-off operational utility (vault migration, repo maintenance, contributor helper)* → top-level `scripts/`. **Reserved for one-offs only** — recurring capabilities belong as CLI subcommands.
+- *Repo-meta file (LICENSE, README, pyproject.toml, etc.)* → repo root.
 
 ## Why dogfooding?
 

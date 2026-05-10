@@ -153,9 +153,20 @@ Tessellum/
 | `runs/composer/` | both — bridge runtime | DKS chain run traces | gitignored |
 | `plans/` | **governance — meta to both** | project decisions, layout, milestones | tracked |
 | `experiments/` | mostly System D | benchmark results, ablations | mixed |
-| `scripts/` | both | code (engines, not data) | tracked |
+| `scripts/` | **meta — dev/maintenance** | one-off vault migrations, repo maintenance, contributor helpers; **not** shipped in the wheel. Core capabilities live in `src/tessellum/cli/` instead. | tracked |
 | `src/tessellum/` | both | code | tracked |
 | `tests/` | both | test suite | tracked |
+
+### `scripts/` vs `src/tessellum/cli/`
+
+A subtlety worth calling out, since both directories hold "things you run from a terminal":
+
+- **`src/tessellum/cli/<subcommand>.py`** — recurring capabilities exposed via the `tessellum` console script. Ships in the wheel. Examples (shipped or planned): `format_check.py`, `init.py`, `capture.py`, `index.py`, `search.py`. Users invoke via `tessellum format check vault/`, `tessellum init my-vault/`, etc.
+- **top-level `scripts/`** — one-off operational utilities. NOT shipped in the wheel. Examples (potential): `rename_legacy_tag.py` (one-time vault migration after a convention change), `backfill_status.py` (one-time repo cleanup), `run_all_checks.sh` (contributor convenience). Run via `python scripts/<name>.py` from the repo checkout, never via the installed `tessellum` command.
+
+**Decision rule**: if it represents a recurring capability users will run ≥3 times, it's a CLI subcommand. If it's a one-time migration or contributor helper, it's a top-level script.
+
+See [`scripts/README.md`](../scripts/README.md) for more.
 
 ## Concrete examples — what lives in each folder
 
