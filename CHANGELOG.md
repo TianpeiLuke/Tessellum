@@ -16,6 +16,35 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.6] — 2026-05-10
+
+### Changed — `scripts/` role clarified (docs-only)
+
+Refined the convention for the top-level `scripts/` directory: **reserved for one-off operational utilities** (vault migrations, repo maintenance, contributor helpers) — *not* core capabilities. Recurring capabilities belong as CLI subcommands under `src/tessellum/cli/`, where they ship in the wheel and are invoked via `tessellum <subcommand>`.
+
+Surfaced when reviewing what to port from the parent project's 60+ scripts: most are now-or-soon CLI subcommands (format check, indexer, retrieval, capture), library modules (config, parser), or already-ported skill canonicals. Only true one-offs (one-time migrations, contributor convenience) belong in `scripts/`.
+
+The decision rule:
+
+| Question | Destination |
+|---|---|
+| Recurring capability users run via the `tessellum` command? | `src/tessellum/cli/<subcommand>.py` |
+| Re-usable library function? | `src/tessellum/<module>/` |
+| One-off migration / repo maintenance / contributor helper? | top-level `scripts/` |
+
+**Files updated**:
+
+- `scripts/README.md` (new) — documents the convention with examples in both directions and the decision rule.
+- `DEVELOPING.md § Layout Convention` — refined the `scripts/` row from "build / update / format utilities" to "one-off operational utilities, not shipped"; expanded the decision rule into 6 explicit cases.
+- `plans/plan_cqrs_repo_layout.md` — refined the `scripts/` row in the System × lifecycle matrix; added a new subsection "scripts/ vs src/tessellum/cli/" calling out the subtlety.
+
+This is a docs-only release. No code changes; library + CLI behavior unchanged. 53/53 tests still pass.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.6"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.6"`.
+
 ## [0.0.5] — 2026-05-10
 
 ### Changed — Repository layout (CQRS workflow → folder mapping)
@@ -208,7 +237,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.5...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.6...HEAD
+[0.0.6]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.2...v0.0.3
