@@ -16,6 +16,98 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.4] — 2026-05-10
+
+### Added — Tier-1 parity with the parent project's format checker
+
+Studied the parent project's `scripts/check_note_format.py` + `skill_slipbox_check_note_format.md` and ported the high-leverage features. Brings Tessellum's checker close to feature-parity for the YAML-frontmatter + body-link surface; H1/H2 section rules and the vault summary report are deferred to a later release.
+
+#### Stable rule IDs on every issue
+
+`Issue` now carries a `rule_id: str` field. IDs follow three families:
+
+- `YAML-NNN` — frontmatter rules (010–099 for presence/type/value, 100–199 for linkage).
+- `LINK-NNN` — body markdown link rules.
+- `TESS-NNN` — Tessellum-specific rules (folgezettel pair, forbidden fields).
+
+Existing rules are mapped to the parent's IDs where the parent has one (`YAML-010`, `YAML-014`, etc.), so logs and grep patterns are portable. Output format updated to `SEVERITY[field] RULE-ID: message`.
+
+#### `Severity.INFO` (third tier)
+
+Added `Severity.INFO` alongside `ERROR` and `WARNING`. No rule emits INFO yet, but the type is now available for downstream rules that want a "soft suggestion" tier (the parent uses INFO for H1/H2 hints and for orphan-related findings).
+
+#### YAML-100/101 — forbid links inside YAML field values
+
+Wiki links (`[[...]]`) and markdown links (`[text](path.md)`) inside YAML field values silently break the parent project's indexer. Now flagged as ERROR with the line number where they appear. Detection uses the raw frontmatter text (preserved on `Note.raw_frontmatter`), not the parsed dict.
+
+#### LINK-001/002/003/006 — body markdown link checks
+
+New module `tessellum.format.link_checker`:
+
+- **LINK-001** (WARNING) — internal link missing `.md` extension
+- **LINK-002** (WARNING) — internal link uses an absolute path (prefer relative)
+- **LINK-003** (WARNING) — internal link target does not exist on disk
+- **LINK-006** (WARNING) — note has no internal links to other notes (orphan)
+
+Skipped (not flagged): external `http(s)://` and `mailto:` links, anchor-only `#section` links, non-markdown extensions (images, PDFs, code, archives), placeholder targets (`<placeholder>`, `link`, `...`, `-`, etc.), directory links, and any link inside a fenced code block.
+
+`Note.raw_frontmatter: str = ""` is the new required field on the dataclass — populated by `parse_text` / `parse_note` from the regex match.
+
+#### `Note.raw_frontmatter` + parser refactor
+
+Dropped runtime use of `python-frontmatter`; the parser now uses PyYAML directly with a regex to capture both the parsed dict and the raw YAML text. `python-frontmatter>=1.1` removed from runtime dependencies.
+
+#### `--format json` output
+
+`tessellum format check --format json` emits a machine-readable report:
+
+```json
+{
+  "files": [
+    {
+      "path": "vault/resources/term_dictionary/term_zettelkasten.md",
+      "issues": [
+        {"rule_id": "LINK-006", "severity": "warning", "field": "links",
+         "message": "note has no internal links to other notes (orphan)"}
+      ]
+    }
+  ],
+  "summary": {
+    "files_checked": 70, "files_with_issues": 64,
+    "errors": 0, "warnings": 613, "infos": 0
+  }
+}
+```
+
+Designed so a CI step can pipe it into `jq` and gate on `summary.errors`.
+
+#### Non-note skip list
+
+The CLI's directory recursion now skips `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `DEVELOPING.md`, `LICENSE.md`, `MEMORY.md`, and any `Rank_*.md`. The parent project skips these because they're not vault notes (no required frontmatter). Library-level `validate(path)` is unchanged — the skip list only applies to CLI directory mode.
+
+#### Tests
+
+20 new tests across 2 files:
+
+- `tests/smoke/test_link_checker.py` (13 tests) — every LINK-* rule, plus negative tests for external/anchor/non-md/placeholder/directory targets and code-block-fenced links.
+- `tests/smoke/test_format_validator.py` (7 new tests on top of the existing 16) — rule IDs are well-formed, `Severity.INFO` exists, YAML-100/101 fire on link-in-YAML, plus updated `test_issue_str_*` for the new ctor signature.
+- `tests/cli/test_format_check.py` (3 new tests on top of the existing 9) — `--format json` clean + dirty paths, non-note skip list.
+
+All 52 tests pass.
+
+#### Dogfood (separate from this commit)
+
+Running v0.0.4 over `vault/` surfaces **0 errors and 613 warnings**: many LINK-003 (links to planned-but-not-yet-authored notes like `term_folgezettel.md`) and LINK-006 (orphan term notes). These are real findings — the vault is in early build-out — and will be addressed in follow-up data work, not by silencing the checker.
+
+#### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.4"`; status line updated.
+- `pyproject.toml`: `project.version` → `"0.0.4"`; `python-frontmatter` removed from runtime deps.
+
+#### Breaking change
+
+`Issue` ctor signature is now `Issue(severity, rule_id, field, message)` (4 positional args). v0.0.2/v0.0.3 used 3 positional args. Library callers constructing `Issue` directly need to add a `rule_id` argument; `validate()` consumers are unaffected.
+
 ## [0.0.3] — 2026-05-10
 
 ### Added — `tessellum format check` CLI subcommand
@@ -81,7 +173,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/TianpeiLuke/Tessellum/releases/tag/v0.0.1

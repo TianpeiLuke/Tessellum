@@ -1,21 +1,26 @@
 """Parse a Tessellum note from disk into a typed ``Note`` value.
 
-Thin wrapper over ``python-frontmatter`` (already a dependency). Surfaces the
-two structural pieces — frontmatter dict + body string — plus convenience
-accessors for the most-queried fields.
+Lightweight regex-based frontmatter parser using PyYAML directly. Captures
+the raw frontmatter text in addition to the parsed mapping so downstream
+checks can scan the YAML source (e.g. for forbidden wiki/markdown links
+inside field values).
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import frontmatter
+import yaml
 
 
 class FrontmatterParseError(ValueError):
     """Raised when a note's frontmatter cannot be parsed as a YAML mapping."""
+
+
+_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 
 
 @dataclass(frozen=True)
@@ -23,14 +28,18 @@ class Note:
     """A parsed Tessellum note.
 
     Attributes:
-        path: Source path on disk. ``None`` if parsed from a string.
-        frontmatter: YAML frontmatter as a dict. Empty dict if no frontmatter.
-        body: Markdown body (everything after the closing ``---``).
+        path:             Source path on disk; ``None`` if parsed from a string.
+        frontmatter:      YAML frontmatter as a dict (empty if absent).
+        body:             Markdown body — everything after the closing ``---``.
+        raw_frontmatter:  Original YAML text between ``---`` fences. Empty
+                          string if the note has no frontmatter. Preserved so
+                          checks can scan the raw YAML (e.g. for link prohibition).
     """
 
     path: Path | None
     frontmatter: dict[str, Any] = field(default_factory=dict)
     body: str = ""
+    raw_frontmatter: str = ""
 
     @property
     def tags(self) -> list[str]:
@@ -41,13 +50,11 @@ class Note:
 
     @property
     def para_bucket(self) -> str | None:
-        tags = self.tags
-        return tags[0] if tags else None
+        return self.tags[0] if self.tags else None
 
     @property
     def second_category(self) -> str | None:
-        tags = self.tags
-        return tags[1] if len(tags) >= 2 else None
+        return self.tags[1] if len(self.tags) >= 2 else None
 
     @property
     def building_block(self) -> str | None:
@@ -76,18 +83,36 @@ def parse_note(path: Path | str) -> Note:
     """Parse a note from a file path."""
     p = Path(path)
     try:
-        post = frontmatter.load(str(p))
-    except Exception as e:
-        raise FrontmatterParseError(f"failed to parse frontmatter in {p}: {e}") from e
-    fm = dict(post.metadata) if post.metadata else {}
-    return Note(path=p, frontmatter=fm, body=post.content or "")
+        text = p.read_text(encoding="utf-8")
+    except OSError as e:
+        raise FrontmatterParseError(f"cannot read {p}: {e}") from e
+    parsed = parse_text(text)
+    return Note(
+        path=p,
+        frontmatter=parsed.frontmatter,
+        body=parsed.body,
+        raw_frontmatter=parsed.raw_frontmatter,
+    )
 
 
 def parse_text(text: str) -> Note:
-    """Parse a note from an in-memory string. Useful for tests + library callers."""
+    """Parse a note from an in-memory string."""
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return Note(path=None, frontmatter={}, body=text, raw_frontmatter="")
+
+    raw = m.group(1)
+    body = m.group(2)
     try:
-        post = frontmatter.loads(text)
-    except Exception as e:
-        raise FrontmatterParseError(f"failed to parse frontmatter: {e}") from e
-    fm = dict(post.metadata) if post.metadata else {}
-    return Note(path=None, frontmatter=fm, body=post.content or "")
+        fm = yaml.safe_load(raw)
+    except yaml.YAMLError as e:
+        raise FrontmatterParseError(f"YAML parse error: {e}") from e
+
+    if fm is None:
+        fm = {}
+    if not isinstance(fm, dict):
+        raise FrontmatterParseError(
+            f"frontmatter is not a YAML mapping (got {type(fm).__name__})"
+        )
+
+    return Note(path=None, frontmatter=fm, body=body, raw_frontmatter=raw)
