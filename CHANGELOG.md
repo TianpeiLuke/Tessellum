@@ -16,6 +16,130 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.23] — 2026-05-10
+
+### Added — Composer Wave 5b: eval framework (closes the Composer port)
+
+`tessellum composer eval <scenarios/>` runs YAML-defined scenarios against compiled skills, scoring each on two complementary dimensions:
+
+1. **Structural assertions** (deterministic, no LLM): did the right number of steps fire, did the expected files land in the vault, do the LLM responses contain the substrings we're looking for?
+2. **LLMJudge 5-dim rubric** (optional, content quality): relevance, completeness, accuracy, clarity, structural_integrity — each scored 1-5 by a separate LLM judge.
+
+Together they catch the load-bearing wiring + the load-bearing content. Structural assertions tell you the pipeline ran; the rubric tells you whether what it produced is any good.
+
+```
+$ tessellum composer eval tests/scenarios/ --backend anthropic --judge-backend anthropic
+eval: 12 passed, 1 failed, 0 errored (of 13 scenarios)
+  PASS   skill_search_intent_extraction
+  PASS   skill_capture_term_note__edge_case_long_title
+  FAIL   skill_decompose__pathological_recursion
+            ✗ step_count_eq(): expected 4, got 7
+            • relevance: 4/5  Output addresses the prompt directly.
+            • completeness: 3/5  Two of three required facets present.
+            ...
+
+Mean scores:
+  relevance: 4.31
+  completeness: 4.08
+  accuracy: 4.42
+  clarity: 4.15
+  structural_integrity: 4.46
+```
+
+#### Scenario YAML format
+
+```yaml
+name: "Skill X handles edge-case Y"
+skill: ../skills/skill_x.md
+expected_output_description: "A summary note with three facets..."
+leaves:
+  - {id: "case_1", input: "..."}
+vault: ../vault
+assertions:
+  - kind: no_errors
+  - kind: step_count_eq
+    expected: 3
+  - kind: file_written
+    target: notes/expected.md
+  - kind: response_contains
+    target: step_2
+    expected: "facet_a"
+rubric_dimensions: [relevance, clarity]   # optional; full set by default
+```
+
+Five assertion kinds: `no_errors`, `error_count_eq`, `step_count_eq`, `file_written`, `response_contains`. All deterministic — no LLM round-trip needed. Failed assertions surface with a clear `expected X, got Y` message.
+
+#### `tessellum.composer.LLMJudge`
+
+- Wraps any `LLMBackend` to produce `(JudgeScore × dimensions)` tuples.
+- Strict system prompt: integer 1-5 per dim, JSON return only.
+- **Tolerant parsing**: strict JSON first, then regex-extracts the first `{…}` block from prose-wrapped responses. Unparseable responses → score 0 with `justification="judge response unparseable"` (eval continues; the bad scenario is visible in the report).
+- Out-of-range scores are clamped to `[0, 5]`.
+- Missing dimensions in the response → score 0 with `justification="missing dimension X"`.
+
+#### `tessellum.composer.run_eval`
+
+```python
+from tessellum.composer import (
+    load_scenarios, run_eval, LLMJudge, MockBackend, AnthropicBackend
+)
+
+scenarios = load_scenarios(Path("tests/scenarios/"))
+result = run_eval(
+    scenarios,
+    backend=AnthropicBackend(model="claude-sonnet-4-6"),
+    judge=LLMJudge(AnthropicBackend(model="claude-opus-4-7")),
+)
+print(result.passed_count, result.failed_count)
+print(result.mean_score_by_dim)
+```
+
+The judge backend is **independent** of the pipeline backend — typical pattern is a faster model running the pipeline and a stronger model grading it.
+
+#### `tessellum composer eval` CLI
+
+```
+tessellum composer eval <scenarios_dir>
+    [--backend mock|anthropic]                 # pipeline backend
+    [--judge-backend none|mock|anthropic]      # rubric backend
+    [--mock-responses mock.json]
+    [--judge-mock-responses judge_mock.json]
+    [--model claude-sonnet-4-6]
+    [--dry-run]
+    [--format human|json]
+```
+
+Default `--judge-backend=mock` returns canned 4/5 scores (lets you verify the rubric pipeline runs end-to-end without burning tokens). `--judge-backend=none` skips the rubric entirely (structural assertions only).
+
+#### Tests
+
+28 new tests: 18 library smokes (scenario YAML loading happy/error paths, default vs custom rubric dimensions, all 5 assertion kinds, LLMJudge full rubric / clamping / unparseable / missing dim / prose-wrapped JSON, end-to-end run_eval with judge aggregating mean scores, compile-failure → error_count, no-judge skip rubric) + 10 CLI smokes (human + JSON output, default mock judge, failing scenario → exit 1, missing dir → 2, empty dir → 0, invalid scenario YAML → 2).
+
+Full suite: 464 passed, 1 skipped.
+
+#### What's done
+
+The Composer port from AbuseSlipBox is now feature-complete for Tessellum v0.1. Six waves shipped across v0.0.9 → v0.0.23:
+
+| Wave | What            | Module                                    |
+| ---- | --------------- | ----------------------------------------- |
+| 1    | Foundation      | `loader.py`, `contracts.py`, `skill_extractor.py` |
+| 2    | Compiler        | `compiler.py`                             |
+| 3    | Executor        | `executor.py`, `scheduler.py`, `materializer.py`, `llm.py` (mock) |
+| 4    | LLM bridge      | `llm.py` (Anthropic)                      |
+| 5a   | Batch runner    | `batch.py`                                |
+| 5b   | Eval framework  | `eval.py`                                 |
+
+The agent ↔ program boundary holds end-to-end: programs handle structure (DAG, schema validation, materializer dispatch, file I/O, batch resume, assertion checks, judge response parsing); agents handle content (every LLM-mediated decision lives behind one Protocol method, swappable from MockBackend → AnthropicBackend → future OpenAI/local backends without touching the runtime).
+
+#### Deferred (not in v0.1)
+
+- **Bootstrapped confidence intervals** on judge scores — v0.2+ if needed.
+- **Multi-judge ensembles** — v0.2+ if needed; the architecture (separate pipeline + judge backends) supports it without runtime changes.
+- **Pairwise / preference judging** — v0.2+ if needed; the 5-dim rubric is what users want first.
+- **MCP dispatcher** — kept on the deferred list per `plan_composer_port.md`. Add later when a Tessellum user has a concrete MCP integration need.
+- **OpenAI / local-model backends** — same Protocol, separate `[agent_openai]` / `[agent_local]` extras when users ask. The lazy-import pattern in `AnthropicBackend` is the template.
+
 ## [0.0.22] — 2026-05-10
 
 ### Added — Composer Wave 5a: parallel batch runner with resume
