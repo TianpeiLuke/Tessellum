@@ -16,6 +16,7 @@ from tessellum.cli.composer import add_subparser as add_composer_subparser
 from tessellum.cli.format_check import add_subparser as add_format_subparser
 from tessellum.cli.index import add_subparser as add_index_subparser
 from tessellum.cli.init import add_subparser as add_init_subparser
+from tessellum.cli.search import add_subparser as add_search_subparser
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -33,6 +34,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_format_subparser(subparsers)
     add_capture_subparser(subparsers)
     add_index_subparser(subparsers)
+    add_search_subparser(subparsers)
     add_composer_subparser(subparsers)
     return parser
 
@@ -47,6 +49,7 @@ def _print_banner() -> None:
     print("  from tessellum.capture import capture, REGISTRY")
     print("  from tessellum.composer import load_pipeline, Pipeline, ContractViolation")
     print("  from tessellum.indexer import build, Database")
+    print("  from tessellum.retrieval import bm25_search, BM25Hit")
     print("  from tessellum.init import scaffold")
     print("  from tessellum.data import templates_dir, seed_vault_dir")
     print()
@@ -55,11 +58,12 @@ def _print_banner() -> None:
     print("  tessellum format check <path>       — validate notes against the YAML spec")
     print("  tessellum capture <flavor> <slug>   — create a new note from a template")
     print("  tessellum index build               — build the unified SQLite index")
+    print("  tessellum search <query>            — BM25 lexical retrieval (v0.0.13)")
     print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
     print()
     print("Roadmap:")
-    print("  tessellum search <q>     — hybrid retrieval (BM25 + dense + RRF)")
-    print("  tessellum composer compile/run  — Composer Wave 2-3")
+    print("  tessellum search --dense / --hybrid  — Retrieval Waves 2-3")
+    print("  tessellum composer compile/run       — Composer Waves 2-3")
     print()
     print("See https://github.com/TianpeiLuke/Tessellum for the v0.1 plan.")
 
