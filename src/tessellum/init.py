@@ -85,56 +85,17 @@ _BARE_PARA_DIRS: tuple[str, ...] = (
 )
 
 
-# Vault-relative paths of seed content shipped via Hatch ``force-include``.
-# Each entry is resolved against ``seed_vault_dir()`` (wheel install) with
-# a source-tree fallback to ``vault/`` (editable install). The explicit
-# manifest is the load-bearing piece: an ``rglob("*.md")`` over the
-# dogfood vault in editable mode would copy ~5000 files, which is not
-# what `tessellum init` is for.
-_SEED_VAULT_MANIFEST: tuple[str, ...] = (
-    # 11 foundation term notes (the conceptual primer for typed-knowledge
-    # work). Each is general public knowledge — no internal references.
-    "resources/term_dictionary/term_knowledge_building_blocks.md",   # historical (Sascha Fast)
-    "resources/term_dictionary/term_building_block.md",              # Tessellum's 8-type ontology
-    "resources/term_dictionary/term_epistemic_function.md",          # what each BB does
-    "resources/term_dictionary/term_dialectic_knowledge_system.md",  # DKS — closed-loop dialectic
-    "resources/term_dictionary/term_cqrs.md",                        # System P ⊥ System D
-    "resources/term_dictionary/term_zettelkasten.md",                # Luhmann's method
-    "resources/term_dictionary/term_para_method.md",                 # Forte's PARA scheme
-    "resources/term_dictionary/term_basb.md",                        # Building a Second Brain
-    "resources/term_dictionary/term_code_method.md",                 # Capture/Organize/Distill/Express
-    "resources/term_dictionary/term_slipbox.md",                     # the system class
-    "resources/term_dictionary/term_folgezettel.md",                 # trail mechanism
-    # System regularization (the format contract every note follows).
-    "resources/term_dictionary/term_format_spec.md",                 # YAML/link/naming spec + issue codes
-    # Getting-started walkthrough (the pipeline foundation in vault form).
-    "resources/how_to/howto_first_vault.md",                         # 8-step CLI walkthrough
-    # FZ trail nodes — Trail 1 (Architecture / CQRS), Trail 2 (Dialectic / DKS),
-    # Trail 3 (Retrieval / System D).
-    "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",        # FZ 1
-    "resources/analysis_thoughts/thought_cqrs_design_evolution.md",                        # FZ 1a
-    "resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md", # FZ 1a1
-    "resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md",                   # FZ 1a1a
-    "resources/analysis_thoughts/thought_dks_evolution.md",                                # FZ 2
-    "resources/analysis_thoughts/thought_dks_design_synthesis.md",                         # FZ 2a
-    "resources/analysis_thoughts/thought_retrieval_evolution.md",                          # FZ 3
-    "resources/analysis_thoughts/thought_retrieval_synthesis.md",                          # FZ 3a
-    # Entry points — master TOCs / pickers / FZ trail map + per-trail entries +
-    # 5 universal acronym glossaries + Tessellum-foundations glossary.
-    # entry_master_toc.md is rendered inline by init, not shipped here.
-    "0_entry_points/entry_acronym_glossary.md",
-    "0_entry_points/entry_building_block_index.md",                  # BB picker (scannable matrix)
-    "0_entry_points/entry_folgezettel_trails.md",                    # FZ master trail index
-    "0_entry_points/entry_architecture_trail.md",                    # per-trail entry: Trail 1
-    "0_entry_points/entry_dialectic_trail.md",                       # per-trail entry: Trail 2
-    "0_entry_points/entry_retrieval_trail.md",                       # per-trail entry: Trail 3
-    "0_entry_points/acronym_glossary_tessellum_foundations.md",      # one-line lookup for the 11 foundation terms
-    "0_entry_points/acronym_glossary_statistics.md",
-    "0_entry_points/acronym_glossary_critical_thinking.md",
-    "0_entry_points/acronym_glossary_cognitive_science.md",
-    "0_entry_points/acronym_glossary_network_science.md",
-    "0_entry_points/acronym_glossary_llm.md",
-)
+# The seed manifest is the canonical list of vault-relative paths
+# shipped with every install. It lives in ``tessellum.data._seed_manifest``
+# so the same Python tuple is read by:
+#
+#   - this module (runtime: ``tessellum init`` copies each file)
+#   - ``hatch_build.py`` (build time: the wheel hook force-includes
+#     each file under ``tessellum/data/seed_vault/``)
+#
+# Adding a seed file = appending one line to that module's
+# ``SEED_VAULT_MANIFEST``. No edit to this file or pyproject is needed.
+from tessellum.data._seed_manifest import SEED_VAULT_MANIFEST as _SEED_VAULT_MANIFEST
 
 
 def scaffold(target_dir: Path | str, *, force: bool = False) -> ScaffoldResult:

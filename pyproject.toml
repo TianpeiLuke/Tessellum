@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "0.0.33"
+version = "0.0.34"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -115,48 +115,18 @@ packages = ["src/tessellum"]
 # them at tessellum/data/templates/. tessellum.data.templates_dir() resolves
 # either location depending on install mode (editable vs wheel).
 [tool.hatch.build.targets.wheel.force-include]
+# Templates ship as a bulk directory copy — different shape from the
+# per-file seed-vault grafts (which are registered dynamically by the
+# build hook below). Keep this static entry.
 "vault/resources/templates" = "src/tessellum/data/templates"
-# 11 foundation term notes → the conceptual primer in the seed vault.
-# tessellum init copies these into the scaffolded vault. All are scrubbed
-# of internal references and pass format check with 0 errors.
-"vault/resources/term_dictionary/term_knowledge_building_blocks.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_knowledge_building_blocks.md"
-"vault/resources/term_dictionary/term_building_block.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_building_block.md"
-"vault/resources/term_dictionary/term_epistemic_function.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_epistemic_function.md"
-"vault/resources/term_dictionary/term_dialectic_knowledge_system.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_dialectic_knowledge_system.md"
-"vault/resources/term_dictionary/term_cqrs.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_cqrs.md"
-"vault/resources/term_dictionary/term_zettelkasten.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_zettelkasten.md"
-"vault/resources/term_dictionary/term_para_method.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_para_method.md"
-"vault/resources/term_dictionary/term_basb.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_basb.md"
-"vault/resources/term_dictionary/term_code_method.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_code_method.md"
-"vault/resources/term_dictionary/term_slipbox.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_slipbox.md"
-"vault/resources/term_dictionary/term_folgezettel.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_folgezettel.md"
-# Five universal acronym glossaries + master glossary index. entry_master_toc.md
-# is intentionally NOT shipped — init generates a per-vault one inline.
-"vault/0_entry_points/entry_acronym_glossary.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_acronym_glossary.md"
-"vault/0_entry_points/acronym_glossary_tessellum_foundations.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_tessellum_foundations.md"
-"vault/0_entry_points/entry_building_block_index.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_building_block_index.md"
-"vault/resources/term_dictionary/term_format_spec.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_format_spec.md"
-"vault/resources/how_to/howto_first_vault.md" = "src/tessellum/data/seed_vault/resources/how_to/howto_first_vault.md"
-# FZ trails: master map + per-trail entries + trail-node thought notes.
-# Trail 1 (Architecture): 4 thoughts. Trail 2 (Dialectic / DKS): 2 thoughts.
-# Trail 3 (Retrieval): 2 thoughts.
-"vault/0_entry_points/entry_folgezettel_trails.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_folgezettel_trails.md"
-"vault/0_entry_points/entry_architecture_trail.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_architecture_trail.md"
-"vault/0_entry_points/entry_dialectic_trail.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_dialectic_trail.md"
-"vault/0_entry_points/entry_retrieval_trail.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_retrieval_trail.md"
-"vault/resources/analysis_thoughts/thought_building_block_ontology_relationships.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_building_block_ontology_relationships.md"
-"vault/resources/analysis_thoughts/thought_cqrs_design_evolution.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_cqrs_design_evolution.md"
-"vault/resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md"
-"vault/resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md"
-"vault/resources/analysis_thoughts/thought_dks_evolution.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_dks_evolution.md"
-"vault/resources/analysis_thoughts/thought_dks_design_synthesis.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_dks_design_synthesis.md"
-"vault/resources/analysis_thoughts/thought_retrieval_evolution.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_retrieval_evolution.md"
-"vault/resources/analysis_thoughts/thought_retrieval_synthesis.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_retrieval_synthesis.md"
-"vault/0_entry_points/acronym_glossary_statistics.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_statistics.md"
-"vault/0_entry_points/acronym_glossary_critical_thinking.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_critical_thinking.md"
-"vault/0_entry_points/acronym_glossary_cognitive_science.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_cognitive_science.md"
-"vault/0_entry_points/acronym_glossary_network_science.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_network_science.md"
-"vault/0_entry_points/acronym_glossary_llm.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_llm.md"
+
+# Per-file seed-vault grafts are registered at build time by
+# `hatch_build.py:SeedManifestHook` from the canonical
+# `src/tessellum/data/_seed_manifest.py`. To add a seed file: append
+# one line to SEED_VAULT_MANIFEST in that module — no pyproject edit
+# needed.
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.hatch.build.targets.sdist]
 # Tessellum dogfoods itself — there is no separate `docs/` directory; public
