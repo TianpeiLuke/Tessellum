@@ -339,7 +339,23 @@ class MCPContract(BaseModel):
     )
 
 
-MCP_CONTRACTS: dict[str, MCPContract] = {}
-"""User-extensible. Tessellum ships no built-in MCPs; library users register
-their own instances before invoking the compiler.
+MCP_CONTRACTS: dict[str, MCPContract] = {
+    "session-mcp": MCPContract(
+        name="session-mcp",
+        version="1.0",
+        available_tools=(
+            "get_session_metadata",
+            "get_tool_uses",
+            "read_recent_messages",
+            "search_transcript",
+        ),
+        auth_required=False,        # local-only — reads the active transcript file
+        rate_limit_qps=None,        # local read; no upstream quota
+        fallback_strategy="degrade",   # if transcript can't be located, return degraded result
+    ),
+}
+"""Built-in MCP contracts. Tessellum ships ``session-mcp`` (read-only
+access to the active Claude Code transcript, implemented in
+:mod:`tessellum.composer.session_mcp`). Library users add their own MCPs
+by mutating this dict before invoking the compiler.
 """

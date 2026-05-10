@@ -16,6 +16,72 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.36] — 2026-05-10
+
+### Added — session-mcp (Tessellum's first built-in MCP)
+
+`session-mcp` is the first MCP server shipped with Tessellum. It surfaces four read-only tools for inspecting the active Claude Code transcript:
+
+| Tool | What it returns |
+|------|------|
+| `get_session_metadata` | Static snapshot: `session_id`, `cwd`, `git_branch`, `model`, user/assistant turn counts, transcript size + mtime |
+| `read_recent_messages` | Last N user/assistant messages with role + flattened text. Default strips assistant `thinking` blocks (verbose); `include_thinking=true` keeps them |
+| `search_transcript` | Keyword (or regex when `regex=true`) search across messages; returns role + 200-char snippet around each match. Searches into `tool_use.input` and `tool_result.content` so file bodies written via `Write` are findable |
+| `get_tool_uses` | All `tool_use` blocks from assistant messages; optional regex filter on tool name (e.g., `"Bash"` or `"Edit\|Write"`) |
+
+The transcript path is resolved with this precedence: explicit arg → `SESSION_TRANSCRIPT_PATH` env var → auto-detect from `~/.claude/projects/<encoded-cwd>/*.jsonl`. Auto-detect uses Claude Code's encoding (both `/` and `_` replaced with `-`).
+
+#### New files
+
+- **`src/tessellum/composer/session_mcp.py`** (~330 LOC) — the pure-Python handlers. Stdlib-only (`json`, `os`, `re`, `pathlib`); no MCP protocol dependency. Can be imported directly by any Tessellum code or test.
+- **`scripts/tessellum_session_mcp_server.py`** (~200 LOC) — the stdio MCP wrapper exposing the four tools over JSON-RPC for Claude Code. Imports the handlers and requires the `mcp` SDK (`pip install tessellum[mcp]`).
+- **`tests/smoke/test_session_mcp.py`** (20 tests) — covers the four tool handlers, transcript-path resolution, registry shape, and contract registration.
+
+#### Changes
+
+- **`src/tessellum/composer/contracts.py`** — `MCP_CONTRACTS` now ships the `session-mcp` contract entry: `name="session-mcp"`, four `available_tools`, `auth_required=False` (local transcript file), `fallback_strategy="degrade"` (missing transcript → degraded result, not failure).
+- **`src/tessellum/composer/__init__.py`** — exports `SESSION_MCP_TOOLS`, `get_session_metadata`, `get_tool_uses`, `read_recent_messages`, `resolve_transcript_path`, `search_transcript` from the package root.
+- **`vault/resources/skills/skill_tessellum_write_coe.pipeline.yaml`** — `step_1_gather_incident_details` restores its `mcp_dependencies:` block (dropped in v0.0.35 when session-mcp didn't exist). With session-mcp present, the COE skill can read the active transcript to extract failure points / failed attempts / resolution context automatically; without it (or in offline contexts), the agent falls back to leaf metadata alone (`required: false`).
+- **`tests/smoke/test_composer_contracts.py`** — the v0.0.9-era `test_mcp_registry_is_empty_in_v009` assertion is replaced with `test_mcp_registry_ships_session_mcp` which checks the contract's tool list, auth posture, and fallback strategy.
+
+#### Registration with Claude Code
+
+After `pip install tessellum[mcp]`, add to `~/.claude/settings.json` (or per-project `.claude/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "tessellum-session-mcp": {
+      "command": "python3",
+      "args": ["/absolute/path/to/scripts/tessellum_session_mcp_server.py"]
+    }
+  }
+}
+```
+
+The server can also be invoked directly with `python3 -m tessellum.composer.session_mcp` … actually no, the script is at `scripts/`. The path above is the canonical registration.
+
+#### Composer compile parity
+
+```
+$ tessellum composer compile vault/resources/skills/skill_tessellum_write_coe.md
+compiled skill_tessellum_write_coe — 6 steps:
+  1. step_1_gather_incident_details             [CORE/per_leaf]   ⇒ no_op
+  2. step_2_perform_5_whys_root_cause_analysis  [CORE/per_leaf]   ⇒ no_op
+  3. step_3_write_coe_note                      [CORE/per_leaf]   ⇒ body_markdown_frontmatter_to_file
+  4. step_4_check_for_duplicates                [CORE/per_leaf]   ⇒ no_op
+  5. step_5_verify                              [CORE/per_leaf]   ⇒ no_op
+  6. step_6_update_coe_entry_point              [DEFERRED/cross_leaf] ⇒ edits_apply_xml_tags
+```
+
+The compiler validates step_1's `mcp_dependencies: [{name: session-mcp, calls: [...]}]` against the registered contract's `available_tools` — all four calls (`get_session_metadata`, `search_transcript`, `get_tool_uses`, `read_recent_messages`) resolve cleanly.
+
+### Verification
+
+- Full suite: **488 passed, 1 skipped** (was 468; +20 new session-mcp tests).
+- All four tool handlers tested against a synthetic transcript with the same shapes Claude Code produces (text blocks, thinking blocks, tool_use with `input`, tool_result with `content`).
+- `tessellum composer compile` on the COE skill produces the expected 6-step DAG with the MCP dependency wired.
+
 ## [0.0.35] — 2026-05-10
 
 ### Added — Correction of Errors (COE) review-and-reflect surface
