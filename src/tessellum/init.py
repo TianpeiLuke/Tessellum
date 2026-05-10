@@ -105,9 +105,16 @@ _SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/term_dictionary/term_code_method.md",                 # Capture/Organize/Distill/Express
     "resources/term_dictionary/term_slipbox.md",                     # the system class
     "resources/term_dictionary/term_folgezettel.md",                 # trail mechanism
-    # 5 universal acronym glossaries + master index (6 entry points).
+    # System regularization (the format contract every note follows).
+    "resources/term_dictionary/term_format_spec.md",                 # YAML/link/naming spec + issue codes
+    # Getting-started walkthrough (the pipeline foundation in vault form).
+    "resources/how_to/howto_first_vault.md",                         # 8-step CLI walkthrough
+    # Entry points — the master glossary index + BB picker matrix + 5
+    # universal acronym glossaries + the Tessellum-foundations glossary.
     # entry_master_toc.md is rendered inline by init, not shipped here.
     "0_entry_points/entry_acronym_glossary.md",
+    "0_entry_points/entry_building_block_index.md",                  # BB picker (scannable matrix)
+    "0_entry_points/acronym_glossary_tessellum_foundations.md",      # one-line lookup for the 11 foundation terms
     "0_entry_points/acronym_glossary_statistics.md",
     "0_entry_points/acronym_glossary_critical_thinking.md",
     "0_entry_points/acronym_glossary_cognitive_science.md",

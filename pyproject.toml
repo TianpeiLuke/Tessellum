@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "0.0.29"
+version = "0.0.30"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -133,6 +133,10 @@ packages = ["src/tessellum"]
 # Five universal acronym glossaries + master glossary index. entry_master_toc.md
 # is intentionally NOT shipped — init generates a per-vault one inline.
 "vault/0_entry_points/entry_acronym_glossary.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_acronym_glossary.md"
+"vault/0_entry_points/acronym_glossary_tessellum_foundations.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_tessellum_foundations.md"
+"vault/0_entry_points/entry_building_block_index.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_building_block_index.md"
+"vault/resources/term_dictionary/term_format_spec.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_format_spec.md"
+"vault/resources/how_to/howto_first_vault.md" = "src/tessellum/data/seed_vault/resources/how_to/howto_first_vault.md"
 "vault/0_entry_points/acronym_glossary_statistics.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_statistics.md"
 "vault/0_entry_points/acronym_glossary_critical_thinking.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_critical_thinking.md"
 "vault/0_entry_points/acronym_glossary_cognitive_science.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_cognitive_science.md"
