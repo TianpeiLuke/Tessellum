@@ -1,5 +1,5 @@
 """tessellum.format — note format primitives: Building Blocks, YAML
-frontmatter spec, parser, validator."""
+frontmatter spec, parser, validator, link checker."""
 
 from tessellum.format.building_blocks import (
     BB_SPECS,
@@ -26,18 +26,15 @@ from tessellum.format.frontmatter_spec import (
     VALID_PARA_BUCKETS,
     VALID_STATUSES,
 )
+from tessellum.format.issue import Issue, Severity
+from tessellum.format.link_checker import check_links
 from tessellum.format.parser import (
     FrontmatterParseError,
     Note,
     parse_note,
     parse_text,
 )
-from tessellum.format.validator import (
-    Issue,
-    Severity,
-    is_valid,
-    validate,
-)
+from tessellum.format.validator import is_valid, validate
 
 __all__ = [
     # Building Blocks
@@ -68,9 +65,10 @@ __all__ = [
     "parse_note",
     "parse_text",
     "FrontmatterParseError",
-    # Validator
+    # Issue + validator + link checker
     "Issue",
     "Severity",
     "validate",
     "is_valid",
+    "check_links",
 ]
