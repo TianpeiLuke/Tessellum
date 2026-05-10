@@ -166,3 +166,59 @@ def test_each_flavor_lands_at_registered_destination(flavor, vault_root):
     result = capture(flavor, "x_dest", vault_root=vault_root)
     assert result.path.parent == vault_root / spec.destination
     assert result.path.name == f"{spec.filename_prefix}x_dest.md"
+
+
+# ── Paired sidecar emission for skill flavor (Wave 1b) ────────────────────
+
+
+def test_capture_skill_emits_paired_sidecar(vault_root):
+    result = capture("skill", "my_skill", vault_root=vault_root)
+    canonical = vault_root / "resources/skills/skill_my_skill.md"
+    sidecar = vault_root / "resources/skills/skill_my_skill.pipeline.yaml"
+    assert result.path == canonical
+    assert result.sidecar_path == sidecar
+    assert canonical.is_file()
+    assert sidecar.is_file()
+
+
+def test_capture_skill_canonical_has_pipeline_metadata_pointing_at_sidecar(
+    vault_root,
+):
+    result = capture("skill", "my_skill", vault_root=vault_root)
+    text = result.path.read_text(encoding="utf-8")
+    assert "pipeline_metadata: ./skill_my_skill.pipeline.yaml" in text
+    assert "pipeline_metadata: none" not in text
+
+
+def test_capture_skill_sidecar_is_schema_valid_pipeline(vault_root):
+    """The auto-emitted sidecar must validate clean against load_pipeline."""
+    from tessellum.composer import load_pipeline
+
+    result = capture("skill", "my_skill", vault_root=vault_root)
+    pipeline = load_pipeline(result.path)
+    assert pipeline is not None
+    assert len(pipeline.pipeline) >= 1
+    # The starter declares step_1_first_action which matches template_skill.md's
+    # first anchored step.
+    assert pipeline.pipeline[0].section_id == "step_1_first_action"
+    assert pipeline.pipeline[0].role == "CORE"
+
+
+def test_capture_non_skill_flavor_has_no_sidecar(vault_root):
+    result = capture("concept", "foo", vault_root=vault_root)
+    assert result.sidecar_path is None
+
+
+def test_capture_skill_force_overwrites_both_files(vault_root):
+    first = capture("skill", "my_skill", vault_root=vault_root)
+    first.path.write_text("garbage\n", encoding="utf-8")
+    first.sidecar_path.write_text("garbage\n", encoding="utf-8")  # type: ignore[union-attr]
+    capture("skill", "my_skill", vault_root=vault_root, force=True)
+    assert "garbage" not in first.path.read_text(encoding="utf-8")
+    assert "garbage" not in first.sidecar_path.read_text(encoding="utf-8")  # type: ignore[union-attr]
+
+
+def test_capture_skill_refuses_overwrite_when_sidecar_exists(vault_root):
+    capture("skill", "my_skill", vault_root=vault_root)
+    with pytest.raises(FileExistsError, match="already exists"):
+        capture("skill", "my_skill", vault_root=vault_root)
