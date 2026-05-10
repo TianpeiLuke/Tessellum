@@ -78,7 +78,7 @@ tessellum answer "what is the difference between PageRank and PPR?"
                     ┌──────────────────────────────────────┐
                     │  Interfaces                          │
                     │   • CLI: `tessellum search/answer`   │
-                    │   • MCP server (Claude / Cursor / …) │
+                    │   • MCP server (any MCP client)      │
                     │   • Composer pipeline (typed-contract│
                     │     knowledge auto-digestion)        │
                     └──────────────────────────────────────┘
@@ -112,7 +112,7 @@ Tessellum/
 ├── experiments/        Experiment outputs
 ├── scripts/            Operational utilities
 ├── tests/              Test suite
-├── .claude/skills/     Claude Code skill thin-headers (point at vault/resources/skills/)
+├── .claude/skills/     Skill thin-headers (point at vault/resources/skills/)
 └── .kiro/skills/       Kiro skill thin-headers (point at vault/resources/skills/)
 ```
 
