@@ -1,10 +1,11 @@
 """``tessellum composer …`` — Composer pipeline operations.
 
-Three subcommands in v0.0.20:
+Four subcommands as of v0.0.22:
 
     validate <skill>     Schema + cross-file consistency (Wave 1a / 1b).
     compile <skill>      Compile to a typed DAG with contract checks (Wave 2).
     run <skill>          Execute the compiled pipeline against leaves (Wave 3).
+    batch <jobs.json>    Run many (skill, leaves) jobs in parallel (Wave 5a).
 
 Exit codes:
     0  every skill validates / compiles / runs clean
@@ -20,6 +21,7 @@ import sys
 from pathlib import Path
 
 from tessellum.composer import (
+    BatchJob,
     CompilerError,
     ContractViolation,
     LLMBackend,
@@ -27,6 +29,7 @@ from tessellum.composer import (
     PipelineValidationError,
     compile_skill,
     load_pipeline,
+    run_batch,
     run_pipeline,
     to_dag_json,
 )
@@ -147,6 +150,59 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Output format (default: human).",
     )
     run_cmd.set_defaults(func=run_composer_run_cli)
+
+    batch_cmd = composer_sub.add_parser(
+        "batch",
+        help="Run many (skill, leaves) jobs in parallel with resume (Wave 5a).",
+    )
+    batch_cmd.add_argument(
+        "jobs",
+        type=Path,
+        help="JSON file with a list of jobs. Each entry: "
+        '{"job_id": "...", "skill": "path/skill.md", '
+        '"leaves": [...], "vault": "vault/", "runs_dir": "runs/composer/"}',
+    )
+    batch_cmd.add_argument(
+        "--parallelism",
+        type=int,
+        default=4,
+        help="Max concurrent jobs (default: 4). Pass 1 for sequential.",
+    )
+    batch_cmd.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Force re-run jobs whose result file already exists.",
+    )
+    batch_cmd.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Skip filesystem writes within each job's pipeline.",
+    )
+    batch_cmd.add_argument(
+        "--mock-responses",
+        type=Path,
+        help="JSON file mapping prompt-substring patterns to canned response "
+        "text. Used by the default MockBackend (shared across all jobs).",
+    )
+    batch_cmd.add_argument(
+        "--backend",
+        choices=["mock", "anthropic"],
+        default="mock",
+        help="LLM backend (default: mock). `anthropic` requires [agent] extras.",
+    )
+    batch_cmd.add_argument(
+        "--model",
+        default="claude-sonnet-4-6",
+        help="Anthropic model ID (only used when --backend=anthropic).",
+    )
+    batch_cmd.add_argument(
+        "--format",
+        dest="output_format",
+        choices=["human", "json"],
+        default="human",
+        help="Output format (default: human).",
+    )
+    batch_cmd.set_defaults(func=run_composer_batch_cli)
 
 
 def run_composer_validate(args: argparse.Namespace) -> int:
@@ -501,3 +557,155 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             print(f"trace: {run.trace_path}")
 
     return 1 if run.error_count else 0
+
+
+# ── tessellum composer batch ───────────────────────────────────────────────
+
+
+def run_composer_batch_cli(args: argparse.Namespace) -> int:
+    jobs_path: Path = args.jobs.expanduser().resolve()
+    if not jobs_path.is_file():
+        print(
+            f"tessellum composer batch: {jobs_path} does not exist or is not a file",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        raw = jobs_path.read_text(encoding="utf-8")
+        spec = json.loads(raw)
+    except (OSError, json.JSONDecodeError) as e:
+        print(
+            f"tessellum composer batch: failed to read {jobs_path}: {e}",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not isinstance(spec, list):
+        print(
+            f"tessellum composer batch: jobs file must be a JSON list, "
+            f"got {type(spec).__name__}",
+            file=sys.stderr,
+        )
+        return 2
+
+    jobs: list[BatchJob] = []
+    for i, entry in enumerate(spec):
+        if not isinstance(entry, dict):
+            print(
+                f"tessellum composer batch: jobs[{i}] must be a JSON object",
+                file=sys.stderr,
+            )
+            return 2
+        job_id = entry.get("job_id")
+        skill = entry.get("skill")
+        if not job_id:
+            print(
+                f"tessellum composer batch: jobs[{i}] missing `job_id`",
+                file=sys.stderr,
+            )
+            return 2
+        if not skill:
+            print(
+                f"tessellum composer batch: jobs[{i}] missing `skill`",
+                file=sys.stderr,
+            )
+            return 2
+        jobs.append(
+            BatchJob(
+                job_id=str(job_id),
+                skill_path=Path(skill).expanduser().resolve(),
+                leaves=tuple(entry.get("leaves") or ()),
+                vault_root=Path(entry.get("vault") or "vault").expanduser().resolve(),
+                runs_dir=(
+                    Path(entry["runs_dir"]).expanduser().resolve()
+                    if entry.get("runs_dir")
+                    else None
+                ),
+            )
+        )
+
+    if not jobs:
+        print("tessellum composer batch: no jobs to run.")
+        return 0
+
+    # Backend selection (mirrors `run` semantics).
+    backend: LLMBackend
+    if args.backend == "anthropic":
+        try:
+            from tessellum.composer import AnthropicBackend
+            backend = AnthropicBackend(model=args.model)
+        except ImportError as e:
+            print(
+                f"tessellum composer batch: --backend=anthropic requires the "
+                f"[agent] extras: pip install tessellum[agent]",
+                file=sys.stderr,
+            )
+            print(f"  ({e})", file=sys.stderr)
+            return 2
+    else:
+        responses: dict[str, str] = {}
+        if args.mock_responses is not None:
+            try:
+                responses = json.loads(
+                    args.mock_responses.expanduser().resolve().read_text(
+                        encoding="utf-8"
+                    )
+                )
+            except (OSError, json.JSONDecodeError) as e:
+                print(
+                    f"tessellum composer batch: --mock-responses unreadable: {e}",
+                    file=sys.stderr,
+                )
+                return 2
+        backend = MockBackend(responses=responses)
+
+    result = run_batch(
+        jobs,
+        backend=backend,
+        parallelism=max(args.parallelism, 1),
+        dry_run=args.dry_run,
+        resume=not args.no_resume,
+    )
+
+    if args.output_format == "json":
+        payload = {
+            "completed": list(result.completed),
+            "skipped": list(result.skipped),
+            "failed": list(result.failed),
+            "jobs": [
+                {
+                    "job_id": j.job_id,
+                    "status": j.status,
+                    "error": j.error,
+                    "result_path": str(j.result_path) if j.result_path else None,
+                    "step_invocation_count": (
+                        len(j.run_result.step_results) if j.run_result else None
+                    ),
+                    "error_count": (
+                        j.run_result.error_count if j.run_result else None
+                    ),
+                }
+                for j in result.jobs
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        print(
+            f"batch: {len(result.completed)} completed, "
+            f"{len(result.skipped)} skipped, {len(result.failed)} failed."
+        )
+        for j in result.jobs:
+            tag = j.status.upper()
+            extra = ""
+            if j.run_result is not None:
+                extra = (
+                    f"  ({len(j.run_result.step_results)} step(s); "
+                    f"{j.run_result.error_count} error(s); "
+                    f"{j.run_result.duration_seconds*1000:.1f}ms)"
+                )
+            print(f"  {tag:9s} {j.job_id}{extra}")
+            if j.error:
+                print(f"            ↳ {j.error}")
+
+    return 1 if result.failed else 0

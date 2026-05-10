@@ -16,6 +16,61 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.22] — 2026-05-10
+
+### Added — Composer Wave 5a: parallel batch runner with resume
+
+`tessellum composer batch <jobs.json>` runs many `(skill, leaves)` jobs through `run_pipeline` in parallel. Drops the wall-clock cost of bulk operations from O(jobs) to O(jobs / parallelism) — essential for the eval framework (Wave 5b) and for any vault-wide bulk regeneration (e.g., refreshing trail summaries or re-scoring an entire corpus after a skill rev).
+
+```
+$ tessellum composer batch eval-jobs.json --parallelism 8
+batch: 47 completed, 3 skipped, 0 failed.
+  COMPLETED  skill_a__leaf_001  (3 step(s); 0 error(s); 1240ms)
+  COMPLETED  skill_a__leaf_002  (3 step(s); 0 error(s); 1180ms)
+  ...
+```
+
+#### `tessellum.composer.run_batch`
+
+- **`BatchJob`** — frozen dataclass (`job_id`, `skill_path`, `leaves`, `vault_root`, `runs_dir`). `job_id` is the resume key.
+- **`ThreadPoolExecutor`** — LLM calls are I/O-bound; ~95% of wall time is waiting on the network. Threads (not processes) are the right tool. Default parallelism: `4` (saturates typical API rate limits without overwhelming them).
+- **Sequential fallback** — `parallelism=1` skips the executor entirely. Easier to debug; identical observable result.
+- **Failure isolation** — exceptions inside any job (compile failure, executor error, malformed materializer response) become `BatchJobResult(status="failed", error=…)` rather than killing the batch. The runner reports `completed`/`skipped`/`failed` counts at the end.
+- **Result file** — each completed job writes `<runs_dir>/<job_id>.result.json` with the full step-result summary. The Wave 3 trace lands at `<runs_dir>/<timestamp>_<skill>.json` as before.
+
+#### Resume semantics
+
+- Default: if `<runs_dir>/<job_id>.result.json` exists, the job is `"skipped"` and the prior payload is loaded back into `BatchJobResult.previous_payload`. **No backend dispatch happens** — restarts after a crash recover all completed work and don't pay tokens twice for it.
+- `--no-resume` / `resume=False` — re-runs everything, overwriting result files.
+- Corrupt result file (unparseable JSON or unreadable) → `status="failed"` with a clear message, NOT silently re-run. Avoids wedging the cache.
+
+#### `tessellum composer batch` CLI
+
+```
+tessellum composer batch <jobs.json>
+    [--parallelism 4]                  # max concurrent jobs
+    [--no-resume]                      # force re-run of cached jobs
+    [--dry-run]                        # skip filesystem writes
+    [--mock-responses mock.json]
+    [--backend mock|anthropic]
+    [--model claude-sonnet-4-6]
+    [--format human|json]
+```
+
+`jobs.json` schema: a JSON list of `{job_id, skill, leaves?, vault?, runs_dir?}`. Per-job validation surfaces with exit code `2`. Exit `0` if all jobs `completed` or `skipped`; exit `1` if any failed.
+
+#### Tests
+
+19 new tests: 9 library smokes (sequential + parallel paths, resume hit/miss, force re-run, compile-failure capture, dry-run pass-through, empty-jobs, corrupt-cache marked failed, result-file format) + 10 CLI smokes (human + JSON output, resume + `--no-resume`, missing/invalid jobs file, missing job_id field, compile-failure exit-1, empty jobs list).
+
+Full suite: 436 passed, 1 skipped.
+
+#### Deferred (per `plans/plan_composer_port.md`)
+
+- **Token-budget pacing** — the parent project's `BatchPolicy` includes a tokens-per-minute throttle. Skipped for v0.1; the Anthropic SDK already retries on rate-limit responses, and the eval framework can layer pacing in Wave 5b if real workloads need it.
+- **Cross-job upstream dependencies** — each job is independent here. A skill's internal pipeline still has dependencies (Wave 3); we just don't chain across jobs at the batch layer.
+- **Streaming progress callbacks** — the runner returns once everything finishes. Wave 5b's eval framework adds in-flight progress reporting if needed.
+
 ## [0.0.21] — 2026-05-10
 
 ### Added — Composer Wave 4: Anthropic LLM bridge

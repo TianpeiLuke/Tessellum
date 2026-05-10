@@ -68,9 +68,10 @@ def _print_banner() -> None:
     print("  tessellum composer compile <skill>  — compile to a typed DAG (Wave 2)")
     print("  tessellum composer run <skill>      — execute the compiled DAG (mock or anthropic backend)")
     print("  tessellum composer run --backend=anthropic  — real Claude calls (requires [agent] extras)")
+    print("  tessellum composer batch <jobs.json>  — run many jobs in parallel with resume (Wave 5a)")
     print()
     print("Roadmap:")
-    print("  tessellum composer batch / eval      — Composer Wave 5+")
+    print("  tessellum composer eval              — Composer Wave 5b (LLMJudge rubric)")
     print()
     print("See https://github.com/TianpeiLuke/Tessellum for the v0.1 plan.")
 
