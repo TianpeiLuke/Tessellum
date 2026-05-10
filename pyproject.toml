@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "0.0.26"
+version = "0.0.27"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -55,25 +55,13 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     # Storage + retrieval
-    "sqlite-vec>=0.1.6",         # Vector extension for SQLite (one-file unified backend)
-    "rank-bm25",                  # BM25 lexical retrieval
-    "sentence-transformers",      # Dense retrieval embeddings
-    "networkx",                   # Graph traversal, PageRank/PPR
+    "sqlite-vec>=0.1.6",         # Vector extension for SQLite (one-file unified backend; provides FTS5 + vec0)
+    "sentence-transformers",      # Dense retrieval embeddings (lazy-loaded by indexer + retrieval/dense)
+    "networkx",                   # Graph traversal for best-first BFS over note_links
     # Format + I/O
-    "PyYAML>=6.0,<7.0",
+    "PyYAML>=6.0,<7.0",           # YAML frontmatter + pipeline sidecars
     "jsonschema>=4.0",            # Pipeline schema validation
-    "pydantic>=2.7,<3.0",         # Typed contracts
-    # Embeddings + tokenization
-    "tiktoken",                   # Token counting for context budgets
-    "numpy",
-    # Plotting + export
-    "matplotlib",                 # Graph rendering
-    "Pillow",                     # PNG export
-    "fa2",                        # ForceAtlas2 graph layouts
-    "igraph",                     # Leiden community detection
-    # CLI
-    "click>=8.1",
-    "rich>=13.7",
+    "pydantic>=2.7,<3.0",         # Typed contracts for composer
 ]
 
 [project.optional-dependencies]

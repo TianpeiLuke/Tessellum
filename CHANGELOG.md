@@ -16,6 +16,46 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.27] — 2026-05-10
+
+### Added — `tessellum composer scaffold-sidecar`
+
+A new subcommand that closes the gap between hand-authoring a skill canonical and getting Composer integration. Given an existing canonical with `<!-- :: section_id = X :: -->` anchors, it generates a starter `<skill>.pipeline.yaml` sidecar with one placeholder CORE step per anchor (chained linearly via `depends_on`).
+
+```
+$ tessellum composer scaffold-sidecar vault/resources/skills/skill_my_new_thing.md
+scaffolded vault/resources/skills/skill_my_new_thing.pipeline.yaml
+  4 step(s) from 4 section anchor(s):
+    - step_1_load
+    - step_2_classify
+    - step_3_write
+    - step_4_verify
+
+  next: fill in materializer / expected_output_schema / prompt_template per step,
+        then `tessellum composer validate skill_my_new_thing.md`
+```
+
+Flags: `--output / -o` to override the destination path, `--force` to overwrite, `--stdout` to print without writing. The previously documented authoring flow was "use `tessellum capture skill <slug>` to get a paired canonical + sidecar at creation time" — that's still right for new skills, but until v0.0.27, importing an existing canonical (e.g. when porting from another vault) required hand-authoring the sidecar. Now the scaffold does it in one command.
+
+### Fixed — wheel ships `tessellum/data/__init__.py`
+
+The previous `[tool.hatch.build.targets.sdist]` had an unanchored exclude pattern `"data"` that matched anywhere — including `src/tessellum/data/`. The wheel was missing `tessellum/data/__init__.py`, breaking `from tessellum.data import templates_dir` on a fresh install (caught when smoke-testing the v0.0.26 wheel in a clean venv). Anchored the patterns to top-level: `"/data"`, `"/experiments"`, `"/inbox"`, `"/runs"`, `"/tests"`, `"/notebook"`.
+
+### Removed — 9 unused dependencies
+
+Pruned the dependency list to match actual imports. Declared but never imported:
+
+| Removed | Reason |
+| ------- | ------ |
+| `rank-bm25` | FTS5's built-in BM25 ranking is what we use |
+| `tiktoken`, `numpy` | Not imported directly; transitively available via sentence-transformers if needed |
+| `matplotlib`, `Pillow` | No plotting in Tessellum proper |
+| `fa2`, `igraph` | No graph layout / community detection (could come back as `[viz]` extras when needed) |
+| `click` | CLI uses argparse |
+| `rich` | Output uses plain `print()` |
+
+Install footprint drops substantially (matplotlib + Pillow + igraph + fa2 are heavy). Users get `sqlite-vec`, `sentence-transformers`, `networkx`, `PyYAML`, `jsonschema`, `pydantic` — the actual runtime dependency set.
+
 ## [0.0.26] — 2026-05-10
 
 ### Added — Two ported capture skills (closes `plan_code_artifacts_port`)

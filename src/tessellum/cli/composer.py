@@ -1,12 +1,13 @@
 """``tessellum composer …`` — Composer pipeline operations.
 
-Five subcommands as of v0.0.23:
+Six subcommands as of v0.0.27:
 
-    validate <skill>     Schema + cross-file consistency (Wave 1a / 1b).
-    compile <skill>      Compile to a typed DAG with contract checks (Wave 2).
-    run <skill>          Execute the compiled pipeline against leaves (Wave 3).
-    batch <jobs.json>    Run many (skill, leaves) jobs in parallel (Wave 5a).
-    eval <scenarios>     Run scenario assertions + LLMJudge rubric (Wave 5b).
+    validate <skill>          Schema + cross-file consistency (Wave 1a / 1b).
+    compile <skill>           Compile to a typed DAG with contract checks (Wave 2).
+    run <skill>               Execute the compiled pipeline against leaves (Wave 3).
+    batch <jobs.json>         Run many (skill, leaves) jobs in parallel (Wave 5a).
+    eval <scenarios>          Run scenario assertions + LLMJudge rubric (Wave 5b).
+    scaffold-sidecar <skill>  Generate a starter pipeline sidecar from a canonical's section anchors.
 
 Exit codes:
     0  every skill validates / compiles / runs clean
@@ -261,6 +262,33 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Output format (default: human).",
     )
     eval_cmd.set_defaults(func=run_composer_eval_cli)
+
+    scaffold_cmd = composer_sub.add_parser(
+        "scaffold-sidecar",
+        help="Generate a starter pipeline sidecar from a canonical's section anchors.",
+    )
+    scaffold_cmd.add_argument(
+        "skill",
+        type=Path,
+        help="Skill canonical (markdown) with <!-- :: section_id = X :: --> anchors.",
+    )
+    scaffold_cmd.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        help="Where to write the sidecar (default: <skill>.pipeline.yaml).",
+    )
+    scaffold_cmd.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite the sidecar if it already exists.",
+    )
+    scaffold_cmd.add_argument(
+        "--stdout",
+        action="store_true",
+        help="Print the sidecar to stdout instead of writing it.",
+    )
+    scaffold_cmd.set_defaults(func=run_composer_scaffold_cli)
 
 
 def run_composer_validate(args: argparse.Namespace) -> int:
@@ -926,3 +954,116 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
                 print(f"  {d}: {mean:.2f}")
 
     return 1 if (result.failed_count or result.error_count) else 0
+
+
+# ── tessellum composer scaffold-sidecar ────────────────────────────────────
+
+
+def run_composer_scaffold_cli(args: argparse.Namespace) -> int:
+    """Generate a starter pipeline sidecar from a canonical's anchors.
+
+    Reads ``<!-- :: section_id = X :: -->`` markers in the canonical and
+    emits one CORE step per section, chained by ``depends_on`` (each step
+    waits on the previous one). Materializer defaults to ``no_op``;
+    aggregation defaults to ``per_leaf``. The author then fills in real
+    materializers, schemas, and prompt templates.
+    """
+    from tessellum.composer.skill_extractor import (
+        SkillExtractionError,
+        list_section_ids,
+    )
+
+    skill_path: Path = args.skill.expanduser().resolve()
+    if not skill_path.is_file() or skill_path.suffix != ".md":
+        print(
+            f"tessellum composer scaffold-sidecar: {skill_path} is not a markdown file",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        section_ids = list_section_ids(skill_path)
+    except SkillExtractionError as e:
+        print(
+            f"tessellum composer scaffold-sidecar: {e}", file=sys.stderr
+        )
+        return 1
+
+    if not section_ids:
+        print(
+            f"tessellum composer scaffold-sidecar: no `<!-- :: section_id = X :: -->` "
+            f"anchors found in {skill_path.name}.",
+            file=sys.stderr,
+        )
+        return 1
+
+    sidecar_text = _render_sidecar(skill_path.stem, section_ids)
+
+    if args.stdout:
+        print(sidecar_text, end="")
+        return 0
+
+    output: Path = (
+        args.output.expanduser().resolve()
+        if args.output is not None
+        else skill_path.with_suffix(".pipeline.yaml")
+    )
+    if output.exists() and not args.force:
+        print(
+            f"tessellum composer scaffold-sidecar: {output} already exists. "
+            f"Pass --force to overwrite, or --stdout to print without writing.",
+            file=sys.stderr,
+        )
+        return 2
+
+    output.write_text(sidecar_text, encoding="utf-8")
+    print(f"scaffolded {output}")
+    print(f"  {len(section_ids)} step(s) from {len(section_ids)} section anchor(s):")
+    for sid in section_ids:
+        print(f"    - {sid}")
+    print()
+    print(f"  next: fill in materializer / expected_output_schema / prompt_template per step,")
+    print(f"        then `tessellum composer validate {skill_path}`")
+    return 0
+
+
+def _render_sidecar(skill_stem: str, section_ids: list[str]) -> str:
+    """Emit a placeholder pipeline.yaml body covering ``section_ids`` in order."""
+    lines = [
+        "# Scaffolded by `tessellum composer scaffold-sidecar`.",
+        "# One CORE step per `<!-- :: section_id = X :: -->` anchor in",
+        f"# the canonical {skill_stem}.md, chained linearly via depends_on.",
+        "#",
+        "# Next steps:",
+        "#   1. Pick a materializer per step (no_op / body_markdown_to_file /",
+        "#      body_markdown_frontmatter_to_file / edits_apply_to_files /",
+        "#      edits_apply_xml_tags).",
+        "#   2. Add `expected_output_schema:` for any step whose materializer",
+        "#      has required fields (the validator will tell you which).",
+        "#   3. Replace placeholder prompt_template content with your prompts.",
+        "#   4. Validate: `tessellum composer validate <this_skill.md>`",
+        '',
+        'version: "1.0"',
+        'pipeline:',
+    ]
+
+    for i, sid in enumerate(section_ids):
+        depends = f"[{section_ids[i - 1]}]" if i > 0 else "[]"
+        lines.extend(
+            [
+                f"  - section_id: {sid}",
+                f"    role: CORE                  # CORE | DEFERRED | INFRA",
+                f"    aggregation: per_leaf       # per_leaf | cross_leaf | corpus_wide",
+                f"    batchable: false",
+                f"    depends_on: {depends}",
+                f"    materializer: no_op         # pick a wire format from MATERIALIZER_CONTRACTS",
+                f"    output_key: {sid}_output",
+                f'    prompt_template: |',
+                f'      TODO: fill in the prompt for "{sid}".',
+                f'      You may reference {{{{leaf.X}}}} per-leaf data and',
+                f'      {{{{upstream.Y}}}} outputs from previous steps.',
+                f"",
+            ]
+        )
+
+    return "\n".join(lines)
