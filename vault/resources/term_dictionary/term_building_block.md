@@ -22,7 +22,6 @@ language: markdown
 date of note: 2026-05-09
 status: active
 building_block: concept
-note_second_category: term
 ---
 
 # Term: Building Block
@@ -89,19 +88,43 @@ Untyped note systems (Obsidian, Notion, Roam) treat all notes as opaque markdown
 
 Typed atomicity solves all four. It also enables the **CQRS architecture** ([term_cqrs.md](term_cqrs.md)) — System P (typed prescriptive substrate, what you author) is orthogonal to System D (computational descriptive retrieval, what queries return). Without typing, there's no System P.
 
-## Sub-Kinds
+## Sub-Kinds (Second Category)
 
-The 8 top-level Building Blocks are **stable** — closed list, don't extend. **Sub-kinds** (declared via `note_second_category:` in YAML) are **open** — extend as your domain requires.
+The 8 top-level Building Blocks are **stable** — closed list, don't extend.
 
-Examples:
-- `building_block: concept` + `note_second_category: term` → glossary entry
-- `building_block: concept` + `note_second_category: metric` → measurable quantity
-- `building_block: procedure` + `note_second_category: sop` → standard operating procedure
-- `building_block: procedure` + `note_second_category: how_to` → user-facing how-to
-- `building_block: model` + `note_second_category: ml_model` → ML architecture spec
-- `building_block: model` + `note_second_category: schema` → data schema
+**Sub-kinds (a.k.a. "second category")** are **open and emergent** — extend as your domain requires. The convention is to encode them as **the second tag in the YAML `tags:` field**:
 
-A real Tessellum vault tends to discover 80+ sub-kinds organically. The 8-type taxonomy is the load-bearing primitive; sub-kinds layer atop without polluting it.
+```yaml
+---
+tags:
+  - resource          # tags[0]: PARA category (resource / area / project / archive / entry_point)
+  - terminology       # tags[1]: SECOND CATEGORY (the routing label)
+  - knowledge_management
+  - ...               # additional topic tags
+building_block: concept
+---
+```
+
+The first tag is always one of PARA's 5 closed values. The second tag is the open sub-kind label. The third tag onwards is free-form topic tags. The `building_block:` field is separate (and required) for the epistemic axis.
+
+Examples (tags[0..1]) per Building Block × second-category combination:
+
+| `building_block:` | `tags[0..1]` | Meaning |
+|---|---|---|
+| `concept` | `resource`, `terminology` | Glossary entry / term definition |
+| `procedure` | `resource`, `how_to` | User-facing how-to |
+| `procedure` | `resource`, `skill` | Skill canonical body |
+| `model` | `area`, `code_repo` | Code repository documentation |
+| `model` | `resource`, `papers` | Digested research paper |
+| `argument` | `resource`, `analysis` | Analysis / Folgezettel-trail thought note |
+| `empirical_observation` | `archive`, `experiment` | Experiment result archive |
+| `navigation` | `entry_point`, `navigation` | Master TOC / per-surface entry point |
+
+**Second category and folder structure**: the second tag is also the **routing label** — it determines which subdirectory the note lives in (with possible pluralization: `terminology` → `term_dictionary/`, `code` → `code_snippets/`).
+
+**Second category is NOT a "third dimension"** — only BB and PARA are real dimensions (closed, orthogonal, invariant). Second category is an open, user-bounded folksonomy that emerges with the work and serves three engineering purposes: directory placement, filename convention, and capture-skill dispatch. See [DEVELOPING.md](../../../DEVELOPING.md) for the full discussion.
+
+A real Tessellum vault tends to discover 80+ second-category labels organically. The 8-type BB taxonomy is the load-bearing primitive; second-category labels layer atop without polluting it.
 
 ## Examples
 

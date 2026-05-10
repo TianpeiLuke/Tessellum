@@ -21,7 +21,6 @@ language: markdown
 date of note: 2026-05-09
 status: active
 building_block: concept
-note_second_category: term
 ---
 
 # Term: Epistemic Function

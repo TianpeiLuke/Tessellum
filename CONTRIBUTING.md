@@ -7,7 +7,7 @@ Thank you for considering a contribution. Tessellum is in early alpha (v0.0.1) a
 | What are you contributing? | Where it goes |
 |---|---|
 | New skill (capture / digest / analyze) | Canonical body in `vault/resources/skills/`; thin headers in `.claude/skills/` + `.kiro/skills/`; pipeline sidecar in `vault/resources/skills/skill_<name>.pipeline.yaml` if applicable |
-| New BB sub-kind (e.g., `note_second_category=spreadsheet`) | Term note in `vault/resources/term_dictionary/`; do NOT add a new top-level BB type without a design discussion |
+| New BB sub-kind (a.k.a. "second category" — encoded as the **second tag** in YAML `tags:`, e.g., `tags: [resource, spreadsheet, ...]`) | Term note in `vault/resources/term_dictionary/`; do NOT add a new top-level BB type without a design discussion |
 | New retrieval strategy | Module in `src/tessellum/retrieval/`; add a smoke test in `tests/retrieval/`; update `docs/architecture.md` |
 | New documentation | `vault/` (Tessellum dogfoods itself — there is no separate `docs/`). Pick the right BB-typed location: `term_dictionary/` for definitions, `how_to/` for procedures, `analysis_thoughts/` for arguments + trails, `0_entry_points/` for navigation indexes. |
 | Bug fix | Open an issue first describing the bug; reference it in the PR |

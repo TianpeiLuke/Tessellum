@@ -97,7 +97,7 @@ This synthesis sharpens the system design diagram (Section 2), states the value 
 │   │  • Pareto-dominates all graph strategies (FZ 5e2)                  │    │
 │   ├────────────────────────────────────────────────────────────────────┤    │
 │   │ Stage 2 — Filter (sub-kind facet)                                  │    │
-│   │  • note_second_category as query-time WHERE clause                 │    │
+│   │  • tags[1] (second category) as query-time WHERE clause                 │    │
 │   │  • not an edge type, not a schema commitment (FZ 7g1a1)            │    │
 │   ├────────────────────────────────────────────────────────────────────┤    │
 │   │ Stage 3 — Re-Rank (System P artifacts as signals, not gates)       │    │
