@@ -89,9 +89,20 @@ def test_mock_backend_is_tool_free():
     assert mock.supports_batched_dispatch is True
 
 
-def test_mcp_registry_is_empty_in_v009():
-    """Tessellum ships no built-in MCPs — users register their own."""
-    assert MCP_CONTRACTS == {}
+def test_mcp_registry_ships_session_mcp():
+    """Tessellum ships the session-mcp contract (read-only access to the
+    active Claude Code transcript); library users add their own MCPs by
+    mutating ``MCP_CONTRACTS`` before invoking the compiler."""
+    assert "session-mcp" in MCP_CONTRACTS
+    contract = MCP_CONTRACTS["session-mcp"]
+    assert set(contract.available_tools) == {
+        "get_session_metadata",
+        "get_tool_uses",
+        "read_recent_messages",
+        "search_transcript",
+    }
+    assert contract.auth_required is False  # local-only transcript read
+    assert contract.fallback_strategy == "degrade"  # missing transcript → degraded result
 
 
 def test_mcp_contract_construction():

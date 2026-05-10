@@ -96,6 +96,14 @@ from tessellum.composer.eval import (
     run_eval,
 )
 from tessellum.composer.scheduler import RunResult, run_pipeline
+from tessellum.composer.session_mcp import (
+    SESSION_MCP_TOOLS,
+    get_session_metadata,
+    get_tool_uses,
+    read_recent_messages,
+    resolve_transcript_path,
+    search_transcript,
+)
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
     load_pipeline_metadata,
@@ -166,4 +174,11 @@ __all__ = [
     "load_scenario",
     "load_scenarios",
     "run_eval",
+    # Session-MCP (read the active Claude Code transcript)
+    "SESSION_MCP_TOOLS",
+    "get_session_metadata",
+    "get_tool_uses",
+    "read_recent_messages",
+    "resolve_transcript_path",
+    "search_transcript",
 ]

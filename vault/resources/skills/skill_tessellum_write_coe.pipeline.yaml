@@ -22,6 +22,19 @@ pipeline:
     depends_on: []
     output_key: incident_details
     materializer: no_op
+    # session-mcp lets the agent read the active Claude Code transcript
+    # to surface the incident details automatically — search_transcript
+    # for the failure point, get_tool_uses to enumerate failed attempts,
+    # read_recent_messages for resolution context. Without session-mcp
+    # the agent falls back to the leaf metadata (title + summary) alone.
+    mcp_dependencies:
+      - name: session-mcp
+        calls:
+          - get_session_metadata
+          - search_transcript
+          - get_tool_uses
+          - read_recent_messages
+        required: false
     expected_output_schema:
       type: object
       required: [task, what_went_wrong, attempts, resolution]
