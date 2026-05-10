@@ -77,15 +77,33 @@ Skills live in **three** files (the in-vault SoT pattern):
 3. **Kiro thin-header**: `.kiro/skills/<name>/SKILL.md` — same pattern
 4. **Pipeline sidecar** (optional): `vault/resources/skills/skill_<name>.pipeline.yaml` — only if the skill has typed-contract steps
 
-## Adding a Building Block sub-kind
+## YAML Tag Convention (PARA + Second Category)
 
-The 8 top-level BB types are **closed**. Sub-kinds (`note_second_category:`) are **open** — extend as your domain requires. Procedure:
+Tessellum uses a strict convention for the first two YAML tags:
 
-1. Add the sub-kind value to your note's YAML frontmatter
-2. Add a term note in `vault/resources/term_dictionary/term_<subkind>.md` documenting it
-3. Run `bash scripts/update_notes_database.sh` to re-index
+```yaml
+tags:
+  - <para-bucket>      # tags[0]: one of {resource, area, project, archive, entry_point}
+  - <second-category>  # tags[1]: the open sub-kind label (e.g., terminology, skill, how_to, code, papers, analysis, digest, faq, code_repo)
+  - <topic-tag-1>      # tags[2..]: free-form topic tags
+  - <topic-tag-2>
+  - ...
+```
 
-If a sub-kind is generally useful (not domain-specific), open a PR adding it to `src/tessellum/format/building_blocks.py`'s sub-kind suggestion list (planned in v0.1).
+**Rule**: tags[0] is always a PARA bucket (closed 5-element vocabulary). tags[1] is always the second-category routing label (open, extensible folksonomy). Topic tags follow.
+
+The second tag is also the **routing label** — it determines the subdirectory under the PARA bucket (with possible pluralization: `terminology` → `term_dictionary/`, `code` → `code_snippets/`). It is the canonical SoT; do NOT add a separate `note_second_category:` field — that is redundant.
+
+## Adding a Building Block Sub-Kind (Second Category)
+
+The 8 top-level BB types are **closed**. Sub-kinds (encoded as `tags[1]`) are **open** — extend as your domain requires. Procedure:
+
+1. Add the sub-kind value as `tags[1]` in your note's YAML frontmatter
+2. Optionally add a term note in `vault/resources/term_dictionary/term_<subkind>.md` documenting it
+3. If a directory doesn't yet exist for the new sub-kind, create one under the appropriate PARA bucket and move the note in (see "Subdirectory Conventions" below)
+4. Run `bash scripts/update_notes_database.sh` to re-index
+
+The 8 top-level BB types live in the `building_block:` field — distinct from the `tags:` field. The two are orthogonal: `building_block` is the epistemic axis (closed); `tags[1]` is the contextual routing label (open).
 
 ## Adding a Folgezettel trail
 
