@@ -16,6 +16,46 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.34] — 2026-05-10
+
+### Changed — Single source of truth for the seed-vault file list
+
+Adding a seed file used to require editing **two** files: `pyproject.toml` (force-include mapping) and `src/tessellum/init.py` (`_SEED_VAULT_MANIFEST`). The two had to stay in sync; a missed edit on either side meant the wheel either shipped a file the runtime didn't copy, or copied a file the wheel didn't ship.
+
+v0.0.34 collapses this to **one** edit point. The Python tuple in `src/tessellum/data/_seed_manifest.py` (`SEED_VAULT_MANIFEST`) is now the only place the list is declared. Both ends of the pipeline read it:
+
+- **Wheel build time**: a custom Hatch build hook (`hatch_build.py`) loads the manifest via `importlib.util` and registers each entry as a `force_include` mapping (`vault/X` → `src/tessellum/data/seed_vault/X`). Discovered automatically because Hatch picks up the `[tool.hatch.build.targets.wheel.hooks.custom]` block in pyproject.
+- **Runtime**: `src/tessellum/init.py` imports `SEED_VAULT_MANIFEST` directly from the same module. The `tessellum init` copy loop iterates it.
+
+#### New files
+
+- `src/tessellum/data/_seed_manifest.py` — the canonical tuple (33 entries currently, grouped by category with inline comments).
+- `hatch_build.py` (repo root) — the build hook. Implements `BuildHookInterface.initialize` to set `build_data["force_include"]` from the manifest.
+
+#### Files changed
+
+- `pyproject.toml` — the per-file `force-include` block (33 entries) deleted; replaced with a 4-line `[tool.hatch.build.targets.wheel.hooks.custom]` registration. The `vault/resources/templates → src/tessellum/data/templates` directory-copy entry stays as a static `force-include` (different shape from the manifest's per-file mappings).
+- `src/tessellum/init.py` — the inline `_SEED_VAULT_MANIFEST` tuple (50 lines) replaced with `from tessellum.data._seed_manifest import SEED_VAULT_MANIFEST as _SEED_VAULT_MANIFEST`.
+
+#### Verification
+
+- Editable mode: `python3 -c "from tessellum.data._seed_manifest import SEED_VAULT_MANIFEST; print(len(SEED_VAULT_MANIFEST))"` → 33.
+- Wheel build: `python -m build` succeeds; `unzip -l dist/tessellum-0.0.34-py3-none-any.whl | grep -c seed_vault` → 33 files (matches manifest).
+- Editable + wheel mode `tessellum init` both produce **51 markdown files** (33 manifest + 15 templates + master TOC + README + 1 template directory README).
+- Full suite: 468 passed, 1 skipped.
+
+#### Adding a seed file from v0.0.34 onward
+
+```python
+# src/tessellum/data/_seed_manifest.py
+SEED_VAULT_MANIFEST: tuple[str, ...] = (
+    # ... existing entries ...
+    "resources/term_dictionary/term_my_new_concept.md",   # ← one new line
+)
+```
+
+That's it. The build hook picks it up at the next `python -m build`; `tessellum init` picks it up on the next install.
+
 ## [0.0.33] — 2026-05-10
 
 ### Added — Trail 3 (Retrieval / System D)
