@@ -234,6 +234,57 @@ def test_run_invalid_leaves_json_returns_2(demo_skill, tmp_path, capsys):
     assert code == 2
 
 
+def test_run_default_backend_is_mock(demo_skill, tmp_path, capsys):
+    """No --backend flag → MockBackend."""
+    code = main(
+        [
+            "composer",
+            "run",
+            str(demo_skill),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--no-trace",
+            "--format",
+            "json",
+        ]
+    )
+    assert code == 0
+
+
+def test_run_backend_anthropic_without_sdk_returns_2(
+    demo_skill, tmp_path, capsys, monkeypatch
+):
+    """When the anthropic SDK isn't available, --backend=anthropic returns 2
+    with a clear hint to install [agent] extras."""
+    # Force the import to fail regardless of whether anthropic is actually
+    # installed in the test environment.
+    import builtins
+    real_import = builtins.__import__
+
+    def fail_anthropic_import(name, *args, **kwargs):
+        if name == "anthropic":
+            raise ImportError("anthropic not installed (test stub)")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fail_anthropic_import)
+
+    code = main(
+        [
+            "composer",
+            "run",
+            str(demo_skill),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--no-trace",
+            "--backend",
+            "anthropic",
+        ]
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "[agent]" in err or "extras" in err
+
+
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
     canonical = _CANONICAL.replace(
         "pipeline_metadata: ./skill_demo.pipeline.yaml",

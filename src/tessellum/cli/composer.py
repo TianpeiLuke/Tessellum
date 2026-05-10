@@ -22,6 +22,7 @@ from pathlib import Path
 from tessellum.composer import (
     CompilerError,
     ContractViolation,
+    LLMBackend,
     MockBackend,
     PipelineValidationError,
     compile_skill,
@@ -107,6 +108,20 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=Path,
         help="JSON file mapping prompt-substring patterns to canned response "
         "text. Used by the default MockBackend.",
+    )
+    run_cmd.add_argument(
+        "--backend",
+        choices=["mock", "anthropic"],
+        default="mock",
+        help="LLM backend (default: mock — no network). `anthropic` requires "
+        "the [agent] extras (`pip install tessellum[agent]`) and the "
+        "ANTHROPIC_API_KEY environment variable.",
+    )
+    run_cmd.add_argument(
+        "--model",
+        default="claude-sonnet-4-6",
+        help="Anthropic model ID (only used when --backend=anthropic). "
+        "Default: claude-sonnet-4-6.",
     )
     run_cmd.add_argument(
         "--dry-run",
@@ -408,7 +423,27 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             )
             return 2
 
-    backend = MockBackend(responses=responses)
+    backend: LLMBackend
+    if args.backend == "anthropic":
+        if args.mock_responses is not None:
+            print(
+                "tessellum composer run: --mock-responses is ignored when "
+                "--backend=anthropic",
+                file=sys.stderr,
+            )
+        try:
+            from tessellum.composer import AnthropicBackend
+            backend = AnthropicBackend(model=args.model)
+        except ImportError as e:
+            print(
+                f"tessellum composer run: --backend=anthropic requires the "
+                f"[agent] extras: pip install tessellum[agent]",
+                file=sys.stderr,
+            )
+            print(f"  ({e})", file=sys.stderr)
+            return 2
+    else:
+        backend = MockBackend(responses=responses)
     vault_root = args.vault.expanduser().resolve()
     runs_dir = None if args.no_trace else args.runs_dir.expanduser().resolve()
 

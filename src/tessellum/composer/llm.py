@@ -11,6 +11,12 @@ timing + diagnostic metadata). All backends declared in
 ``tessellum.composer.contracts.BACKEND_CONTRACTS`` should match this
 shape; the compiler validates the contract; the executor invokes the
 ``call`` method.
+
+To use ``AnthropicBackend`` install the optional dependency::
+
+    pip install tessellum[agent]
+
+and set ``ANTHROPIC_API_KEY`` in the environment.
 """
 
 from __future__ import annotations
@@ -113,4 +119,129 @@ class MockBackend:
         )
 
 
-__all__ = ["LLMRequest", "LLMResponse", "LLMBackend", "MockBackend"]
+class AnthropicBackend:
+    """Anthropic Messages API backend.
+
+    Lazily imports ``anthropic`` so importing :mod:`tessellum.composer.llm`
+    doesn't require the ``[agent]`` extras to be installed. The actual
+    SDK import happens in ``__init__`` — instantiation is what triggers
+    the dependency check.
+
+    Attributes:
+        backend_id: Always ``"anthropic"``.
+        model: The Anthropic model ID (e.g. ``"claude-opus-4-7"``,
+            ``"claude-sonnet-4-6"``, ``"claude-haiku-4-5-20251001"``).
+        default_max_tokens: Used when ``LLMRequest.max_tokens`` is the
+            default (4000) — kept identical for now; expose if profiling
+            shows it matters.
+        client: The ``anthropic.Anthropic`` instance. Reads
+            ``ANTHROPIC_API_KEY`` from the environment by default.
+
+    Example::
+
+        from tessellum.composer import AnthropicBackend, run_pipeline
+        backend = AnthropicBackend(model="claude-sonnet-4-6")
+        run = run_pipeline(compiled, leaves=leaves, backend=backend, ...)
+    """
+
+    backend_id: str = "anthropic"
+
+    def __init__(
+        self,
+        *,
+        model: str = "claude-sonnet-4-6",
+        api_key: str | None = None,
+        default_max_tokens: int = 4000,
+        client: object | None = None,
+    ) -> None:
+        """Construct an Anthropic-backed LLM backend.
+
+        Args:
+            model: Anthropic model ID. Defaults to Sonnet 4.6 — fast +
+                capable, the right default for most Composer workloads.
+                Pass an Opus model when reasoning depth matters.
+            api_key: API key. Defaults to ``ANTHROPIC_API_KEY`` env var.
+            default_max_tokens: Caps response length when the request
+                doesn't specify (most ``LLMRequest``s leave the default).
+            client: Optional pre-built ``anthropic.Anthropic`` instance —
+                useful for tests (pass a fake client). When ``None``
+                (default), constructs one from ``api_key``.
+
+        Raises:
+            ImportError: If the ``anthropic`` package isn't installed
+                (``pip install tessellum[agent]``).
+        """
+        if client is None:
+            try:
+                import anthropic  # type: ignore[import-not-found]
+            except ImportError as e:  # pragma: no cover — environment-dep
+                raise ImportError(
+                    "AnthropicBackend requires the `anthropic` package. "
+                    "Install with: pip install tessellum[agent]"
+                ) from e
+            self.client = anthropic.Anthropic(api_key=api_key)
+        else:
+            self.client = client
+        self.model = model
+        self.default_max_tokens = default_max_tokens
+
+    def call(self, request: LLMRequest) -> LLMResponse:
+        start = time.monotonic()
+        max_tokens = request.max_tokens or self.default_max_tokens
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            system=request.system_prompt,
+            messages=[{"role": "user", "content": request.user_prompt}],
+        )
+        elapsed_ms = (time.monotonic() - start) * 1000.0
+        content = _extract_text(response)
+        metadata = {
+            "model": getattr(response, "model", self.model),
+            "stop_reason": getattr(response, "stop_reason", None),
+        }
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            metadata["input_tokens"] = getattr(usage, "input_tokens", None)
+            metadata["output_tokens"] = getattr(usage, "output_tokens", None)
+        return LLMResponse(
+            content=content,
+            elapsed_ms=elapsed_ms,
+            backend_id=self.backend_id,
+            metadata=metadata,
+        )
+
+
+def _extract_text(response: object) -> str:
+    """Pull the text out of an Anthropic Messages API response.
+
+    The SDK returns ``response.content`` as a list of content blocks
+    (``TextBlock`` for ordinary replies, plus tool-use blocks etc.).
+    We concatenate text blocks; non-text blocks are skipped.
+    """
+    blocks = getattr(response, "content", None)
+    if blocks is None:
+        return ""
+    parts: list[str] = []
+    for block in blocks:
+        # Two access patterns: SDK objects use attribute access, our
+        # test fakes may use dict access. Support both.
+        block_type = getattr(block, "type", None)
+        if block_type is None and isinstance(block, dict):
+            block_type = block.get("type")
+        if block_type == "text":
+            text = getattr(block, "text", None)
+            if text is None and isinstance(block, dict):
+                text = block.get("text", "")
+            if text:
+                parts.append(text)
+    return "".join(parts)
+
+
+__all__ = [
+    "LLMRequest",
+    "LLMResponse",
+    "LLMBackend",
+    "MockBackend",
+    "AnthropicBackend",
+]
