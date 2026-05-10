@@ -97,6 +97,18 @@ def test_non_md_extensions_skipped():
     assert "LINK-001" not in rule_ids
 
 
+def test_config_file_extensions_skipped():
+    """Links to common config-file formats (.toml, .cfg, .ini, .lock, .env)
+    should not trip LINK-001. Surfaced when the migration plan linked to
+    pyproject.toml from plans/."""
+    note = _note_with_body(
+        "See [build](pyproject.toml), [setup](setup.cfg), [legacy](setup.ini), "
+        "[deps](poetry.lock), [secrets](.env)."
+    )
+    rule_ids = {i.rule_id for i in check_links(note)}
+    assert "LINK-001" not in rule_ids
+
+
 def test_placeholder_targets_skipped():
     note = _note_with_body(
         "See [foo](-) and [bar](<placeholder>) and [baz](...)."
