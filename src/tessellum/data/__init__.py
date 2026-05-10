@@ -14,15 +14,19 @@ Public API:
 
     templates_dir() -> Path
         Returns the directory holding the 13 BB-type templates plus the
-        YAML-header reference. Used by capture/init CLI subcommands and
-        any tooling that needs to copy or read the canonical skeletons.
+        YAML-header reference and the starter pipeline sidecar.
+
+    seed_vault_dir() -> Path
+        Returns the root of the seed-vault tree shipped with the package.
+        Used by ``tessellum init`` to copy starter content (term notes,
+        master TOC) into a freshly scaffolded vault.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-__all__ = ["templates_dir"]
+__all__ = ["templates_dir", "seed_vault_dir"]
 
 
 def templates_dir() -> Path:
@@ -53,4 +57,41 @@ def templates_dir() -> Path:
         f"Tried installed location ({installed}) and source-tree fallback "
         f"({fallback}). Either the wheel was built without force-include, "
         f"or the vault/resources/templates/ directory is missing."
+    )
+
+
+def seed_vault_dir() -> Path:
+    """Return the path to the seed-vault tree.
+
+    The seed vault holds starter content for ``tessellum init``: a curated
+    subset of the dogfooded vault (currently just ``term_building_block.md``
+    in v0.0.11; future versions may include more pillar terms behind an opt
+    -in flag).
+
+    Mirrors the target vault structure: callers resolve files via
+    ``seed_vault_dir() / "resources" / "term_dictionary" / "term_X.md"``.
+
+    Same dual-mode resolution as ``templates_dir()``: tries installed
+    location first, falls back to source tree.
+
+    Raises:
+        FileNotFoundError: Neither location is populated. Indicates a
+            broken install or a missing force-include entry in pyproject.toml.
+    """
+    installed = Path(__file__).parent / "seed_vault"
+    if installed.is_dir() and any(installed.rglob("*.md")):
+        return installed
+
+    # Source-tree fallback. The seed-vault content is force-included from
+    # the dogfooded vault, so dev mode reads directly from vault/.
+    repo_root = Path(__file__).resolve().parents[3]
+    fallback = repo_root / "vault"
+    if fallback.is_dir() and (fallback / "resources" / "term_dictionary").is_dir():
+        return fallback
+
+    raise FileNotFoundError(
+        f"tessellum seed_vault directory not found. "
+        f"Tried installed location ({installed}) and source-tree fallback "
+        f"({fallback}). Either the wheel was built without force-include, "
+        f"or the vault/resources/term_dictionary/ directory is missing."
     )

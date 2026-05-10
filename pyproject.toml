@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "0.0.10"
+version = "0.0.11"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -128,6 +128,7 @@ packages = ["src/tessellum"]
 # either location depending on install mode (editable vs wheel).
 [tool.hatch.build.targets.wheel.force-include]
 "vault/resources/templates" = "src/tessellum/data/templates"
+"vault/resources/term_dictionary/term_building_block.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_building_block.md"
 
 [tool.hatch.build.targets.sdist]
 # Tessellum dogfoods itself — there is no separate `docs/` directory; public
