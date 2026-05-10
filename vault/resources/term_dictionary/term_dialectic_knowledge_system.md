@@ -90,7 +90,7 @@ Systems can be placed on a spectrum from no dialectic to fully operational diale
 | Level | Type | System | Mechanism |
 |-------|------|--------|-----------|
 | **None** | Accumulation | static descriptive systems | Descriptions cannot be counter-argued |
-| **Implicit** | Folgezettel dialectic | Abuse Slipbox | Counter-argument notes exist but don't feed back into operations |
+| **Implicit** | Folgezettel dialectic | typical typed slipbox | Counter-argument notes exist but don't feed back into operations |
 | **Structural** | Decision dialectic | a behavior-pattern memory system (proposed) | Designed for dialectic but not yet implemented |
 | **Operational** | Investigation dialectic | the production system | Runs on every record; disagreement → gap → rule update → recompile → reclassify |
 
@@ -149,7 +149,7 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 - DKS Design Note — Sub-project note documenting the full DKS design
 - [Building Block Ontology ](../../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) — The 10 ontology edges that form the DKS cycle
 
-- [Three-Layer Intelligence System ](../../resources/analysis_thoughts/thought_three_layer_intelligence_system.md) — a knowledge graph × a behavior-pattern memory system × Abuse Slipbox architecture
+- [Three-Layer Intelligence System ](../../resources/analysis_thoughts/thought_three_layer_intelligence_system.md) — a knowledge graph × a behavior-pattern memory system × a typed-slipbox architecture
 
 ### External Sources
 - [Hegel, G.W.F. (1807). *Phenomenology of Spirit*](https://en.wikipedia.org/wiki/Phenomenology_of_Spirit) — Original thesis → antithesis → synthesis dialectic

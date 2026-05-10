@@ -1,14 +1,14 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.27"
+__version__ = "0.0.29"
 
 __status__ = (
-    "alpha — `tessellum composer scaffold-sidecar <skill.md>` generates a "
-    "starter pipeline sidecar by scanning the canonical's section anchors — "
-    "fills the gap between hand-authoring a canonical and getting Composer "
-    "integration. Plus a dependency cleanup: pruned 9 unused declared deps "
-    "(matplotlib, Pillow, igraph, fa2, tiktoken, numpy, click, rich, "
-    "rank-bm25) — install footprint goes from ~600MB to ~250MB. Wheel build "
-    "fix (sdist exclude was dropping src/tessellum/data/__init__.py)."
+    "alpha — Seed vault now ships 11 foundation term notes (added "
+    "term_knowledge_building_blocks, term_basb, term_code_method) plus 6 "
+    "acronym-glossary entry points. Three previously-shipped notes "
+    "(zettelkasten / slipbox / DKS) had residual internal references in "
+    "their bodies; scrubbed to ship as general public knowledge. Every "
+    "shipped seed note passes `tessellum format check` with 0 errors and 0 "
+    "Amazon-internal hits."
 )

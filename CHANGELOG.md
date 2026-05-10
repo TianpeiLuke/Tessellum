@@ -16,6 +16,82 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.29] — 2026-05-10
+
+### Added — 3 more foundation term notes (BASB, CODE, Knowledge Building Blocks)
+
+Per user feedback that the v0.0.28 seed didn't cover enough of the foundational vocabulary, three more pillar/lineage term notes now ship by default:
+
+- **`term_knowledge_building_blocks.md`** (152 lines) — Sascha Fast's historical taxonomy of knowledge atoms (premises, logical form, conclusion, definitions, distinctions, heuristics). This is the predecessor concept Tessellum's typed BB ontology builds on. Without it, `term_building_block.md` lacks its historical anchor.
+- **`term_basb.md`** (117 lines) — *Building a Second Brain* by Tiago Forte. The PKM movement Tessellum descends from on the personal-knowledge-management side. Defines what "second brain" means and why it matters.
+- **`term_code_method.md`** (108 lines) — CODE (Capture / Organize / Distill / Express) — Forte's lifecycle framework. The procedural complement to PARA's organizational scheme.
+
+Seed now ships 11 foundation term notes total — every term a new user needs to make the rest of the vocabulary legible.
+
+### Fixed — Scrubbed residual internal references from 3 shipped term notes
+
+The v0.0.28 ship included three terms with leftover Amazon / abuse-domain references in their bodies. Scrubbed to ship as general public knowledge:
+
+| Term | Was | Now |
+| ---- | --- | --- |
+| `term_zettelkasten.md` | 8 internal hits — a whole "Application in Abuse Prevention" H2 section, "Internal Examples" sub-section, internal-wiki link list in References, footer status referencing the parent project | 0 hits. Application section dropped. Internal Examples replaced with a "Public Implementations" section pointing at Tessellum. Tools-supporting table cleaned (dropped Quip / internal entries; added Logseq and Tessellum). Internal-wiki link list removed. Footer status simplified. |
+| `term_slipbox.md` | 4 internal hits — "Abuse slipbox" H3 sub-section, internal-wiki link list, contact line | 0 hits. Internal sub-section dropped. Internal-wiki link list dropped. Contact line dropped. |
+| `term_dialectic_knowledge_system.md` | 2 internal hits — one row in the "Dialectic Spectrum" table, one See Also link referring to internal architecture | 0 hits. Table row genericized to "typical typed slipbox". See Also link genericized to "a typed-slipbox architecture". |
+
+All 11 foundation terms now pass `tessellum format check` with 0 errors, 0 Amazon-internal word-boundary hits, and 0 Amazon-domain phrase hits.
+
+### Added — `pyproject.toml` force-include entries
+
+Three new entries graft `term_knowledge_building_blocks.md`, `term_basb.md`, `term_code_method.md` into `src/tessellum/data/seed_vault/resources/term_dictionary/` at wheel build time.
+
+### Updated — `_SEED_VAULT_MANIFEST` in `init.py`
+
+The explicit manifest now lists all 11 foundation terms (was 8 in v0.0.28). The rendered master TOC in `_render_master_toc` reorganizes the conceptual primer into two tables: "Methodology lineage" (7 terms: Z, Slipbox, FZ, PARA, BASB, CODE, Knowledge BB) and "Tessellum-specific architecture" (4 terms: BB, EF, DKS, CQRS).
+
+### Verification
+
+- Editable-mode `tessellum init` produces 35 markdown files (was 32 in v0.0.28).
+- Full suite: 468 passed, 1 skipped.
+- Clean-venv wheel install lands all 11 foundation terms in `resources/term_dictionary/`.
+
+## [0.0.28] — 2026-05-10
+
+### Added — Seed vault gains 14 starter notes
+
+`tessellum init <dir>` now scaffolds a substantially richer vault. Before v0.0.28, init produced one term note (`term_building_block.md`) plus the templates. Now it produces:
+
+- **8 pillar / supporting term notes** in `resources/term_dictionary/`:
+  - `term_building_block.md` — the 8 BB-type ontology + 10 epistemic edges
+  - `term_epistemic_function.md` — what each BB does (name / structure / predict / claim / refute / observe / act / index)
+  - `term_dialectic_knowledge_system.md` — closed-loop dialectic compaction protocol
+  - `term_cqrs.md` — System P (typed substrate) ⊥ System D (retrieval) ⊥ one shared substrate
+  - `term_zettelkasten.md` — atomic notes + bidirectional links (Luhmann's method)
+  - `term_para_method.md` — Projects / Areas / Resources / Archives
+  - `term_slipbox.md` — the typed-atomic-note system class
+  - `term_folgezettel.md` — alphanumeric trail mechanism
+
+- **6 entry points** in `0_entry_points/`:
+  - `entry_acronym_glossary.md` — master index of the 5 domain glossaries
+  - `acronym_glossary_statistics.md` — 54 acronyms (causal inference, Bayesian, distributions)
+  - `acronym_glossary_critical_thinking.md` — 31 acronyms (logic, fallacies, argumentation)
+  - `acronym_glossary_cognitive_science.md` — 130 acronyms (biases, decision heuristics)
+  - `acronym_glossary_network_science.md` — 48 acronyms (graph theory, centrality)
+  - `acronym_glossary_llm.md` — 134 acronyms (LLM architectures, RAG, agents)
+
+The per-vault master TOC (`entry_master_toc.md`) is still rendered inline by init so it reflects the vault's actual name. Its body now links the 6 pillar terms directly under a "Six Pillars" table, plus the master glossary index for acronym lookup.
+
+#### `_SEED_VAULT_MANIFEST` — explicit, not rglob
+
+The seed copy in `init.py` uses an explicit `_SEED_VAULT_MANIFEST` tuple of 14 relative paths. An earlier draft used `rglob("*.md")` over `seed_vault_dir()`, which works in wheel mode (data/seed_vault/ has only the shipped files) but blows up in editable mode (the fallback path is `vault/` itself, ~5000 files). The manifest pattern means wheel and editable installs produce identical vaults.
+
+#### `pyproject.toml` force-include additions
+
+14 new `force-include` entries graft the seed content from `vault/` into `src/tessellum/data/seed_vault/` at wheel build time. Single source of truth in the dogfooded vault; no two-copy drift.
+
+#### Verification
+
+Editable-mode and wheel-mode init both produce 32 markdown files (8 terms + 6 entry points + 1 master TOC + 17 templates + README) in ~30 ms. Both pass `tessellum format check` with 0 errors. Full suite: 468 passed, 1 skipped.
+
 ## [0.0.27] — 2026-05-10
 
 ### Added — `tessellum composer scaffold-sidecar`

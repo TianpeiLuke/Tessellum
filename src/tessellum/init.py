@@ -11,21 +11,31 @@ The directory layout mirrors the dogfooded vault:
 
     target_dir/
     ├── 0_entry_points/
-    │   └── entry_master_toc.md    (generic, scaffolded)
+    │   ├── entry_master_toc.md          (generic, scaffolded per-vault)
+    │   ├── entry_acronym_glossary.md    (master index of the 5 glossaries)
+    │   ├── acronym_glossary_statistics.md
+    │   ├── acronym_glossary_critical_thinking.md
+    │   ├── acronym_glossary_cognitive_science.md
+    │   ├── acronym_glossary_network_science.md
+    │   └── acronym_glossary_llm.md
     ├── resources/
-    │   ├── templates/             (13 templates copied from package data)
+    │   ├── templates/                   (15 templates copied from package data)
     │   ├── term_dictionary/
-    │   │   └── term_building_block.md   (the load-bearing seed)
-    │   ├── skills/
-    │   ├── how_to/
-    │   ├── analysis_thoughts/
-    │   ├── code_repos/
-    │   ├── code_snippets/
-    │   ├── papers/
-    │   ├── faqs/
-    │   ├── digest/
-    │   ├── teams/
-    │   └── tools/
+    │   │   ├── term_knowledge_building_blocks.md   (historical — Sascha Fast)
+    │   │   ├── term_building_block.md              (Tessellum's 8-type ontology — load-bearing)
+    │   │   ├── term_epistemic_function.md          (EF — what each BB does)
+    │   │   ├── term_dialectic_knowledge_system.md  (DKS — closed-loop dialectic)
+    │   │   ├── term_cqrs.md                        (CQRS — System P ⊥ System D)
+    │   │   ├── term_zettelkasten.md                (Z — Luhmann's method)
+    │   │   ├── term_para_method.md                 (PARA — Forte's scheme)
+    │   │   ├── term_basb.md                        (Building a Second Brain)
+    │   │   ├── term_code_method.md                 (Capture/Organize/Distill/Express)
+    │   │   ├── term_slipbox.md                     (the system class)
+    │   │   └── term_folgezettel.md                 (trail mechanism)
+    │   ├── skills/   how_to/   analysis_thoughts/
+    │   ├── code_repos/   code_snippets/
+    │   ├── papers/   faqs/   digest/
+    │   └── teams/   tools/
     ├── projects/
     ├── areas/
     ├── archives/
@@ -72,6 +82,37 @@ _BARE_PARA_DIRS: tuple[str, ...] = (
     "projects",
     "areas",
     "archives",
+)
+
+
+# Vault-relative paths of seed content shipped via Hatch ``force-include``.
+# Each entry is resolved against ``seed_vault_dir()`` (wheel install) with
+# a source-tree fallback to ``vault/`` (editable install). The explicit
+# manifest is the load-bearing piece: an ``rglob("*.md")`` over the
+# dogfood vault in editable mode would copy ~5000 files, which is not
+# what `tessellum init` is for.
+_SEED_VAULT_MANIFEST: tuple[str, ...] = (
+    # 11 foundation term notes (the conceptual primer for typed-knowledge
+    # work). Each is general public knowledge — no internal references.
+    "resources/term_dictionary/term_knowledge_building_blocks.md",   # historical (Sascha Fast)
+    "resources/term_dictionary/term_building_block.md",              # Tessellum's 8-type ontology
+    "resources/term_dictionary/term_epistemic_function.md",          # what each BB does
+    "resources/term_dictionary/term_dialectic_knowledge_system.md",  # DKS — closed-loop dialectic
+    "resources/term_dictionary/term_cqrs.md",                        # System P ⊥ System D
+    "resources/term_dictionary/term_zettelkasten.md",                # Luhmann's method
+    "resources/term_dictionary/term_para_method.md",                 # Forte's PARA scheme
+    "resources/term_dictionary/term_basb.md",                        # Building a Second Brain
+    "resources/term_dictionary/term_code_method.md",                 # Capture/Organize/Distill/Express
+    "resources/term_dictionary/term_slipbox.md",                     # the system class
+    "resources/term_dictionary/term_folgezettel.md",                 # trail mechanism
+    # 5 universal acronym glossaries + master index (6 entry points).
+    # entry_master_toc.md is rendered inline by init, not shipped here.
+    "0_entry_points/entry_acronym_glossary.md",
+    "0_entry_points/acronym_glossary_statistics.md",
+    "0_entry_points/acronym_glossary_critical_thinking.md",
+    "0_entry_points/acronym_glossary_cognitive_science.md",
+    "0_entry_points/acronym_glossary_network_science.md",
+    "0_entry_points/acronym_glossary_llm.md",
 )
 
 
@@ -141,17 +182,25 @@ def scaffold(target_dir: Path | str, *, force: bool = False) -> ScaffoldResult:
             shutil.copy2(entry, target_path)
             files_copied.append(target_path)
 
-    # 4. Seed term: the load-bearing concept (term_building_block).
+    # 4. Seed content: copy each file in _SEED_VAULT_MANIFEST from the
+    # installed seed_vault (wheel mode) or the dogfooded vault (editable
+    # mode), preserving the relative path. The explicit manifest avoids
+    # an `rglob("*.md")` in editable mode — that would copy the entire
+    # ~5000-file dogfood vault into the user's new vault.
     seed_root = seed_vault_dir()
-    seed_term_relative = Path("resources") / "term_dictionary" / "term_building_block.md"
-    seed_term = seed_root / seed_term_relative
-    if seed_term.is_file():
-        target_term = target / seed_term_relative
-        target_term.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(seed_term, target_term)
-        files_copied.append(target_term)
+    for rel_path in _SEED_VAULT_MANIFEST:
+        src_file = seed_root / rel_path
+        if not src_file.is_file():
+            continue   # quietly skip — not every shipped seed is in every install
+        tgt = target / rel_path
+        tgt.parent.mkdir(parents=True, exist_ok=True)
+        if not tgt.exists() or force:
+            shutil.copy2(src_file, tgt)
+            files_copied.append(tgt)
 
-    # 5. Generic master TOC.
+    # 5. Generic per-vault master TOC (always regenerated — its filename
+    # collides with anything shipped in seed_vault, so we render after the
+    # seed copy to make sure the vault's TOC reflects its actual name).
     master_toc = target / "0_entry_points" / "entry_master_toc.md"
     master_toc.write_text(_render_master_toc(target.name), encoding="utf-8")
     files_written.append(master_toc)
@@ -201,14 +250,40 @@ building_block: navigation
 
 | If you want to... | Read |
 |---|---|
-| Understand the typed substrate | [`term_building_block`](../resources/term_dictionary/term_building_block.md) |
+| Understand the typed substrate | [`term_building_block`](../resources/term_dictionary/term_building_block.md) — 8 typed atomic roles + 10 epistemic edges |
+| Look up an acronym | [`entry_acronym_glossary`](entry_acronym_glossary.md) — 5 domain glossaries indexing 397 acronyms |
 | Author a new note | Pick a template from [`resources/templates/`](../resources/templates/) and run `tessellum capture <flavor> <slug>` |
 | Validate the vault format | Run `tessellum format check .` from the vault root |
 | Understand the format spec | See the YAML reference in [`template_yaml_header`](../resources/templates/template_yaml_header.md) |
 
+## Conceptual primer (shipped as term notes)
+
+The eleven term notes that establish the vocabulary every Tessellum vault rests on.
+
+### Methodology lineage
+
+| Concept | Term note |
+|---|---|
+| **Zettelkasten** — Luhmann's atomic-note method | [`term_zettelkasten`](../resources/term_dictionary/term_zettelkasten.md) |
+| **Slipbox** — the system class (Tessellum is one implementation) | [`term_slipbox`](../resources/term_dictionary/term_slipbox.md) |
+| **Folgezettel** — alphanumeric trails encoding *how thinking developed* | [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md) |
+| **PARA** — Forte's Projects / Areas / Resources / Archives scheme | [`term_para_method`](../resources/term_dictionary/term_para_method.md) |
+| **BASB** — Building a Second Brain (Tiago Forte's PKM movement) | [`term_basb`](../resources/term_dictionary/term_basb.md) |
+| **CODE** — Capture / Organize / Distill / Express (Forte's lifecycle) | [`term_code_method`](../resources/term_dictionary/term_code_method.md) |
+| **Knowledge Building Blocks** — Sascha Fast's historical taxonomy | [`term_knowledge_building_blocks`](../resources/term_dictionary/term_knowledge_building_blocks.md) |
+
+### Tessellum-specific architecture
+
+| Concept | Term note |
+|---|---|
+| **Building Block** — the 8-type typed atomic ontology | [`term_building_block`](../resources/term_dictionary/term_building_block.md) |
+| **Epistemic Function** — what each BB *does* | [`term_epistemic_function`](../resources/term_dictionary/term_epistemic_function.md) |
+| **DKS** — Dialectic Knowledge System (closed-loop dialectic) | [`term_dialectic_knowledge_system`](../resources/term_dictionary/term_dialectic_knowledge_system.md) |
+| **CQRS** — System P (write) ⊥ System D (read) | [`term_cqrs`](../resources/term_dictionary/term_cqrs.md) |
+
 ## Vault structure
 
-Every typed atomic note lives under one of the four PARA buckets — `resources/`, `projects/`, `areas/`, `archives/` — and within a bucket, by sub-category. The 12 capture flavors map onto specific subdirectories; see `tessellum capture --help`.
+Every typed atomic note lives under one of the four PARA buckets — `resources/`, `projects/`, `areas/`, `archives/` — and within a bucket, by sub-category. The 14 capture flavors map onto specific subdirectories; see `tessellum capture --help`.
 
 ## Capture flavors available
 
