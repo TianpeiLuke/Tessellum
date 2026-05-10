@@ -6,20 +6,24 @@ Developer-facing guide for working on Tessellum itself (not for users of Tessell
 
 Tessellum **dogfoods itself** — its public documentation lives in `vault/` as typed atomic notes following the same Building Block format the system asks of users. There is no separate `docs/` directory.
 
-| Artifact | Location | Reason |
-|---|---|---|
-| `import`-able Python | `src/tessellum/` | PEP src-layout — installed package surface |
-| Knowledge content (incl. Tessellum's own docs) | `vault/` | Single SoT for typed knowledge; self-applied retrieval |
-| Skill canonical bodies | `vault/resources/skills/` | In-vault skill SoT pattern (FZ 12) |
-| Skill thin-headers | `.claude/skills/`, `.kiro/skills/` | Per-ecosystem entry; both point at the canonical body |
-| User input (PDFs, papers, plans) | `inbox/` | User-facing drop zone |
-| Generated DBs / indexes | `data/` | Regenerable; gitignored |
-| Experiment outputs | `experiments/` | Per-run subdirs |
-| Operational scripts | `scripts/` | Build / update / format utilities |
-| Tests | `tests/` | Mirrors `src/tessellum/` structure |
-| Repo-meta files | repo root | `README.md`, `CHANGELOG.md`, `LICENSE`, `CONTRIBUTING.md`, `DEVELOPING.md`, `pyproject.toml`, `.gitignore`, `.github/` |
+The top-level folders map to **CQRS workflow roles**: System P (capture) writes `vault/`; System D (retrieval) reads `vault/` and writes `data/`. Plans and runtime traces sit *outside* both systems — plans are governance (meta to both); run-artifacts are session forensics. See [`plans/plan_cqrs_repo_layout.md`](plans/plan_cqrs_repo_layout.md) for the full workflow → folder mapping.
 
-**Decision rule for new files**: if it would be useful to *anyone using Tessellum*, it goes in `vault/` as a typed atomic note. If it's only useful to *people working on Tessellum's code*, it goes at repo root or in `scripts/`.
+| Artifact | Location | System role | Reason |
+|---|---|---|---|
+| `import`-able Python | `src/tessellum/` | both — engines | PEP src-layout — installed package surface |
+| Knowledge content (incl. Tessellum's own docs) | `vault/` | shared substrate | P writes, D reads — single SoT for typed knowledge |
+| Skill canonical bodies | `vault/resources/skills/` | both | In-vault skill SoT pattern; pipeline sidecars co-located |
+| Skill thin-headers | `.claude/skills/`, `.kiro/skills/` | both | Per-runtime entry; point at the canonical body |
+| User input (PDFs, papers, drafts) | `inbox/` | System P input queue | Drop zone for raw incoming awaiting digestion |
+| **Project plans** | `plans/` | **governance — meta to both** | Decisions about how Tessellum is built; committed |
+| Generated DBs / indexes | `data/` | System D build output | Regenerable; gitignored |
+| **Runtime traces** | `runs/` | both — runtime forensics | Capture / retrieval / composer run artifacts; gitignored |
+| Experiment outputs | `experiments/` | mostly System D | Per-run subdirs |
+| Operational scripts | `scripts/` | both | Build / update / format utilities |
+| Tests | `tests/` | both | Mirrors `src/tessellum/` structure |
+| Repo-meta files | repo root | meta | `README.md`, `CHANGELOG.md`, `LICENSE`, `CONTRIBUTING.md`, `DEVELOPING.md`, `pyproject.toml`, `.gitignore`, `.github/` |
+
+**Decision rule for new files**: if it would be useful to *anyone using Tessellum*, it goes in `vault/` as a typed atomic note. If it's a *project-management decision about how Tessellum gets built*, it goes in `plans/`. If it's a *runtime trace of a pipeline run*, it goes in `runs/<subsystem>/` (gitignored). If it's only useful to *people working on Tessellum's code*, it goes at repo root or in `scripts/`.
 
 ## Why dogfooding?
 

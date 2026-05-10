@@ -104,6 +104,19 @@ See [`templates/README.md`](../resources/templates/README.md) for full guidance.
 
 ---
 
+## Project State (Outside the Vault)
+
+Tessellum's project-management state — milestone plans, layout decisions, run-artifact conventions — lives in top-level [`plans/`](../../plans/README.md), separate from the typed-knowledge vault. Plans are governance documents (meta to both System P and System D); they are *not* typed atomic notes.
+
+Active plans:
+
+- [`plan_v01_src_tessellum_layout`](../../plans/plan_v01_src_tessellum_layout.md) — what `src/tessellum/` ships in v0.1
+- [`plan_cqrs_repo_layout`](../../plans/plan_cqrs_repo_layout.md) — repo layout via CQRS workflow framing
+
+Pipeline runtime traces (gitignored, session-scoped) live in [`runs/`](../../runs/README.md): `capture/`, `retrieval/`, `composer/`.
+
+---
+
 ## Examples (one per Building Block type)
 
 Read these to see the format Tessellum asks of you:

@@ -43,7 +43,7 @@ Tessellum is built on six pillars; CQRS is the sixth. The principle:
 
 > Two systems share one substrate; they're joined by one cross-system rule; the boundary at the read path is sacred.
 >
-> — *[term_cqrs.md](../../vault/resources/term_dictionary/term_cqrs.md)*
+> — *[term_cqrs.md](../vault/resources/term_dictionary/term_cqrs.md)*
 
 - **System P (Prescriptive)** — typed authoring, editorial discipline, the substrate of typed atomic notes.
 - **System D (Descriptive)** — computational retrieval, indexes, statistical models, BB-aware re-ranking.
@@ -235,11 +235,11 @@ When `tessellum compose <chain>` ships in v0.1+, it should write its trace to `r
 
 ## See Also
 
-- [`term_cqrs.md`](../../vault/resources/term_dictionary/term_cqrs.md) — the principle this layout implements
+- [`term_cqrs.md`](../vault/resources/term_dictionary/term_cqrs.md) — the principle this layout implements
 - [`plan_v01_src_tessellum_layout.md`](plan_v01_src_tessellum_layout.md) — v0.1 src/ shipping plan (will move to `plans/` per Step 3)
-- [README.md § Project Structure](../../README.md#project-structure) — current layout (will be updated per Step 7)
-- [DEVELOPING.md § Layout Convention](../../DEVELOPING.md#layout-convention) — design rationale (will be updated per Step 8)
-- [`entry_master_toc.md`](../../vault/0_entry_points/entry_master_toc.md) — vault navigation root (will gain a `plans/` row per Step 9)
+- [README.md § Project Structure](../README.md#project-structure) — current layout (will be updated per Step 7)
+- [DEVELOPING.md § Layout Convention](../DEVELOPING.md#layout-convention) — design rationale (will be updated per Step 8)
+- [`entry_master_toc.md`](../vault/0_entry_points/entry_master_toc.md) — vault navigation root (will gain a `plans/` row per Step 9)
 
 ---
 
