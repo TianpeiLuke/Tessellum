@@ -109,18 +109,21 @@ _SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/term_dictionary/term_format_spec.md",                 # YAML/link/naming spec + issue codes
     # Getting-started walkthrough (the pipeline foundation in vault form).
     "resources/how_to/howto_first_vault.md",                         # 8-step CLI walkthrough
-    # Architecture FZ trail (example trail — 4 thoughts forming a linear descent).
-    "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",   # FZ 1
-    "resources/analysis_thoughts/thought_cqrs_design_evolution.md",                   # FZ 1a
-    "resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md",  # FZ 1a1
-    "resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md",              # FZ 1a1a
-    # Entry points — the master glossary index + BB picker matrix +
-    # FZ trail map + 5 universal acronym glossaries + the
-    # Tessellum-foundations glossary.
+    # FZ trail nodes — Trail 1 (Architecture / CQRS) and Trail 2 (Dialectic / DKS).
+    "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",        # FZ 1
+    "resources/analysis_thoughts/thought_cqrs_design_evolution.md",                        # FZ 1a
+    "resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md", # FZ 1a1
+    "resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md",                   # FZ 1a1a
+    "resources/analysis_thoughts/thought_dks_evolution.md",                                # FZ 2
+    "resources/analysis_thoughts/thought_dks_design_synthesis.md",                         # FZ 2a
+    # Entry points — master TOCs / pickers / FZ trail map + per-trail entries +
+    # 5 universal acronym glossaries + Tessellum-foundations glossary.
     # entry_master_toc.md is rendered inline by init, not shipped here.
     "0_entry_points/entry_acronym_glossary.md",
     "0_entry_points/entry_building_block_index.md",                  # BB picker (scannable matrix)
-    "0_entry_points/entry_folgezettel_trails.md",                    # FZ trail map (example trail)
+    "0_entry_points/entry_folgezettel_trails.md",                    # FZ master trail index
+    "0_entry_points/entry_architecture_trail.md",                    # per-trail entry: Trail 1
+    "0_entry_points/entry_dialectic_trail.md",                       # per-trail entry: Trail 2
     "0_entry_points/acronym_glossary_tessellum_foundations.md",      # one-line lookup for the 11 foundation terms
     "0_entry_points/acronym_glossary_statistics.md",
     "0_entry_points/acronym_glossary_critical_thinking.md",

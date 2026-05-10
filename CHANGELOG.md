@@ -16,6 +16,49 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.32] — 2026-05-10
+
+### Added — Trail 2 (Dialectic / DKS) + per-trail entry-point refactor
+
+The seed vault now ships **two FZ trails** (was one in v0.0.31). The new trail documents how the Dialectic Knowledge System (DKS) was reasoned into shape; the refactor cleans up the trail-map structure so each trail has its own per-trail entry point and the master map stays slim.
+
+#### Trail 2 — Dialectic (2 nodes)
+
+```
+2     thought_dks_evolution         (NEW — six-step descent)
+└── 2a  thought_dks_design_synthesis  (NEW — 7-component pattern + 3 foundations + 2 timescales)
+```
+
+| FZ | Note | Role |
+|----|------|------|
+| `2` | `thought_dks_evolution.md` | Six-step descent: (1) library → learning loop, (2) three-layer framing rejected, (3) empirical anchor from a production closed loop, (4) formal foundations (Dung AF + Toulmin + IBIS), (5) substrate-protocol separation counter, (6) six completing innovations. |
+| `2a` | `thought_dks_design_synthesis.md` | The 7-component pattern (one per BB-to-BB epistemic edge), three formal foundations, four design commitments (queryable+mutable substrate; warrant-level learning; dialectical adequacy termination; confidence-gated escalation), two timescales (intra-record minutes + inter-cycle weeks), five "what DKS is NOT" carve-outs. |
+
+The trail is short by design — two notes is enough to record the architectural commitment that constrains how the DKS runtime gets built in v0.2+.
+
+#### Per-trail entry-point refactor
+
+`entry_folgezettel_trails.md` was carrying both *master-index* duties (which trails exist) and *Trail 1 detail* duties (Trail 1's ASCII tree, FZ table, reading order). As a second trail joins the vault, that bundling becomes noise. Refactor:
+
+- **`entry_folgezettel_trails.md`** — slim master index. One row per trail (root link, per-trail entry-point link, node count, subject). Includes a "how to grow a new trail" section.
+- **`entry_architecture_trail.md`** (NEW) — Trail 1's per-trail entry. ASCII tree, FZ table, dialectic-in-one-line summary, reading order, "what this trail rejects" carve-outs, related trails.
+- **`entry_dialectic_trail.md`** (NEW) — Trail 2's per-trail entry. Same shape as Architecture trail's entry point; summarises the six-move dialectic progress that produced DKS.
+
+When a user grows a new trail, they'll author `entry_<trail>_trail.md` and add one row to the master map. Same convention every time.
+
+### Seed manifest
+
+- `pyproject.toml` — 4 new `force-include` entries (2 thoughts + 2 entry points). `entry_folgezettel_trails.md` rewritten in place.
+- `init.py` — `_SEED_VAULT_MANIFEST` extended 26 → 30 relative paths.
+- `tessellum init` now scaffolds **48 markdown files** (was 44 in v0.0.31).
+
+### Verification
+
+- All 4 new files pass `tessellum format check` with **0 errors and 0 warnings** each.
+- Refactored `entry_folgezettel_trails.md` also passes 0/0.
+- Editable + wheel mode both produce 48 files.
+- Full suite: 468 passed, 1 skipped.
+
 ## [0.0.31] — 2026-05-10
 
 ### Added — Architecture FZ trail (an example trail in the seed vault)
