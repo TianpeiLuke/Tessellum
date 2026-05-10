@@ -75,6 +75,12 @@ from tessellum.composer.materializer import (
     MaterializerError,
     materialize,
 )
+from tessellum.composer.batch import (
+    BatchJob,
+    BatchJobResult,
+    BatchResult,
+    run_batch,
+)
 from tessellum.composer.scheduler import RunResult, run_pipeline
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
@@ -128,4 +134,9 @@ __all__ = [
     "ExecutorError",
     "run_pipeline",
     "RunResult",
+    # Batch runner (Wave 5a)
+    "BatchJob",
+    "BatchJobResult",
+    "BatchResult",
+    "run_batch",
 ]
