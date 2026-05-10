@@ -26,12 +26,38 @@ building_block: navigation
 
 <!--
 HOW TO USE THIS TEMPLATE:
-1. Copy to `vault/0_entry_points/acronym_glossary_<domain>.md`. Acronym
-   glossaries ALWAYS live in `0_entry_points/` (they're a kind of entry point
-   indexing terms-by-acronym).
-2. Filename convention: `acronym_glossary_<domain>.md` (e.g.,
-   `acronym_glossary_ml.md`, `acronym_glossary_statistics.md`,
-   `acronym_glossary_security.md`).
+
+This template is for ACRONYM GLOSSARY notes — surfaces that index ALL term
+notes in the vault (or a domain subset of them) via their acronyms. The
+vault's acronym glossary covers every term note; whenever a term note exists,
+its acronym should appear in some glossary.
+
+TWO USAGE PATTERNS:
+
+  A. SINGLE MASTER (small vault, < 50 terms):
+     - One file: `vault/0_entry_points/acronym_glossary.md`
+     - Indexes EVERY term note in the vault, organized by topical sections
+     - Use this template — fill all topical sections inline
+
+  B. PARTITIONED (large vault, > 50 terms — recommended):
+     - Multiple per-field files: `vault/0_entry_points/acronym_glossary_<field>.md`
+       (e.g., `acronym_glossary_ml.md`, `acronym_glossary_security.md`,
+       `acronym_glossary_statistics.md`)
+     - Plus one master `vault/0_entry_points/entry_acronym_glossary.md` that
+       AGGREGATES the per-field sub-glossaries (uses template_entry_point.md
+       — it's just an index of indexes)
+     - Each sub-glossary uses THIS template, scoped to one field
+     - Per-acronym entries live in the relevant sub-glossary, not the master
+
+The collective union of all per-field sub-glossaries MUST cover every term
+note in the vault. An acronym appearing in a term note but in NO glossary is
+a vault-health issue (run a coverage check periodically).
+
+INSTRUCTIONS:
+1. Pick pattern A or B based on vault size.
+2. Copy this file to:
+     A → `vault/0_entry_points/acronym_glossary.md`
+     B → `vault/0_entry_points/acronym_glossary_<field>.md` per sub-glossary
 3. Update YAML:
    - tags[0]=entry_point, tags[1]=index, plus `navigation`, `quick_reference`,
      `glossary`, and a domain tag (e.g., `machine_learning`).
@@ -45,10 +71,14 @@ that maps acronyms to their expansions and term-note documentation. It's a
 quick-lookup surface — the reader knows the acronym, wants the definition + a
 pointer to the deeper term note.
 
-Distinction from `template_entry_point.md`: regular entry points index NOTES;
-acronym glossaries index ACRONYMS (each acronym entry is a small structured
-record, not just a link). Acronym glossaries also typically link BACK to a
-master `entry_acronym_glossary.md` that aggregates them.
+Distinction from related templates:
+  - `template_entry_point.md` — for the MASTER `entry_acronym_glossary.md` in
+    pattern B (it's just an entry point listing the sub-glossaries; doesn't
+    have per-acronym entries itself).
+  - This template (`template_acronym_glossary.md`) — for both:
+      • the single `acronym_glossary.md` in pattern A
+      • the per-field `acronym_glossary_<field>.md` files in pattern B
+    Both have per-acronym `### ACRONYM` entries.
 
 The repeating ### entry pattern is the load-bearing structure: each acronym
 gets exactly one ### heading + four sub-fields (Full Name / Description /
@@ -58,9 +88,9 @@ machine-parseable for export to other glossary surfaces.
 
 # <Domain> Glossary
 
-**Purpose**: Quick reference for <domain> acronyms, terms, and abbreviations used in <project context>.
+**Purpose**: Quick reference for <domain> acronyms, terms, and abbreviations used in <project context>. Indexes every term note in `vault/resources/term_dictionary/` whose subject matter falls under <domain>.
 
-**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md)
+**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md) <!-- pattern B; remove this line in pattern A -->
 
 ## <Section A — Primary Topical Group>
 
@@ -123,11 +153,26 @@ spelling or section. Common patterns:
 - For full context and related concepts, follow the **Documentation** link on each entry to the corresponding term note in `vault/resources/term_dictionary/`.
 - For acronyms not in this glossary, check the [Main Glossary](entry_acronym_glossary.md) which lists all domain glossaries.
 
+## Coverage Promise
+
+<Optional but recommended for vaults using pattern B (partitioned glossaries).
+State explicitly which term notes this sub-glossary covers, so the union of
+all sub-glossaries provably covers every term note.>
+
+This sub-glossary covers term notes in `vault/resources/term_dictionary/`
+matching: <criteria — e.g., "all terms tagged with `machine_learning` or
+`deep_learning`">.
+
+Term notes outside this scope live in:
+- [acronym_glossary_<related>](acronym_glossary_<related>.md) — <criteria>
+- [acronym_glossary_<related>](acronym_glossary_<related>.md) — <criteria>
+
 ## Related Entry Points
 
-- [Main Glossary](entry_acronym_glossary.md) — index of all domain glossaries
+- [Main Glossary](entry_acronym_glossary.md) — master index aggregating all per-field sub-glossaries (pattern B); omit this row if you're using pattern A
 - [Related Glossary A](acronym_glossary_<related>.md) — <related domain>
 - [Related Glossary B](acronym_glossary_<related>.md) — <related domain>
+- [Term Dictionary](../resources/term_dictionary/) — the underlying term notes this glossary indexes
 
 ## References
 
