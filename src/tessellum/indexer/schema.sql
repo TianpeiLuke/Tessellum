@@ -28,8 +28,10 @@ CREATE TABLE IF NOT EXISTS notes (
     folgezettel          TEXT,
     folgezettel_parent   TEXT,
     indexed_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_indexed_mtime   REAL                          -- file mtime as epoch float
+    last_indexed_mtime   REAL,                         -- file mtime as epoch float
+    note_int_id          INTEGER UNIQUE                -- surrogate key for notes_vec join
 );
+CREATE INDEX IF NOT EXISTS idx_notes_int_id ON notes(note_int_id);
 
 CREATE INDEX IF NOT EXISTS idx_notes_category           ON notes(note_category);
 CREATE INDEX IF NOT EXISTS idx_notes_second_category    ON notes(note_second_category);
@@ -54,6 +56,25 @@ CREATE TABLE IF NOT EXISTS note_links (
 CREATE INDEX IF NOT EXISTS idx_note_links_source ON note_links(source_note_id);
 CREATE INDEX IF NOT EXISTS idx_note_links_target ON note_links(target_note_id);
 CREATE INDEX IF NOT EXISTS idx_note_links_type   ON note_links(link_type);
+
+
+-- Dense (cosine) embedding index — sqlite-vec virtual table. Populated by
+-- the builder unless `--no-dense` was passed. Embeddings are 384-dim
+-- L2-normalized vectors from sentence-transformers/all-MiniLM-L6-v2.
+--
+-- Query via the MATCH operator + k parameter:
+--     SELECT n.note_id, v.distance
+--     FROM notes_vec v
+--     JOIN notes n ON n.note_int_id = v.note_int_id
+--     WHERE v.embedding MATCH ? AND k = ?
+--     ORDER BY v.distance
+--
+-- Distance is cosine (lower = more similar). Tessellum's dense_search()
+-- returns ``score = 1 - distance`` so users see "higher = more similar".
+CREATE VIRTUAL TABLE IF NOT EXISTS notes_vec USING vec0(
+    note_int_id INTEGER PRIMARY KEY,
+    embedding   FLOAT[384] distance_metric=cosine
+);
 
 
 -- Lexical (BM25) full-text index. Populated alongside `notes` by the builder.

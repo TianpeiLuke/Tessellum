@@ -16,6 +16,122 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.14] — 2026-05-10
+
+### Added — Retrieval Wave 2: Dense + sqlite-vec
+
+`tessellum search --dense <query>` ships. Per `plans/plan_retrieval_port.md` Wave 2. Both lexical (BM25) and semantic (dense) retrieval are now available; Wave 3 (v0.0.15) will combine them via Reciprocal Rank Fusion as the production default.
+
+```bash
+tessellum search "knowledge graph" --bm25
+# BM25 matches by lexical overlap — finds "knowledge" + "graph" tokens.
+
+tessellum search "knowledge graph" --dense
+# DENSE matches by semantic similarity — finds notes about knowledge
+# organization, building-block ontologies, dialectic systems.
+```
+
+The two strategies retrieve different ranked sets — exactly the diversity that hybrid RRF in Wave 3 will exploit (parent project: +12pp Hit@5 lift over best single strategy, per FZ 5e1c3a1a1).
+
+#### Schema extension — `notes_vec` virtual table + `note_int_id`
+
+`src/tessellum/indexer/schema.sql`:
+
+```sql
+-- notes table gains a surrogate key for the join:
+note_int_id INTEGER UNIQUE
+CREATE INDEX idx_notes_int_id ON notes(note_int_id);
+
+-- New virtual table:
+CREATE VIRTUAL TABLE notes_vec USING vec0(
+    note_int_id INTEGER PRIMARY KEY,
+    embedding   FLOAT[384] distance_metric=cosine
+);
+```
+
+**`distance_metric=cosine`** is critical. sqlite-vec defaults to L2 (Euclidean), which gives correct ranking for normalized embeddings but yields scores in `[0, 2]` that don't map cleanly to "1 = identical, 0 = orthogonal". Cosine distance gives `[0, 2]` too but for normalized vectors `score = 1 - distance` IS exactly cosine similarity ∈ `[-1, 1]`. Users see meaningful scores like `0.487` (moderate semantic match) instead of `-0.013` (which was actually `1 - L2_distance` for distance ≈ 1).
+
+**Schema migration**: existing v0.0.13 DBs lack `notes_vec` and the `note_int_id` column. Users re-run `tessellum index build --force` to rebuild.
+
+#### Build pipeline — embedding generation
+
+`src/tessellum/indexer/build.py`:
+
+- Allocates sequential `note_int_id` (1, 2, 3, ...) per note as the join key for `notes_vec`.
+- Lazy-loads `sentence-transformers/all-MiniLM-L6-v2` via a module-level singleton — `~1.5s` first-call cost; in-process re-builds are fast.
+- Encodes each note's text (`note_name + keywords + topics + tags + body`, joined by `\n`) with `normalize_embeddings=True` so cosine distance behaves predictably.
+- Writes embeddings to `notes_vec` as packed little-endian float32 blobs.
+- New `with_dense: bool = True` parameter on `build()`. Pass `False` to skip embedding generation entirely (faster builds when only BM25 is needed).
+- New `--no-dense` CLI flag on `tessellum index build`.
+- `BuildResult.embeddings_generated` reports the count.
+
+End-to-end on the real Tessellum vault: 5.8s build (71 notes, 71 embeddings, 547 links) on a warm sentence-transformers cache; ~20s on a cold cache.
+
+#### `tessellum.retrieval.dense_search`
+
+`src/tessellum/retrieval/dense.py`:
+
+```python
+from tessellum.retrieval import dense_search, DenseHit
+
+hits = dense_search("data/tessellum.db", "knowledge graph", k=5)
+# [DenseHit(note_id=..., note_name=..., distance=0.513, score=0.487), ...]
+```
+
+`DenseHit` has both `score` (cosine similarity, `1 - distance`, "higher = more similar") and `distance` (raw cosine distance, "lower = closer"). Both fields are useful: `score` mirrors `BM25Hit.score`'s convention; `distance` is what the SQL actually returns.
+
+Lazy-loads the encoder via the same module-level singleton pattern as `build`. First query in a process loads the model; subsequent queries are fast.
+
+#### `tessellum search` CLI gains `--dense`
+
+```bash
+tessellum search <query>           # BM25 (Wave 1 default; Wave 3 flips to hybrid)
+tessellum search --bm25 <query>    # explicit BM25
+tessellum search --dense <query>   # dense semantic
+```
+
+`--bm25` and `--dense` are mutually exclusive (argparse `add_mutually_exclusive_group`). JSON output for dense includes both `score` and `distance` fields.
+
+#### Tests
+
+17 new tests, all passing. **265 total** (248 prior + 17 new).
+
+- `tests/smoke/test_retrieval_dense.py` (14 tests): typed return, semantic ranking (graph query → graph note ranks higher than cooking note; cooking query inverts), score in `[-1, 1]`, distance in `[0, 2]`, scores descend / distance ascends, `k` flag, `k=0` → empty, missing DB → FileNotFoundError, `--no-dense` build → empty dense results (not error), `with_dense=True/False` toggles correctly, integration test against real vault.
+- `tests/cli/test_search_cli.py` (3 new): `--dense` flag uses dense strategy + DENSE-labeled output; `--dense --format json` includes `distance` field; `--bm25 --dense` is mutually exclusive (raises SystemExit).
+
+Per-test runtime is dominated by the embedding model load (~1.5s once); module-scoped fixture builds the test DB once.
+
+#### End-to-end smoke on real vault
+
+```
+$ tessellum search "knowledge graph" --bm25 --k 3
+BM25 matches for 'knowledge graph'  (3 hits)
+  1. term_slipbox  (0.056)
+      ...<<<Knowledge>>> <<<Graph>>>...
+  2. term_zettelkasten  (0.055)
+  3. term_information_retrieval  (0.053)
+
+$ tessellum search "knowledge graph" --dense --k 3
+DENSE matches for 'knowledge graph'  (3 hits)
+  1. thought_building_block_ontology_relationships  (0.487)
+  2. term_dialectic_knowledge_system  (0.383)
+  3. term_para_method  (0.371)
+```
+
+The two strategies return DIFFERENT ranked sets — BM25 finds tokens; dense finds concepts. Wave 3's hybrid RRF will exploit this diversity for the +12pp lift.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.14"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.14"`.
+- 265/265 tests pass (248 prior + 17 new).
+
+### What's NOT in this release (Waves 3-5)
+
+- **Wave 3 (v0.0.15)** — Hybrid RRF (the production winner). One SQL `UNION ALL` of BM25 + dense top-K, ranked by `1/(rank + k1)` summed across both. Becomes the default `tessellum search <query>`.
+- **Wave 4 (v0.0.16)** — Best-first BFS graph traversal. **No PPR** per FZ 5e2b1c.
+- **Wave 5 (v0.0.17)** — Skill orchestration: `skill_tessellum_search_notes` + `skill_tessellum_answer_query` canonicals.
+
 ## [0.0.13] — 2026-05-10
 
 ### Added — Retrieval Wave 1: BM25 + FTS5
@@ -951,7 +1067,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.13...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.14...HEAD
+[0.0.14]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.13...v0.0.14
 [0.0.13]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.12...v0.0.13
 [0.0.12]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.10...v0.0.11

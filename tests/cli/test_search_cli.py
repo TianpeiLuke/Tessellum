@@ -138,6 +138,54 @@ def test_search_bm25_flag_accepted(indexed_db, capsys):
     assert code == 0
 
 
+def test_search_dense_flag_uses_dense_strategy(indexed_db, capsys):
+    """--dense reads the dense (vec0) index; produces DENSE-labeled output."""
+    code = main(
+        ["search", "alpha", "--dense", "--db", str(indexed_db), "--k", "1"]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "DENSE matches" in out
+
+
+def test_search_dense_json_output_includes_distance(indexed_db, capsys):
+    code = main(
+        [
+            "search",
+            "alpha",
+            "--dense",
+            "--db",
+            str(indexed_db),
+            "--k",
+            "1",
+            "--format",
+            "json",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["strategy"] == "dense"
+    if payload["hits"]:
+        assert "distance" in payload["hits"][0]
+        assert "score" in payload["hits"][0]
+
+
+def test_search_bm25_and_dense_mutually_exclusive(indexed_db, capsys):
+    """--bm25 and --dense can't both be passed (argparse mutex group)."""
+    with pytest.raises(SystemExit):
+        main(
+            [
+                "search",
+                "alpha",
+                "--bm25",
+                "--dense",
+                "--db",
+                str(indexed_db),
+            ]
+        )
+
+
 def test_banner_lists_search(capsys):
     code = main([])
     assert code == 0

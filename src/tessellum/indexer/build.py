@@ -3,10 +3,11 @@
 Single entry point: :func:`build`. Walks the vault filesystem, parses each
 markdown note via :func:`tessellum.format.parse_note`, extracts internal
 markdown links with broken-path detection, and writes rows into the
-``notes`` and ``note_links`` tables in one transaction.
+``notes`` + ``note_links`` + ``notes_fts`` (FTS5, v0.0.13) + ``notes_vec``
+(sqlite-vec, v0.0.14) tables in one transaction.
 
 Idempotent — the DB is dropped + recreated each run. Incremental updates
-ship in v0.0.13.
+ship later.
 """
 
 from __future__ import annotations
@@ -14,10 +15,13 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import struct
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+import sqlite_vec
 
 from tessellum.format.parser import FrontmatterParseError, parse_note
 
@@ -49,6 +53,39 @@ _NON_NOTE_NAMES: frozenset[str] = frozenset(
 _NON_NOTE_PREFIXES: tuple[str, ...] = ("Rank_",)
 
 
+# Dense embeddings — sentence-transformers + sqlite-vec.
+EMBEDDING_DIM = 384
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
+_ENCODER = None  # module-level singleton, lazy-loaded
+
+
+def _get_encoder():
+    """Lazy-load the sentence-transformers encoder. ~1.5s first call,
+    ~0 thereafter (in-process cache)."""
+    global _ENCODER
+    if _ENCODER is not None:
+        return _ENCODER
+    from sentence_transformers import SentenceTransformer
+
+    _ENCODER = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    return _ENCODER
+
+
+def _vec_blob(vector) -> bytes:
+    """sqlite-vec accepts FLOAT[N] as a packed little-endian float32 blob."""
+    return struct.pack(f"{len(vector)}f", *vector)
+
+
+def _open_with_vec(db_path: Path) -> sqlite3.Connection:
+    """Open a sqlite3 connection with the sqlite-vec extension loaded."""
+    conn = sqlite3.connect(str(db_path))
+    conn.enable_load_extension(True)
+    sqlite_vec.load(conn)
+    conn.enable_load_extension(False)
+    return conn
+
+
 @dataclass(frozen=True)
 class BuildResult:
     """Summary of a successful :func:`build` invocation."""
@@ -58,6 +95,7 @@ class BuildResult:
     links_indexed: int
     skipped_files: int
     duration_seconds: float
+    embeddings_generated: int = 0  # Wave 2: count when ``with_dense=True``
 
 
 def build(
@@ -65,6 +103,7 @@ def build(
     db_path: Path | str,
     *,
     force: bool = False,
+    with_dense: bool = True,
 ) -> BuildResult:
     """Scan ``vault_path`` and write the unified index to ``db_path``.
 
@@ -75,9 +114,14 @@ def build(
             If the file exists, raises ``FileExistsError`` unless
             ``force=True`` (which deletes + recreates).
         force: Allow overwriting an existing DB.
+        with_dense: If True (default), encode + store dense embeddings via
+            sentence-transformers. First call loads the model (~1.5s);
+            subsequent in-process calls reuse it. Pass ``False`` for fast
+            builds when only BM25 is needed (e.g. CI without ML deps cached).
 
     Returns:
-        BuildResult with row counts + duration.
+        BuildResult with row counts + duration. ``embeddings_generated``
+        is 0 when ``with_dense=False``.
 
     Raises:
         FileNotFoundError: ``vault_path`` does not exist.
@@ -101,23 +145,29 @@ def build(
     md_files = sorted(_walk_vault(vault))
     notes_meta: list[dict] = []
     skipped = 0
-    for f in md_files:
+    for i, f in enumerate(md_files, start=1):
         meta = _extract_note_metadata(f, vault)
         if meta is None:
             skipped += 1
             continue
+        # Sequential surrogate key for the notes_vec join. Stable within
+        # a single build (no incremental update yet).
+        meta["note_int_id"] = len(notes_meta) + 1
         notes_meta.append(meta)
 
     name_index = _build_note_name_index(notes_meta)
     links_records = _extract_all_links(notes_meta, vault, name_index)
 
-    conn = sqlite3.connect(str(db))
+    conn = _open_with_vec(db)
     try:
         with conn:
             conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
             _write_notes(conn, notes_meta)
             _write_links(conn, links_records)
             _write_fts(conn, notes_meta)
+            embeddings_count = (
+                _write_embeddings(conn, notes_meta) if with_dense else 0
+            )
     finally:
         conn.close()
 
@@ -127,6 +177,7 @@ def build(
         links_indexed=len(links_records),
         skipped_files=skipped,
         duration_seconds=time.monotonic() - started,
+        embeddings_generated=embeddings_count,
     )
 
 
@@ -383,6 +434,7 @@ _NOTES_INSERT_COLUMNS: tuple[str, ...] = (
     "folgezettel",
     "folgezettel_parent",
     "last_indexed_mtime",
+    "note_int_id",
 )
 
 
@@ -414,3 +466,46 @@ def _write_fts(conn: sqlite3.Connection, notes: list[dict]) -> None:
         "VALUES (:note_id, :note_name, :_body)"
     )
     conn.executemany(sql, notes)
+
+
+def _build_embedding_text(note: dict) -> str:
+    """Concatenate fields used for dense-embedding generation.
+
+    Mirrors the parent project's pattern: name + keywords + topics + tags +
+    body. Ensures the embedding captures both metadata signals (which
+    short-form queries match) and prose (which long-form queries match).
+    """
+    parts: list[str] = [note["note_name"] or ""]
+    for key in ("keywords", "topics", "tags"):
+        raw = note.get(key)
+        if raw:
+            try:
+                items = json.loads(raw)
+            except (TypeError, ValueError):
+                items = []
+            if isinstance(items, list):
+                parts.append(" ".join(str(x) for x in items))
+    parts.append(note.get("_body") or "")
+    return "\n".join(p for p in parts if p)
+
+
+def _write_embeddings(conn: sqlite3.Connection, notes: list[dict]) -> int:
+    """Encode each note's text and write to ``notes_vec``.
+
+    Returns the number of embeddings written (== len(notes) on success).
+    Lazy-loads the encoder; first call costs ~1.5s for model load.
+    """
+    if not notes:
+        return 0
+    encoder = _get_encoder()
+    texts = [_build_embedding_text(n) for n in notes]
+    embeddings = encoder.encode(
+        texts, normalize_embeddings=True, show_progress_bar=False
+    )
+    sql = "INSERT INTO notes_vec(note_int_id, embedding) VALUES (?, ?)"
+    rows = [
+        (n["note_int_id"], _vec_blob(emb.astype("float32").tolist()))
+        for n, emb in zip(notes, embeddings)
+    ]
+    conn.executemany(sql, rows)
+    return len(rows)
