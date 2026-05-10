@@ -192,4 +192,24 @@ Execute as 1-2 commits (Wave 1 is large; could split schema+contracts in one com
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Wave 1 awaiting approval, then ships across 1-2 commits as v0.0.9 / v0.0.10.
+**Status**: **Complete** — all six waves shipped across v0.0.9 → v0.0.23.
+
+| Wave | Version | Commit summary |
+| ---- | ------- | -------------- |
+| 1    | v0.0.9 / v0.0.10 | Foundation: schema, contracts, skill_extractor, loader, validate CLI, paired-sidecar capture |
+| 2    | v0.0.19 | Compiler: typed DAG, contract validation, zero LLM calls |
+| 3    | v0.0.20 | Executor + scheduler + 5 materializers + MockBackend |
+| 4    | v0.0.21 | AnthropicBackend behind `[agent]` extras |
+| 5a   | v0.0.22 | Parallel batch runner with resume |
+| 5b   | v0.0.23 | Eval framework — structural assertions + LLMJudge 5-dim rubric |
+
+**Resolved open questions:**
+
+- *Skill canonical → sidecar conversion*: auto-scaffold via `tessellum capture skill <slug>` (Wave 1).
+- *Eval framework*: shipped in v0.0.23 (Wave 5b), not deferred — the user requested all waves complete.
+- *MCP dispatcher*: deferred per the original lean. Not in v0.1.
+- *Anthropic-only LLM bridge*: shipped Anthropic-only. OpenAI/local left as separate `[agent_*]` extras for v0.2+.
+- *Pipeline schema version field*: included from day one (`version: "1.0"` in every sidecar).
+- *Skills with no Composer pipeline*: `pipeline_metadata: none` accepted by validator + compiler + run.
+
+Test count at port closure: **464 passed, 1 skipped** across the full Tessellum suite.
