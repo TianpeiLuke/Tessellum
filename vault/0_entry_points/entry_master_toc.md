@@ -34,7 +34,7 @@ building_block: navigation
 | Install and try it | [`howto_getting_started.md`](../resources/how_to/howto_getting_started.md) — install + init vault + first capture + first query |
 | Understand the typed substrate | [`term_building_block.md`](../resources/term_dictionary/term_building_block.md) — the 8 BB types + 10 directed edges |
 | Author your first note | [`howto_note_format.md`](../resources/how_to/howto_note_format.md) — YAML frontmatter spec + per-BB section requirements |
-| Pick a template to copy | [`templates/README.md`](../resources/templates/README.md) — 9 ready-to-fill skeletons (one per BB type + skill canonical) |
+| Pick a template to copy | [`templates/README.md`](../resources/templates/README.md) — 12 ready-to-fill skeletons (one per BB type + skill / experiment / entry-point / acronym-glossary specializations) + 1 YAML reference |
 | Plug Tessellum into Claude Code / Cursor / etc. | [`howto_agent_integration.md`](../resources/how_to/howto_agent_integration.md) — MCP setup recipes |
 
 ---
