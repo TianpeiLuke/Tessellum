@@ -16,6 +16,123 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.12] — 2026-05-10
+
+### Added — Indexer Wave 1 (System D substrate)
+
+`tessellum index build` ships the SQLite-backed unified index. **Step 5 of `plans/plan_v01_src_tessellum_layout.md` partially complete** — the substrate-level structure is in place. FTS5 + sqlite-vec + retrieval CLI layer on top in v0.0.13+.
+
+```bash
+tessellum index build
+# built index at: data/tessellum.db
+#   notes indexed:  71
+#   links indexed:  547
+#   duration:       0.11s
+```
+
+#### `src/tessellum/indexer/schema.sql`
+
+Two-table schema, ported verbatim from the parent project's column conventions:
+
+- **`notes`** (18 columns): `note_id`, `note_name`, `note_location`, PARA bucket (`note_category`), second-category (`note_second_category`), `note_status`, dates, file metadata, JSON-encoded `tags`/`keywords`/`topics`, `language`, `building_block`, `folgezettel` + `folgezettel_parent`, indexing timestamps. Six indexes for common access patterns.
+- **`note_links`** (6 columns): `link_id`, `source_note_id`, `target_note_id`, `link_context` (±50 chars around the link), `link_type` (`'markdown'` or `'markdown_broken_path'`), `created_at`. UNIQUE constraint on (source, target). Three indexes.
+
+Deliberately **deferred to v0.0.13**: `ghost_notes`, `broken_links`, `folgezettel_trails` (diagnostic tables); FTS5 virtual table; sqlite-vec virtual table; `static_ppr_score`, `in_degree`, `note_int_id` columns (need supporting subsystems first).
+
+#### `src/tessellum/indexer/build.py`
+
+`build(vault_path, db_path, *, force=False) -> BuildResult` — single transactional entry point.
+
+- Walks the vault via `vault.rglob("*.md")` with the same non-note skip list as the format-check CLI (`README.md`, `CHANGELOG.md`, `Rank_*.md`, etc.).
+- Parses each note via `tessellum.format.parse_note` (no duplicate parser code).
+- Determines `note_category` from the first path segment (PARA bucket); `note_second_category` from `tags[1]` (with parent-folder fallback).
+- Extracts internal markdown links with **broken-path detection**: if the relative path doesn't resolve but the target's stem uniquely names an existing note, the link is recorded as `link_type='markdown_broken_path'` with `target_note_id` pointing at the unique match. Useful for retrieval — the link is still a real relationship even if the path is wrong.
+- Skips: external `http(s)://`/`mailto:` links, anchor-only `#fragment` links, links inside fenced code blocks, ambiguous broken paths.
+- Idempotent: `force=True` deletes + recreates the DB; row counts match across re-runs.
+
+#### `src/tessellum/indexer/db.py`
+
+`Database(db_path)` — read-oriented wrapper around the SQLite connection.
+
+Public methods (typed `NoteRow` / `LinkRow` dataclasses with JSON columns parsed):
+
+| Method | Purpose |
+|---|---|
+| `all_notes()` | Every row in `notes` |
+| `note_by_id(note_id)` | Single lookup |
+| `notes_by_building_block(bb)` | Filter by BB enum |
+| `notes_by_category(cat)` | Filter by PARA bucket |
+| `notes_by_second_category(sub)` | Filter by `tags[1]` |
+| `notes_by_folgezettel_root(root)` | All notes whose FZ starts with `root` (string-prefix; full topological sort in v0.0.13+) |
+| `links_from(note_id)` | Outbound links |
+| `links_to(note_id)` | Inbound links |
+| `note_count()` / `link_count()` | Aggregate counts |
+
+Use as a context manager (recommended) or call `close()` explicitly.
+
+#### `src/tessellum/cli/index.py`
+
+`tessellum index build [--vault PATH] [--db PATH] [--force]`
+
+Defaults: `--vault ./vault`, `--db ./data/tessellum.db`. Creates the DB's parent directory as needed. Refuses to overwrite an existing DB without `--force`.
+
+Exit codes: 0 success, 1 DB exists without `--force`, 2 vault doesn't exist.
+
+#### CLI banner reorganized
+
+The bare `tessellum` banner now lists 5 subcommands in the natural usage order:
+
+1. `tessellum init <dir>` — scaffold a vault
+2. `tessellum format check <path>` — validate format
+3. `tessellum capture <flavor> <slug>` — create a typed note
+4. `tessellum index build` — build the unified index
+5. `tessellum composer validate <skill>` — validate a skill's pipeline sidecar
+
+#### Tests
+
+29 new tests, all passing. 223 total (194 prior + 29 new).
+
+- `tests/smoke/test_indexer.py` (24 tests):
+  - build creates DB with correct row counts
+  - build refuses overwrite without `--force`; `--force` works
+  - build is idempotent (consecutive runs → same counts)
+  - build creates parent dirs as needed
+  - missing vault → FileNotFoundError
+  - Database queries: `all_notes`, `note_by_id`, `notes_by_building_block`, `notes_by_category`, `notes_by_second_category`, `notes_by_folgezettel_root`, `links_from`, `links_to`, `link_count`, `note_count`
+  - JSON columns (tags/keywords/topics) parsed back to tuples
+  - external links not indexed; code-block links not indexed; broken-path link uses `markdown_broken_path` type
+  - non-note files (README, CHANGELOG, Rank_*) skipped
+  - integration test against the real Tessellum vault
+- `tests/cli/test_index_cli.py` (5 tests): basic build, refuses overwrite, `--force` works, missing vault → 2, banner mentions index build.
+
+#### End-to-end smoke against the real Tessellum vault
+
+```bash
+$ tessellum index build --vault vault --db /tmp/test.db
+built index at: /tmp/test.db
+  notes indexed:  71
+  links indexed:  547
+  duration:       0.11s
+```
+
+71 notes (matches `tessellum format check vault/`'s file count); 547 internal markdown links resolved (skipping external/anchor/code-block links and ambiguous-broken paths). Indexing runs in ~110ms — fast enough for sub-second CI integration.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.12"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.12"`.
+- Removed obsolete `src/tessellum/indexer/.gitkeep` (replaced by real content).
+- 223/223 tests pass (194 prior + 29 new).
+
+### What's NOT in this release (deferred)
+
+- **FTS5 lexical retrieval** (v0.0.13/14) — `notes_fts` virtual table + `tessellum search --bm25 <query>` CLI.
+- **sqlite-vec dense retrieval** (v0.0.14/15) — `notes_vec` virtual table + sentence-transformers integration + `tessellum search --dense <query>`.
+- **Hybrid retrieval** (v0.1.0) — RRF fusion of BM25 + dense + PPR.
+- **Diagnostic tables** (v0.0.13) — `ghost_notes`, `broken_links`, `folgezettel_trails`.
+- **Incremental update** (v0.0.13) — `tessellum index update` (mtime-based).
+- **Composer applies_to_files_query resolution** (Composer Wave 2) — uses the indexer's Database queries to resolve the schema's `term_backlink_candidates`, `related_term_notes`, `related_notes_by_keywords` query kinds.
+
 ## [0.0.11] — 2026-05-10
 
 ### Added — `tessellum init <dir>` CLI subcommand
@@ -688,7 +805,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.11...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.12...HEAD
+[0.0.12]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.8...v0.0.9
