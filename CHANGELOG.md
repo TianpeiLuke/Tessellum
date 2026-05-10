@@ -16,6 +16,116 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.19] — 2026-05-10
+
+### Added — Composer Wave 2: the compiler
+
+`tessellum composer compile <skill>` builds a typed DAG from a skill+sidecar pair. **Zero LLM calls.** Per `plans/plan_composer_port.md` Wave 2 — the compiler is the next layer above Wave 1's loader/validator.
+
+```
+$ tessellum composer compile vault/resources/skills/skill_tessellum_search_notes.md
+compiled skill_tessellum_search_notes
+  pipeline_version: 1.0
+  steps: 3
+
+  1. step_1_parse_intent  [CORE/corpus_wide]  ⇒ no_op
+  2. step_2_dispatch  [CORE/corpus_wide]  ⇒ no_op  ← step_1_parse_intent
+  3. step_3_return_hits  [CORE/corpus_wide]  ⇒ no_op  ← step_2_dispatch
+```
+
+#### What the compiler does
+
+The compiler is pure logic — five passes over a loaded `Pipeline`:
+
+1. **Topological sort** by `depends_on` edges. The pipeline list is the canonical ordering; the compiler enforces no forward references (a step's `depends_on` must reference a step appearing earlier in the list).
+2. **Cycle detection** via DFS on the dependency graph.
+3. **Contract resolution**: every step's `materializer` key is looked up in `MATERIALIZER_CONTRACTS`. Unknown keys raise `ContractViolation(KIND_UNKNOWN_MATERIALIZER)`.
+4. **Required-output-fields check**: for CORE/DEFERRED steps with a materializer that has `required_output_fields`, the step's `expected_output_schema.required` must include them. Drift raises `ContractViolation(KIND_MISSING_REQUIRED_OUTPUT_FIELD)`.
+5. **Prompt-section extraction**: each step's section text is pulled from the canonical via `load_skill_section`. Missing sections raise `CompilerError`.
+
+Output: `CompiledPipeline` (frozen dataclass) — list of `CompiledStep` in topological order, each carrying its resolved `MaterializerContract`, JSON Schema, prompt text, and `output_key`.
+
+#### What the compiler doesn't do (Wave 3+ scope)
+
+- **Plan-doc + leaves** — Wave 2 compiles a single skill into a "pipeline template"; Wave 3 will instantiate per-leaf step instances against concrete data.
+- **APPLY-mode pre-fetching** — `applies_to_files` resolution requires indexer-query support; surfaces in Wave 3.
+- **LLMBackendContract / MCPContract validation** — backends + MCPs ship with Wave 4.
+- **Prompt-template `apply_mode` directive checks** — minor; defer.
+
+#### `tessellum.composer.compile_skill`
+
+```python
+from tessellum.composer import compile_skill, to_dag_json
+
+compiled = compile_skill("vault/resources/skills/skill_foo.md")
+# CompiledPipeline(skill_path=..., skill_name='skill_foo',
+#                  pipeline_version='1.0', steps=(...), compiled_at=...)
+
+dag = to_dag_json(compiled, include_prompts=True)
+# {"format_version": "1.0", "skill_name": "...", "step_count": ..., "steps": [...]}
+```
+
+`CompilerError` for DAG-level errors (cycles, forward refs, missing prompts). `ContractViolation` for contract drift (already raised by Wave 1's loader). `PipelineValidationError` from Wave 1a still applies upstream.
+
+#### `tessellum composer compile` CLI
+
+```bash
+tessellum composer compile <skill>                    # human summary
+tessellum composer compile <skill> --format json      # to stdout
+tessellum composer compile <skill> -o pipeline_dag.json  # to file
+tessellum composer compile <skill> -o dag.json --no-prompts  # compact
+```
+
+Exit codes:
+- `0` — compiled clean (or `pipeline_metadata: none` → 0-step pipeline)
+- `1` — compilation failure (validation, contract violation, or compiler error)
+- `2` — invocation error (file missing, not markdown, etc.)
+
+The `--no-prompts` flag swaps `prompt_section_text` for `prompt_section_text_chars` (just the length) — useful for indexing pipeline DAGs without bloating the JSON.
+
+#### Tests
+
+24 new tests, all passing. **364 total** (340 prior + 24 new).
+
+- `tests/smoke/test_composer_compiler.py` (15 tests):
+  - Returns typed `CompiledPipeline` / `CompiledStep`
+  - Topological order preserved; depends_on points to earlier steps only
+  - Materializer contracts resolved correctly
+  - Prompt-section text extracted
+  - Unknown materializer → ContractViolation
+  - Missing required output field → ContractViolation(KIND_MISSING_REQUIRED_OUTPUT_FIELD)
+  - Forward reference → CompilerError
+  - Unknown depends_on target → CompilerError
+  - `pipeline_metadata: none` → 0-step compilation
+  - `to_dag_json` round-trip; `--no-prompts` mode
+  - Real-skill compile: search-notes (3 steps) + answer-query (5 steps) both pass.
+- `tests/cli/test_composer_compile_cli.py` (9 tests):
+  - Human + JSON output; `-o` to file; `--no-prompts`; missing skill → 2; non-md → 2; validation failure → 1; `pipeline_metadata: none` → 0; real skill compiles via CLI.
+
+#### CLI banner updated
+
+```
+tessellum composer validate <skill>  — validate a skill's pipeline sidecar
+tessellum composer compile <skill>   — compile to a typed DAG (Wave 2)
+
+Roadmap:
+  tessellum composer run <skill>       — Composer Wave 3 (executor)
+  tessellum composer + LLM bridge      — Composer Wave 4
+```
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.19"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.19"`.
+- 364/364 tests pass (340 prior + 24 new).
+
+### What remains for v0.1
+
+- **Composer Wave 3** — Executor + materializers (~1200 LOC). Resolves placeholders (`{{leaf.X}}`, `{{upstream.Y}}`, `{{existing.Z}}`), invokes the LLM (mock at first), checks responses against `expected_output_schema`, applies materializers (5 concrete: `body_markdown_to_file`, `body_markdown_frontmatter_to_file`, `edits_apply_to_files`, `edits_apply_xml_tags`, `no_op`).
+- **Composer Wave 4** — LLM bridge (~300 LOC + extras). Anthropic SDK wrapper behind `[agent]` extras; optional MCP dispatcher behind `[mcp]`. Makes the answer-query and search-notes skills shipped in v0.0.18 actually executable end-to-end.
+
+Composer Waves 5+ (multi-corpus batch + eval framework) are deferred to v0.2.
+
 ## [0.0.18] — 2026-05-10
 
 ### Added — Retrieval Wave 5: skill orchestration (v0.1 retrieval scope COMPLETE)
@@ -1489,7 +1599,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.18...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.19...HEAD
+[0.0.19]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.18...v0.0.19
 [0.0.18]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.15...v0.0.16
