@@ -20,7 +20,7 @@ topics:
   - v0.1 Roadmap
 language: markdown
 date of note: 2026-05-10
-status: active
+status: completed
 building_block: procedure
 ---
 
