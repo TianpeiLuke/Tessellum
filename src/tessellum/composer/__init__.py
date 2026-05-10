@@ -81,6 +81,20 @@ from tessellum.composer.batch import (
     BatchResult,
     run_batch,
 )
+from tessellum.composer.eval import (
+    DEFAULT_RUBRIC_DIMENSIONS,
+    Assertion,
+    AssertionResult,
+    EvalError,
+    EvalResult,
+    EvalScenario,
+    JudgeScore,
+    LLMJudge,
+    ScenarioResult,
+    load_scenario,
+    load_scenarios,
+    run_eval,
+)
 from tessellum.composer.scheduler import RunResult, run_pipeline
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
@@ -139,4 +153,17 @@ __all__ = [
     "BatchJobResult",
     "BatchResult",
     "run_batch",
+    # Eval framework (Wave 5b)
+    "DEFAULT_RUBRIC_DIMENSIONS",
+    "Assertion",
+    "AssertionResult",
+    "EvalError",
+    "EvalResult",
+    "EvalScenario",
+    "JudgeScore",
+    "LLMJudge",
+    "ScenarioResult",
+    "load_scenario",
+    "load_scenarios",
+    "run_eval",
 ]

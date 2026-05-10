@@ -1,11 +1,12 @@
 """``tessellum composer …`` — Composer pipeline operations.
 
-Four subcommands as of v0.0.22:
+Five subcommands as of v0.0.23:
 
     validate <skill>     Schema + cross-file consistency (Wave 1a / 1b).
     compile <skill>      Compile to a typed DAG with contract checks (Wave 2).
     run <skill>          Execute the compiled pipeline against leaves (Wave 3).
     batch <jobs.json>    Run many (skill, leaves) jobs in parallel (Wave 5a).
+    eval <scenarios>     Run scenario assertions + LLMJudge rubric (Wave 5b).
 
 Exit codes:
     0  every skill validates / compiles / runs clean
@@ -24,12 +25,16 @@ from tessellum.composer import (
     BatchJob,
     CompilerError,
     ContractViolation,
+    EvalError,
     LLMBackend,
+    LLMJudge,
     MockBackend,
     PipelineValidationError,
     compile_skill,
     load_pipeline,
+    load_scenarios,
     run_batch,
+    run_eval,
     run_pipeline,
     to_dag_json,
 )
@@ -203,6 +208,59 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Output format (default: human).",
     )
     batch_cmd.set_defaults(func=run_composer_batch_cli)
+
+    eval_cmd = composer_sub.add_parser(
+        "eval",
+        help="Run scenario assertions + LLMJudge rubric on skills (Wave 5b).",
+    )
+    eval_cmd.add_argument(
+        "scenarios_dir",
+        type=Path,
+        help="Directory containing *.scenario.yaml files.",
+    )
+    eval_cmd.add_argument(
+        "--backend",
+        choices=["mock", "anthropic"],
+        default="mock",
+        help="Pipeline LLM backend (default: mock).",
+    )
+    eval_cmd.add_argument(
+        "--judge-backend",
+        choices=["none", "mock", "anthropic"],
+        default="mock",
+        help="LLMJudge backend (default: mock — canned scores; "
+        "use `anthropic` for real grading; `none` to skip rubric).",
+    )
+    eval_cmd.add_argument(
+        "--mock-responses",
+        type=Path,
+        help="JSON file mapping prompt-substring patterns to canned response "
+        "text. Used by the pipeline MockBackend.",
+    )
+    eval_cmd.add_argument(
+        "--judge-mock-responses",
+        type=Path,
+        help="JSON file mapping prompt-substring patterns to canned judge "
+        "responses. Used by the LLMJudge MockBackend.",
+    )
+    eval_cmd.add_argument(
+        "--model",
+        default="claude-sonnet-4-6",
+        help="Anthropic model ID for --backend=anthropic / --judge-backend=anthropic.",
+    )
+    eval_cmd.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Skip filesystem writes within each scenario's pipeline.",
+    )
+    eval_cmd.add_argument(
+        "--format",
+        dest="output_format",
+        choices=["human", "json"],
+        default="human",
+        help="Output format (default: human).",
+    )
+    eval_cmd.set_defaults(func=run_composer_eval_cli)
 
 
 def run_composer_validate(args: argparse.Namespace) -> int:
@@ -709,3 +767,162 @@ def run_composer_batch_cli(args: argparse.Namespace) -> int:
                 print(f"            ↳ {j.error}")
 
     return 1 if result.failed else 0
+
+
+# ── tessellum composer eval ────────────────────────────────────────────────
+
+
+def _load_mock_responses(path: Path | None) -> dict[str, str]:
+    if path is None:
+        return {}
+    raw = path.expanduser().resolve().read_text(encoding="utf-8")
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("mock-responses file must be a JSON object")
+    return data
+
+
+def _make_anthropic_backend_or_exit(model: str) -> LLMBackend:
+    """Helper: try to construct AnthropicBackend; exits with helpful message if missing."""
+    try:
+        from tessellum.composer import AnthropicBackend
+        return AnthropicBackend(model=model)
+    except ImportError as e:
+        print(
+            "tessellum composer eval: --backend=anthropic requires the "
+            "[agent] extras: pip install tessellum[agent]",
+            file=sys.stderr,
+        )
+        print(f"  ({e})", file=sys.stderr)
+        raise SystemExit(2) from e
+
+
+def run_composer_eval_cli(args: argparse.Namespace) -> int:
+    scenarios_dir: Path = args.scenarios_dir.expanduser().resolve()
+    if not scenarios_dir.is_dir():
+        print(
+            f"tessellum composer eval: {scenarios_dir} is not a directory",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        scenarios = load_scenarios(scenarios_dir)
+    except EvalError as e:
+        print(f"tessellum composer eval: {e}", file=sys.stderr)
+        return 2
+
+    if not scenarios:
+        print(f"tessellum composer eval: no *.scenario.yaml files in {scenarios_dir}")
+        return 0
+
+    # Pipeline backend.
+    backend: LLMBackend
+    if args.backend == "anthropic":
+        backend = _make_anthropic_backend_or_exit(args.model)
+    else:
+        try:
+            responses = _load_mock_responses(args.mock_responses)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            print(
+                f"tessellum composer eval: --mock-responses unreadable: {e}",
+                file=sys.stderr,
+            )
+            return 2
+        backend = MockBackend(responses=responses)
+
+    # Judge backend.
+    judge: LLMJudge | None
+    if args.judge_backend == "none":
+        judge = None
+    elif args.judge_backend == "anthropic":
+        judge_backend = _make_anthropic_backend_or_exit(args.model)
+        judge = LLMJudge(judge_backend)
+    else:
+        try:
+            judge_responses = _load_mock_responses(args.judge_mock_responses)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            print(
+                f"tessellum composer eval: --judge-mock-responses unreadable: {e}",
+                file=sys.stderr,
+            )
+            return 2
+        if not judge_responses:
+            # Default canned response gives every dim a score of 4 — useful
+            # as a sanity check that the rubric pipeline runs end-to-end.
+            judge_responses = {
+                "Rubric dimensions to score": json.dumps(
+                    {
+                        "relevance": {"score": 4, "justification": "ok"},
+                        "completeness": {"score": 4, "justification": "ok"},
+                        "accuracy": {"score": 4, "justification": "ok"},
+                        "clarity": {"score": 4, "justification": "ok"},
+                        "structural_integrity": {"score": 4, "justification": "ok"},
+                    }
+                )
+            }
+        judge = LLMJudge(MockBackend(responses=judge_responses))
+
+    result = run_eval(
+        scenarios,
+        backend=backend,
+        judge=judge,
+        dry_run=args.dry_run,
+    )
+
+    if args.output_format == "json":
+        payload = {
+            "passed": result.passed_count,
+            "failed": result.failed_count,
+            "errored": result.error_count,
+            "mean_score_by_dim": result.mean_score_by_dim,
+            "scenarios": [
+                {
+                    "name": s.scenario_name,
+                    "overall_passed": s.overall_passed,
+                    "error": s.error,
+                    "assertions": [
+                        {
+                            "kind": a.assertion.kind,
+                            "target": a.assertion.target,
+                            "passed": a.passed,
+                            "message": a.message,
+                        }
+                        for a in s.assertions
+                    ],
+                    "judge_scores": [
+                        {
+                            "dimension": j.dimension,
+                            "score": j.score,
+                            "justification": j.justification,
+                        }
+                        for j in s.judge_scores
+                    ],
+                }
+                for s in result.scenarios
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        print(
+            f"eval: {result.passed_count} passed, "
+            f"{result.failed_count} failed, "
+            f"{result.error_count} errored (of {len(result.scenarios)} scenarios)"
+        )
+        for s in result.scenarios:
+            tag = "PASS" if s.overall_passed else ("ERROR" if s.error else "FAIL")
+            print(f"  {tag:6s} {s.scenario_name}")
+            if s.error:
+                print(f"            ↳ {s.error}")
+            for a in s.assertions:
+                if not a.passed:
+                    print(f"            ✗ {a.assertion.kind}({a.assertion.target}): {a.message}")
+            for j in s.judge_scores:
+                print(f"            • {j.dimension}: {j.score}/5  {j.justification}")
+        if result.mean_score_by_dim:
+            print()
+            print("Mean scores:")
+            for d, mean in result.mean_score_by_dim.items():
+                print(f"  {d}: {mean:.2f}")
+
+    return 1 if (result.failed_count or result.error_count) else 0
