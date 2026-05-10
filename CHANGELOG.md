@@ -16,6 +16,111 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.15] — 2026-05-10
+
+### Added — Retrieval Wave 3: Hybrid RRF (now the default)
+
+`tessellum search <query>` flips its default from BM25 (Wave 1) to **hybrid** (BM25 + dense fused via Reciprocal Rank Fusion). Per `plans/plan_retrieval_port.md` Wave 3 — the parent project's experiments measured **+12 percentage points Hit@5 lift** over the best single strategy on real queries (FZ 5e1c3a1a1). The lift comes from BM25 and dense retrieving *different* documents; hybrid surfaces the union.
+
+```bash
+$ tessellum search "knowledge graph" --k 5
+HYBRID matches for 'knowledge graph'  (5 hits)
+
+   1. term_dialectic_knowledge_system  (0.0318)
+       resources/term_dictionary/term_dialectic_knowledge_system.md
+       [bm25=#4 dense=#2]               ← agrees both rankers
+
+   2. term_zettelkasten  (0.0318)
+       resources/term_dictionary/term_zettelkasten.md
+       [bm25=#2 dense=#4]               ← agrees both rankers
+
+   3. term_epistemic_function  (0.0308)
+       [bm25=#5 dense=#5]
+
+   4. thought_building_block_ontology_relationships  (0.0305)
+       [bm25=#11 dense=#1]              ← semantic-only outlier (BM25 missed it)
+
+   5. thought_synthesis_two_systems_cqrs_value_proposition  (0.0303)
+       [bm25=#6 dense=#6]
+```
+
+Notice how hit #4 — `thought_building_block_ontology_relationships` — was rank 11 in BM25 (would never have surfaced in BM25's top-10) but rank 1 in dense. Hybrid retrieves it because semantic relevance compensates for poor lexical overlap. This is the +12pp lift in action.
+
+#### Reciprocal Rank Fusion formula
+
+Per Cormack, Clarke, Buettcher (2009):
+
+```
+RRF_score(d) = Σ over rankers r: 1 / (k1 + rank_r(d))
+```
+
+Where ``k1`` is a smoothing constant (60 default; smaller amplifies top ranks, larger flattens) and ``rank_r(d)`` is the 1-indexed rank of document ``d`` in ranker ``r``'s top-K. Documents absent from a ranker contribute 0 from that ranker.
+
+#### `tessellum.retrieval.hybrid_search`
+
+```python
+from tessellum.retrieval import hybrid_search, HybridHit
+
+hits = hybrid_search("data/tessellum.db", "knowledge graph", k=5)
+# [HybridHit(note_id=..., note_name=..., score=0.0318,
+#            bm25_rank=4, dense_rank=2), ...]
+```
+
+`HybridHit` carries diagnostic per-ranker ranks:
+- `bm25_rank: int | None` — 1-indexed rank in BM25's top-K, or `None` if not in BM25 results.
+- `dense_rank: int | None` — 1-indexed rank in dense's top-K, or `None` if not in dense results.
+
+These let users see *why* each note was retrieved. A note ranked 2 in BM25 and 5 in dense is a "both-rankers agree" hit (high RRF). A note ranked 1 in dense but absent from BM25 is a "semantic-only" hit (lower RRF, but possibly interesting per the example above).
+
+Implementation: `hybrid_search` runs `bm25_search` and `dense_search` in sequence, then fuses in Python. A single-SQL fusion (UNION ALL of both top-K, GROUP BY note_id, SUM of reciprocal ranks) would shave a millisecond on hot DBs but loses readability. Revisit if profiling shows the dual roundtrip is material — for v0.0.15 we optimize for clarity.
+
+`per_strategy_k` parameter controls how many candidates each ranker contributes before fusion. Default `max(2*k, 20)` — wider fetch gives richer fusion at minor latency cost. Set explicitly for ablation.
+
+If the index was built with `--no-dense`, `hybrid_search` falls back to BM25-only fusion (dense ranks all `None`). Better than failing the query.
+
+#### CLI default flipped
+
+```bash
+tessellum search <query>           # Hybrid (NEW DEFAULT)
+tessellum search --hybrid <query>  # Explicit hybrid
+tessellum search --bm25 <query>    # Lexical only
+tessellum search --dense <query>   # Semantic only
+```
+
+All three strategy flags are in one `argparse` mutex group — passing two raises an invocation error.
+
+JSON output for hybrid includes `bm25_rank` and `dense_rank` fields per hit.
+
+The bare `tessellum` banner now lists hybrid as the default search behavior:
+
+```
+tessellum search <query>            — hybrid retrieval (BM25 + dense via RRF)
+```
+
+#### Tests
+
+14 new tests, all passing. **279 total** (265 prior + 14 new).
+
+- `tests/smoke/test_retrieval_hybrid.py` (12 tests):
+  - typed return; in-both-rankers ≥ in-one-ranker score; **RRF formula verified** (`score == sum(1/(k1+rank)) over rankers`); descending scores; `k` limits; `k=0` → empty; bm25_rank present when in BM25; dense_rank present when in dense; `--no-dense` build → BM25-only fallback; missing DB → FileNotFoundError; `per_strategy_k` widens fetch; **integration test against real vault verifies both rankers contribute hits**.
+- `tests/cli/test_search_cli.py` (2 new):
+  - `--hybrid` explicit flag → "HYBRID matches" output
+  - All three strategy flags mutually exclusive (`--bm25 --dense`, `--bm25 --hybrid`, `--dense --hybrid` all raise SystemExit).
+  - Hybrid JSON output includes `bm25_rank` + `dense_rank` diagnostic fields.
+
+Three pre-existing CLI tests updated to reflect the default flip (`test_search_no_match_returns_0`, `test_search_bm25_json_output_structure` (renamed from `_json_output_structure`), `test_search_no_snippet_flag_omits_snippet`) — they now pass `--bm25` explicitly since the test is BM25-specific.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.15"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.15"`.
+- 279/279 tests pass (265 prior + 14 new).
+
+### What's NOT in this release (Waves 4-5)
+
+- **Wave 4 (v0.0.16)** — Best-first BFS graph traversal. **No PPR** per FZ 5e2b1c (Hit@K↔answer-quality disconnect, ρ=0.37 — best-first BFS is Pareto-optimal in production).
+- **Wave 5 (v0.0.17)** — Skill orchestration: `skill_tessellum_search_notes` (8-strategy decision-tree router) + `skill_tessellum_answer_query` (5-stage QA pipeline).
+
 ## [0.0.14] — 2026-05-10
 
 ### Added — Retrieval Wave 2: Dense + sqlite-vec
@@ -1067,7 +1172,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.14...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.15...HEAD
+[0.0.15]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.14...v0.0.15
 [0.0.14]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.13...v0.0.14
 [0.0.13]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.12...v0.0.13
 [0.0.12]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.11...v0.0.12
