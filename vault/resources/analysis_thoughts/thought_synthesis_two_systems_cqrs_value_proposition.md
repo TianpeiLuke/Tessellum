@@ -6,7 +6,7 @@ tags:
   - synthesis
   - star_synthesis
   - architecture
-  - CQRS
+  - cqrs
   - value_proposition
   - system_design
 keywords:
