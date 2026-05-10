@@ -160,10 +160,10 @@ If any of these fail, the release is not honest.
 
 ## See Also
 
-- [Master TOC](../../vault/0_entry_points/entry_master_toc.md) — vault-side roadmap
-- [CHANGELOG.md](../../CHANGELOG.md) — per-release ship list
-- [DEVELOPING.md § YAML Frontmatter Specification](../../DEVELOPING.md) — the spec the validator implements
-- [pyproject.toml](../../pyproject.toml) — current build config
+- [Master TOC](../vault/0_entry_points/entry_master_toc.md) — vault-side roadmap
+- [CHANGELOG.md](../CHANGELOG.md) — per-release ship list
+- [DEVELOPING.md § YAML Frontmatter Specification](../DEVELOPING.md) — the spec the validator implements
+- [pyproject.toml](../pyproject.toml) — current build config
 
 ---
 

@@ -1,3 +1,11 @@
+# Tessellum runtime traces (capture / retrieval / composer pipeline runs).
+# See plans/plan_cqrs_repo_layout.md § Run-artifact convention.
+runs/**
+!runs/
+!runs/README.md
+!runs/*/
+!runs/*/.gitkeep
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

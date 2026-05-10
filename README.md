@@ -96,24 +96,30 @@ Wikilinks tell you what's *related*. Folgezettel trails tell you *how thinking d
 
 ## Project Structure
 
+The top-level layout maps each folder to a defined CQRS role — System P (capture), System D (retrieval), or governance/runtime that sits outside both. See [`plans/plan_cqrs_repo_layout.md`](plans/plan_cqrs_repo_layout.md) for the full workflow → folder mapping.
+
 ```
 Tessellum/
-├── src/tessellum/      Python code only (composer / retrieval / indexer / cli / mcp)
-├── vault/              Knowledge vault — Tessellum dogfoods itself; public docs LIVE here
-│   ├── 0_entry_points/ Master TOC + per-surface entries (skills, FZ trails, code, …)
+├── src/tessellum/      Python code — engines for both System P (capture) and System D (retrieval)
+├── vault/              Shared substrate — typed atomic notes (Tessellum dogfoods itself)
+│   ├── 0_entry_points/ Master TOC + per-surface entries
 │   ├── resources/
 │   │   ├── term_dictionary/   Conceptual primer (BB, FZ, DKS, CQRS, Z, PARA, …)
-│   │   ├── how_to/            How-to guides (getting started, note format, agent integration)
+│   │   ├── how_to/            How-to guides
 │   │   ├── analysis_thoughts/ Architecture arguments + FZ trails
-│   │   └── skills/            Skill canonical bodies (single source of truth)
-│   └── examples/        One worked example per Building Block type
-├── inbox/              User drop zone (papers, SOPs, plans, drafts)
-├── data/               Derived artifacts (DBs, indexes — gitignored, regenerable)
+│   │   ├── templates/         Copy-and-fill skeletons (executable spec exemplars)
+│   │   └── skills/            Skill canonical bodies + pipeline sidecars
+│   └── examples/       One worked example per Building Block type
+├── inbox/              System P input queue — drop zone for raw incoming (papers, drafts)
+├── plans/              Governance — project-management plans (committed, top-level)
+├── data/               System D build output (gitignored, regenerable: DBs + embeddings)
+├── runs/               Both-system runtime traces (gitignored)
+│   ├── capture/        Capture-pipeline traces
+│   ├── retrieval/      Retrieval evaluation + benchmark traces
+│   └── composer/       DKS chain run traces
 ├── experiments/        Experiment outputs
 ├── scripts/            Operational utilities
-├── tests/              Test suite
-├── .claude/skills/     Skill thin-headers (point at vault/resources/skills/)
-└── .kiro/skills/       Kiro skill thin-headers (point at vault/resources/skills/)
+└── tests/              Test suite
 ```
 
 **No separate `docs/` directory** — Tessellum's own documentation IS a typed-knowledge vault. Start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.

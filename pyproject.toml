@@ -127,6 +127,7 @@ packages = ["src/tessellum"]
 include = [
     "src/tessellum",
     "vault",
+    "plans",
     "scripts",
     "README.md",
     "LICENSE",
@@ -139,6 +140,7 @@ exclude = [
     "data",
     "experiments",
     "inbox",
+    "runs",
     "tests",
     "notebook",
     "**/.gitkeep",
