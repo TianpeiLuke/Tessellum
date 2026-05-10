@@ -16,6 +16,37 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.3] — 2026-05-10
+
+### Added — `tessellum format check` CLI subcommand
+
+The validator shipped in 0.0.2 is now reachable from the shell:
+
+```bash
+tessellum format check path/to/note.md     # single file
+tessellum format check vault/              # recurse over *.md
+tessellum format check vault/ --strict     # treat warnings as errors
+tessellum format check vault/ --quiet      # suppress summary when clean
+```
+
+Exit codes:
+
+- **0** — no errors (warnings allowed unless `--strict`)
+- **1** — at least one ERROR-severity issue (or any WARNING under `--strict`)
+- **2** — invocation error (path doesn't exist, not a `.md` file or directory)
+
+Per-file output prints the relative path (anchored at the directory if recursing, otherwise at the file's parent), then one line per issue with severity + field locator + message. A trailing summary reports total files validated, files with issues, and error/warning counts.
+
+The dispatcher in `tessellum.cli.main` now uses argparse subparsers; sibling subcommand modules (`tessellum.cli.format_check`) expose `add_subparser(subparsers)` for wiring. Bare `tessellum` still prints the version + capability banner and now lists `format check` under "Available now (CLI)".
+
+9 smoke tests under `tests/cli/test_format_check.py`: clean file → 0, dirty file → 1, directory recursion, warnings-only → 0, `--strict` promotes warnings to failure, missing path → 2, `--quiet` suppresses summary, bare command prints banner, `--version` exits cleanly.
+
+Bumped:
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.3"`; `__status__` updated
+- `pyproject.toml`: `project.version` → `"0.0.3"`
+
+Smoke-tested end-to-end in .venv: `tessellum format check vault/` validates all 71 vault notes clean (0 errors, 0 warnings).
+
 ## [0.0.2] — 2026-05-10
 
 ### Added — Format Library (parser + validator + closed-enum spec)
@@ -50,6 +81,7 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/TianpeiLuke/Tessellum/releases/tag/v0.0.1
