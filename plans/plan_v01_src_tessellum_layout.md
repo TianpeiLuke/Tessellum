@@ -18,7 +18,7 @@ topics:
   - v0.1 Release
 language: markdown
 date of note: 2026-05-10
-status: active
+status: completed
 building_block: procedure
 ---
 
@@ -171,4 +171,25 @@ If any of these fail, the release is not honest.
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — v0.0.1 fix landed; v0.0.2 (format library) is next.
+**Status**: **Complete** — every order-of-operations step has shipped.
+
+| Step | Description | Version(s) | Status |
+| ---- | ----------- | ---------- | ------ |
+| 1 | CLI entry-point fix (`tessellum --version`, `__about__.py`) | v0.0.1 | done |
+| 2 | `format/` library (frontmatter_spec, validator, parser, link_checker) | v0.0.2 – v0.0.4 | done |
+| 3 | Hatch `force-include` for templates (and seed_vault) | v0.0.7 / v0.0.10 | done |
+| 4a | `tessellum format check` | v0.0.3 | done |
+| 4b | `tessellum capture <flavor> <slug>` (with paired skill+sidecar) | v0.0.8 / v0.0.10 | done |
+| 4c | `tessellum init <dir>` — scaffold a new vault | shipped | done (`src/tessellum/init.py` + `cli/init.py`) |
+| 5 | `indexer/` substrate (notes + note_links + FTS5 + vec) | v0.0.12 → v0.0.14 | done |
+| 6 | `retrieval/` (5-wave port) | v0.0.13 – v0.0.18 | done — see [`plan_retrieval_port.md`](plan_retrieval_port.md) |
+| 7 | `composer/` (6-wave port); MCP optional | v0.0.9 – v0.0.23 | done — see [`plan_composer_port.md`](plan_composer_port.md). MCP deferred per the lean. |
+
+**Resolved open questions:**
+
+- *Click vs argparse for CLI*: argparse stuck — every subcommand uses it consistently. Click is in dependencies but unused; can drop in a v0.1+ cleanup pass.
+- *Where does `tessellum.toml` config live*: not yet shipped. The init scaffold currently produces a vault without a per-vault config file — paths are derived from CWD. Add when a real config knob requires it (no urgency).
+- *Top-level format exports*: yes — `from tessellum import BuildingBlock, validate, parse_note, Note, Issue` all work.
+- *`force-include` sufficient for templates?* Yes. Verified by `python -m build && unzip -l dist/*.whl | grep templates`.
+
+**v0.1 minimum reached.** The original "credible v0.1 minimum" was steps 1-4 + Composer Wave 1; we shipped all seven steps end-to-end.

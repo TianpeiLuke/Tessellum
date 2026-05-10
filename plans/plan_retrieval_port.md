@@ -20,7 +20,7 @@ topics:
   - Search
 language: markdown
 date of note: 2026-05-10
-status: active
+status: completed
 building_block: procedure
 ---
 
@@ -191,4 +191,31 @@ Subsequent waves follow the same pattern with their respective scopes.
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Wave 1 awaiting approval, then ships across 1-2 commits as v0.0.13.
+**Status**: **Complete** — all five waves shipped, plus a metadata-filter surface added per user request mid-port.
+
+| Wave | Version | Module | What landed |
+| ---- | ------- | ------ | ----------- |
+| 1    | v0.0.13 | `retrieval/bm25.py` + `notes_fts` schema | BM25 over FTS5 |
+| 2    | v0.0.14 | `retrieval/dense.py` + `notes_vec` schema (`distance_metric=cosine`) | sentence-transformers/MiniLM-L6-v2, 384-D |
+| 3    | v0.0.15 | `retrieval/hybrid.py` | RRF over BM25 + dense in one SQL — the +12pp winner |
+| 4    | v0.0.16 | `retrieval/graph.py` | Best-first BFS over `note_links` (no PPR per FZ 5e2b1c) |
+| 5    | v0.0.17 + v0.0.18 | `retrieval/router.py`, `skill_tessellum_search_notes.md`, `tessellum filter` CLI (metadata.py) | Skill orchestration; `tessellum filter` for direct YAML-meta search |
+
+**Resolved open questions:**
+
+- *FTS5 + sqlite-vec by default?* Yes — `tessellum index build` populates both; `--no-fts` / `--no-dense` opt-outs deferred (no user has asked).
+- *Embedding model pinned?* Pinned to `all-MiniLM-L6-v2` in v0.0.14. `--model` flag deferred.
+- *`tessellum search --json`?* Shipped from Wave 1.
+- *Run traces*: `runs/retrieval/<timestamp>_*.json` convention established but not yet wired (no skill currently writes traces — `runs/composer/` is the active path).
+
+**Things added beyond the plan:**
+
+- `tessellum filter --tag/--bb/--status/...` (v0.0.17) — direct metadata filtering surfaced after the user pointed out "do not forget the simplest search based on the SQLite meta fields extracted from YAML header." Lives in `retrieval/metadata.py`. Not in the original plan; load-bearing for users who already know what they're looking for.
+
+**What's deliberately NOT in the port** (encoded in the plan and held to):
+
+- PPR — skipped. Saved ~257 LOC. Best-first BFS is Pareto-optimal.
+- Legacy artifact format support (.pkl/.npy/.json side files).
+- Amazon-specific term boosts in working-memory blending.
+
+Test count at port closure: covered by the same 464-passed / 1-skipped suite as the Composer port.

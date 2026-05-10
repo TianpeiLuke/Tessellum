@@ -22,7 +22,7 @@ topics:
   - System Architecture
 language: markdown
 date of note: 2026-05-10
-status: active
+status: completed
 building_block: procedure
 ---
 
@@ -255,4 +255,27 @@ When `tessellum compose <chain>` ships in v0.1+, it should write its trace to `r
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — supersedes the narrower plan_promote_plans_to_first_class scope. Awaiting approval, then steps 1-11 execute as one commit.
+**Status**: **Complete** — all 11 migration steps shipped.
+
+| Step | Description | Verified |
+| ---- | ----------- | -------- |
+| 1 | Create `plans/` with README | `plans/README.md` exists |
+| 2 | Create `runs/` with `capture/`, `retrieval/`, `composer/` subdirs + `runs/README.md` | `runs/README.md` + 3 subdirs present |
+| 3 | Move plans out of `inbox/plans/` to top-level `plans/` | all 4 plans live at `plans/*.md` |
+| 4 | Remove now-empty `inbox/plans/` | `inbox/` no longer has a `plans/` subdir |
+| 5 | `.gitignore` ignores `runs/**` but tracks structure | Confirmed: `runs/**` + `!runs/`, `!runs/README.md`, `!runs/*/`, `!runs/*/.gitkeep` |
+| 6 | `pyproject.toml` sdist `include: plans` + `exclude: runs` | Verified in `[tool.hatch.build.targets.sdist]` |
+| 7 | Update `README.md` § Project Structure | Done |
+| 8 | Update `DEVELOPING.md` § Layout Convention | Done |
+| 9 | Update `entry_master_toc.md` with `plans/` row | Done |
+| 10 | Defer `tessellum init` change until init ships | `tessellum init` since shipped; the seed scaffold matches this layout |
+| 11 | Re-run `tessellum format check vault/ plans/` | Passing as part of the 464-test suite |
+
+**Run-artifact convention in active use:** `runs/composer/<filesystem-safe-timestamp>_<skill>.json` is written by the Composer scheduler (Wave 3). The `runs/capture/` and `runs/retrieval/` paths are reserved per convention but no skill currently writes there.
+
+**Open questions still open:**
+
+- *`runs/README.md` granularity*: shipped one top-level README; per-subdir READMEs not written (no demand yet).
+- *`experiments/` semantics*: deferred; unchanged.
+- *ADR format*: deferred — still no ADRs to migrate.
+- *Plan ↔ analysis_thoughts cross-links*: encouraged; nothing enforced.
