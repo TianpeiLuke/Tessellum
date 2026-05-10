@@ -31,6 +31,13 @@ you load and validate sidecars in Python:
 - Wave 5+ — Scale (batch runner, eval framework).
 """
 
+from tessellum.composer.compiler import (
+    CompiledPipeline,
+    CompiledStep,
+    CompilerError,
+    compile_skill,
+    to_dag_json,
+)
 from tessellum.composer.contracts import (
     BACKEND_CONTRACTS,
     BodyMarkdownFrontmatterToFileContract,
@@ -80,4 +87,10 @@ __all__ = [
     "load_skill_section",
     "load_pipeline_metadata",
     "SkillExtractionError",
+    # Compiler (Wave 2)
+    "compile_skill",
+    "CompiledPipeline",
+    "CompiledStep",
+    "CompilerError",
+    "to_dag_json",
 ]

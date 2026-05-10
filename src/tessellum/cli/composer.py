@@ -1,17 +1,13 @@
-"""``tessellum composer validate <skill>`` — validate a skill's pipeline sidecar.
+"""``tessellum composer …`` — Composer pipeline operations.
 
-Mirrors the ``tessellum format check`` pattern: accepts a single file or a
-directory (recurses over ``skill_*.md``), supports ``--format json`` for CI.
-Each skill is validated via :func:`tessellum.composer.load_pipeline`, which
-runs three-stage validation:
+Two subcommands in v0.0.19:
 
-    1. JSON Schema (structural)
-    2. Pydantic V2 model construction (typed access + immutability)
-    3. Cross-file consistency (every sidebar section_id has a canonical anchor)
+    validate <skill>     Schema + cross-file consistency (Wave 1a / 1b).
+    compile <skill>      Compile to a typed DAG with contract checks (Wave 2).
 
 Exit codes:
-    0  every skill validates clean (or declares ``pipeline_metadata: none``)
-    1  at least one skill fails validation
+    0  every skill validates / compiles clean
+    1  at least one skill fails (validation or compilation)
     2  invocation error (path doesn't exist, etc.)
 """
 
@@ -22,13 +18,20 @@ import json
 import sys
 from pathlib import Path
 
-from tessellum.composer import PipelineValidationError, load_pipeline
+from tessellum.composer import (
+    CompilerError,
+    ContractViolation,
+    PipelineValidationError,
+    compile_skill,
+    load_pipeline,
+    to_dag_json,
+)
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     composer = subparsers.add_parser(
         "composer",
-        help="Composer pipeline operations (validate, ...).",
+        help="Composer pipeline operations (validate, compile, ...).",
     )
     composer_sub = composer.add_subparsers(dest="composer_command", required=True)
 
@@ -49,6 +52,35 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Output format (default: human).",
     )
     validate.set_defaults(func=run_composer_validate)
+
+    compile_cmd = composer_sub.add_parser(
+        "compile",
+        help="Compile a skill canonical to a typed DAG (zero LLM calls).",
+    )
+    compile_cmd.add_argument(
+        "skill",
+        type=Path,
+        help="Skill canonical (markdown file).",
+    )
+    compile_cmd.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        help="Write the compiled DAG to this path as JSON. Default: stdout.",
+    )
+    compile_cmd.add_argument(
+        "--format",
+        dest="output_format",
+        choices=["human", "json"],
+        default="human",
+        help="Output format (default: human; use json for machine consumption).",
+    )
+    compile_cmd.add_argument(
+        "--no-prompts",
+        action="store_true",
+        help="Omit prompt_section_text from JSON output (smaller files).",
+    )
+    compile_cmd.set_defaults(func=run_composer_compile)
 
 
 def run_composer_validate(args: argparse.Namespace) -> int:
@@ -168,3 +200,78 @@ def _emit_json(skills: list[Path], base: Path) -> int:
     }
     print(json.dumps(payload, indent=2))
     return 1 if failed else 0
+
+
+# ── tessellum composer compile ─────────────────────────────────────────────
+
+
+def run_composer_compile(args: argparse.Namespace) -> int:
+    target: Path = args.skill.expanduser().resolve()
+
+    if not target.exists():
+        print(
+            f"tessellum composer compile: {target} does not exist",
+            file=sys.stderr,
+        )
+        return 2
+
+    if not (target.is_file() and target.suffix == ".md"):
+        print(
+            f"tessellum composer compile: {target} is not a markdown file",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        compiled = compile_skill(target)
+    except PipelineValidationError as e:
+        print(f"tessellum composer compile: {target.name} validation FAILED")
+        print(f"  {e}", file=sys.stderr)
+        return 1
+    except ContractViolation as e:
+        print(f"tessellum composer compile: {target.name} contract violation")
+        print(f"  {e}", file=sys.stderr)
+        return 1
+    except CompilerError as e:
+        print(f"tessellum composer compile: {target.name} compiler error")
+        print(f"  {e}", file=sys.stderr)
+        return 1
+
+    if args.output_format == "json" or args.output is not None:
+        payload = to_dag_json(compiled, include_prompts=not args.no_prompts)
+        text = json.dumps(payload, indent=2)
+        if args.output is not None:
+            args.output.expanduser().resolve().write_text(text + "\n", encoding="utf-8")
+            print(
+                f"compiled {compiled.skill_name} → {args.output} "
+                f"({compiled.step_count} step(s))"
+            )
+        else:
+            print(text)
+        return 0
+
+    # Human-readable summary.
+    print(f"compiled {compiled.skill_name}")
+    print(f"  pipeline_version: {compiled.pipeline_version}")
+    print(f"  steps: {compiled.step_count}")
+    if compiled.step_count == 0:
+        print("  (skill declares pipeline_metadata: none — no DAG)")
+        return 0
+    print()
+    for i, step in enumerate(compiled.steps, 1):
+        flags = []
+        if step.batchable:
+            flags.append("batchable")
+        flag_str = f"  [{', '.join(flags)}]" if flags else ""
+        deps = (
+            f"  ← {', '.join(step.depends_on)}"
+            if step.depends_on
+            else ""
+        )
+        materializer = step.materializer_key or "(no materializer)"
+        print(
+            f"  {i}. {step.section_id}  "
+            f"[{step.role}/{step.aggregation}]"
+            f"  ⇒ {materializer}{flag_str}{deps}"
+        )
+    return 0

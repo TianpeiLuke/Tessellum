@@ -65,9 +65,11 @@ def _print_banner() -> None:
     print("  tessellum filter --tag <t> [--bb …] — metadata filter (tags, BB, status, dates, ...)")
     print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
     print()
+    print("  tessellum composer compile <skill>  — compile to a typed DAG (Wave 2)")
+    print()
     print("Roadmap:")
-    print("  tessellum search skill orchestration  — Retrieval Wave 5")
-    print("  tessellum composer compile/run        — Composer Waves 2-3")
+    print("  tessellum composer run <skill>       — Composer Wave 3 (executor)")
+    print("  tessellum composer + LLM bridge      — Composer Wave 4")
     print()
     print("See https://github.com/TianpeiLuke/Tessellum for the v0.1 plan.")
 
