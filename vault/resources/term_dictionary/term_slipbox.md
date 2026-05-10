@@ -50,10 +50,8 @@ Also known as:
 3. **Connectionism** - Explicit links reveal relationships
 4. **Workflow-Driven** - Notes serve thinking, not storage
 
-## Application at Amazon
-
-### Abuse Slip Box
-The **Abuse Slip Box** project applies Slipbox/Zettelkasten principles to the domain:
+### Abuse slipbox
+The **Abuse slipbox** project applies Slipbox/Zettelkasten principles to the domain:
 
 - Growing knowledge graph of atomic notes and explicit edges
 - Context engine for agentic workflows
@@ -88,7 +86,7 @@ The **Abuse Slip Box** project applies Slipbox/Zettelkasten principles to the do
 ## References
 
 ### Internal Wiki
-- **[Abuse Slip Box](<internal-link-removed>)** - Multi-Modal Abuse Identification via Automatic Smart Note-Taking
+- **[Abuse slipbox](<internal-link-removed>)** - Multi-Modal Abuse Identification via Automatic Smart Note-Taking
 - **[Abuse Slipbox Context Engine](<internal-link-removed>)** - Unified Context Engine for Agentic Workflow
 
 ### External Resources
@@ -104,7 +102,6 @@ The **Abuse Slip Box** project applies Slipbox/Zettelkasten principles to the do
 - Detailed core principles
 - Three types of notes (Literature, Permanent, Index)
 - Zettelkasten workflow (Capture → Process → Retrieve → Accumulate)
-- Implementation at Amazon (internal examples, tools)
 - Benefits for individuals, teams, and AI/LLM
 
 ### Related Code Repos
