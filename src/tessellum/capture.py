@@ -160,9 +160,22 @@ REGISTRY: dict[str, TemplateSpec] = {
 
 @dataclass(frozen=True)
 class CaptureResult:
+    """Outcome of a successful capture call.
+
+    Attributes:
+        path: The captured note's path (always set).
+        flavor: The template flavor that was captured.
+        slug: The slug used for the new note.
+        sidecar_path: For ``flavor="skill"``, the paired
+            ``skill_<slug>.pipeline.yaml`` Composer sidecar. ``None`` for all
+            other flavors and for skills where the sidecar template is
+            missing (defensive fallback).
+    """
+
     path: Path
     flavor: str
     slug: str
+    sidecar_path: Path | None = None
 
 
 _SLUG_RE = re.compile(r"^[a-z0-9_]+$")
@@ -253,10 +266,39 @@ def capture(
     text = _strip_how_to_use(text)
     text = _set_date(text, today)
     text = _set_status(text, "draft")
-    text = _TRIPLE_NEWLINE_RE.sub("\n\n", text)
 
+    sidecar_path: Path | None = None
+    if flavor == "skill":
+        # Operationalize the skill canonical ↔ pipeline.yaml pairing: emit a
+        # paired ``skill_<slug>.pipeline.yaml`` next to the canonical, and
+        # rewrite the canonical's ``pipeline_metadata: none`` placeholder to
+        # point at the new sidecar. Authors who don't need Composer dispatch
+        # can delete the sidecar and revert pipeline_metadata to ``none``.
+        sidecar_template = templates_dir() / "template_skill.pipeline.yaml"
+        if sidecar_template.is_file():
+            sidecar_filename = f"{spec.filename_prefix}{slug}.pipeline.yaml"
+            sidecar_path = dest_dir / sidecar_filename
+            if sidecar_path.exists() and not force:
+                raise FileExistsError(
+                    f"target sidecar already exists: {sidecar_path}. "
+                    f"Pass force=True to overwrite."
+                )
+            sidecar_text = sidecar_template.read_text(encoding="utf-8")
+            sidecar_path.write_text(sidecar_text, encoding="utf-8")
+
+            text = text.replace(
+                "pipeline_metadata: none",
+                f"pipeline_metadata: ./{sidecar_filename}",
+                1,
+            )
+        # If the sidecar template is missing, fall through silently — the
+        # canonical still ships, just without paired-sidecar emission.
+
+    text = _TRIPLE_NEWLINE_RE.sub("\n\n", text)
     dest.write_text(text, encoding="utf-8")
-    return CaptureResult(path=dest, flavor=flavor, slug=slug)
+    return CaptureResult(
+        path=dest, flavor=flavor, slug=slug, sidecar_path=sidecar_path
+    )
 
 
 def _strip_how_to_use(text: str) -> str:

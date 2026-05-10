@@ -16,6 +16,95 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.10] — 2026-05-10
+
+### Added — Composer Wave 1b (user-facing surface)
+
+Completes Composer Wave 1 per `plans/plan_composer_port.md`. The skill canonical ↔ pipeline.yaml pairing is now operationalized end-to-end at the CLI level — the user's load-bearing hint about "convert skill canonical note into sidebar yaml" is delivered.
+
+#### `tessellum composer validate <skill>` CLI subcommand
+
+```bash
+tessellum composer validate vault/resources/skills/skill_foo.md
+# → OK skill_foo.md (3 steps)        if pipeline_metadata points at a valid sidecar
+# → OK skill_foo.md (pipeline_metadata: none)  if the skill has no Composer dispatch
+# → FAIL skill_foo.md                 if any of the 3 validation stages fails
+
+tessellum composer validate vault/resources/skills/
+# Recurses over skill_*.md and reports per-file pass/fail
+```
+
+Mirrors the `tessellum format check` pattern: single file or directory, `--format json` for CI integration. Exit codes:
+
+- **0** — every skill validates clean (or declares `pipeline_metadata: none`)
+- **1** — at least one skill fails validation
+- **2** — invocation error (path doesn't exist, etc.)
+
+#### Paired sidecar emission via `tessellum capture skill <slug>`
+
+`tessellum.capture.capture()` now does extra work for `flavor="skill"`: it emits BOTH `skill_<slug>.md` AND `skill_<slug>.pipeline.yaml` from the paired templates, and rewrites the canonical's `pipeline_metadata: none` to point at the new sidecar.
+
+```bash
+tessellum capture skill my_skill --vault vault
+# → vault/resources/skills/skill_my_skill.md
+# → vault/resources/skills/skill_my_skill.pipeline.yaml
+
+tessellum composer validate vault/resources/skills/skill_my_skill.md
+# → OK skill_my_skill.md (1 step)
+```
+
+The user's hint operationalized: capture-time conversion, not a one-off migration script. Authors who don't want Composer dispatch can delete the sidecar and revert `pipeline_metadata: ./...` to `none`.
+
+`CaptureResult` gained a `sidecar_path: Path | None` attribute. `None` for non-skill flavors (and as a defensive fallback if the sidecar template is missing — but it ships with the package, so this case shouldn't fire in practice).
+
+#### Starter sidecar template
+
+New `vault/resources/templates/template_skill.pipeline.yaml` — schema-compliant skeleton with one CORE step (`step_1_first_action`) matching the canonical's first anchor. Includes detailed comments for every key (`role`, `aggregation`, `batchable`, `materializer`, `output_key`, `expected_output_schema`, `prompt_template`).
+
+Ships in the wheel automatically — the existing `[tool.hatch.build.targets.wheel.force-include]` rule for `vault/resources/templates/` grafts ALL files in the directory.
+
+#### CLI banner updated
+
+The bare `tessellum` command now lists three subcommands under "Available now (CLI)":
+
+- `tessellum format check <path>`
+- `tessellum capture <flavor> <slug>`
+- `tessellum composer validate <skill>`
+
+#### Tests
+
+16 new tests, all passing. 173 total (157 prior + 16 new).
+
+- `tests/cli/test_composer_cli.py` (10 tests) — clean skill, `pipeline_metadata: none`, orphan section_id, missing sidecar, directory recursion, missing path, JSON output (clean + dirty), real-skill canonical (the shipped `skill_tessellum_format_check.md`), banner mentions composer.
+- `tests/smoke/test_capture.py` (6 new tests on top of the existing 40) — paired sidecar emission for skill flavor, canonical's `pipeline_metadata` pointer, sidecar validates clean via `load_pipeline`, non-skill flavors have `sidecar_path=None`, `--force` overwrites both files, refuses overwrite when sidecar exists.
+
+#### End-to-end smoke against a fresh vault
+
+```bash
+$ rm -rf /tmp/tessellum-paired-test-vault
+$ mkdir -p /tmp/tessellum-paired-test-vault/resources/skills
+$ tessellum capture skill foo --vault /tmp/tessellum-paired-test-vault
+created: …/skill_foo.md
+$ ls /tmp/tessellum-paired-test-vault/resources/skills/
+skill_foo.md  skill_foo.pipeline.yaml
+$ tessellum composer validate /tmp/…/skill_foo.md
+OK   skill_foo.md (1 step)
+
+validated 1 skill(s); 1 passed, 0 failed
+```
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.10"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.10"`.
+
+### What's NOT in this release (deferred to Wave 2+)
+
+- **Compiler** (Wave 2) — DAG build, contract validation, zero LLM calls. `tessellum composer compile <plan_doc>`.
+- **Executor + materializers** (Wave 3) — runtime placeholder resolution, agent dispatch, filesystem effect routing. `tessellum composer run <plan_doc>`.
+- **LLM bridge** (Wave 4) — Anthropic SDK + optional MCP dispatcher. Behind `[agent]` / `[mcp]` extras.
+- **Scale + eval** (Wave 5+) — batch runner, LLMJudge eval framework. Defer to v0.2+.
+
 ## [0.0.9] — 2026-05-10
 
 ### Added — Composer Wave 1 Foundation (library only)
@@ -493,7 +582,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.9...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.10...HEAD
+[0.0.10]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.6...v0.0.7

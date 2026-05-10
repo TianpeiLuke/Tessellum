@@ -1,0 +1,74 @@
+# Pipeline sidecar — the typed contract paired with `template_skill.md`.
+#
+# Composer reads BOTH this YAML and the canonical markdown to compile a typed
+# DAG of LLM calls. The canonical is the human-readable procedure (what each
+# step does, in prose); this sidecar is the machine-checkable contract
+# (schema, dependencies, materializer, batching policy).
+#
+# Every step's `section_id` MUST match a `<!-- :: section_id = X :: -->`
+# anchor on an H2 heading in the canonical. The loader enforces this — orphan
+# section_ids in the sidecar (no matching anchor) raise a validation error.
+#
+# This starter declares ONE worked CORE step (step_1_first_action) so the
+# file is schema-compliant out of the box. Replace placeholder values, add
+# steps 2 / 3 / etc. as the skill requires, and remove this comment block
+# when the sidecar is finalized.
+#
+# See `plans/plan_composer_port.md` and the JSON schema at
+# `src/tessellum/composer/schemas/pipeline.schema.json` for the full spec.
+
+version: "1.0"
+
+pipeline:
+  - section_id: step_1_first_action
+
+    # role:
+    #   CORE     — compiled into the DAG; LLM-dispatched at runtime.
+    #   DEFERRED — visible to the compiler but not auto-dispatched
+    #              (used for steps gated by an upstream condition).
+    #   INFRA    — dropped, no LLM call (informational/glue prose only).
+    role: CORE
+
+    # aggregation:
+    #   per_leaf     — one LLM call per leaf (the typical case)
+    #   cross_leaf   — one LLM call across all leaves of a scope
+    #   corpus_wide  — one LLM call for the entire corpus
+    aggregation: per_leaf
+
+    # If true, the scheduler may collect N per_leaf instances of this step
+    # into a single batched LLM call (column-oriented dispatch). Set to false
+    # if the step depends on per-leaf state that doesn't survive batching.
+    batchable: false
+
+    # section_ids of steps this step depends on. Forward references are
+    # disallowed — the compiler enforces topological order.
+    depends_on: []
+
+    # See `tessellum.composer.contracts.MATERIALIZER_CONTRACTS` for valid keys.
+    # The contract dictates wire_format, operation_verb, and required output
+    # fields; the compiler refuses to build the DAG if the prompt_template
+    # doesn't match.
+    materializer: body_markdown_frontmatter_to_file
+
+    # Identifier downstream `{{upstream.<key>}}` placeholders resolve against.
+    output_key: result
+
+    # JSON Schema the agent's response MUST conform to. Required for
+    # CORE/DEFERRED steps. The compiler pre-validates declarations; the
+    # executor (Wave 3) validates each LLM response against this.
+    expected_output_schema:
+      type: object
+      required: [output_path]
+      properties:
+        output_path:
+          type: string
+          description: Vault-relative path the agent writes to.
+
+    # Jinja-style template the compiler renders into the agent's user message.
+    #   {{leaf.X}}      — compile-time values (per-leaf inputs)
+    #   {{upstream.Y}}  — runtime values (outputs from prior steps via output_key)
+    #   {{existing.Z}}  — APPLY-mode ground truth (file contents)
+    prompt_template: |
+      <Replace this with the prompt for step 1. Reference {{leaf.<field>}}
+      for compile-time values and {{upstream.<other_step_output_key>}} for
+      outputs from prior steps.>

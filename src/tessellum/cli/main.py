@@ -12,6 +12,7 @@ import sys
 
 from tessellum.__about__ import __status__, __version__
 from tessellum.cli.capture import add_subparser as add_capture_subparser
+from tessellum.cli.composer import add_subparser as add_composer_subparser
 from tessellum.cli.format_check import add_subparser as add_format_subparser
 
 
@@ -28,6 +29,7 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
     add_format_subparser(subparsers)
     add_capture_subparser(subparsers)
+    add_composer_subparser(subparsers)
     return parser
 
 
@@ -39,11 +41,13 @@ def _print_banner() -> None:
     print("  from tessellum import BuildingBlock, BB_SPECS, EPISTEMIC_EDGES")
     print("  from tessellum import validate, is_valid, parse_note, Note, Issue")
     print("  from tessellum.capture import capture, REGISTRY")
+    print("  from tessellum.composer import load_pipeline, Pipeline, ContractViolation")
     print("  from tessellum.data import templates_dir")
     print()
     print("Available now (CLI):")
-    print("  tessellum format check <path>      — validate notes against the YAML spec")
-    print("  tessellum capture <flavor> <slug>  — create a new note from a template")
+    print("  tessellum format check <path>       — validate notes against the YAML spec")
+    print("  tessellum capture <flavor> <slug>   — create a new note from a template")
+    print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
     print()
     print("Roadmap:")
     print("  tessellum init           — scaffold a new vault")
