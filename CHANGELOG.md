@@ -16,6 +16,82 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.26] — 2026-05-10
+
+### Added — Two ported capture skills (closes `plan_code_artifacts_port`)
+
+Phase 3 (final) of the code-artifact port. Two production-grade capture skill canonicals + Composer pipeline sidecars ported from AbuseSlipBox and adapted to Tessellum's runtime.
+
+```
+vault/resources/skills/
+├── skill_tessellum_capture_code_repo_note.md          # 9-step procedure
+├── skill_tessellum_capture_code_repo_note.pipeline.yaml
+├── skill_tessellum_capture_code_snippet.md            # 7-step procedure
+└── skill_tessellum_capture_code_snippet.pipeline.yaml
+```
+
+#### `skill_tessellum_capture_code_repo_note` (9 steps)
+
+Compiles to a 9-step DAG that orchestrates the production of a code-repo note set (one main note + N module sub-notes) from a public repo URL:
+
+1. **step_1_check_for_existing_notes** (per_leaf, `no_op`) — duplicate check against the index
+2. **step_2_read_repository_structure** (per_leaf, no materializer) — fetch tree + README + recent commits
+3. **step_3_identify_modules_for_sub_notes** (per_leaf, batchable `no_op`) — choose which modules deserve sub-notes
+4. **step_4_search_vault_for_context** (per_leaf, batchable `no_op`) — find related terms / FAQs / how-tos / teams to cross-reference
+5. **step_5_write_main_note** (per_leaf, `body_markdown_frontmatter_to_file`) — produce the parent note
+6. **step_6_write_sub_notes_with_full_references** (per_leaf, `edits_apply_xml_tags`) — produce N module sub-notes in one shot
+7. **step_7_update_entry_point** (cross_leaf, `edits_apply_xml_tags`) — add the new repo to `entry_code_repos.md`
+8. **step_8_add_inlinks_from_related_notes** (cross_leaf, `edits_apply_xml_tags`) — backlink from 10-20 related notes
+9. **step_9_update_database** (INFRA) — `tessellum index build`
+
+#### `skill_tessellum_capture_code_snippet` (7 steps)
+
+Compiles to a 7-step DAG that orchestrates the production of a single code-snippet note with BB-typed format branching (concept → MathJax, procedure → Mermaid, model → architecture diagram):
+
+1. **step_1_read_source_code** (per_leaf, no materializer) — fetch source + extract key symbols
+2. **step_2_determine_building_block_type** (per_leaf, batchable `no_op`) — pick concept / procedure / model from the source
+3. **step_3_check_for_duplicates** (per_leaf, batchable `no_op`) — index lookup
+4. **step_4_search_vault_for_cross_references** (per_leaf, batchable `no_op`) — find related terms / repos / teams / projects
+5. **step_5_write_snippet_note** (per_leaf, `body_markdown_frontmatter_to_file`) — produce the snippet using the `## Patterns` template (Index + dual-block per pattern)
+6. **step_6_update_entry_point** (cross_leaf, `edits_apply_xml_tags`) — add to `entry_code_snippets.md`
+7. **step_7_verify** (INFRA) — structural validation pass
+
+#### Adaptations from AbuseSlipBox
+
+Both skills were ported via systematic find-replace + manual editing:
+
+- **Rename**: `slipbox-*` → `tessellum-*` across header, slugs, sidecar filename, and `pipeline_metadata:` references.
+- **Source repo URLs**: `code.amazon.com/packages/.../trees/mainline` → `https://github.com/<owner>/<repo>` placeholder. `code.amazon.com/packages/.../blobs/mainline/--/<path>` → `https://github.com/<owner>/<repo>/blob/main/<path>`.
+- **Internal URL scrubs**: `*.amazon.com` patterns replaced with placeholders or removed.
+- **Script invocations**: `bash scripts/update_notes_database.sh` → `tessellum index build`; `python3 $SCRIPTS_DIR/bm25_search.py` → `tessellum search --bm25`.
+- **Setup block**: replaced the AB-specific `SCRIPTS_DIR=./scripts; DB_PATH=...; VAULT_PATH=...` bootstrap with `VAULT_PATH="."   # run from your vault root`.
+- **Ecosystem shims**: dropped `related_skill_headers:` YAML key (no `.claude/skills/` or `.kiro/skills/` thin headers in Tessellum). Replaced the "thin headers point here" paragraph with a direct-invocation note.
+- **MCP dependencies**: stripped `mcp_dependencies:` blocks from sidecars. Tessellum's Composer Wave 4 ships an `AnthropicBackend` but no MCP dispatcher (deferred per `plan_composer_port.md`). The `builder-mcp` references that fetched from `code.amazon.com` are gone; the agent now does the fetching directly.
+- **Schema rewrite**: AB used a non-standard `expected_output_schema` with `format: markdown_with_frontmatter`, `required_frontmatter_keys: [output_path]`. Tessellum's compiler expects JSON Schema with `required: [output_path]` — converted via regex. Same for `format: xml_tag_list` → `required: [edits]`.
+- **Forbidden field**: dropped `note_second_category:` from frontmatter (Tessellum's validator says `tags[1]` is the canonical source of truth for the second category).
+- **FZ trail references** (e.g., `(FZ 12a)`) — stripped from headers.
+- **Reference-example paths**: AB-specific example notes (`repo_amazon_cursus.md`, `snippet_slipbox_resolve_ghost_term_matches.md`) → generic `<example>` placeholders.
+
+#### Validation
+
+- `tessellum composer validate`: both skills pass (`OK skill_tessellum_capture_code_repo_note.md (9 steps)`, `OK skill_tessellum_capture_code_snippet.md (7 steps)`).
+- `tessellum composer compile`: both produce well-formed typed DAGs with all materializer contracts resolved and all dependencies topologically valid.
+- `tessellum format check`: code_repo skill passes with 0 errors / 0 warnings; code_snippet skill passes with 0 errors / 1 warning (link to a `<example>` placeholder path in the body — expected).
+
+Full suite: **468 passed, 1 skipped** (the optional Anthropic-SDK constructor test).
+
+#### Closes the plan
+
+`plans/plan_code_artifacts_port.md` is now complete across all three phases:
+
+| Phase | Version | What landed |
+| ----- | ------- | ----------- |
+| 1     | v0.0.24 | `template_code_snippet.md` + `template_code_repo.md` + capture-flavor wiring (14 flavors total) |
+| 2     | v0.0.25 | 5 universal acronym glossaries (397 acronyms) + master index |
+| 3     | v0.0.26 | 2 capture skill canonicals + Composer sidecars |
+
+All Amazon-internal references scrubbed across the three phases; the public vault reads clean.
+
 ## [0.0.25] — 2026-05-10
 
 ### Added — 5 universal acronym glossaries to the seed vault

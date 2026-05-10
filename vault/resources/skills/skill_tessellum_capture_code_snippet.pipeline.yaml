@@ -1,0 +1,228 @@
+# tessellum-capture-code-snippet is single-leaf body write but with BB-format branches:
+# concept → MathJax, procedure → Mermaid pipeline, model → architecture
+# diagram. The branching happens inside the prompt_template (agent picks
+# the right format per step_2's verdict); the materializer doesn't need
+# to know the BB type.
+
+pipeline:
+  - section_id: step_1_read_source_code
+    role: CORE
+    aggregation: per_leaf
+    batchable: false      # file-system reads
+    depends_on: []
+    output_key: source_code_content
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [source_path, source_text, line_count, key_symbols]
+      properties:
+        source_path: {type: string}
+        source_text: {type: string}
+        line_count: {type: integer}
+        key_symbols:
+          type: array
+          items:
+            type: object
+            required: [name, kind, line_range]
+            properties:
+              name: {type: string}
+              kind: {enum: [function, class, method, constant, variable]}
+              line_range: {type: string}
+    prompt_template: |
+      You are reading the source code for snippet {{leaf.title}}.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+      - source_path: {{leaf.enricher_inputs.source_path}}
+
+      Apply the procedure in section "step_1_read_source_code" of
+      skill_tessellum_capture_code_snippet. Return ONLY the JSON object
+      specified by expected_output_schema; no prose.
+
+  - section_id: step_2_determine_building_block_type
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_1_read_source_code]
+    output_key: bb_verdict
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [building_block, format_branch, rationale]
+      properties:
+        building_block:
+          enum: [concept, procedure, model, empirical_observation, hypothesis, argument, counter_argument, navigation]
+        format_branch:
+          enum: [mathjax, mermaid_pipeline, architecture_diagram, code_only]
+          description: "Selected by BB — concept→mathjax, procedure→mermaid_pipeline, model→architecture_diagram, others→code_only"
+        rationale: {type: string}
+    prompt_template: |
+      You are classifying the BB type for snippet {{leaf.title}} and selecting the format branch.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+      - building_block (from leaf): {{leaf.building_block}}
+
+      SOURCE_CODE_CONTENT (from step 1)
+      {{upstream.source_code_content}}
+
+      Apply the procedure in section "step_2_determine_building_block_type"
+      of skill_tessellum_capture_code_snippet. Return ONLY the JSON object
+      specified by expected_output_schema; no prose.
+
+  - section_id: step_3_check_for_duplicates
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_2_determine_building_block_type]
+    output_key: duplicate_check
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [exists, existing_note_id, action]
+      properties:
+        exists: {type: boolean}
+        existing_note_id: {type: [string, "null"]}
+        action: {enum: [proceed, skip, merge]}
+        rationale: {type: string}
+    prompt_template: |
+      You are checking whether snippet {{leaf.title}} already exists in the vault.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+
+      Apply the procedure in section "step_3_check_for_duplicates" of
+      skill_tessellum_capture_code_snippet. Return ONLY the JSON object
+      specified by expected_output_schema; no prose.
+
+  - section_id: step_4_search_vault_for_cross_references
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_3_check_for_duplicates]
+    output_key: cross_references
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [related_repo_notes, related_terms, related_models, consumer_skills]
+      properties:
+        related_repo_notes: {type: array, items: {type: string}}
+        related_terms: {type: array, items: {type: string}}
+        related_models: {type: array, items: {type: string}}
+        consumer_skills: {type: array, items: {type: string}}
+    prompt_template: |
+      You are querying the Tessellum unified DB for cross-references for snippet {{leaf.title}}.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+
+      Apply the procedure in section "step_4_search_vault_for_cross_references"
+      of skill_tessellum_capture_code_snippet. Return ONLY the JSON object
+      specified by expected_output_schema; no prose.
+
+  - section_id: step_5_write_snippet_note
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on:
+      - step_1_read_source_code
+      - step_2_determine_building_block_type
+      - step_4_search_vault_for_cross_references
+    output_key: snippet_note_body
+    materializer: body_markdown_frontmatter_to_file
+    expected_output_schema:
+      type: object
+      required: [output_path]
+      properties:
+        output_path:
+          type: string
+          pattern: "^resources/code_snippets/snippet_[a-z0-9_]+\\.md$"
+    prompt_template: |
+      You are writing a code snippet note for {{leaf.title}}.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+      - building_block: {{leaf.building_block}}
+
+      SOURCE_CODE_CONTENT (from step 1)
+      {{upstream.source_code_content}}
+
+      BB_VERDICT (from step 2 — drives format_branch selection)
+      {{upstream.bb_verdict}}
+
+      CROSS_REFERENCES (from step 4)
+      {{upstream.cross_references}}
+
+      Apply the procedure in section "step_5_write_snippet_note" of
+      skill_tessellum_capture_code_snippet. Use the format_branch from
+      step_2 to select the diagram style:
+        - concept → MathJax math block in the Math/Diagram section
+        - procedure → Mermaid pipeline diagram
+        - model → architecture diagram
+        - other → code-only (no diagram section)
+
+      OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON).
+      Frontmatter MUST contain exactly one key:
+        output_path: <vault-relative .md path under resources/code_snippets/>
+      Everything after the closing `---` IS the file body, verbatim.
+
+  - section_id: step_6_update_entry_point
+    role: DEFERRED
+    aggregation: cross_leaf
+    batchable: false
+    depends_on: [step_5_write_snippet_note]
+    output_key: entry_code_snippets_edits
+    materializer: edits_apply_xml_tags
+    # Per the 2026-05-09 entry-points refactor, the master TOC is always
+    # touched (it lists per-package entry points) and the per-package entry
+    # is discovered via keyword query (e.g. snippet for `openclaw_*` matches
+    # `entry_code_snippets_openclaw.md`). The agent emits edits for whichever
+    # subset is actually relevant — Branch A (per-package row added) or
+    # Branch B (new per-package entry created + master-TOC row added).
+    applies_to_files:
+      - 0_entry_points/entry_code_snippets.md
+    applies_to_files_query:
+      kind: related_notes_by_keywords
+      max_files: 4
+    expected_output_schema:
+      type: object
+      required: [edits]
+      empty_response_allowed: false
+    prompt_template: |
+      You are updating the code-snippets entry points for newly captured snippets.
+
+      NEW_SNIPPETS (from per-leaf step_5 outputs)
+      {{upstream.snippet_note_body}}
+
+      MASTER TOC — CURRENT BODY OF
+      `0_entry_points/entry_code_snippets.md`
+      (this is the index of per-package entry points; only edit if creating
+      a new per-package entry):
+      ---
+      {{existing.0_entry_points/entry_code_snippets.md}}
+      ---
+
+      RELATED PER-PACKAGE ENTRY POINTS (resolved via keyword query —
+      the per-package entry for this snippet's package SHOULD appear here;
+      if it does NOT, you are in Branch B and must CREATE it):
+      ---
+      {{existing.related_notes_by_keywords}}
+      ---
+
+      Apply the procedure in section "step_6_update_entry_point" of
+      skill_tessellum_capture_code_snippet. Determine the package slug from
+      the snippet filename (first underscore segment after `snippet_`),
+      then choose Branch A (per-package entry exists — add a table row to
+      it) or Branch B (per-package entry missing — create it AND add a
+      master-TOC row).
+
+      OUTPUT FORMAT — XML tag list. APPLY mode — emit the COMPLETE new
+      body for each file you touch. Do NOT emit edits for files you do
+      not need to change.
+
+  - section_id: step_7_verify
+    role: INFRA
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_6_update_entry_point]
+    rationale: "Verification step (lockstep + DB rebuild + format check); pure tooling, no LLM call"

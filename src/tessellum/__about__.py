@@ -1,14 +1,14 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.25"
+__version__ = "0.0.26"
 
 __status__ = (
-    "alpha — Vault seed gains 5 universal acronym glossaries indexing 397 "
-    "acronyms across statistics, critical thinking, cognitive science, network "
-    "science, and LLMs — plus a master index. All Amazon-internal terms "
-    "scrubbed; six over-specific domain glossaries (tools, security, "
-    "developer, data_governance, ml, business + others) intentionally dropped "
-    "rather than partially scrubbed. Phase 3 (capture skills) is next. "
+    "alpha — Two capture skills ported from AbuseSlipBox and adapted to "
+    "Tessellum: skill_tessellum_capture_code_repo_note (9-step DAG, "
+    "main+sub-notes for a repo) and skill_tessellum_capture_code_snippet "
+    "(7-step DAG, snippet note with BB-typed Patterns shape). Both validate "
+    "via `tessellum composer validate` and compile via `tessellum composer "
+    "compile`. Closes plan_code_artifacts_port across three phases. "
     "See CHANGELOG.md."
 )

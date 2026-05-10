@@ -1,0 +1,260 @@
+# tessellum-capture-code-repo-note is the canonical multi-leaf capture: per repo, write
+# a main note + N sub-notes (one per major module). Step_5 = main body write;
+# step_6 = multi-file write (N sub-notes via edits_apply_xml_tags); step_8
+# uses D5-g-dynamic to add inlinks from existing related notes.
+
+pipeline:
+  - section_id: step_1_check_for_existing_notes
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: []
+    output_key: pre_flight_verdict
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [exists, existing_note_ids, action]
+      properties:
+        exists: {type: boolean}
+        existing_note_ids:
+          type: array
+          items: {type: string}
+          description: "Main + sub-notes that may already exist"
+        action: {enum: [proceed, skip, merge]}
+        rationale: {type: string}
+    prompt_template: |
+      You are checking whether code repo {{leaf.title}} (and its sub-notes)
+      already exist in the vault.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+      - repo_name: {{leaf.enricher_inputs.repo_name}}
+
+      Apply the procedure in section "step_1_check_for_existing_notes" of
+      skill_tessellum_capture_code_repo_note. Return ONLY the JSON object
+      specified by expected_output_schema; no prose.
+
+  - section_id: step_2_read_repository_structure
+    role: CORE
+    aggregation: per_leaf
+    batchable: false      # rate-limited GitHub fetches
+    depends_on: [step_1_check_for_existing_notes]
+
+  - section_id: step_3_identify_modules_for_sub_notes
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_2_read_repository_structure]
+    output_key: module_plan
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [modules]
+      properties:
+        modules:
+          type: array
+          minItems: 0
+          items:
+            type: object
+            required: [name, slug, source_files, rationale]
+            properties:
+              name: {type: string}
+              slug: {type: string}
+              source_files: {type: array, items: {type: string}}
+              rationale: {type: string}
+    prompt_template: |
+      You are identifying which modules of code repo {{leaf.title}} deserve sub-notes.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+
+      REPO_STRUCTURE (from step 2)
+      {{upstream.repo_structure}}
+
+      Apply the procedure in section "step_3_identify_modules_for_sub_notes"
+      of skill_tessellum_capture_code_repo_note (3+ source files + distinct
+      functional concern → sub-note). Return ONLY the JSON object specified
+      by expected_output_schema; no prose.
+
+  - section_id: step_4_search_vault_for_context
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_3_identify_modules_for_sub_notes]
+    output_key: vault_context
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [related_terms, related_repos, related_teams, related_areas]
+      properties:
+        related_terms: {type: array, items: {type: string}}
+        related_repos: {type: array, items: {type: string}}
+        related_teams: {type: array, items: {type: string}}
+        related_areas: {type: array, items: {type: string}}
+    prompt_template: |
+      You are querying the Tessellum unified DB for vault context related to repo {{leaf.title}}.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+
+      MODULE_PLAN (from step 3)
+      {{upstream.module_plan}}
+
+      Apply the procedure in section "step_4_search_vault_for_context" of
+      skill_tessellum_capture_code_repo_note. Return ONLY the JSON object
+      specified by expected_output_schema; no prose.
+
+  - section_id: step_5_write_main_note
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on:
+      - step_3_identify_modules_for_sub_notes
+      - step_4_search_vault_for_context
+    output_key: repo_main_note_body
+    materializer: body_markdown_frontmatter_to_file
+    expected_output_schema:
+      type: object
+      required: [output_path]
+      properties:
+        output_path:
+          type: string
+          pattern: "^areas/code_repos/repo_[a-z0-9_]+\\.md$"
+    prompt_template: |
+      You are writing the main code-repo note for {{leaf.title}}.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+
+      REPO_STRUCTURE (from step 2)
+      {{upstream.repo_structure}}
+
+      MODULE_PLAN (from step 3 — sub-notes will be written in step_6)
+      {{upstream.module_plan}}
+
+      VAULT_CONTEXT (from step 4)
+      {{upstream.vault_context}}
+
+      Apply the procedure in section "step_5_write_main_note" of
+      skill_tessellum_capture_code_repo_note. Include a Sub-Notes index
+      that links to each module's sub-note (filenames per the plan).
+
+      OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON).
+      Frontmatter MUST contain exactly one key:
+        output_path: <vault-relative .md path under areas/code_repos/>
+      Everything after the closing `---` IS the file body, verbatim.
+
+  - section_id: step_6_write_sub_notes_with_full_references
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_5_write_main_note]
+    output_key: repo_sub_notes_body
+    # Multi-file write — one sub-note per module identified in step_3.
+    # edits_apply_xml_tags supports multiple <edit> blocks per call;
+    # creates files that don't yet exist.
+    materializer: edits_apply_xml_tags
+    expected_output_schema:
+      type: object
+      required: [edits]
+      empty_response_allowed: true   # 0 modules acceptable
+    prompt_template: |
+      You are writing sub-notes for code repo {{leaf.title}} — one per module
+      identified in step_3.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+
+      MODULE_PLAN (from step 3)
+      {{upstream.module_plan}}
+
+      MAIN_NOTE (from step 5 — for backlink + cross-ref consistency)
+      {{upstream.repo_main_note_body}}
+
+      REPO_STRUCTURE (from step 2)
+      {{upstream.repo_structure}}
+
+      Apply the procedure in section "step_6_write_sub_notes_with_full_references"
+      of skill_tessellum_capture_code_repo_note. Each sub-note: required sections
+      (Parent, Overview, Module Structure, Key Components, Cross-Module
+      Connections, References) per the canonical's spec.
+
+      OUTPUT FORMAT — XML tag list (NOT JSON).
+      One <edit> block per module sub-note; each <content> is the COMPLETE
+      new file body. File naming: `repo_<repo_slug>_<module_slug>.md`
+      under `areas/code_repos/`.
+
+  - section_id: step_7_update_entry_point
+    role: DEFERRED
+    aggregation: cross_leaf
+    batchable: false
+    depends_on: [step_5_write_main_note, step_6_write_sub_notes_with_full_references]
+    output_key: entry_code_repos_edits
+    materializer: edits_apply_xml_tags
+    applies_to_files:
+      - 0_entry_points/entry_code_repos.md
+    expected_output_schema:
+      type: object
+      required: [edits]
+      empty_response_allowed: false
+    prompt_template: |
+      You are batch-updating the code-repos entry point with newly captured repos.
+
+      NEW_REPO_MAIN_NOTES (from per-leaf step_5 outputs)
+      {{upstream.repo_main_note_body}}
+
+      NEW_REPO_SUB_NOTES (from per-leaf step_6 outputs)
+      {{upstream.repo_sub_notes_body}}
+
+      EXISTING ENTRY FILE — CURRENT BODY OF
+      `0_entry_points/entry_code_repos.md`:
+      ---
+      {{existing.0_entry_points/entry_code_repos.md}}
+      ---
+
+      Apply the procedure in section "step_7_update_entry_point" of
+      skill_tessellum_capture_code_repo_note.
+
+      OUTPUT FORMAT — XML tag list. APPLY mode — emit the COMPLETE new entry body.
+
+  - section_id: step_8_add_inlinks_from_related_notes
+    role: DEFERRED
+    aggregation: cross_leaf
+    batchable: false
+    depends_on: [step_5_write_main_note]
+    output_key: related_note_inlink_edits
+    materializer: edits_apply_xml_tags
+    # D5-g-dynamic: 10-20 inlinks across terms, FAQs, how-tos, MTRs,
+    # tools, and team notes per the canonical's Step 8 procedure.
+    applies_to_files_query:
+      kind: related_notes_by_keywords
+      max_files: 20
+    expected_output_schema:
+      type: object
+      required: [edits]
+      empty_response_allowed: true
+    prompt_template: |
+      You are finding existing vault notes related to the newly captured repos
+      and adding inlinks to those repo notes.
+
+      NEW_REPO_NOTES (from per-leaf step_5 outputs)
+      {{upstream.repo_main_note_body}}
+
+      RELATED VAULT NOTES — CURRENT BODIES (resolved via D5-g-dynamic
+      `related_notes_by_keywords` query):
+      {{existing_files_block}}
+
+      Apply the procedure in section "step_8_add_inlinks_from_related_notes"
+      of skill_tessellum_capture_code_repo_note. Inlinks land ABOVE the
+      Last Updated footer per FZ 12a inlink-placement rule.
+
+      OUTPUT FORMAT — XML tag list. APPLY mode — emit the COMPLETE new body
+      for each updated related note. Empty response acceptable when no
+      vault notes match.
+
+  - section_id: step_9_update_database
+    role: INFRA
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_7_update_entry_point, step_8_add_inlinks_from_related_notes]
+    rationale: "Script invocation (tessellum index build) — runtime side-effect, no LLM call"
