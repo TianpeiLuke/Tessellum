@@ -48,6 +48,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Overwrite an existing DB at the output path.",
     )
+    build_cmd.add_argument(
+        "--no-dense",
+        action="store_true",
+        help="Skip dense-embedding generation (faster build; disables "
+        "`tessellum search --dense`). Useful for CI without the ML "
+        "dependencies cached.",
+    )
     build_cmd.set_defaults(func=run_index_build)
 
 
@@ -56,7 +63,7 @@ def run_index_build(args: argparse.Namespace) -> int:
     db = args.db.expanduser().resolve()
 
     try:
-        result = build(vault, db, force=args.force)
+        result = build(vault, db, force=args.force, with_dense=not args.no_dense)
     except FileNotFoundError as e:
         print(f"tessellum index build: {e}", file=sys.stderr)
         return 2
@@ -67,6 +74,8 @@ def run_index_build(args: argparse.Namespace) -> int:
     print(f"built index at: {result.db_path}")
     print(f"  notes indexed:  {result.notes_indexed}")
     print(f"  links indexed:  {result.links_indexed}")
+    if result.embeddings_generated:
+        print(f"  embeddings:     {result.embeddings_generated}")
     if result.skipped_files:
         print(f"  files skipped:  {result.skipped_files} (unparseable frontmatter)")
     print(f"  duration:       {result.duration_seconds:.2f}s")
