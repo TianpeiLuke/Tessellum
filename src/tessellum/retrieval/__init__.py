@@ -39,6 +39,7 @@ from tessellum.retrieval.bm25 import BM25Hit, bm25_search
 from tessellum.retrieval.dense import DenseHit, dense_search
 from tessellum.retrieval.graph import GraphHit, best_first_bfs
 from tessellum.retrieval.hybrid import HybridHit, hybrid_search
+from tessellum.retrieval.metadata import MetadataHit, metadata_search
 
 __all__ = [
     "bm25_search",
@@ -49,4 +50,6 @@ __all__ = [
     "HybridHit",
     "best_first_bfs",
     "GraphHit",
+    "metadata_search",
+    "MetadataHit",
 ]

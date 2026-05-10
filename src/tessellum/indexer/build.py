@@ -266,9 +266,19 @@ def _extract_note_metadata(md_file: Path, vault_path: Path) -> dict | None:
 
 
 def _str_or_none(value: object) -> str | None:
+    """Coerce a YAML value to ``str | None``.
+
+    Returns ``None`` for ``None``, empty string, and the literal string
+    ``"null"`` (some templates author ``folgezettel: null`` as a YAML
+    string). Anything else becomes ``str(value).strip()``; if that is
+    empty, returns ``None``.
+    """
     if value is None:
         return None
-    return str(value)
+    s = str(value).strip()
+    if not s or s.lower() == "null":
+        return None
+    return s
 
 
 def _determine_note_category(relative_path: Path) -> str | None:

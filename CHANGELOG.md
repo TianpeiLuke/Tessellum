@@ -16,6 +16,104 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.17] — 2026-05-10
+
+### Added — `tessellum filter` — metadata search (Retrieval Wave 4.5)
+
+The simplest retrieval surface — direct SQL filtering on the structured YAML fields. Reach for this when you know *what kind* of note you want, not *what content*. **Was missing from the 5-wave plan; called out by the user as a gap before Wave 5.**
+
+```bash
+tessellum filter --building-block concept --status active
+tessellum filter --tag cqrs --date-after 2026-01-01
+tessellum filter --building-block argument --topic "Knowledge Management"
+tessellum filter --has-folgezettel       # all FZ-trail notes
+tessellum filter --folgezettel-prefix 7  # all notes in trail 7
+tessellum filter                          # list every note (up to --k)
+```
+
+#### Filter dimensions
+
+12 orthogonal filters, all AND-combined:
+
+| Field | Flag | Backed by |
+|---|---|---|
+| `building_block` (closed enum) | `--building-block` | exact match |
+| `status` (closed enum) | `--status` | exact match |
+| `tags[0]` / PARA bucket | `--category` | exact match |
+| `tags[1]` / second category | `--second-category` | exact match |
+| `tags[2..]` (open vocabulary) | `--tag` | `json_each` exact-value |
+| `keywords[]` | `--keyword` | `json_each` exact-value |
+| `topics[]` | `--topic` | `json_each` exact-value |
+| `date of note` | `--date-after`, `--date-before` | string range (YYYY-MM-DD) |
+| `folgezettel` prefix | `--folgezettel-prefix` | LIKE prefix |
+| FZ membership | `--has-folgezettel` / `--no-folgezettel` | NULL check |
+
+JSON-array fields (`tags`, `keywords`, `topics`) use SQLite's built-in `json_each` to avoid LIKE false-positives — `tag='cqrs'` will match `["cqrs"]` but never `["cqrsy"]`.
+
+#### `tessellum.retrieval.metadata_search`
+
+```python
+from tessellum.retrieval import metadata_search, MetadataHit
+
+hits = metadata_search(
+    "data/tessellum.db",
+    building_block="concept",
+    status="active",
+    tag="cqrs",
+    date_after="2026-01-01",
+    k=20,
+)
+```
+
+Returns `MetadataHit` (slimmer than `NoteRow` — only the fields filters care about). Callers needing the full row can follow up with `Database.note_by_id(hit.note_id)`.
+
+#### Schema fix — empty strings → NULL
+
+While building the filter, surfaced a bug: templates author `folgezettel: ""` (empty string) as a placeholder. The old `_str_or_none` helper preserved empty strings, which made `folgezettel != NULL` and falsely matched `--has-folgezettel`. Fixed: `_str_or_none` now coerces empty strings AND the literal `"null"` to `None`. Applies to `status`, `language`, `building_block`, `folgezettel`, and `folgezettel_parent`. Re-run `tessellum index build --force` to apply.
+
+End-to-end on the real Tessellum vault:
+- Before fix: `--has-folgezettel` returned 5 hits (3 templates with empty FZ + 2 real)
+- After fix: returns the 2 real FZ-trail notes only
+
+#### CLI banner
+
+The bare `tessellum` banner now shows 6 commands:
+
+```
+tessellum init <dir>                — scaffold a new vault
+tessellum format check <path>       — validate notes against the YAML spec
+tessellum capture <flavor> <slug>   — create a new note from a template
+tessellum index build               — build the unified SQLite index
+tessellum search <query>            — content retrieval (--bm25/--dense/--hybrid/--bfs)
+tessellum filter --tag <t> [--bb …] — metadata filter (tags, BB, status, dates, ...)
+tessellum composer validate <skill> — validate a skill's pipeline sidecar
+```
+
+#### Tests
+
+34 new tests, all passing. **332 total** (298 prior + 34 new).
+
+- `tests/smoke/test_retrieval_metadata.py` (22 tests):
+  - typed return; no-filter → all notes; each filter dimension (BB, status, category, second-category, tag via json_each, keyword via json_each, topic via json_each, date_after / date_before / range, FZ prefix, has_folgezettel True/False); AND-combine; no-match → empty; k limit; k=0 → empty; missing DB; **empty-string folgezettel correctly treated as NULL**; integration test against real vault.
+- `tests/cli/test_filter_cli.py` (12 tests):
+  - filter by each major dimension; combined filters; no-match exit 0; no-filters lists all; --k limit; JSON output structure (filters echo + hits); missing DB → 2; --has-folgezettel / --no-folgezettel mutex; date range; banner mention.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.17"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.17"`.
+- 332/332 tests pass (298 prior + 34 new).
+
+### Composition with content search (future work)
+
+For now, `tessellum filter` and `tessellum search` are separate subcommands. A future enhancement could let metadata filters compose as **post-filters** on content search results (e.g. `tessellum search "graph" --bm25 --building-block concept`). That's tracked as a Wave 5+ enhancement, not blocking.
+
+### What's NEXT (Wave 5 — last v0.1 retrieval item)
+
+- `vault/resources/skills/skill_tessellum_search_notes.md` — decision-tree router invoking the five retrieval surfaces (bm25, dense, hybrid, bfs, filter) by query intent.
+- `vault/resources/skills/skill_tessellum_answer_query.md` — 5-stage QA pipeline: query expansion → multi-strategy retrieval → working memory scoring → context assembly → synthesis with citations.
+- Optional small `tessellum.retrieval.router` Python module the search-notes skill calls into (~150 LOC).
+
 ## [0.0.16] — 2026-05-10
 
 ### Added — Retrieval Wave 4: Best-first BFS over `note_links`
@@ -1282,7 +1380,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.16...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.17...HEAD
+[0.0.17]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.15...v0.0.16
 [0.0.15]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.14...v0.0.15
 [0.0.14]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.13...v0.0.14
