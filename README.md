@@ -8,7 +8,9 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 
 ## Status
 
-**v0.0.1 — namespace reservation.** Repository skeleton + this README. The v0.1 user-facing release ships the engine port + 20 essential skills + 8 BB-type example notes. See [CHANGELOG](CHANGELOG.md).
+**v0.0.27 — alpha, all v0.1 engine subsystems shipped.** Composer (capture → compile → execute → real LLM → batch → eval), Retrieval (BM25 + dense + hybrid RRF + best-first BFS + metadata filter), Format library (validator + parser + link checker), Capture (14 flavors), Indexer (unified SQLite + FTS5 + sqlite-vec), and Init (vault scaffold).
+
+What's still pending for v0.1.0 (no engine work remaining — content only): 20 essential authored skills, 8 BB-type worked examples, the conceptual primer term notes (Z + PARA + BB + EF + DKS + CQRS, all defined as term notes), and a how-to library. Engine plans complete: see [`plans/plan_composer_port.md`](plans/plan_composer_port.md), [`plans/plan_retrieval_port.md`](plans/plan_retrieval_port.md), [`plans/plan_v01_src_tessellum_layout.md`](plans/plan_v01_src_tessellum_layout.md), [`plans/plan_cqrs_repo_layout.md`](plans/plan_cqrs_repo_layout.md), [`plans/plan_code_artifacts_port.md`](plans/plan_code_artifacts_port.md). See [CHANGELOG](CHANGELOG.md) for the per-release ship list.
 
 ## The Six Pillars
 
@@ -41,12 +43,41 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 
 ```bash
 pip install tessellum
+
+# 1. Scaffold a new vault (templates + seed term + master TOC)
 tessellum init ~/my-vault
-tessellum capture term "PageRank" --as concept
-tessellum index --vault ~/my-vault
+cd ~/my-vault
+
+# 2. Capture your first typed atomic note — 14 flavors available
+tessellum capture concept page_rank        # creates resources/term_dictionary/term_page_rank.md
+tessellum capture skill my_skill           # creates skill_*.md + paired skill_*.pipeline.yaml
+tessellum capture code_snippet my_algo     # creates resources/code_snippets/snippet_*.md
+tessellum capture code_repo my_repo        # creates areas/code_repos/repo_*.md
+tessellum capture --help                   # full flavor list
+
+# 3. Validate format (closed-enum YAML spec)
+tessellum format check .
+
+# 4. Index the vault (notes + links + FTS5 + sentence-transformer embeddings)
+tessellum index build
+
+# 5. Retrieve — hybrid RRF default; --bm25 / --dense / --bfs for explicit strategy
 tessellum search "graph traversal"
-tessellum answer "what is the difference between PageRank and PPR?"
+tessellum search --bm25 "PageRank"          # lexical only
+tessellum search --bfs term_page_rank.md    # graph traversal from a seed
+tessellum filter --tag concept --bb model   # direct metadata filter (tags / BB / status / dates)
+
+# 6. Compose — runtime for skill-driven workflows
+tessellum composer validate vault/resources/skills/                          # all skills
+tessellum composer compile  vault/resources/skills/skill_my_skill.md         # to typed DAG
+tessellum composer scaffold-sidecar  skill_existing.md                       # generate sidecar from canonical's anchors
+tessellum composer run      vault/resources/skills/skill_my_skill.md         # mock backend
+tessellum composer run      skill_my_skill.md --backend anthropic            # real Claude (pip install tessellum[agent])
+tessellum composer batch    jobs.json --parallelism 8                        # parallel multi-skill
+tessellum composer eval     scenarios/  --judge-backend anthropic            # structural assertions + LLMJudge rubric
 ```
+
+`tessellum --version` prints the version + capability banner.
 
 ## Architecture
 
@@ -77,10 +108,15 @@ tessellum answer "what is the difference between PageRank and PPR?"
                                        ▼
                     ┌──────────────────────────────────────┐
                     │  Interfaces                          │
-                    │   • CLI: `tessellum search/answer`   │
-                    │   • MCP server (any MCP client)      │
-                    │   • Composer pipeline (typed-contract│
-                    │     knowledge auto-digestion)        │
+                    │   • CLI: `tessellum {init,capture,   │
+                    │     format,index,search,filter,      │
+                    │     composer}` (shipped)             │
+                    │   • Composer runtime: typed-contract │
+                    │     skill canonicals → typed DAGs    │
+                    │     dispatched through Mock or       │
+                    │     Anthropic backend (shipped)      │
+                    │   • MCP server (deferred — add when  │
+                    │     a Tessellum user needs it)       │
                     └──────────────────────────────────────┘
 ```
 
@@ -100,26 +136,40 @@ The top-level layout maps each folder to a defined CQRS role — System P (captu
 
 ```
 Tessellum/
-├── src/tessellum/      Python code — engines for both System P (capture) and System D (retrieval)
-├── vault/              Shared substrate — typed atomic notes (Tessellum dogfoods itself)
-│   ├── 0_entry_points/ Master TOC + per-surface entries
+├── src/tessellum/         Python code — engines for both System P (capture) and System D (retrieval)
+│   ├── format/            Validator + parser + link checker (closed-enum YAML spec)
+│   ├── indexer/           Vault → SQLite unified backend (notes + note_links + FTS5 + sqlite-vec)
+│   ├── retrieval/         BM25 + dense + hybrid RRF + best-first BFS + metadata filter + router
+│   ├── composer/          Loader + compiler + executor + scheduler + materializers + LLM (mock / Anthropic) + batch + eval
+│   ├── capture.py         14-flavor capture registry (concept, procedure, skill, model, argument,
+│   │                      counter_argument, hypothesis, empirical_observation, experiment,
+│   │                      navigation, entry_point, acronym_glossary, code_snippet, code_repo)
+│   ├── init.py            tessellum init scaffold
+│   ├── cli/               Per-subcommand dispatchers wired into argparse
+│   └── data/              Force-included template directory + seed-vault content
+├── vault/                 Shared substrate — typed atomic notes (Tessellum dogfoods itself)
+│   ├── 0_entry_points/    Master TOC + 5 acronym glossaries (statistics, critical thinking,
+│   │                      cognitive science, network science, LLMs) + master glossary index
 │   ├── resources/
 │   │   ├── term_dictionary/   Conceptual primer (BB, FZ, DKS, CQRS, Z, PARA, …)
 │   │   ├── how_to/            How-to guides
 │   │   ├── analysis_thoughts/ Architecture arguments + FZ trails
-│   │   ├── templates/         Copy-and-fill skeletons (executable spec exemplars)
-│   │   └── skills/            Skill canonical bodies + pipeline sidecars
-│   └── examples/       One worked example per Building Block type
-├── inbox/              System P input queue — drop zone for raw incoming (papers, drafts)
-├── plans/              Governance — project-management plans (committed, top-level)
-├── data/               System D build output (gitignored, regenerable: DBs + embeddings)
-├── runs/               Both-system runtime traces (gitignored)
-│   ├── capture/        Capture-pipeline traces
-│   ├── retrieval/      Retrieval evaluation + benchmark traces
-│   └── composer/       DKS chain run traces
-├── experiments/        Experiment outputs
-├── scripts/            Operational utilities
-└── tests/              Test suite
+│   │   ├── templates/         15 copy-and-fill skeletons (executable spec exemplars)
+│   │   ├── skills/            Skill canonical bodies + pipeline sidecars
+│   │   ├── code_snippets/     `## Patterns`-format snippet notes (one component or algorithm)
+│   │   ├── code_repos/        Repo notes (main + sub-note structure)
+│   │   ├── teams/   tools/   faqs/   digest/   papers/
+│   └── areas/             Code-repo notes (main + module sub-notes)
+├── inbox/                 System P input queue — drop zone for raw incoming (papers, drafts)
+├── plans/                 Governance — project-management plans (committed, top-level)
+├── data/                  System D build output (gitignored, regenerable: DBs + embeddings)
+├── runs/                  Both-system runtime traces (gitignored)
+│   ├── capture/           Capture-pipeline traces (reserved; not yet wired)
+│   ├── retrieval/         Retrieval evaluation + benchmark traces (reserved; not yet wired)
+│   └── composer/          Composer chain run traces (wired by `tessellum composer run/batch`)
+├── experiments/           Experiment outputs
+├── scripts/               Operational utilities (one-off migrations; not in wheel)
+└── tests/                 Test suite (~468 passing as of v0.0.27)
 ```
 
 **No separate `docs/` directory** — Tessellum's own documentation IS a typed-knowledge vault. Start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.
@@ -133,8 +183,9 @@ Tessellum/
 | Dialectic / counters as first-class | ✅ | — | — | — |
 | CQRS read/write split | ✅ | — | — | — |
 | Hybrid BM25 + vector retrieval | ✅ | plugin | ✅ | proprietary |
-| MCP server | v0.1 | plugin | ✅ | — |
+| MCP server | deferred | plugin | ✅ | — |
 | Closed-loop dialectic compaction | ✅ (DKS) | — | partial (5 ops) | — |
+| Typed-contract pipeline runtime | ✅ (Composer) | — | — | — |
 | Knowledge-construction (vs storage) | ✅ | — | — | — |
 
 ## License
