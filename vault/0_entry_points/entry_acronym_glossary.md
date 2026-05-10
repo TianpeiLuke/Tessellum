@@ -27,6 +27,14 @@ A typed-knowledge slipbox accumulates a lot of jargon. This page indexes the per
 
 ## Glossaries
 
+### Tessellum-specific (read first)
+
+| Glossary | Entries | Domain |
+| -------- | ------- | ------ |
+| [`acronym_glossary_tessellum_foundations.md`](acronym_glossary_tessellum_foundations.md) | 11 | The foundation vocabulary: Z, Slipbox, FZ, PARA, BASB, CODE, Knowledge BB, BB, EF, DKS, CQRS |
+
+### Universal lookup (lookup as needed)
+
 | Glossary | Acronyms | Domain |
 | -------- | -------- | ------ |
 | [`acronym_glossary_statistics.md`](acronym_glossary_statistics.md) | 54 | Causal inference, Bayesian methods, hypothesis testing, distributions |
@@ -35,7 +43,9 @@ A typed-knowledge slipbox accumulates a lot of jargon. This page indexes the per
 | [`acronym_glossary_network_science.md`](acronym_glossary_network_science.md) | 48 | Graph theory, centrality, community detection, network metrics |
 | [`acronym_glossary_llm.md`](acronym_glossary_llm.md) | 134 | LLM architectures, training methods, RAG, agents, evaluation |
 
-Total: 5 glossaries, **397 acronyms**. Every entry is a self-contained dictionary record (definition + related terms + sources where applicable). Most entries cross-link with their longer-form `term_*.md` notes in `vault/resources/term_dictionary/` — the glossary is the *index*, the term notes are the *substrate*.
+Total: 1 Tessellum-foundations glossary + 5 universal lookup glossaries, **408 entries**. Every entry is a self-contained dictionary record (definition + related terms + sources where applicable). Most entries cross-link with their longer-form `term_*.md` notes in `vault/resources/term_dictionary/` — the glossary is the *index*, the term notes are the *substrate*.
+
+**New here?** Read `acronym_glossary_tessellum_foundations.md` first — it covers the 11 terms every Tessellum vault rests on. The universal lookup glossaries are for jargon resolution as you encounter it.
 
 ## How to use
 

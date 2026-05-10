@@ -16,6 +16,91 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.30] — 2026-05-10
+
+### Added — System-regularization layer in the seed vault
+
+Four new notes complete the minimal-seed mission set by `plans/plan_minimal_seed_vault.md`. The seed now answers both **user questions** ("what is this system?", "how do I use it?") and **system / agent questions** ("which BB type fits my note?", "what's the format contract?") without external docs.
+
+#### 1. `term_format_spec.md` — The format contract in vault form (220 lines)
+
+The validator's authoritative spec, written as a readable note. Documents:
+
+- Required YAML frontmatter fields + their issue codes (`YAML-010` … `YAML-101`)
+- The closed enums for `building_block:` (8 types) and `status:` (5 values)
+- Tag conventions — `tags[0]` = PARA bucket, `tags[1]` = second category, `tags[2..]` = domain tags
+- Folgezettel both-or-neither rule (`TESS-001`/`TESS-002`)
+- Forbidden field rules (`TESS-003`)
+- Link rules — relative paths only, no wikilinks, `.md` required (`LINK-001` … `LINK-006`)
+- Filename + directory conventions per capture flavor
+- A complete quick-reference table mapping every validator issue code to its meaning
+
+When `tessellum format check` cites a code, this note explains what it means and how to fix it.
+
+#### 2. `entry_building_block_index.md` — The BB picker matrix (~100 lines)
+
+The 8-row scannable matrix every agent / contributor consults when classifying a new note:
+
+| Column | What it tells you |
+|---|---|
+| BB type | The `building_block:` value to use |
+| Question it answers | "What is it called?" / "How is this structured?" / etc. |
+| Epistemic function | Naming / Structuring / Predicting / Claiming / Refuting / Observing / Doing / Indexing |
+| Layer | Knowledge / Reasoning / Action / Meta |
+| Required sections | The H2 headings the note must contain |
+| Default directory | Where the file lands |
+
+Plus the 10 epistemic edges (the DKS dialectic graph) as a separate table. Data derived from `tessellum.format.building_blocks.BB_SPECS` + `EPISTEMIC_EDGES` — the note is the readable shadow of the Python source.
+
+#### 3. `acronym_glossary_tessellum_foundations.md` — One-glance lookup for the 11 foundation terms (~150 lines)
+
+A glossary in the same format as the existing 5 universal glossaries, but covering Tessellum's foundation vocabulary: Z, Slipbox, FZ, PARA, BASB, CODE, Knowledge BB, BB, EF, DKS, CQRS. Each entry: one-line "what it is" + key idea + `→` link to the full term note + source citation. Organized into "Methodology Lineage" (7 terms Tessellum descends from) and "Tessellum-Specific Architecture" (4 terms unique to this project). Closes with an "How these fit together" diagram and an opinionated 7-step reading order.
+
+Added as a new row in `entry_acronym_glossary.md` under a "Tessellum-specific (read first)" header.
+
+#### 4. `howto_first_vault.md` — The 8-step CLI walkthrough in vault form (~150 lines)
+
+The README Quick Start re-authored as a vault how-to, so users who open a fresh `tessellum init` vault in Obsidian (rather than reading the GitHub README) see the procedural on-ramp. 8 steps:
+
+1. Scaffold a vault (`tessellum init`)
+2. Capture your first note (`tessellum capture concept page_rank`)
+3. Fill the template
+4. Validate (`tessellum format check`)
+5. Index (`tessellum index build`)
+6. Search (`tessellum search`)
+7. Capture a skill (paired canonical + sidecar)
+8. Compose (`tessellum composer validate / compile / run`)
+
+Each step has the exact command + expected output line so the user can verify they're on track. Closes with a verification table and a "Going further" section.
+
+### Updated — Wheel manifest + init.py
+
+- `pyproject.toml` — 4 new `force-include` entries graft each new note into `src/tessellum/data/seed_vault/`.
+- `init.py` — `_SEED_VAULT_MANIFEST` extended from 17 to 21 relative paths.
+
+### Verification
+
+- All 4 new notes pass `tessellum format check` with **0 errors and 0 warnings** each.
+- Editable-mode `tessellum init` produces 39 markdown files (was 35 in v0.0.29).
+- Wheel-mode init produces the same 39 files.
+- Full suite: 468 passed, 1 skipped.
+- Cross-links: the 4 new notes reference each other and the existing 11 foundation terms; the existing 11 foundation terms now have inbound links from the new spec / picker / glossary / how-to.
+
+### Closes the plan
+
+`plans/plan_minimal_seed_vault.md` is now complete. The default `tessellum init` ships:
+
+- **15 templates** (the executable per-BB spec)
+- **11 foundation term notes** (the conceptual vocabulary)
+- **1 system-regularization term note** (`term_format_spec.md` — the format contract)
+- **2 entry-point indexes** (master TOC + BB picker)
+- **6 acronym glossaries** (Tessellum foundations + 5 universal lookups)
+- **1 master glossary index** (`entry_acronym_glossary.md`)
+- **1 how-to** (`howto_first_vault.md` — the practical walkthrough)
+- **1 README** (per-vault, generated)
+
+Every install gets the same 39 files. Every file passes format check with 0 errors.
+
 ## [0.0.29] — 2026-05-10
 
 ### Added — 3 more foundation term notes (BASB, CODE, Knowledge Building Blocks)
