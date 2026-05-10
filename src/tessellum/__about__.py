@@ -1,15 +1,15 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.23"
+__version__ = "0.0.24"
 
 __status__ = (
-    "alpha — Composer Wave 5b (eval framework) shipped. `tessellum composer "
-    "eval <scenarios/>` runs structural assertions (no_errors, step_count_eq, "
-    "file_written, response_contains) AND optional LLMJudge 5-dim rubric "
-    "scoring (relevance, completeness, accuracy, clarity, structural_integrity) "
-    "across YAML-defined scenarios. The full Composer port from "
-    "AbuseSlipBox is now complete: capture (Wave 1) → compile (Wave 2) → "
-    "execute (Wave 3) → real LLM (Wave 4) → batch + resume (Wave 5a) → "
-    "evaluate (Wave 5b). See CHANGELOG.md."
+    "alpha — Capture surface adds `code_snippet` and `code_repo` flavors. "
+    "`tessellum capture code_snippet my_algo` and `tessellum capture code_repo "
+    "my_repo` produce well-formed notes from new templates "
+    "(template_code_snippet.md / template_code_repo.md) — the snippet "
+    "template carries the `## Patterns` shape with dual-block per pattern "
+    "(verbatim source + adapted-to-different-domain). 14 capture flavors "
+    "registered total. Composer + Retrieval ports remain complete. "
+    "See CHANGELOG.md."
 )

@@ -16,6 +16,81 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.24] — 2026-05-10
+
+### Added — `code_snippet` + `code_repo` capture flavors
+
+Phase 1 of the code-artifact port (see `plans/plan_code_artifacts_port.md`). Adds two new templates and wires them into the capture registry, taking the flavor count from 12 → 14.
+
+```
+$ tessellum capture code_snippet my_algo
+created: ./resources/code_snippets/snippet_my_algo.md
+  flavor:  code_snippet
+  next:    fill placeholders, then `tessellum format check ./resources/code_snippets/snippet_my_algo.md`
+
+$ tessellum capture code_repo my_repo
+created: ./areas/code_repos/repo_my_repo.md
+  flavor:  code_repo
+  next:    fill placeholders, then `tessellum format check ./areas/code_repos/repo_my_repo.md`
+```
+
+#### `template_code_snippet.md`
+
+Distills AbuseSlipBox's snippet shape (FZ 12a) into a Tessellum-clean placeholder template:
+
+- YAML frontmatter with `building_block: procedure` (the most common; concept/model are alternatives via comment)
+- BB-specific block between Purpose and Patterns: `## Procedure` (Mermaid flowchart) for procedures, `## Mathematical Definition` (MathJax) for concepts, `## Architecture / Model` (Mermaid flowchart or classDiagram) for models
+- **`## Patterns` template with `### Index` table + `### Pattern N` sub-sections, each carrying both a verbatim `**In this script (Lxx-Lyy):**` block AND an `**Adapted to <new domain>:**` block** — the load-bearing innovation: the source proves provenance, the adaptation proves comprehension
+- Code-block rules captured in the HOW-TO commentary: signatures + algorithm + branches + return shape stay verbatim; logging / argv / docstrings / paths may be elided
+- `## Source` (file:line range) + `## References` (related snippet/repo/term links)
+
+#### `template_code_repo.md`
+
+Distills the repo-note shape (parent + sub-notes):
+
+- YAML with `building_block: model` and `code_repo_url:` placeholder pointing at `https://example.com/owner/repo` (no Amazon-internal URLs)
+- `## Overview` with attribute table (URL, language, license, owner, deps, install)
+- Optional `## Architecture` (only for repos with 3+ subsystems worth diagramming)
+- Optional `## Sub-Notes` (one row per module that has its own sub-note declaring `**Parent**: repo_<slug>.md`)
+- `## Code Structure` tree
+- `## References` with related terms / repos / snippets / external links
+
+#### Capture registry
+
+Two new entries in `src/tessellum/capture.py`:
+
+```python
+"code_snippet": TemplateSpec(
+    flavor="code_snippet",
+    template_filename="template_code_snippet.md",
+    destination="resources/code_snippets",
+    filename_prefix="snippet_",
+    bb_type="procedure",
+    second_category="code_snippets",
+    description="Code snippet documenting one component or algorithm",
+),
+"code_repo": TemplateSpec(
+    flavor="code_repo",
+    template_filename="template_code_repo.md",
+    destination="areas/code_repos",
+    filename_prefix="repo_",
+    bb_type="model",
+    second_category="code_repos",
+    description="Code repository documentation note",
+),
+```
+
+`tessellum init` automatically scaffolds the destination dirs (driven by `REGISTRY.values()`), so a freshly-init'd vault works with the new flavors out of the box.
+
+#### Tests
+
+Existing `@pytest.mark.parametrize("flavor", sorted(REGISTRY))` smoke tests automatically extend to the new flavors. One assertion bumped from `len(flavors) == 12` → `14`. Full suite: 468 passed, 1 skipped.
+
+#### What's coming
+
+- v0.0.25 — Phase 2: 10 acronym glossaries dropped into `vault/0_entry_points/` with Amazon-internal references scrubbed.
+- v0.0.26 — Phase 3: two capture skills (`skill_tessellum_capture_code_repo_note` + `skill_tessellum_capture_code_snippet`) ported from AbuseSlipBox with sidecars, `tessellum composer validate` as the gate.
+
 ## [0.0.23] — 2026-05-10
 
 ### Added — Composer Wave 5b: eval framework (closes the Composer port)
