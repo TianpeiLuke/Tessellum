@@ -34,9 +34,13 @@ This directory holds **one template per Building Block type** — eight skeleton
 6. **Remove the `<!-- HOW TO USE -->` commentary block at the top.**
 7. Run `python scripts/check_note_format.py --path <your-file.md>` to validate.
 
-## The 10 Templates
+## The 10 Templates + 1 YAML Reference
 
-8 BB-type templates + 1 skill-canonical template + 1 experiment template.
+8 BB-type templates + 1 skill-canonical template + 1 experiment template + 1 YAML header reference.
+
+**For YAML conventions in isolation** (no body, just the frontmatter spec): [`template_yaml_header.md`](template_yaml_header.md). Read this if you want to scan the 7 required fields, the closed enums, the open vocabularies, and the type-specific extensions in one place — without picking a BB-type skeleton first.
+
+**For copy-and-fill skeletons** (full YAML + body sections per BB type): pick from the table below.
 
 | Template | BB Type | tags[1] | Common Destination |
 |---|---|---|---|

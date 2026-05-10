@@ -86,6 +86,7 @@ The canonical executable form of the YAML frontmatter spec. Pick the template ma
 
 | Template | BB Type | Common Destination |
 |---|---|---|
+| [`template_yaml_header`](../resources/templates/template_yaml_header.md) | (reference) | YAML frontmatter spec — 7 required fields, closed enums, open vocabularies, type-specific extensions |
 | [`template_concept`](../resources/templates/template_concept.md) | concept | `vault/resources/term_dictionary/` |
 | [`template_procedure`](../resources/templates/template_procedure.md) | procedure | `vault/resources/how_to/` |
 | [`template_skill`](../resources/templates/template_skill.md) | procedure (skill flavor) | `vault/resources/skills/` |
