@@ -16,6 +16,152 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.13] — 2026-05-10
+
+### Added — Retrieval Wave 1: BM25 + FTS5
+
+`tessellum search <query>` ships. **The first user-facing query capability** — System D is no longer empty. Per `plans/plan_retrieval_port.md` Wave 1.
+
+```bash
+tessellum index build  # populates notes_fts alongside notes + note_links
+tessellum search composer
+# BM25 matches for 'composer'  (5 hits)
+#   1. term_dspy  (2.931)
+#       resources/term_dictionary/term_dspy.md
+#       ...modules <<<compose>>> (via a Python program)...
+#   2. term_atomic_skill  (2.895)
+#       ...
+```
+
+#### Schema extension — `notes_fts` virtual table
+
+`src/tessellum/indexer/schema.sql` adds:
+
+```sql
+CREATE VIRTUAL TABLE notes_fts USING fts5(
+    note_id UNINDEXED,
+    note_name,
+    body,
+    tokenize='porter unicode61'
+);
+```
+
+`UNINDEXED` on `note_id` because we use it for joins, not match. The `porter` stemmer + `unicode61` tokenizer is SQLite's standard for English text with full Unicode normalization.
+
+`src/tessellum/indexer/build.py` populates `notes_fts` from each note's body — no extra disk read since `parse_note` already returned the body in memory.
+
+**Schema migration**: existing `data/tessellum.db` files don't have `notes_fts`. Users re-run `tessellum index build --force` to rebuild. Per the plan: "schema migrations are destructive within v0.x."
+
+#### `tessellum.retrieval.bm25_search`
+
+`src/tessellum/retrieval/__init__.py` + `bm25.py`:
+
+```python
+from tessellum.retrieval import bm25_search, BM25Hit
+
+hits = bm25_search("data/tessellum.db", "composer", k=5, snippet_length=30)
+# [BM25Hit(note_id=..., note_name=..., score=2.93, snippet="...<<<compose>>>...")]
+```
+
+Three details worth knowing:
+
+1. **Score sign**: SQLite's `bm25()` returns lower-is-better. Tessellum's API negates it so `BM25Hit.score` is "higher = more relevant" — matches how users naturally read scores. The internal `ORDER BY bm25(notes_fts)` is unchanged (still ranks correctly).
+2. **Snippet generation**: SQLite's `snippet()` wraps matched terms in `<<<...>>>` markers (terminal-friendly, easy to grep). Set `snippet_length=None` to skip generation for batch queries.
+3. **Query syntax**: Passed straight to FTS5's `MATCH`. Supports prefix (`foo*`), phrase (`"x y"`), boolean (`AND`/`OR`/`NOT`), and column filters (`note_name:term`). Malformed queries raise `sqlite3.OperationalError`.
+
+#### `tessellum search <query>` CLI
+
+`src/tessellum/cli/search.py` wired into the dispatcher.
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `<query>` (positional) | required | FTS5 MATCH query |
+| `--bm25` | (implicit default) | Forward-compat selector for Waves 2-3 |
+| `--db PATH` | `./data/tessellum.db` | Index DB path |
+| `--k N` | 20 | Max results |
+| `--no-snippet` | off | Skip snippet generation |
+| `--format {human,json}` | human | Output format |
+
+Exit codes: 0 success (results may be empty), 2 invocation error (DB missing, malformed query).
+
+In v0.0.13, `tessellum search foo` and `tessellum search --bm25 foo` are equivalent — `--bm25` is reserved for Waves 2-3 when `--dense` and `--hybrid` join. Per the plan: "Wave 3 flips the default to hybrid; document in CHANGELOG."
+
+#### CLI banner
+
+Banner now lists 6 subcommands in usage order:
+
+```
+tessellum init <dir>                — scaffold a new vault
+tessellum format check <path>       — validate notes against the YAML spec
+tessellum capture <flavor> <slug>   — create a new note from a template
+tessellum index build               — build the unified SQLite index
+tessellum search <query>            — BM25 lexical retrieval (v0.0.13)
+tessellum composer validate <skill> — validate a skill's pipeline sidecar
+```
+
+#### Tests
+
+25 new tests, all passing. **248 total** (223 prior + 25 new).
+
+- `tests/smoke/test_retrieval_bm25.py` (16 tests):
+  - bm25_search returns typed BM25Hit list
+  - Ranking: relevant terms rank higher; unique-term lookup; specific-term filter
+  - Empty result for unknown query
+  - Score sign: positive (negation of FTS5 convention)
+  - Scores descend
+  - `k` flag limits; `k=0` returns empty
+  - Snippet present by default; `snippet_length=None` omits
+  - Missing DB raises FileNotFoundError
+  - Malformed FTS5 query raises OperationalError
+  - Phrase query (`"foundational layer"`)
+  - Prefix query (`supersym*`)
+  - note_id + note_name shape verified
+  - Integration: against the real Tessellum vault.
+- `tests/cli/test_search_cli.py` (9 tests):
+  - basic search → 0
+  - no-match → 0 with "no matches" message
+  - missing DB → 2 with stderr message
+  - malformed query → 2
+  - `--k` limits (verified via `--format json`)
+  - JSON output structure (query, strategy, hit_count, hits[*])
+  - `--no-snippet` flag omits snippets
+  - `--bm25` flag accepted (forward-compat)
+  - banner mentions search.
+
+#### End-to-end smoke
+
+```bash
+$ tessellum index build --vault vault --db /tmp/test.db
+built index at: /tmp/test.db
+  notes indexed:  71
+  links indexed:  547
+  duration:       0.12s
+
+$ tessellum search composer --db /tmp/test.db --k 5
+BM25 matches for 'composer'  (5 hits)
+  1. term_dspy  (2.931)
+  2. term_atomic_skill  (2.895)
+  3. term_intermediate_packets  (2.886)
+  4. term_dialectic_knowledge_system  (2.621)
+  5. template_model  (2.271)
+```
+
+All five hits make sense — DSPy is the LM-composition framework that inspired Tessellum's typed-contract approach, atomic_skill describes composable skills, etc. BM25 ranking is doing real work.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.13"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.13"`.
+- Removed obsolete `src/tessellum/retrieval/.gitkeep` (replaced by real content).
+- 248/248 tests pass (223 prior + 25 new).
+
+### What's NOT in this release (Waves 2-5)
+
+- **Wave 2 (v0.0.14)** — Dense retrieval via sqlite-vec + sentence-transformers. `tessellum search --dense`. Adds `notes_vec` virtual table.
+- **Wave 3 (v0.0.15)** — Hybrid RRF (the production winner per FZ 5e1c3a1a1's +12pp finding). `tessellum search` becomes hybrid-by-default; `--bm25` and `--dense` become explicit overrides.
+- **Wave 4 (v0.0.16)** — Best-first BFS graph traversal. `tessellum search --bfs <seed>`. **No PPR** per FZ 5e2b1c (Hit@K↔answer-quality disconnect).
+- **Wave 5 (v0.0.17)** — Skill orchestration. `skill_tessellum_search_notes.md` (decision-tree router) + `skill_tessellum_answer_query.md` (5-stage QA pipeline).
+
 ## [0.0.12] — 2026-05-10
 
 ### Added — Indexer Wave 1 (System D substrate)
@@ -805,7 +951,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.12...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.13...HEAD
+[0.0.13]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.12...v0.0.13
 [0.0.12]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.11...v0.0.12
 [0.0.11]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.9...v0.0.10

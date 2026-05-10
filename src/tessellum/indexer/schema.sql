@@ -54,3 +54,25 @@ CREATE TABLE IF NOT EXISTS note_links (
 CREATE INDEX IF NOT EXISTS idx_note_links_source ON note_links(source_note_id);
 CREATE INDEX IF NOT EXISTS idx_note_links_target ON note_links(target_note_id);
 CREATE INDEX IF NOT EXISTS idx_note_links_type   ON note_links(link_type);
+
+
+-- Lexical (BM25) full-text index. Populated alongside `notes` by the builder.
+-- Uses the porter stemmer + unicode61 tokenizer — the SQLite default for
+-- English with full Unicode normalization. `note_id` is UNINDEXED because
+-- we only need it for joins, not for token matching.
+--
+-- Query via the bm25() ranking function:
+--     SELECT note_id, -bm25(notes_fts) AS score
+--     FROM notes_fts
+--     WHERE notes_fts MATCH ?
+--     ORDER BY bm25(notes_fts)
+--     LIMIT ?
+--
+-- (The negation is because FTS5 returns lower-is-better; we want
+-- higher-is-better in user-visible output.)
+CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+    note_id UNINDEXED,
+    note_name,
+    body,
+    tokenize='porter unicode61'
+);

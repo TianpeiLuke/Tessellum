@@ -117,6 +117,7 @@ def build(
             conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
             _write_notes(conn, notes_meta)
             _write_links(conn, links_records)
+            _write_fts(conn, notes_meta)
     finally:
         conn.close()
 
@@ -399,3 +400,17 @@ def _write_links(conn: sqlite3.Connection, links: list[dict]) -> None:
         "VALUES (:source_note_id, :target_note_id, :link_context, :link_type)"
     )
     conn.executemany(sql, links)
+
+
+def _write_fts(conn: sqlite3.Connection, notes: list[dict]) -> None:
+    """Populate the FTS5 ``notes_fts`` virtual table.
+
+    Uses the body text already extracted in ``_extract_note_metadata`` —
+    no extra disk read. The body is the searchable surface; `note_name`
+    is also indexed so queries that match a filename rank well.
+    """
+    sql = (
+        "INSERT INTO notes_fts (note_id, note_name, body) "
+        "VALUES (:note_id, :note_name, :_body)"
+    )
+    conn.executemany(sql, notes)
