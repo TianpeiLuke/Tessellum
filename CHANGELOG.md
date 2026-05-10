@@ -16,6 +16,100 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.8] — 2026-05-10
+
+### Added — `tessellum capture <flavor> <slug>` CLI subcommand
+
+Step 4 of `plans/plan_v01_src_tessellum_layout.md` (capture half). Users can now create a new typed note from a template in one command:
+
+```bash
+tessellum capture concept page_rank
+# → vault/resources/term_dictionary/term_page_rank.md (status: draft, date: today)
+
+tessellum capture skill detect_atomicity_drift
+# → vault/resources/skills/skill_detect_atomicity_drift.md
+
+tessellum capture argument cqrs_thesis
+# → vault/resources/analysis_thoughts/thought_cqrs_thesis.md
+```
+
+#### `tessellum.capture` library module
+
+New `src/tessellum/capture.py` exposes:
+
+- `REGISTRY: dict[str, TemplateSpec]` — 12 registered flavors (one per template under `vault/resources/templates/`, excluding `template_yaml_header` which is a spec reference, not a copy-and-fill skeleton).
+- `TemplateSpec` — dataclass with `flavor`, `template_filename`, `destination`, `filename_prefix`, `bb_type`, `second_category`, `description`.
+- `list_flavors()`, `get_spec(flavor)` — registry accessors.
+- `capture(flavor, slug, vault_root, *, force=False, today=None) -> CaptureResult` — the load-bearing API.
+
+The 12 flavors and their destinations:
+
+| Flavor | Destination | Filename pattern |
+|---|---|---|
+| `concept` | `resources/term_dictionary/` | `term_<slug>.md` |
+| `procedure` | `resources/how_to/` | `howto_<slug>.md` |
+| `skill` | `resources/skills/` | `skill_<slug>.md` |
+| `model` | `resources/term_dictionary/` | `term_<slug>.md` |
+| `argument` | `resources/analysis_thoughts/` | `thought_<slug>.md` |
+| `counter_argument` | `resources/analysis_thoughts/` | `thought_counter_<slug>.md` |
+| `hypothesis` | `resources/analysis_thoughts/` | `thought_hypothesis_<slug>.md` |
+| `empirical_observation` | `resources/analysis_thoughts/` | `thought_observation_<slug>.md` |
+| `experiment` | `archives/experiments/` | `experiment_<slug>.md` |
+| `navigation` | `0_entry_points/` | `<slug>.md` |
+| `entry_point` | `0_entry_points/` | `entry_<slug>.md` |
+| `acronym_glossary` | `0_entry_points/` | `acronym_glossary_<slug>.md` |
+
+#### Capture transform — three-step
+
+The capture function applies three transformations to the template content:
+
+1. **Strip the `<!-- HOW TO USE THIS TEMPLATE: ... -->` HTML comment block.** Regex pattern is intentionally specific: requires `\n-->` (closing on its own line), since the instructional text inside the block contains a literal `<!-- HOW TO USE -->` mention ("5. Remove this `<!-- HOW TO USE -->` commentary block.") that would short-circuit a naive non-greedy match.
+2. **Replace `date of note: <whatever>` with today's date** (or the explicit `today=` override).
+3. **Replace `status: template` with `status: draft`** so the captured note is a real draft, not flagged as a template by search filters.
+
+Other placeholder content (keywords, topics, body sections like `<Concept Name>`) is left for the user to fill — capture is a scaffold, not a content generator.
+
+#### CLI
+
+`src/tessellum/cli/capture.py` is a thin argparse wrapper. Wired into the dispatcher in `cli/main.py`:
+
+- Positional args: `flavor` (one of 12 choices), `slug` (lowercase letters/digits/underscores only).
+- Flags: `--vault PATH` (default `./vault`), `--force` / `-f` (overwrite existing).
+- Exit codes: `0` success, `1` target file exists (without `--force`), `2` invalid flavor/slug or missing destination directory.
+
+The bare `tessellum` banner now lists `tessellum capture <flavor> <slug>` under "Available now (CLI)".
+
+#### Tests
+
+48 new tests, all passing:
+
+- `tests/smoke/test_capture.py` (40) — registry contents, accessors, slug validation (uppercase / space / hyphen rejected), date/status transforms, HOW TO USE strip (verifies "commentary block" and "EPISTEMIC FUNCTION" leak-text doesn't survive), refuse/force overwrite, parametrized "every flavor produces a validator-clean note" + "every flavor lands at registered destination".
+- `tests/cli/test_capture_cli.py` (8) — basic create, invalid slug → 2, existing file → 1, `--force` → 0, missing vault → 2, banner mentions capture, help lists all 12 flavors.
+
+`tests/cli/test_capture.py` was renamed to `test_capture_cli.py` to avoid a pytest module-name collision with `tests/smoke/test_capture.py`.
+
+#### Real-vault smoke test
+
+```bash
+$ tessellum capture concept smoke_test_capture --vault vault
+created: vault/resources/term_dictionary/term_smoke_test_capture.md
+  flavor:  concept
+  next:    fill placeholders, then `tessellum format check ...`
+
+$ tessellum format check vault/resources/term_dictionary/term_smoke_test_capture.md
+  WARNING[links] LINK-003: link target 'term_related_a.md' does not exist
+  WARNING[links] LINK-003: link target 'term_related_b.md' does not exist
+validated 1 file(s); 0 errors, 2 warning(s)
+```
+
+Two LINK-003 warnings are expected — they're placeholder targets in the template's See Also section that the user replaces when filling in the note.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.8"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.8"`.
+- 117/117 tests pass (69 prior + 48 new).
+
 ## [0.0.7] — 2026-05-10
 
 ### Added — Templates ship in the wheel via `force-include`
@@ -308,7 +402,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.7...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.8...HEAD
+[0.0.8]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.4...v0.0.5
