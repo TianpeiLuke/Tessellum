@@ -1,13 +1,14 @@
 """``tessellum composer …`` — Composer pipeline operations.
 
-Two subcommands in v0.0.19:
+Three subcommands in v0.0.20:
 
     validate <skill>     Schema + cross-file consistency (Wave 1a / 1b).
     compile <skill>      Compile to a typed DAG with contract checks (Wave 2).
+    run <skill>          Execute the compiled pipeline against leaves (Wave 3).
 
 Exit codes:
-    0  every skill validates / compiles clean
-    1  at least one skill fails (validation or compilation)
+    0  every skill validates / compiles / runs clean
+    1  at least one skill fails (validation, compilation, or execution)
     2  invocation error (path doesn't exist, etc.)
 """
 
@@ -21,9 +22,11 @@ from pathlib import Path
 from tessellum.composer import (
     CompilerError,
     ContractViolation,
+    MockBackend,
     PipelineValidationError,
     compile_skill,
     load_pipeline,
+    run_pipeline,
     to_dag_json,
 )
 
@@ -81,6 +84,54 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Omit prompt_section_text from JSON output (smaller files).",
     )
     compile_cmd.set_defaults(func=run_composer_compile)
+
+    run_cmd = composer_sub.add_parser(
+        "run",
+        help="Execute a compiled pipeline against leaves (Wave 3 — mock LLM by default).",
+    )
+    run_cmd.add_argument("skill", type=Path, help="Skill canonical (markdown).")
+    run_cmd.add_argument(
+        "--leaves",
+        type=Path,
+        help="JSON file with a list of leaf dicts (one per per_leaf invocation). "
+        "Default: empty (corpus-wide steps run once with synthetic leaf).",
+    )
+    run_cmd.add_argument(
+        "--vault",
+        type=Path,
+        default=Path("vault"),
+        help="Vault root for materializer file paths (default: ./vault).",
+    )
+    run_cmd.add_argument(
+        "--mock-responses",
+        type=Path,
+        help="JSON file mapping prompt-substring patterns to canned response "
+        "text. Used by the default MockBackend.",
+    )
+    run_cmd.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Skip filesystem writes; structured outputs still flow downstream.",
+    )
+    run_cmd.add_argument(
+        "--no-trace",
+        action="store_true",
+        help="Skip writing a JSON trace to runs/composer/.",
+    )
+    run_cmd.add_argument(
+        "--runs-dir",
+        type=Path,
+        default=Path("runs") / "composer",
+        help="Where to write the trace (default: ./runs/composer/).",
+    )
+    run_cmd.add_argument(
+        "--format",
+        dest="output_format",
+        choices=["human", "json"],
+        default="human",
+        help="Output format (default: human).",
+    )
+    run_cmd.set_defaults(func=run_composer_run_cli)
 
 
 def run_composer_validate(args: argparse.Namespace) -> int:
@@ -275,3 +326,143 @@ def run_composer_compile(args: argparse.Namespace) -> int:
             f"  ⇒ {materializer}{flag_str}{deps}"
         )
     return 0
+
+
+# ── tessellum composer run ─────────────────────────────────────────────────
+
+
+def run_composer_run_cli(args: argparse.Namespace) -> int:
+    skill_path: Path = args.skill.expanduser().resolve()
+
+    if not skill_path.exists():
+        print(
+            f"tessellum composer run: {skill_path} does not exist",
+            file=sys.stderr,
+        )
+        return 2
+    if not (skill_path.is_file() and skill_path.suffix == ".md"):
+        print(
+            f"tessellum composer run: {skill_path} is not a markdown file",
+            file=sys.stderr,
+        )
+        return 2
+
+    # Compile.
+    try:
+        compiled = compile_skill(skill_path)
+    except (PipelineValidationError, ContractViolation, CompilerError) as e:
+        print(
+            f"tessellum composer run: {skill_path.name} failed to compile",
+            file=sys.stderr,
+        )
+        print(f"  {e}", file=sys.stderr)
+        return 1
+
+    if compiled.step_count == 0:
+        print(
+            f"tessellum composer run: skill {skill_path.name} declares "
+            f"pipeline_metadata: none — nothing to run.",
+        )
+        return 0
+
+    # Load leaves (if any).
+    leaves: list[dict] = []
+    if args.leaves is not None:
+        try:
+            raw = args.leaves.expanduser().resolve().read_text(encoding="utf-8")
+            data = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as e:
+            print(
+                f"tessellum composer run: --leaves {args.leaves} could not be "
+                f"loaded: {e}",
+                file=sys.stderr,
+            )
+            return 2
+        if not isinstance(data, list):
+            print(
+                f"tessellum composer run: --leaves must contain a JSON list of "
+                f"leaf dicts, got {type(data).__name__}",
+                file=sys.stderr,
+            )
+            return 2
+        leaves = data
+
+    # Load mock responses (if provided).
+    responses: dict[str, str] = {}
+    if args.mock_responses is not None:
+        try:
+            raw = args.mock_responses.expanduser().resolve().read_text(encoding="utf-8")
+            responses = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as e:
+            print(
+                f"tessellum composer run: --mock-responses {args.mock_responses} "
+                f"could not be loaded: {e}",
+                file=sys.stderr,
+            )
+            return 2
+        if not isinstance(responses, dict):
+            print(
+                f"tessellum composer run: --mock-responses must be a JSON object "
+                f"mapping pattern→response",
+                file=sys.stderr,
+            )
+            return 2
+
+    backend = MockBackend(responses=responses)
+    vault_root = args.vault.expanduser().resolve()
+    runs_dir = None if args.no_trace else args.runs_dir.expanduser().resolve()
+
+    run = run_pipeline(
+        compiled,
+        leaves=leaves,
+        backend=backend,
+        vault_root=vault_root,
+        dry_run=args.dry_run,
+        runs_dir=runs_dir,
+    )
+
+    if args.output_format == "json":
+        payload = {
+            "skill_name": run.skill_name,
+            "started_at": run.started_at,
+            "duration_seconds": run.duration_seconds,
+            "leaf_count": len(run.leaves),
+            "step_invocation_count": len(run.step_results),
+            "error_count": run.error_count,
+            "trace_path": str(run.trace_path) if run.trace_path else None,
+            "step_results": [
+                {
+                    "section_id": r.section_id,
+                    "leaf_id": r.leaf_id,
+                    "elapsed_ms": r.elapsed_ms,
+                    "error": r.error,
+                    "files_written": [str(p) for p in r.materialized.files_written],
+                    "files_applied": [str(p) for p in r.materialized.files_applied],
+                }
+                for r in run.step_results
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        print(
+            f"ran {run.skill_name}  "
+            f"({len(run.step_results)} step invocation(s); "
+            f"{run.error_count} error(s); {run.duration_seconds*1000:.1f}ms)"
+        )
+        for r in run.step_results:
+            tag = f"[{r.leaf_id}]" if r.leaf_id else ""
+            status = "OK" if r.error is None else "FAIL"
+            print(f"  {status}  {r.section_id}  {tag}  {r.elapsed_ms:.1f}ms")
+            if r.error:
+                print(f"        ↳ {r.error}")
+            if r.materialized.files_written:
+                for p in r.materialized.files_written:
+                    print(f"        wrote {p}")
+            if r.materialized.files_applied:
+                for p in r.materialized.files_applied:
+                    print(f"        applied {p}")
+        if run.trace_path:
+            print()
+            print(f"trace: {run.trace_path}")
+
+    return 1 if run.error_count else 0

@@ -16,6 +16,96 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.20] — 2026-05-10
+
+### Added — Composer Wave 3: executor + scheduler + materializers + mock LLM
+
+`tessellum composer run <skill>` executes a compiled pipeline end-to-end against a list of leaves. Wave 3 turns the static DAG produced by Wave 2's compiler into a running orchestrator. Five new modules (`llm.py`, `materializer.py`, `executor.py`, `scheduler.py`, plus the `run` CLI subcommand) — together ~700 LOC of typed, side-effect-aware runtime.
+
+```
+$ tessellum composer run vault/resources/skills/skill_tessellum_search_notes.md \
+    --vault vault/ --mock-responses tests/fixtures/mock-responses.json
+ran skill_tessellum_search_notes  (3 step invocation(s); 0 error(s); 4.2ms)
+  OK  step_1_parse_intent  [corpus]  1.1ms
+  OK  step_2_dispatch  [corpus]  1.4ms
+  OK  step_3_return_hits  [corpus]  1.7ms
+
+trace: runs/composer/2026-05-10T20-32-19_skill_tessellum_search_notes.json
+```
+
+#### `tessellum.composer.llm` — backend abstraction
+
+`LLMBackend` Protocol with one method (`call(LLMRequest) → LLMResponse`). Wave 3 ships `MockBackend` — substring-pattern → canned-response map, with all requests recorded on `backend.calls` for test assertions. The real `AnthropicBackend` ships in Wave 4 behind the `[agent]` extras dependency group, sharing the same Protocol.
+
+#### `tessellum.composer.materializer` — five wire-format handlers
+
+One handler per `MaterializerContract` registered in `MATERIALIZER_CONTRACTS`:
+
+| Key                                  | Mode      | Wire format               |
+| ------------------------------------ | --------- | ------------------------- |
+| `no_op`                              | DESCRIBE  | JSON (tolerant)           |
+| `body_markdown_to_file`              | PRODUCE   | JSON envelope             |
+| `body_markdown_frontmatter_to_file`  | PRODUCE   | markdown w/ frontmatter   |
+| `edits_apply_to_files`               | APPLY     | JSON `{edits: [...]}`     |
+| `edits_apply_xml_tags`               | APPLY     | `<edit><file>…</file>…`   |
+
+Each returns a `MaterializedOutput(structured, files_written, files_applied, notes)`. All support `dry_run=True` (structured payloads still flow downstream so `{{upstream.X}}` resolves correctly during a dry run). `MaterializerError` surfaces malformed wire-format, missing required fields, or unknown keys; the executor catches it and writes the message to `StepResult.error` rather than propagating — one bad step doesn't kill the pipeline.
+
+#### `tessellum.composer.executor` — single-step unit operation
+
+`execute_step(step, leaf=…, upstream=…, backend=…, vault_root=…, dry_run=…)` resolves placeholders, invokes the backend, validates the response, and materializes.
+
+- **`{{leaf.X}}`** — looked up in the per-leaf data dict.
+- **`{{upstream.Y}}`** — looked up in the running upstream context (Wave 3 minimum).
+- **`{{existing.Z}}`** — APPLY-mode pre-fetch deferred; the materializer enforces APPLY file existence at write time instead.
+
+Missing keys leave `<missing leaf.X>` / `<missing upstream.Y>` sentinels (easier to debug than a silently-empty prompt). Schema validation runs against `expected_output_schema` via `jsonschema.validate`; failures populate `StepResult.error` without raising.
+
+#### `tessellum.composer.scheduler` — end-to-end orchestration
+
+`run_pipeline(pipeline, leaves=…, backend=…, vault_root=…, dry_run=…, runs_dir=…)` topologically iterates the compiler's already-sorted steps:
+
+- **`per_leaf`**: one invocation per leaf; outputs collected into `upstream[output_key]` as a list of structured dicts.
+- **`corpus_wide` / `cross_leaf`**: one invocation; output stored as a single dict.
+- **`INFRA`**: skipped (informational glue, no LLM dispatch).
+
+Synthetic single leaf `{"_id": "corpus"}` is injected if `leaves=None or empty`. When `runs_dir` is set, writes a JSON trace to `runs_dir/<filesystem-safe-timestamp>_<skill>.json` carrying leaf count, step invocation count, error count, per-step `elapsed_ms`, and the files written/applied per invocation.
+
+#### `tessellum composer run` CLI
+
+```
+tessellum composer run <skill>
+    [--leaves leaves.json]            # JSON list of leaf dicts
+    [--vault vault/]                  # default ./vault
+    [--mock-responses mock.json]      # pattern → canned response
+    [--dry-run]                       # skip filesystem writes
+    [--no-trace]                      # skip runs/composer/ trace
+    [--runs-dir runs/composer/]
+    [--format human|json]
+```
+
+Exit codes: `0` clean run, `1` step errors or compile failure, `2` invocation error (missing skill, bad JSON in `--leaves` / `--mock-responses`, etc.). The `composer compile` semantics are preserved exactly.
+
+#### Tests
+
+41 new smoke tests across:
+
+- `tests/smoke/test_composer_materializer.py` — 5 materializers × happy + error paths.
+- `tests/smoke/test_composer_executor.py` — placeholder resolution, mock backend, schema validation, materializer dispatch.
+- `tests/smoke/test_composer_scheduler.py` — per-leaf vs corpus-wide, INFRA skip, upstream flow, trace writing, dry-run, synthetic leaf injection.
+- `tests/cli/test_composer_run_cli.py` — CLI integration (human + JSON output, `--mock-responses`, `--leaves`, `--dry-run`, error paths, `pipeline_metadata: none` short-circuit).
+
+#### Deferred (per `plans/plan_composer_port.md`)
+
+- **Cross-leaf scoping** — Wave 3 collapses into corpus_wide for now; a true cross-leaf scope (e.g., synthesizing across all leaves with shared context) lands when a skill needs it.
+- **`{{existing.Z}}` pre-fetch** — APPLY-mode prompts can't see the current file content yet (the materializer just overwrites). Wave 5+ if real demand emerges.
+- **Column-oriented batching** — group N `per_leaf` instances into one LLM call. Per FZ 5e1c3a1a5 evidence, ~4× cost reduction; defer until backend pricing motivates it.
+- **MCP dispatcher** — kept on the deferred list per the plan.
+
+#### Why this matters
+
+Composer is now functionally complete on the mock-backend side: capture (skill canonical) + compile (typed DAG) + run (executor dispatching through MockBackend with file-side-effects). Wave 4 swaps the mock for an Anthropic backend behind one Protocol method; Wave 5+ adds batch + eval. The agent ↔ program boundary stays clean — programs handle structure/I/O/policy lookups (file I/O, schema parse, tree assembly, recursion plumbing); agents handle every decision that requires reading source content.
+
 ## [0.0.19] — 2026-05-10
 
 ### Added — Composer Wave 2: the compiler

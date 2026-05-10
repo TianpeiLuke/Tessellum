@@ -66,10 +66,11 @@ def _print_banner() -> None:
     print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
     print()
     print("  tessellum composer compile <skill>  — compile to a typed DAG (Wave 2)")
+    print("  tessellum composer run <skill>      — execute the compiled DAG (Wave 3, mock LLM)")
     print()
     print("Roadmap:")
-    print("  tessellum composer run <skill>       — Composer Wave 3 (executor)")
-    print("  tessellum composer + LLM bridge      — Composer Wave 4")
+    print("  tessellum composer + Anthropic LLM   — Composer Wave 4 ([agent] extras)")
+    print("  tessellum composer batch / eval      — Composer Wave 5+")
     print()
     print("See https://github.com/TianpeiLuke/Tessellum for the v0.1 plan.")
 
