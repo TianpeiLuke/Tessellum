@@ -1,0 +1,319 @@
+# tessellum-write-coe — Composer pipeline sidecar
+#
+# 6-step pipeline that turns a brief incident summary into a complete
+# COE note (9 required sections, 5-Whys analysis, action items) plus
+# updates the entry_coes.md index.
+#
+# Input: leaf metadata with at minimum `title` (short incident name)
+# and `summary` (2-3 sentences of what happened). The agent fills in
+# the rest from context — or marks unknowns explicitly per the skill
+# canonical's authoring discipline.
+#
+# Backend: works with MockBackend (offline testing) and AnthropicBackend
+# (real LLM via the `[agent]` extras). No MCP dependencies.
+
+version: "1.0"
+
+pipeline:
+  - section_id: step_1_gather_incident_details
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: []
+    output_key: incident_details
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [task, what_went_wrong, attempts, resolution]
+      properties:
+        task:
+          type: string
+          description: "What the user / agent was trying to do"
+        what_went_wrong:
+          type: string
+          description: "The error / failure / surprise (specific, with verbatim error message where available)"
+        attempts:
+          type: array
+          description: "Each failed approach"
+          items:
+            type: object
+            required: [approach, outcome]
+            properties:
+              approach: { type: string }
+              outcome: { type: string }
+        resolution:
+          type: string
+          description: "What finally worked — or 'investigating' if not yet resolved"
+        duration_minutes:
+          type: ["integer", "null"]
+          description: "Approximate wall time from first attempt to mitigation"
+        timeline:
+          type: array
+          items:
+            type: object
+            required: [event]
+            properties:
+              event: { type: string }
+              timestamp: { type: ["string", "null"] }
+    prompt_template: |
+      You are extracting incident details for a Correction of Errors (COE)
+      write-up.
+
+      LEAF METADATA
+      - title: {{leaf.title}}
+      - summary: {{leaf.summary}}
+
+      Apply the procedure in section "step_1_gather_incident_details" of
+      skill_tessellum_write_coe.
+
+      If only `title` + `summary` are available from leaf metadata, derive
+      what you can. Mark unknowns explicitly (e.g., `"resolution": "unknown"`
+      or `"duration_minutes": null`) rather than guessing — the 5 Whys in
+      step 2 will surface what's missing.
+
+      Return ONLY the JSON object specified by expected_output_schema; no
+      prose, no code fences.
+
+  - section_id: step_2_perform_5_whys_root_cause_analysis
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_1_gather_incident_details]
+    output_key: five_whys
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [why_chain, root_cause]
+      properties:
+        why_chain:
+          type: array
+          minItems: 5
+          items:
+            type: object
+            required: [level, why, because]
+            properties:
+              level:
+                type: integer
+                minimum: 1
+              why: { type: string }
+              because: { type: string }
+        branches:
+          type: array
+          description: "Optional — additional causal branches if multiple paths apply"
+          items:
+            type: object
+            required: [from_level, why_chain]
+            properties:
+              from_level:
+                type: integer
+                minimum: 1
+              why_chain:
+                type: array
+                items:
+                  type: object
+                  required: [level, why, because]
+                  properties:
+                    level: { type: integer }
+                    why: { type: string }
+                    because: { type: string }
+        root_cause:
+          type: string
+          description: "The systemic root cause — must be about a system, process, or check, never about an individual"
+    prompt_template: |
+      You are performing the 5 Whys root cause analysis on the incident.
+
+      INCIDENT_DETAILS (from step 1)
+      {{upstream.incident_details}}
+
+      Apply the procedure in section "step_2_perform_5_whys_root_cause_analysis"
+      of skill_tessellum_write_coe. Each level MUST be a factual statement,
+      not speculation and not blame. Go beyond level 5 if the systemic root
+      cause isn't yet visible.
+
+      Stop signs that mean you must ask one more `why`: "operator error",
+      "resource exhaustion", "dependency failed", "I should have known".
+
+      Return ONLY the JSON object specified by expected_output_schema; no
+      prose, no code fences.
+
+  - section_id: step_3_write_coe_note
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_1_gather_incident_details, step_2_perform_5_whys_root_cause_analysis]
+    output_key: coe_body
+    materializer: body_markdown_frontmatter_to_file
+    expected_output_schema:
+      type: object
+      required: [output_path]
+      properties:
+        output_path:
+          type: string
+          pattern: "^resources/analysis_thoughts/coe_[a-z0-9_]+\\.md$"
+    prompt_template: |
+      You are writing the COE note for "{{leaf.title}}".
+
+      INCIDENT_DETAILS (from step 1)
+      {{upstream.incident_details}}
+
+      FIVE_WHYS (from step 2)
+      {{upstream.five_whys}}
+
+      Apply the procedure in section "step_3_write_coe_note" of
+      skill_tessellum_write_coe (sub-sections: yaml_frontmatter,
+      required_sections, writing_rules).
+
+      OUTPUT FORMAT — markdown with YAML frontmatter, NOT JSON, NOT XML.
+      Do NOT call any file-write tool. Do NOT wrap the output in code
+      fences. Return the markdown directly.
+
+      The frontmatter MUST contain:
+        - output_path: resources/analysis_thoughts/coe_<descriptive_slug>.md
+        - All standard fields: tags (with tags[0]=resource, tags[1]=analysis,
+          tags[2]=coe), keywords, topics, language, date of note, status,
+          building_block: argument
+
+      Everything after the closing `---` IS the file body, written verbatim.
+      Required sections in order (per skill canonical):
+        1. # COE: <Title>
+        2. ## Summary
+        3. ## Customer / User Impact
+        4. ## Timeline (table: Time | Event)
+        5. ## Root Cause Analysis (5 Whys) — numbered list
+        6. ## What Went Wrong — per-pattern subsections
+        7. ## What Went Well
+        8. ## Lessons Learned — numbered list (≥3 lessons)
+        9. ## Action Items (table: # | Action | Owner | Priority | Due | Status)
+        10. ## References
+
+      Authoring rules: systems and processes only (never blame individuals);
+      factual statements (not speculation); every lesson maps to an action
+      item; honest timeline (include failed attempts, not just the fix).
+
+  - section_id: step_4_check_for_duplicates
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_3_write_coe_note]
+    output_key: duplicate_check
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [duplicate_found]
+      properties:
+        duplicate_found:
+          type: boolean
+        related_coe_paths:
+          type: array
+          items: { type: string }
+        recurrence_signal:
+          type: ["string", "null"]
+          description: "If duplicate_found and same root cause: 'recurrence — prior action items did not load-bear'"
+    prompt_template: |
+      You are checking the vault for COE notes that overlap with the
+      just-written COE for "{{leaf.title}}".
+
+      Apply the procedure in section "step_4_check_for_duplicates" of
+      skill_tessellum_write_coe. Use `tessellum search --bm25` over the
+      failure-pattern keywords from step 2's root cause, plus a directory
+      listing of existing coe_*.md files.
+
+      For each related COE found, decide: is this a recurrence (same root
+      cause) or a variation (related but distinct)? Recurrence is a strong
+      signal that the prior COE's action items did not load-bear.
+
+      Return ONLY the JSON object specified by expected_output_schema; no
+      prose, no code fences.
+
+  - section_id: step_5_verify
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_4_check_for_duplicates]
+    output_key: verify_verdict
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [passes_format_check, all_required_sections_present, lessons_count, action_items_count]
+      properties:
+        passes_format_check:
+          type: boolean
+        all_required_sections_present:
+          type: boolean
+        lessons_count:
+          type: integer
+          minimum: 0
+        action_items_count:
+          type: integer
+          minimum: 0
+        issues:
+          type: array
+          items: { type: string }
+    prompt_template: |
+      You are verifying the just-written COE note for "{{leaf.title}}".
+
+      Apply the procedure in section "step_5_verify" of
+      skill_tessellum_write_coe. Required checks:
+        - tessellum format check passes (0 errors)
+        - building_block: argument
+        - All 9 required sections present in order
+        - 5 Whys reaches a systemic root cause (not blame, not "operator
+          error")
+        - At least 3 lessons learned, each specific + actionable + preventive
+        - At least 2 action items, each SMART with owner + priority + due +
+          status
+        - Timeline includes failed mitigation attempts, not just the fix
+        - References section links to term_coe + at least one related note
+
+      Return ONLY the JSON object specified by expected_output_schema; no
+      prose, no code fences.
+
+  - section_id: step_6_update_coe_entry_point
+    role: DEFERRED
+    aggregation: cross_leaf
+    batchable: false
+    depends_on: [step_3_write_coe_note, step_5_verify]
+    output_key: entry_point_updates
+    materializer: edits_apply_xml_tags
+    expected_output_schema:
+      type: object
+      required: [edits]
+      properties:
+        edits:
+          type: array
+          items:
+            type: object
+            required: [file, content]
+            properties:
+              file: { type: string }
+              content: { type: string }
+    prompt_template: |
+      You are batch-updating the COE entry point with one or more newly
+      written COE notes from the upstream step_3_write_coe_note dispatches.
+
+      NEW_COES (one entry per affected leaf — full markdown-with-frontmatter
+      from each step_3 output)
+      {{upstream.coe_body}}
+
+      Apply the procedure in section "step_6_update_coe_entry_point" of
+      skill_tessellum_write_coe (sub-steps 6a-6c cover Quick Stats,
+      COE Index table, Recurring Patterns).
+
+      OUTPUT FORMAT — XML tag list, NOT JSON. APPLY mode: emit the COMPLETE
+      new file body inside <content>, verbatim (not a diff, not regex
+      operations, not a status report). Do NOT call any file-write tool.
+
+      Required envelope:
+        <edits>
+          <edit>
+            <file>0_entry_points/entry_coes.md</file>
+            <content>
+      <COMPLETE new file body — all original sections preserved + new COE
+      row(s) inserted at the top of the COE Index table + Quick Stats
+      counters bumped + Last Updated date bumped to today>
+            </content>
+          </edit>
+        </edits>
+
+      If NEW_COES is empty (no leaves succeeded at step_3), emit
+      <edits></edits> (empty envelope, no error).

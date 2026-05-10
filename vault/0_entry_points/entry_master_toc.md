@@ -33,6 +33,7 @@ building_block: navigation
 |---|---|
 | Install Tessellum and run through the basics | [`howto_first_vault`](../resources/how_to/howto_first_vault.md) — 8-step CLI walkthrough: init → capture → format check → index → search → composer |
 | Look up unfamiliar vocabulary | [`acronym_glossary_tessellum_foundations`](acronym_glossary_tessellum_foundations.md) — one-line lookup for the 11 foundation terms (Z, Slipbox, FZ, PARA, BASB, CODE, Knowledge BB, BB, EF, DKS, CQRS) |
+| Document a failure / learn from a mistake | [`term_coe`](../resources/term_dictionary/term_coe.md) (method) + [`skill_tessellum_write_coe`](../resources/skills/skill_tessellum_write_coe.md) (Composer skill) + [`entry_coes`](entry_coes.md) (index) |
 | Understand the typed substrate | [`term_building_block`](../resources/term_dictionary/term_building_block.md) — the 8 BB types + 10 directed epistemic edges |
 | Pick the right BB type for a new note | [`entry_building_block_index`](entry_building_block_index.md) — the scannable matrix (BB × question × function × layer × required sections × default directory) |
 | Author your first note (format rules + every validator code) | [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) — YAML frontmatter contract + closed enums + tag conventions + link rules + complete issue-code reference |
@@ -105,6 +106,7 @@ Tessellum's design history is encoded as three Folgezettel research trails. Each
 | [`entry_architecture_trail`](entry_architecture_trail.md) | Trail 1 — Architecture / CQRS |
 | [`entry_dialectic_trail`](entry_dialectic_trail.md) | Trail 2 — Dialectic / DKS |
 | [`entry_retrieval_trail`](entry_retrieval_trail.md) | Trail 3 — Retrieval / System D |
+| [`entry_coes`](entry_coes.md) | Correction of Errors notes — post-incident reflections (review-and-reflect format) |
 
 ---
 

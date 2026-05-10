@@ -16,6 +16,77 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.35] — 2026-05-10
+
+### Added — Correction of Errors (COE) review-and-reflect surface
+
+The seed vault now ships the full COE practice — the method, the agent-executable skill, and the index — generalised as public knowledge. Every install can document and learn from incidents using a structured, blameless format.
+
+#### 4 new files
+
+| File | Role |
+|------|------|
+| `vault/resources/term_dictionary/term_coe.md` | The method, the 9-section document shape, the 5 Whys discipline, the action-item priorities, the anti-patterns. Scrubbed of all Amazon-internal references (`coe.a2z.com`, `w.amazon.com`, "coe-watchers@", Leadership Principles, "all Amazonians"). |
+| `vault/resources/skills/skill_tessellum_write_coe.md` | Agent-executable skill canonical. 6 steps: gather incident details → 5 Whys → write COE → check duplicates → verify → update index. Renamed from `slipbox-write-coe` → `tessellum-write-coe`; the `note_second_category`, `related_skill_headers`, and FZ-12a references are stripped. |
+| `vault/resources/skills/skill_tessellum_write_coe.pipeline.yaml` | Composer-compatible sidecar. Dropped `mcp_dependencies: session-mcp` — agents pass incident details directly via leaf metadata (`title` + `summary`). Schema converted from non-standard `format: markdown_with_frontmatter` / `xml_tag_list` to Tessellum's JSON-schema shape with `required: [output_path]` / `[edits]`. |
+| `vault/0_entry_points/entry_coes.md` | The COE index — Quick Stats counters + COE Index table + Recurring Patterns section. Step 6 of the skill updates this file with each new COE. |
+
+#### Composer integration
+
+```
+$ tessellum composer validate vault/resources/skills/skill_tessellum_write_coe.md
+OK   skill_tessellum_write_coe.md (6 steps)
+
+$ tessellum composer compile vault/resources/skills/skill_tessellum_write_coe.md
+compiled skill_tessellum_write_coe — 6 steps:
+  1. step_1_gather_incident_details             [CORE/per_leaf]   ⇒ no_op
+  2. step_2_perform_5_whys_root_cause_analysis  [CORE/per_leaf]   ⇒ no_op
+  3. step_3_write_coe_note                      [CORE/per_leaf]   ⇒ body_markdown_frontmatter_to_file
+  4. step_4_check_for_duplicates                [CORE/per_leaf]   ⇒ no_op
+  5. step_5_verify                              [CORE/per_leaf]   ⇒ no_op
+  6. step_6_update_coe_entry_point              [DEFERRED/cross_leaf] ⇒ edits_apply_xml_tags
+```
+
+Run end-to-end with `tessellum composer run vault/resources/skills/skill_tessellum_write_coe.md --leaves leaves.json` where `leaves.json` carries one `{title, summary}` object per incident.
+
+#### Scrubs
+
+What was removed from the source notes to ship as public knowledge:
+
+- Amazon-internal URLs (`coe.a2z.com`, `w.amazon.com`, `broadcast.amazon.com`, `t.corp.amazon.com`, `learn.a2z.com`)
+- Amazon-specific Leadership Principles section (Ownership / Customer Obsession / Dive Deep / etc.)
+- Visibility classifications (Standard / Secure / Team-Only COE — Amazon's mailing-list-based escalation)
+- "All Amazonians" / "coe-watchers@" / "VP escalation" / "manager-level" — replaced with neutral "team" / "organization" language
+- Two-week mandatory timeline framed as a *common convention* rather than a corporate mandate
+- Internal training-doc links to AB-specific paths
+- Specific COE examples (Amazon Video EU outage, S3 multi-region) — dropped
+
+What's kept (the load-bearing content):
+
+- 5 Whys method + stop-sign list
+- 9-section document structure
+- Action item priorities (High 30d / Medium 60d / Low 90d / None 365d) — framed as one common convention
+- SMART action item definition
+- Anti-pattern list (don't blame individuals, don't stop at "operator error", etc.)
+- The blameless / systems-and-processes-only principle
+
+#### Master TOC update
+
+The dogfood vault's `entry_master_toc.md` gets a "Document a failure / learn from a mistake" row in the *I'm new — where do I start?* table, plus a row for `entry_coes` in the *Entry Points by Surface* table.
+
+### Seed manifest
+
+- `_seed_manifest.py` extended from 33 → 37 entries (3 new .md files + 1 sidecar yaml = 4 grafts).
+- `tessellum init` now scaffolds **54 markdown files** (was 51 in v0.0.34) + 1 sidecar yaml = 55 total.
+
+### Verification
+
+- All 4 new files pass `tessellum format check` with **0 errors and 0 warnings**.
+- `tessellum composer validate` on the skill: passes.
+- `tessellum composer compile` on the skill: produces a clean 6-step DAG with all materializer contracts resolved.
+- Editable + wheel mode both produce identical file lists.
+- Full suite: 468 passed, 1 skipped.
+
 ## [0.0.34] — 2026-05-10
 
 ### Changed — Single source of truth for the seed-vault file list
