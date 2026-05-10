@@ -9,20 +9,21 @@ keywords:
   - start here
   - tessellum vault
   - navigation
+  - vault entry
 topics:
   - Navigation
   - Vault Entry
 language: markdown
-date of note: 2026-05-09
+date of note: 2026-05-10
 status: active
 building_block: navigation
 ---
 
 # Tessellum — Master Table of Contents
 
-> **You are inside a Tessellum vault.** Tessellum dogfoods itself: the project's own documentation lives here, as typed atomic notes following the same Building Block format the system asks of users.
+> **You are inside Tessellum's dogfooded vault.** This is the project's own typed-knowledge slipbox: the same Building Block format, the same Folgezettel trails, the same format spec that `tessellum format check` enforces on every vault.
 >
-> This is the entry point. Pick a path below.
+> This page is the navigation root. Pick a path below.
 
 ---
 
@@ -30,27 +31,57 @@ building_block: navigation
 
 | If you want to... | Read |
 |---|---|
-| Understand what Tessellum is in 5 minutes | [`thought_six_pillars_architecture.md`](../resources/analysis_thoughts/thought_six_pillars_architecture.md) — the six-pillar thesis (Z + PARA + BB + Epistemic + DKS + CQRS) |
-| Install and try it | [`howto_getting_started.md`](../resources/how_to/howto_getting_started.md) — install + init vault + first capture + first query |
-| Understand the typed substrate | [`term_building_block.md`](../resources/term_dictionary/term_building_block.md) — the 8 BB types + 10 directed edges |
-| Author your first note | [`howto_note_format.md`](../resources/how_to/howto_note_format.md) — YAML frontmatter spec + per-BB section requirements |
-| Pick a template to copy | [`templates/README.md`](../resources/templates/README.md) — 12 ready-to-fill skeletons (one per BB type + skill / experiment / entry-point / acronym-glossary specializations) + 1 YAML reference |
-| Plug Tessellum into Claude Code / Cursor / etc. | [`howto_agent_integration.md`](../resources/how_to/howto_agent_integration.md) — MCP setup recipes |
+| Install Tessellum and run through the basics | [`howto_first_vault`](../resources/how_to/howto_first_vault.md) — 8-step CLI walkthrough: init → capture → format check → index → search → composer |
+| Look up unfamiliar vocabulary | [`acronym_glossary_tessellum_foundations`](acronym_glossary_tessellum_foundations.md) — one-line lookup for the 11 foundation terms (Z, Slipbox, FZ, PARA, BASB, CODE, Knowledge BB, BB, EF, DKS, CQRS) |
+| Understand the typed substrate | [`term_building_block`](../resources/term_dictionary/term_building_block.md) — the 8 BB types + 10 directed epistemic edges |
+| Pick the right BB type for a new note | [`entry_building_block_index`](entry_building_block_index.md) — the scannable matrix (BB × question × function × layer × required sections × default directory) |
+| Author your first note (format rules + every validator code) | [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) — YAML frontmatter contract + closed enums + tag conventions + link rules + complete issue-code reference |
+| Read the architectural reasoning records | [`entry_folgezettel_trails`](entry_folgezettel_trails.md) — master FZ trail map (3 trails shipped: Architecture, Dialectic, Retrieval) |
 
 ---
 
-## Conceptual Primer (the 6 pillars)
+## Conceptual Primer — 11 Foundation Term Notes
 
-The architecture rests on six load-bearing concepts. Read all six to understand *why* Tessellum is shaped this way:
+### Methodology lineage (what Tessellum descends from)
 
-| # | Pillar | Term note |
-|---|---|---|
-| 1 | Zettelkasten | [`term_zettelkasten.md`](../resources/term_dictionary/term_zettelkasten.md) |
-| 2 | PARA — Projects/Areas/Resources/Archives | [`term_para_method.md`](../resources/term_dictionary/term_para_method.md) |
-| 3 | Building Block ontology | [`term_building_block.md`](../resources/term_dictionary/term_building_block.md) |
-| 4 | Epistemic Function | [`term_epistemic_function.md`](../resources/term_dictionary/term_epistemic_function.md) |
-| 5 | Dialectic Knowledge System (DKS) | [`term_dialectic_knowledge_system.md`](../resources/term_dictionary/term_dialectic_knowledge_system.md) |
-| 6 | CQRS — read/write separation | [`term_cqrs.md`](../resources/term_dictionary/term_cqrs.md) |
+| Concept | Term note |
+|---|---|
+| **Zettelkasten** — Luhmann's atomic-note method | [`term_zettelkasten`](../resources/term_dictionary/term_zettelkasten.md) |
+| **Slipbox** — the system class (Tessellum is one implementation) | [`term_slipbox`](../resources/term_dictionary/term_slipbox.md) |
+| **Folgezettel** — alphanumeric trails encoding *how thinking developed* | [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md) |
+| **PARA** — Forte's Projects / Areas / Resources / Archives | [`term_para_method`](../resources/term_dictionary/term_para_method.md) |
+| **BASB** — Building a Second Brain (Tiago Forte) | [`term_basb`](../resources/term_dictionary/term_basb.md) |
+| **CODE** — Capture / Organize / Distill / Express lifecycle | [`term_code_method`](../resources/term_dictionary/term_code_method.md) |
+| **Knowledge Building Blocks** — Sascha Fast's historical taxonomy | [`term_knowledge_building_blocks`](../resources/term_dictionary/term_knowledge_building_blocks.md) |
+
+### Tessellum-specific architecture (what's new)
+
+| Concept | Term note |
+|---|---|
+| **Building Block** — Tessellum's 8-type typed atomic ontology | [`term_building_block`](../resources/term_dictionary/term_building_block.md) |
+| **Epistemic Function** — what each BB *does* | [`term_epistemic_function`](../resources/term_dictionary/term_epistemic_function.md) |
+| **DKS** — Dialectic Knowledge System (closed-loop dialectic) | [`term_dialectic_knowledge_system`](../resources/term_dictionary/term_dialectic_knowledge_system.md) |
+| **CQRS** — System P (write) ⊥ System D (read), shared substrate | [`term_cqrs`](../resources/term_dictionary/term_cqrs.md) |
+
+### System regularization
+
+| Note | Role |
+|---|---|
+| [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) | The YAML / tag / link / naming contract every note must satisfy. The validator's authoritative spec in vault form, with every `TESS-NNN` / `YAML-NNN` / `LINK-NNN` issue code mapped to a fix. |
+
+---
+
+## Folgezettel Trails
+
+Tessellum's design history is encoded as three Folgezettel research trails. Each trail records an argumentative descent: starting framing → counters → synthesis. Together they document how the load-bearing architectural commitments were reasoned into shape.
+
+| Trail # | Subject | Per-trail entry | Nodes |
+|--:|---|---|---:|
+| **1** | From the typed BB graph to the two-system CQRS commitment | [`entry_architecture_trail`](entry_architecture_trail.md) | 4 |
+| **2** | How DKS was reasoned into shape — 7-component closed loop | [`entry_dialectic_trail`](entry_dialectic_trail.md) | 2 |
+| **3** | How retrieval was tested into shape — 14-strategy bake-off → unified engine + hybrid RRF | [`entry_retrieval_trail`](entry_retrieval_trail.md) | 2 |
+
+[`entry_folgezettel_trails`](entry_folgezettel_trails.md) is the master trail index + "how to grow a trail" guide.
 
 ---
 
@@ -58,47 +89,61 @@ The architecture rests on six load-bearing concepts. Read all six to understand 
 
 | Procedure | Note |
 |---|---|
-| Get started (install, init, first capture, first query) | [`howto_getting_started.md`](../resources/how_to/howto_getting_started.md) |
-| Author a typed atomic note (YAML + sections by BB type) | [`howto_note_format.md`](../resources/how_to/howto_note_format.md) |
-| Grow a Folgezettel trail (argument descent) | [`howto_grow_a_trail.md`](../resources/how_to/howto_grow_a_trail.md) |
-| Wire Tessellum into Claude Code / Cursor / OpenClaw / Kiro | [`howto_agent_integration.md`](../resources/how_to/howto_agent_integration.md) |
-| Build the unified DB from scratch | [`howto_build_unified_db.md`](../resources/how_to/howto_build_unified_db.md) |
+| Get started (install → init → capture → format check → index → search → composer) | [`howto_first_vault`](../resources/how_to/howto_first_vault.md) |
+
+*Additional how-to notes are added as users contribute them. The seed ships one walkthrough (`howto_first_vault`) — enough to bring a new user from `pip install` to a working vault.*
 
 ---
 
 ## Entry Points by Surface
 
-Each entry point indexes one type of content:
-
 | Entry point | Indexes |
 |---|---|
-| [`entry_skill_catalog.md`](entry_skill_catalog.md) | The 20 v0.1 skills — capture, search, answer, trail management, maintenance |
-| [`entry_folgezettel_trails.md`](entry_folgezettel_trails.md) | All Folgezettel trails in this vault |
-| [`entry_code_repos.md`](entry_code_repos.md) | Code-repository documentation notes |
-| [`entry_code_snippets.md`](entry_code_snippets.md) | Reusable code snippets (master TOC pointing at per-package entries) |
-| [`entry_dks.md`](entry_dks.md) | The Dialectic Knowledge System — protocol, agents, runtime |
+| [`entry_acronym_glossary`](entry_acronym_glossary.md) | Master index of all acronym glossaries (1 Tessellum-foundations + 5 universal) |
+| [`entry_building_block_index`](entry_building_block_index.md) | The 8-row BB picker matrix + the 10 epistemic edges |
+| [`entry_folgezettel_trails`](entry_folgezettel_trails.md) | Master FZ trail map — every research trail in the vault |
+| [`entry_architecture_trail`](entry_architecture_trail.md) | Trail 1 — Architecture / CQRS |
+| [`entry_dialectic_trail`](entry_dialectic_trail.md) | Trail 2 — Dialectic / DKS |
+| [`entry_retrieval_trail`](entry_retrieval_trail.md) | Trail 3 — Retrieval / System D |
+
+---
+
+## Acronym Glossaries
+
+| Glossary | Entries | Domain |
+|---|--:|---|
+| [`acronym_glossary_tessellum_foundations`](acronym_glossary_tessellum_foundations.md) | 11 | The foundation vocabulary (Z, Slipbox, FZ, PARA, BASB, CODE, Knowledge BB, BB, EF, DKS, CQRS) |
+| [`acronym_glossary_statistics`](acronym_glossary_statistics.md) | 54 | Causal inference, Bayesian methods, distributions |
+| [`acronym_glossary_critical_thinking`](acronym_glossary_critical_thinking.md) | 31 | Logic, fallacies, reasoning patterns |
+| [`acronym_glossary_cognitive_science`](acronym_glossary_cognitive_science.md) | 130 | Cognitive biases, dual-process theory, decision heuristics |
+| [`acronym_glossary_network_science`](acronym_glossary_network_science.md) | 48 | Graph theory, centrality, community detection |
+| [`acronym_glossary_llm`](acronym_glossary_llm.md) | 134 | LLM architectures, RAG, agents, evaluation |
+
+Total: 408 entries across 6 glossaries. Start with `acronym_glossary_tessellum_foundations` to learn the project's vocabulary; the others are lookup tools for jargon resolution as you encounter it.
 
 ---
 
 ## Templates — Copy-and-Fill Skeletons
 
-The canonical executable form of the YAML frontmatter spec. Pick the template matching your BB type, copy it, fill placeholders. The validator checks the templates against the spec, so they cannot drift apart.
+The canonical executable form of the YAML frontmatter spec. Pick the template matching your BB type, copy it (or use `tessellum capture <flavor> <slug>` to copy + rename + strip the commentary block), fill the placeholders.
 
 | Template | BB Type | Common Destination |
 |---|---|---|
-| [`template_yaml_header`](../resources/templates/template_yaml_header.md) | (reference) | YAML frontmatter spec — 7 required fields, closed enums, open vocabularies, type-specific extensions |
-| [`template_concept`](../resources/templates/template_concept.md) | concept | `vault/resources/term_dictionary/` |
-| [`template_procedure`](../resources/templates/template_procedure.md) | procedure | `vault/resources/how_to/` |
-| [`template_skill`](../resources/templates/template_skill.md) | procedure (skill flavor) | `vault/resources/skills/` |
-| [`template_model`](../resources/templates/template_model.md) | model | `vault/areas/code_repos/` |
-| [`template_argument`](../resources/templates/template_argument.md) | argument | `vault/resources/analysis_thoughts/` |
-| [`template_counter_argument`](../resources/templates/template_counter_argument.md) | counter_argument | `vault/resources/analysis_thoughts/` |
-| [`template_hypothesis`](../resources/templates/template_hypothesis.md) | hypothesis | `vault/resources/analysis_thoughts/` |
-| [`template_empirical_observation`](../resources/templates/template_empirical_observation.md) | empirical_observation (inline) | `vault/resources/analysis_thoughts/` |
-| [`template_experiment`](../resources/templates/template_experiment.md) | empirical_observation (full pre-reg) | `vault/archives/experiments/` |
-| [`template_navigation`](../resources/templates/template_navigation.md) | navigation (generic) | `vault/0_entry_points/` or anywhere in the vault |
-| [`template_entry_point`](../resources/templates/template_entry_point.md) | navigation (entry-point shape) | `vault/0_entry_points/entry_*.md` |
-| [`template_acronym_glossary`](../resources/templates/template_acronym_glossary.md) | navigation (acronym glossary shape) | `vault/0_entry_points/acronym_glossary_*.md` |
+| [`template_yaml_header`](../resources/templates/template_yaml_header.md) | (reference) | YAML frontmatter spec — paired-template-form companion to `term_format_spec` |
+| [`template_concept`](../resources/templates/template_concept.md) | `concept` | `resources/term_dictionary/` |
+| [`template_procedure`](../resources/templates/template_procedure.md) | `procedure` | `resources/how_to/` |
+| [`template_skill`](../resources/templates/template_skill.md) (+ `.pipeline.yaml`) | `procedure` (skill flavor) | `resources/skills/` |
+| [`template_model`](../resources/templates/template_model.md) | `model` | `resources/term_dictionary/` |
+| [`template_argument`](../resources/templates/template_argument.md) | `argument` | `resources/analysis_thoughts/` |
+| [`template_counter_argument`](../resources/templates/template_counter_argument.md) | `counter_argument` | `resources/analysis_thoughts/` |
+| [`template_hypothesis`](../resources/templates/template_hypothesis.md) | `hypothesis` | `resources/analysis_thoughts/` |
+| [`template_empirical_observation`](../resources/templates/template_empirical_observation.md) | `empirical_observation` (inline) | `resources/analysis_thoughts/` |
+| [`template_experiment`](../resources/templates/template_experiment.md) | `empirical_observation` (full pre-reg) | `archives/experiments/` |
+| [`template_navigation`](../resources/templates/template_navigation.md) | `navigation` (generic) | `0_entry_points/` |
+| [`template_entry_point`](../resources/templates/template_entry_point.md) | `navigation` (entry-point shape) | `0_entry_points/entry_*.md` |
+| [`template_acronym_glossary`](../resources/templates/template_acronym_glossary.md) | `navigation` (acronym-glossary shape) | `0_entry_points/acronym_glossary_*.md` |
+| [`template_code_snippet`](../resources/templates/template_code_snippet.md) | `procedure`/`concept`/`model` (code snippet) | `resources/code_snippets/` |
+| [`template_code_repo`](../resources/templates/template_code_repo.md) | `model` (code repository) | `areas/code_repos/` |
 
 See [`templates/README.md`](../resources/templates/README.md) for full guidance.
 
@@ -106,43 +151,41 @@ See [`templates/README.md`](../resources/templates/README.md) for full guidance.
 
 ## Project State (Outside the Vault)
 
-Tessellum's project-management state — milestone plans, layout decisions, run-artifact conventions — lives in top-level [`plans/`](../../plans/README.md), separate from the typed-knowledge vault. Plans are governance documents (meta to both System P and System D); they are *not* typed atomic notes.
+Tessellum's project-management state — milestone plans, layout decisions, run-artifact conventions — lives in the top-level [`plans/`](../../plans/README.md) directory, separate from the typed-knowledge vault. Plans are governance documents (meta to both System P and System D); they are *not* typed atomic notes.
 
-Active plans:
+All v0.1 plans are **complete**:
 
 - [`plan_v01_src_tessellum_layout`](../../plans/plan_v01_src_tessellum_layout.md) — what `src/tessellum/` ships in v0.1
 - [`plan_cqrs_repo_layout`](../../plans/plan_cqrs_repo_layout.md) — repo layout via CQRS workflow framing
+- [`plan_composer_port`](../../plans/plan_composer_port.md) — Composer port (6 waves)
+- [`plan_retrieval_port`](../../plans/plan_retrieval_port.md) — Retrieval port (5 waves)
+- [`plan_code_artifacts_port`](../../plans/plan_code_artifacts_port.md) — code-artifact capture (3 phases)
+- [`plan_minimal_seed_vault`](../../plans/plan_minimal_seed_vault.md) — seed-vault content design
 
-Pipeline runtime traces (gitignored, session-scoped) live in [`runs/`](../../runs/README.md): `capture/`, `retrieval/`, `composer/`.
-
----
-
-## Examples (one per Building Block type)
-
-Read these to see the format Tessellum asks of you:
-
-| BB Type | Example |
-|---|---|
-| `concept` | [`example_concept_pagerank.md`](../examples/example_concept_pagerank.md) |
-| `procedure` | [`example_procedure_unified_db_build.md`](../examples/example_procedure_unified_db_build.md) |
-| `model` | [`example_model_typed_substrate.md`](../examples/example_model_typed_substrate.md) |
-| `argument` | [`example_argument_cqrs_thesis.md`](../examples/example_argument_cqrs_thesis.md) |
-| `counter_argument` | [`example_counter_palinode_memory.md`](../examples/example_counter_palinode_memory.md) |
-| `hypothesis` | [`example_hypothesis_dense_dominance.md`](../examples/example_hypothesis_dense_dominance.md) |
-| `empirical_observation` | [`example_empirical_hybrid_lift.md`](../examples/example_empirical_hybrid_lift.md) |
-| `navigation` | [`example_navigation_entry_point.md`](../examples/example_navigation_entry_point.md) |
+Pipeline runtime traces (gitignored, session-scoped) live in [`runs/`](../../runs/README.md): `capture/`, `retrieval/`, `composer/`. The Composer runtime writes traces to `runs/composer/<filesystem-safe-timestamp>_<skill>.json`.
 
 ---
 
 ## Status
 
-Tessellum is **v0.0.1 (alpha — namespace reservation)**. Many of the notes linked above are **planned for v0.1** — this Master TOC describes the *target* shape of the vault. Notes already shipped in v0.0.1:
+Tessellum is at **v0.0.34** on PyPI (see [`CHANGELOG.md`](../../CHANGELOG.md) at the repo root for the per-release ship list). Every engine subsystem on the v0.1 plan is shipped:
 
-- [`term_building_block.md`](../resources/term_dictionary/term_building_block.md) ✅
+| Subsystem | Versions | Status |
+|---|---|---|
+| Format library (validator + parser + link checker) | v0.0.2 – v0.0.4 | shipped |
+| CLI scaffold (`init` + `capture` + `format check`) | v0.0.3 – v0.0.10 | shipped |
+| Capture flavors (14 BB types + variants) | v0.0.8 / v0.0.24 | shipped |
+| Indexer (unified SQLite + FTS5 + sqlite-vec) | v0.0.12 – v0.0.14 | shipped |
+| Retrieval (BM25 + dense + hybrid RRF + best-first BFS + metadata) | v0.0.13 – v0.0.18 | shipped |
+| Composer (capture → compile → execute → batch → eval, 6 waves) | v0.0.9 – v0.0.23 | shipped |
+| Seed vault (11 foundation terms + format spec + walkthrough + 3 FZ trails) | v0.0.25 – v0.0.33 | shipped |
+| Single-source-of-truth seed manifest | v0.0.34 | shipped |
 
-Everything else is on the v0.1 ship list — see [`CHANGELOG.md`](../../CHANGELOG.md) at the repo root for the per-release plan.
+**51 markdown files** ship in the seed vault on every `pip install tessellum && tessellum init`.
+
+What's still on the v0.1.0 list (content, not engine): more authored example notes (one per BB type with realistic content), an extended how-to library, a public MCP server. These are user-supplied content rather than engine work.
 
 ---
 
-**Last Updated**: 2026-05-09
-**Status**: Active — v0.0.1 alpha; planned content marked above
+**Last Updated**: 2026-05-10
+**Status**: Active — v0.0.34 alpha; engine complete; seed content stable
