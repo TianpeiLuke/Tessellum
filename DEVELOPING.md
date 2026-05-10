@@ -77,22 +77,141 @@ Skills live in **three** files (the in-vault SoT pattern):
 3. **Kiro thin-header**: `.kiro/skills/<name>/SKILL.md` — same pattern
 4. **Pipeline sidecar** (optional): `vault/resources/skills/skill_<name>.pipeline.yaml` — only if the skill has typed-contract steps
 
-## YAML Tag Convention (PARA + Second Category)
+## YAML Frontmatter Specification
 
-Tessellum uses a strict convention for the first two YAML tags:
+Tessellum notes follow a strict YAML frontmatter convention. Every typed atomic note ("tessellum") has **7 required fields** plus optional type-specific fields.
+
+### Required fields
 
 ```yaml
-tags:
-  - <para-bucket>      # tags[0]: one of {resource, area, project, archive, entry_point}
-  - <second-category>  # tags[1]: the open sub-kind label (e.g., terminology, skill, how_to, code, papers, analysis, digest, faq, code_repo)
-  - <topic-tag-1>      # tags[2..]: free-form topic tags
+---
+tags:                          # ≥ 2 items required, list format
+  - <para-bucket>              # tags[0]: closed PARA enum (see below)
+  - <second-category>          # tags[1]: open routing label (terminology, skill, how_to, code, papers, analysis, digest, faq, code_repo, ...)
+  - <topic-tag-1>              # tags[2..]: free-form topic tags, lowercase+underscore
   - <topic-tag-2>
-  - ...
+keywords:                      # ≥ 3 items recommended, list format
+  - <key-term-1>
+  - <key-term-2>
+  - <key-term-3>
+topics:                        # ≥ 2 items recommended, list format
+  - <topic-1>
+  - <topic-2>
+language: markdown             # one of: markdown, python, yaml, json, sql, bash, ...
+date of note: YYYY-MM-DD       # NOTE: the key has spaces — "date of note", not "date_of_note"
+status: <status-value>         # closed enum (see below)
+building_block: <bb-type>      # closed 8-element enum (see below)
+---
 ```
 
-**Rule**: tags[0] is always a PARA bucket (closed 5-element vocabulary). tags[1] is always the second-category routing label (open, extensible folksonomy). Topic tags follow.
+### Closed enums (must match exactly)
 
-The second tag is also the **routing label** — it determines the subdirectory under the PARA bucket (with possible pluralization: `terminology` → `term_dictionary/`, `code` → `code_snippets/`). It is the canonical SoT; do NOT add a separate `note_second_category:` field — that is redundant.
+| Field | Allowed values |
+|---|---|
+| **`tags[0]`** (PARA bucket) | `resource` · `area` · `project` · `archive` · `entry_point` |
+| **`building_block`** | `concept` · `procedure` · `model` · `argument` · `counter_argument` · `hypothesis` · `empirical_observation` · `navigation` |
+| **`status`** | `active` · `draft` · `archived` · `deprecated` · `superseded` · `stub` · `placeholder` · `template` · `wip` · `in_progress` · `production` · `proposal` · `development` · `planning` · `legacy` · `disabled` · `research` · `review` · `pending` · `completed` · `cancelled` |
+
+### Open vocabularies
+
+| Field | Examples (extend as needed) |
+|---|---|
+| **`tags[1]`** (second category / routing label) | `terminology`, `skill`, `how_to`, `analysis`, `code`, `digest`, `faq`, `papers`, `code_repo`, `tool`, `team`, `model`, `intent`, `sop`, `navigation`, `metric`, `schema`, `experiment`, `lit`, `paper_section`, ... |
+| **`tags[2..]`** | Free-form topic tags. Lowercase, underscore-separated. |
+| **`language`** | Almost always `markdown`. Use `python` / `yaml` / `sql` for notes that primarily contain code. |
+| **`keywords` / `topics`** | Free-form. `keywords` are searchable terms; `topics` are coarser themes. |
+
+### Optional common fields
+
+```yaml
+last_updated: YYYY-MM-DD       # if the note has been revised since `date of note`
+author: <handle>               # optional, for attribution
+related_wiki: null             # external reference URL or null (kept for parent-vault compat; usually null in Tessellum)
+```
+
+### Optional type-specific fields
+
+#### Folgezettel-trail notes (under `vault/resources/analysis_thoughts/` — and sometimes elsewhere)
+
+```yaml
+folgezettel: "14d1d"           # the FZ ID — string, can include letters/digits/sub-letters
+folgezettel_parent: "14d1"     # parent FZ ID, or null for trail roots
+```
+
+The canonical field name is `folgezettel_parent:` (long form). The shorter `fz_parent:` is accepted as an alias for backwards compatibility with some legacy notes, but `folgezettel_parent:` is preferred and used in all Tessellum templates.
+
+| Note type | FZ usage |
+|---|---|
+| Trail root (top of a trail) | `folgezettel: "<root-id>"`, `folgezettel_parent: null` |
+| Trail child (most cases) | `folgezettel: "<id>"`, `folgezettel_parent: "<parent-id>"` |
+| Non-trail note (most term/how-to/skill notes) | omit both FZ fields entirely |
+| Trail member outside `analysis_thoughts/` (e.g., archived experiment) | both FZ fields, with `tags[0]` reflecting the actual PARA bucket |
+
+#### Skill canonical bodies (under `vault/resources/skills/`)
+
+```yaml
+related_skill_headers:
+  - .claude/skills/<name>/SKILL.md
+  - .kiro/skills/<name>/SKILL.md
+pipeline_metadata: ./skill_<name>.pipeline.yaml   # or "none"
+```
+
+#### Literature notes (under `vault/resources/papers/lit_*.md`)
+
+```yaml
+paper_title: "Full Paper Title"
+authors:
+  - "Last, First"
+  - "Last, First"
+year: "2026"                   # quote the year — YAML treats unquoted 2026 as integer
+paper_notes: <paper_id>
+```
+
+#### Paper section notes (`paper_*` under papers/)
+
+```yaml
+paper_id: <id>
+section_type: <abstract|intro|method|...>
+```
+
+### Convention rules
+
+1. **`tags[0]` IS the PARA category** (closed). It mirrors the directory: a note in `vault/resources/...` has `tags[0]: resource`; a note in `vault/areas/...` has `tags[0]: area`; etc.
+2. **`tags[1]` IS the second category** (open routing label). It mirrors the subdirectory: a note in `vault/resources/term_dictionary/` has `tags[1]: terminology`; a note in `vault/resources/skills/` has `tags[1]: skill`; etc. The label is sometimes pluralized into the directory name (`terminology` → `term_dictionary/`, `code` → `code_snippets/`).
+3. **`building_block` is a SEPARATE FIELD** from tags. The 8 BB types live in their own field; they are not part of `tags`. BB and second-category are orthogonal — `concept` BB notes can have `tags[1]: terminology` (term notes) OR `tags[1]: papers` (digested papers) OR `tags[1]: metric`.
+4. **`date of note` uses spaces in the key name.** YAML allows it because keys can be plain strings; do NOT change it to `date_of_note` (the indexer expects the spaced form).
+5. **Do NOT add a separate `note_second_category:` field.** Tags[1] is the canonical SoT. The DB indexer reads `note_second_category` from `tags[1]` automatically.
+6. **All tags are lowercase with underscores** (`knowledge_management`, not `Knowledge Management` or `knowledge-management`).
+7. **Year-like strings must be quoted** (`year: "2026"`, not `year: 2026`) so YAML parses them as strings, not integers.
+
+### Status semantics
+
+| Status | When to use |
+|---|---|
+| `active` | Real, current content |
+| `draft` | Work-in-progress real content |
+| `archived` | Real content moved to `vault/archives/` |
+| `deprecated` | Real content kept for reference; superseded but not deleted |
+| `superseded` | Replaced by a newer note (link to the successor in body) |
+| `stub` | Real note known to be incomplete |
+| `placeholder` | Future-real note that doesn't exist yet (referenced from elsewhere) |
+| **`template`** | **Intentional skeleton — not real content.** Templates live under `vault/resources/templates/` and serve as executable spec exemplars. Search filters them out by default. |
+| `wip` / `in_progress` / `proposal` / `development` / `planning` | Project-state markers |
+| `legacy` / `disabled` / `cancelled` | Inactive / retired |
+| `research` / `review` / `pending` / `completed` | Workflow markers |
+
+### Templates
+
+The canonical executable form of this spec lives at [`vault/resources/templates/`](vault/resources/templates/) — one template per Building Block type. Copy a template, rename it, fill placeholders. The validator checks the templates themselves against the spec, so templates and spec cannot drift apart.
+
+### Validation
+
+```bash
+python scripts/check_yaml_frontmatter.py --path vault/<your-note>.md
+python scripts/check_note_format.py --path vault/<your-note>.md
+```
+
+The format checker enforces all 7 required fields, validates the closed enums against the lists above, warns if `keywords < 3` or `topics < 2`, and checks `tags[0]` against the closed PARA bucket list.
 
 ## Adding a Building Block Sub-Kind (Second Category)
 
