@@ -52,12 +52,29 @@ from tessellum.composer.contracts import (
     MaterializerContract,
     NoOpContract,
 )
+from tessellum.composer.executor import (
+    ExecutorError,
+    StepResult,
+    execute_step,
+)
+from tessellum.composer.llm import (
+    LLMBackend,
+    LLMRequest,
+    LLMResponse,
+    MockBackend,
+)
 from tessellum.composer.loader import (
     Pipeline,
     PipelineStep,
     PipelineValidationError,
     load_pipeline,
 )
+from tessellum.composer.materializer import (
+    MaterializedOutput,
+    MaterializerError,
+    materialize,
+)
+from tessellum.composer.scheduler import RunResult, run_pipeline
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
     load_pipeline_metadata,
@@ -93,4 +110,19 @@ __all__ = [
     "CompiledStep",
     "CompilerError",
     "to_dag_json",
+    # LLM backend (Wave 3)
+    "LLMBackend",
+    "LLMRequest",
+    "LLMResponse",
+    "MockBackend",
+    # Materializers (Wave 3)
+    "materialize",
+    "MaterializedOutput",
+    "MaterializerError",
+    # Executor + scheduler (Wave 3)
+    "execute_step",
+    "StepResult",
+    "ExecutorError",
+    "run_pipeline",
+    "RunResult",
 ]
