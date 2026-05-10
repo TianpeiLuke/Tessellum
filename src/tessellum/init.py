@@ -109,11 +109,18 @@ _SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/term_dictionary/term_format_spec.md",                 # YAML/link/naming spec + issue codes
     # Getting-started walkthrough (the pipeline foundation in vault form).
     "resources/how_to/howto_first_vault.md",                         # 8-step CLI walkthrough
-    # Entry points — the master glossary index + BB picker matrix + 5
-    # universal acronym glossaries + the Tessellum-foundations glossary.
+    # Architecture FZ trail (example trail — 4 thoughts forming a linear descent).
+    "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",   # FZ 1
+    "resources/analysis_thoughts/thought_cqrs_design_evolution.md",                   # FZ 1a
+    "resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md",  # FZ 1a1
+    "resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md",              # FZ 1a1a
+    # Entry points — the master glossary index + BB picker matrix +
+    # FZ trail map + 5 universal acronym glossaries + the
+    # Tessellum-foundations glossary.
     # entry_master_toc.md is rendered inline by init, not shipped here.
     "0_entry_points/entry_acronym_glossary.md",
     "0_entry_points/entry_building_block_index.md",                  # BB picker (scannable matrix)
+    "0_entry_points/entry_folgezettel_trails.md",                    # FZ trail map (example trail)
     "0_entry_points/acronym_glossary_tessellum_foundations.md",      # one-line lookup for the 11 foundation terms
     "0_entry_points/acronym_glossary_statistics.md",
     "0_entry_points/acronym_glossary_critical_thinking.md",

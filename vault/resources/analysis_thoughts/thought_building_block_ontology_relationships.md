@@ -32,8 +32,8 @@ language: markdown
 date of note: 2026-04-10
 status: active
 building_block: argument
-folgezettel: "7g"
-folgezettel_parent: "7"
+folgezettel: "1"
+folgezettel_parent: ""
 ---
 
 # Thought: The Ontology of Building Block Relationships — Extending Sascha's Taxonomy from Types to a Directed Graph
