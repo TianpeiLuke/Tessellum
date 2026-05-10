@@ -146,12 +146,12 @@ include = [
     "pyproject.toml",
 ]
 exclude = [
-    "data",
-    "experiments",
-    "inbox",
-    "runs",
-    "tests",
-    "notebook",
+    "/data",
+    "/experiments",
+    "/inbox",
+    "/runs",
+    "/tests",
+    "/notebook",
     "**/.gitkeep",
     "**/__pycache__",
     "**/*.pyc",
