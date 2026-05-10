@@ -11,6 +11,7 @@ keywords:
   - paradigm taxonomy
 topics:
   - AI Paradigm Classification
+  - Agentic AI Taxonomy
 language: markdown
 date of note: 2026-03-12
 status: active
