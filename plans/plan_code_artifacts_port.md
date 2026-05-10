@@ -20,7 +20,7 @@ topics:
   - Vault Content
 language: markdown
 date of note: 2026-05-10
-status: active
+status: completed
 building_block: procedure
 ---
 
@@ -220,4 +220,12 @@ Execute as **three commits** (one per phase):
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — draft pending user approval, then ships across 3 commits as v0.0.24 / v0.0.25 / v0.0.26.
+**Status**: **Complete** — all three phases shipped.
+
+| Phase | Version | What landed |
+| ----- | ------- | ----------- |
+| 1     | v0.0.24 | `template_code_snippet.md` + `template_code_repo.md` + capture-flavor wiring (14 flavors) |
+| 2     | v0.0.25 | 5 universal acronym glossaries (statistics, critical_thinking, cognitive_science, network_science, llm) indexing 397 acronyms + master `entry_acronym_glossary.md`. 11 source glossaries (tools, security, developer, data_governance, ml, business, workflows, teams, systems, data_metrics, abuse_networks) dropped rather than partially scrubbed |
+| 3     | v0.0.26 | 2 capture skills: `skill_tessellum_capture_code_repo_note` (9-step DAG) + `skill_tessellum_capture_code_snippet` (7-step DAG), each with paired Composer sidecar |
+
+All three phases passed `tessellum format check` (0 errors), and the two skills passed `tessellum composer validate` + `tessellum composer compile`. Test suite at port closure: 468 passed, 1 skipped.
