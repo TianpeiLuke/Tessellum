@@ -1,9 +1,9 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __status__ = (
-    "alpha — namespace reservation. The library surface is being assembled; "
-    "see CHANGELOG.md and the source repo's vault/ for the v0.1 roadmap."
+    "alpha — format library shipped (parser + validator + closed-enum spec). "
+    "See CHANGELOG.md for what's available now and the v0.1 roadmap."
 )
