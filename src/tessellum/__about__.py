@@ -1,11 +1,11 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.16"
+__version__ = "0.0.17"
 
 __status__ = (
-    "alpha — Retrieval Wave 4 (Best-first BFS) shipped. "
-    "Four strategies live: BM25, dense, hybrid (default), BFS. "
-    "PPR deliberately not ported (FZ 5e2b1c). Wave 5 (skill orchestration) "
-    "is the last v0.1 retrieval milestone. See CHANGELOG.md."
+    "alpha — Retrieval Wave 4.5 (`tessellum filter`) shipped — direct SQL "
+    "filtering on YAML metadata. Five retrieval surfaces live: bm25, dense, "
+    "hybrid (default), bfs, filter. Skill orchestration (Wave 5) is the last "
+    "v0.1 retrieval milestone. See CHANGELOG.md."
 )
