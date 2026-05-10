@@ -15,7 +15,7 @@ keywords:
   - counter-argument
   - epistemic cycle
   - building block ontology
-  - NexusTrace
+  - a behavior-pattern memory system
   - the production system
   - observation to rule
   - closed feedback loop
@@ -37,7 +37,7 @@ building_block: concept
 
 ## Definition
 
-A **Dialectic Knowledge System (DKS)** is a knowledge architecture where empirical observations are abstracted into reusable behavioral patterns, classified by competing arguments (e.g., automated model vs. human expert), refined through structured disagreement (counter-arguments), and improved via a closed feedback loop that updates operational rules. The term was coined in the Tessellum research to name the design pattern independently discovered in the production system (conversation investigation) and proposed in NexusTrace (a related design pattern) (behavioral pattern memory for Nexus).
+A **Dialectic Knowledge System (DKS)** is a knowledge architecture where empirical observations are abstracted into reusable behavioral patterns, classified by competing arguments (e.g., automated model vs. human expert), refined through structured disagreement (counter-arguments), and improved via a closed feedback loop that updates operational rules. The term was coined in the Tessellum research to name the design pattern independently discovered in the production system (conversation investigation) and proposed in a behavior-pattern memory system (a related design pattern) (behavioral pattern memory for a knowledge graph).
 
 Unlike traditional knowledge systems that **accumulate** knowledge (descriptions of what is known), a DKS generates knowledge through **dialectic** — the cycle of argument → counter-argument → synthesis → sharpened argument. The key structural requirement is that the system produces **falsifiable claims** (arguments) that can be challenged by independent evidence, not just descriptions that cannot be counter-argued.
 
@@ -78,9 +78,9 @@ The feedback loop closes when improved rules (component 7) are applied to new ob
 
 | Instance | Domain | Observation | Arg A | Arg B | Status |
 |----------|--------|-------------|-------|-------|--------|
-| **the production system** | BSM conversation investigation | 1,855 `conv_` notes | LLM classification (`agent_`) | ARI investigator (`human_`) | Production |
-| **NexusTrace** | Behavioral pattern memory for Nexus | Clickstream + model outputs | Nexus risk decision | Buyer writeback / holdout | Proposed (design only) |
-| **static descriptive systems** | MO governance | ARM tickets | — (no arguments) | — | Production, but **not a DKS** (accumulation only, no dialectic) |
+| **the production system** | an internal data system conversation investigation | 1,855 `conv_` notes | LLM classification (`agent_`) | ARI investigator (`human_`) | Production |
+| **a behavior-pattern memory system** | Behavioral pattern memory for a knowledge graph | Clickstream + model outputs | a knowledge graph risk decision | Buyer writeback / holdout | Proposed (design only) |
+| **static descriptive systems** | a domain workflow governance | ARM tickets | — (no arguments) | — | Production, but **not a DKS** (accumulation only, no dialectic) |
 | **Tessellum** | Domain knowledge | Documents, wikis, papers | — (implicit in Folgezettel counters) | — | Production, but **implicit dialectic** (not operational) |
 
 ## Dialectic Spectrum
@@ -91,7 +91,7 @@ Systems can be placed on a spectrum from no dialectic to fully operational diale
 |-------|------|--------|-----------|
 | **None** | Accumulation | static descriptive systems | Descriptions cannot be counter-argued |
 | **Implicit** | Folgezettel dialectic | Abuse Slipbox | Counter-argument notes exist but don't feed back into operations |
-| **Structural** | Decision dialectic | NexusTrace (proposed) | Designed for dialectic but not yet implemented |
+| **Structural** | Decision dialectic | a behavior-pattern memory system (proposed) | Designed for dialectic but not yet implemented |
 | **Operational** | Investigation dialectic | the production system | Runs on every record; disagreement → gap → rule update → recompile → reclassify |
 
 ## Relationship to Building Block Ontology
@@ -105,7 +105,7 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 | Model → Procedure (operationalizing) | Augment rule selection | `rule_router.py` Stage 1b |
 | Procedure → Argument (testing) | Classify with rules | `investigate_conversations.py` |
 | Argument → Counter-argument (challenging) | Compare human vs. agent | `contradicts` edge + gap analysis |
-| Counter-argument → Observation (re-observing) | Improve and reclassify | SPOT-X + `compile_prompt_ruleset.py` |
+| Counter-argument → Observation (re-observing) | Improve and reclassify | an LLM rule optimizer + `compile_prompt_ruleset.py` |
 
 ## Related Terms
 
@@ -131,10 +131,8 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 - **[Compound AI System](term_compound_ai_system.md)**: Systems combining multiple AI components; DKS is a compound system with deterministic routing + LLM reasoning + human review
 
 **Applied Systems**:
-- **[static descriptive systems](term_mo_slipbox.md)**: MO governance knowledge graph — accumulation without dialectic; DKS's non-dialectic baseline
-- **[SPOT-X](term_spot_x.md)**: Prompt optimization engine; implements the rule improvement stage (component 7) of the DKS cycle
-- **[RnR](term_rnr.md)**: Reversal and Reclassification program; the domain where the production system (first DKS instance) operates
-- **[BSM](term_bsm.md)**: Buyer-Seller Messaging; the observation source for the production system's DKS instance
+- **[static descriptive systems](term_mo_slipbox.md)**: a domain workflow governance knowledge graph — accumulation without dialectic; DKS's non-dialectic baseline
+- **[an LLM rule optimizer](term_spot_x.md)**: Prompt optimization engine; implements the rule improvement stage (component 7) of the DKS cycle
 
 **Optimization Frameworks**:
 - **[DSPy](term_dspy.md)**: Composable module optimization; DKS rules are analogous to DSPy signatures compiled from execution traces
@@ -147,12 +145,11 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 ## References
 
 ### Vault Sources
-- [Hypothesis: the production system Is a NexusTrace Instance ](../../resources/analysis_thoughts/thought_athelas_conv_is_nexustrace_instance.md) — Where the DKS abstraction was first formulated
-- [Evidence: Epistemic Trail ](../../resources/analysis_thoughts/analysis_athelas_conv_epistemic_trail_evidence.md) — End-to-end proof tracing the DKS cycle through production data
+
 - DKS Design Note — Sub-project note documenting the full DKS design
 - [Building Block Ontology ](../../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) — The 10 ontology edges that form the DKS cycle
-- [Dialectic Generalization ](../../resources/analysis_thoughts/thought_nexustrace_dialectic_generalization.md) — "Decisions are arguments" insight that motivated DKS
-- [Three-Layer Intelligence System ](../../resources/analysis_thoughts/thought_three_layer_intelligence_system.md) — Nexus × NexusTrace × Abuse Slipbox architecture
+
+- [Three-Layer Intelligence System ](../../resources/analysis_thoughts/thought_three_layer_intelligence_system.md) — a knowledge graph × a behavior-pattern memory system × Abuse Slipbox architecture
 
 ### External Sources
 - [Hegel, G.W.F. (1807). *Phenomenology of Spirit*](https://en.wikipedia.org/wiki/Phenomenology_of_Spirit) — Original thesis → antithesis → synthesis dialectic
