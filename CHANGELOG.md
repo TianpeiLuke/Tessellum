@@ -16,6 +16,112 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.11] — 2026-05-10
+
+### Added — `tessellum init <dir>` CLI subcommand
+
+Completes step 4c of `plans/plan_v01_src_tessellum_layout.md` and **closes the v0.1 minimum** (format library + the four core CLI subcommands: `init`, `format check`, `capture`, `composer validate`). Users can now scaffold a new vault from scratch:
+
+```bash
+tessellum init my-vault
+# → 11 dirs created, 16 files copied (templates + seed term), 2 files written (master TOC + README)
+cd my-vault
+tessellum capture concept zettelkasten --vault .
+tessellum format check .
+```
+
+#### What `tessellum init` scaffolds
+
+- **All PARA top-level dirs**: `0_entry_points/`, `projects/`, `areas/`, `archives/` (incl. `archives/experiments/`).
+- **All capture-flavor destination dirs**: derived from `tessellum.capture.REGISTRY` so every flavor's destination exists out of the box. `tessellum capture skill foo --vault .` works immediately after init.
+- **All 13 templates + starter sidecar**: copied from `tessellum.data.templates_dir()` into `resources/templates/`.
+- **One seed term note**: `term_building_block.md` (the load-bearing concept), copied from `tessellum.data.seed_vault_dir()`.
+- **Generic master TOC**: written inline at `0_entry_points/entry_master_toc.md`, parameterized with the target dir's name. Validates clean (zero ERROR-severity issues).
+- **README.md**: top-level vault overview with quick-start commands.
+
+The full set of pillar terms (Z, PARA, BB, EF, DKS, CQRS) is **deferred** to a future `--with-pillars` flag. v0.0.11 ships only `term_building_block.md` to keep the seed minimal; users add the rest via `tessellum capture concept zettelkasten` etc.
+
+#### `tessellum.init.scaffold(target, *, force=False) -> ScaffoldResult`
+
+Library API for programmatic scaffolding. Returns a `ScaffoldResult` with `target`, `dirs_created`, `files_copied`, `files_written`. Raises `FileExistsError` if the target exists and is non-empty (without `--force`); raises `FileNotFoundError` if package data is missing.
+
+#### `tessellum.data.seed_vault_dir()` accessor
+
+Mirrors the existing `templates_dir()` pattern. Resolves the seed-vault root via `Path(__file__).parent / "seed_vault"` in installed mode; falls back to the source-tree `vault/` directly in editable mode (since seed-vault content is force-included from there). Same dual-mode resolution; same import works in dev and production.
+
+#### Force-include — per-file mapping verified
+
+Added a per-file entry to `pyproject.toml`'s `[tool.hatch.build.targets.wheel.force-include]`:
+
+```toml
+"vault/resources/term_dictionary/term_building_block.md" = "src/tessellum/data/seed_vault/resources/term_dictionary/term_building_block.md"
+```
+
+Hatch supports per-file mapping (not just whole-directory grafting) — verified by `python -m build && unzip -l dist/*.whl | grep seed_vault`. This pattern can be reused to add more seed terms incrementally without grafting the entire `term_dictionary/`.
+
+#### Tests
+
+21 new tests, all passing. 194 total (173 prior + 21 new).
+
+- `tests/smoke/test_init.py` (15 tests) — directory structure, every flavor has a destination, all templates copied, starter sidecar copied, seed term copied + has frontmatter, master TOC has vault name + quick-start, README mentions Tessellum, **scaffolded vault validates with 0 ERROR-severity issues** (templates have placeholder LINK-003 warnings — by design), empty existing dir OK, non-empty dir refused without `--force`, `--force` preserves existing files, target-is-file → error, capture works against scaffolded vault, capture-skill paired emission works against scaffolded vault.
+- `tests/cli/test_init_cli.py` (6 tests) — basic scaffold, existing non-empty → 1, `--force` → 0, target-is-file → 1, banner mentions init, help has `--force`.
+
+#### End-to-end smoke
+
+```bash
+$ tessellum init /tmp/my-vault
+scaffolded vault at: /tmp/my-vault
+  directories created: 11
+  files copied:        16
+  files written:       2
+
+Next steps:
+  cd /tmp/my-vault
+  tessellum capture concept my_topic --vault .
+  tessellum format check .
+
+$ tessellum format check /tmp/my-vault
+validated 15 file(s); 0 error(s), 81 warning(s), 0 info(s)
+
+$ tessellum capture concept hello_world --vault /tmp/my-vault
+created: /tmp/my-vault/resources/term_dictionary/term_hello_world.md
+
+$ tessellum format check /tmp/my-vault
+validated 16 file(s); 0 error(s), 83 warning(s), 0 info(s)
+```
+
+Zero errors. Warnings are template placeholder broken-links (LINK-003) and orphan notes (LINK-006) — expected, by design.
+
+### CLI banner reorganized
+
+The bare `tessellum` banner now lists four "Available now (CLI)" entries in the natural usage order:
+
+1. `tessellum init <dir>` — scaffold a vault
+2. `tessellum format check <path>` — validate format
+3. `tessellum capture <flavor> <slug>` — create a typed note
+4. `tessellum composer validate <skill>` — validate a skill's pipeline sidecar
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.11"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.11"`; new `force-include` entry for `term_building_block.md`.
+
+### v0.1 minimum status
+
+The v0.1 plan's minimum (`plans/plan_v01_src_tessellum_layout.md` step 1-4 + Composer Wave 1) is now complete:
+
+| Item | Version |
+|---|---|
+| Format library | v0.0.2 + v0.0.4 |
+| `tessellum format check` | v0.0.3 |
+| `tessellum capture` | v0.0.8 (+ paired-sidecar in v0.0.10) |
+| Templates `force-include` | v0.0.7 |
+| **`tessellum init`** | **v0.0.11 (this release)** |
+| Composer Wave 1 (foundation library) | v0.0.9 |
+| Composer Wave 1b (validate CLI) | v0.0.10 |
+
+Pending for v0.1+: indexer (step 5), retrieval (step 6), Composer Waves 2-4 (compiler/executor/LLM bridge).
+
 ## [0.0.10] — 2026-05-10
 
 ### Added — Composer Wave 1b (user-facing surface)
@@ -582,7 +688,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.10...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.11...HEAD
+[0.0.11]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.10...v0.0.11
 [0.0.10]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.9...v0.0.10
 [0.0.9]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.8...v0.0.9
 [0.0.8]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.7...v0.0.8
