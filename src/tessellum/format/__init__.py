@@ -1,5 +1,5 @@
 """tessellum.format — note format primitives: Building Blocks, YAML
-frontmatter, structural validation."""
+frontmatter spec, parser, validator."""
 
 from tessellum.format.building_blocks import (
     BB_SPECS,
@@ -14,8 +14,33 @@ from tessellum.format.building_blocks import (
     types_in_layer,
     upstream,
 )
+from tessellum.format.frontmatter_spec import (
+    DATE_FORMAT_REGEX,
+    FORBIDDEN_FIELDS,
+    MIN_KEYWORDS_RECOMMENDED,
+    MIN_TAGS_REQUIRED,
+    MIN_TOPICS_RECOMMENDED,
+    REQUIRED_FIELDS,
+    TAG_FORMAT_REGEX,
+    VALID_BUILDING_BLOCKS,
+    VALID_PARA_BUCKETS,
+    VALID_STATUSES,
+)
+from tessellum.format.parser import (
+    FrontmatterParseError,
+    Note,
+    parse_note,
+    parse_text,
+)
+from tessellum.format.validator import (
+    Issue,
+    Severity,
+    is_valid,
+    validate,
+)
 
 __all__ = [
+    # Building Blocks
     "BuildingBlock",
     "EpistemicLayer",
     "BBSpec",
@@ -27,4 +52,25 @@ __all__ = [
     "downstream",
     "upstream",
     "types_in_layer",
+    # Frontmatter spec
+    "VALID_PARA_BUCKETS",
+    "VALID_BUILDING_BLOCKS",
+    "VALID_STATUSES",
+    "REQUIRED_FIELDS",
+    "FORBIDDEN_FIELDS",
+    "MIN_TAGS_REQUIRED",
+    "MIN_KEYWORDS_RECOMMENDED",
+    "MIN_TOPICS_RECOMMENDED",
+    "DATE_FORMAT_REGEX",
+    "TAG_FORMAT_REGEX",
+    # Parser
+    "Note",
+    "parse_note",
+    "parse_text",
+    "FrontmatterParseError",
+    # Validator
+    "Issue",
+    "Severity",
+    "validate",
+    "is_valid",
 ]
