@@ -35,8 +35,9 @@ For the *what* of Folgezettel as a mechanism, see [`term_folgezettel`](../resour
 |--:|---|---|--:|---|
 | **1** | [`thought_building_block_ontology_relationships`](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | [Architecture Trail](entry_architecture_trail.md) | 4 | From the typed BB graph to the two-system CQRS commitment |
 | **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | [Dialectic Trail](entry_dialectic_trail.md) | 2 | How DKS was reasoned into shape: 7-component closed loop on a typed substrate |
+| **3** | [`thought_retrieval_evolution`](../resources/analysis_thoughts/thought_retrieval_evolution.md) | [Retrieval Trail](entry_retrieval_trail.md) | 2 | How retrieval was tested into shape: 14-strategy bake-off → unified engine + hybrid RRF + best-first BFS |
 
-**2 trails, 6 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
+**3 trails, 8 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
 
 ## Why per-trail entry points
 
@@ -105,6 +106,7 @@ When you grow your first trail, copy the shape: linear or branching descent, a r
 - [`entry_master_toc`](entry_master_toc.md) — vault navigation root
 - [`entry_architecture_trail`](entry_architecture_trail.md) — Trail 1 (Architecture / CQRS)
 - [`entry_dialectic_trail`](entry_dialectic_trail.md) — Trail 2 (Dialectic / DKS)
+- [`entry_retrieval_trail`](entry_retrieval_trail.md) — Trail 3 (Retrieval / System D)
 - [`entry_building_block_index`](entry_building_block_index.md) — BB picker matrix (each trail note declares a `building_block:`)
 - [`entry_acronym_glossary`](entry_acronym_glossary.md) — acronym glossaries master index
 
@@ -116,4 +118,4 @@ When you grow your first trail, copy the shape: linear or branching descent, a r
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — 2 trails shipped (Architecture, Dialectic), 6 nodes total
+**Status**: Active — 3 trails shipped (Architecture, Dialectic, Retrieval), 8 nodes total

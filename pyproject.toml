@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "0.0.32"
+version = "0.0.33"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -139,15 +139,19 @@ packages = ["src/tessellum"]
 "vault/resources/how_to/howto_first_vault.md" = "src/tessellum/data/seed_vault/resources/how_to/howto_first_vault.md"
 # FZ trails: master map + per-trail entries + trail-node thought notes.
 # Trail 1 (Architecture): 4 thoughts. Trail 2 (Dialectic / DKS): 2 thoughts.
+# Trail 3 (Retrieval): 2 thoughts.
 "vault/0_entry_points/entry_folgezettel_trails.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_folgezettel_trails.md"
 "vault/0_entry_points/entry_architecture_trail.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_architecture_trail.md"
 "vault/0_entry_points/entry_dialectic_trail.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_dialectic_trail.md"
+"vault/0_entry_points/entry_retrieval_trail.md" = "src/tessellum/data/seed_vault/0_entry_points/entry_retrieval_trail.md"
 "vault/resources/analysis_thoughts/thought_building_block_ontology_relationships.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_building_block_ontology_relationships.md"
 "vault/resources/analysis_thoughts/thought_cqrs_design_evolution.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_cqrs_design_evolution.md"
 "vault/resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md"
 "vault/resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md"
 "vault/resources/analysis_thoughts/thought_dks_evolution.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_dks_evolution.md"
 "vault/resources/analysis_thoughts/thought_dks_design_synthesis.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_dks_design_synthesis.md"
+"vault/resources/analysis_thoughts/thought_retrieval_evolution.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_retrieval_evolution.md"
+"vault/resources/analysis_thoughts/thought_retrieval_synthesis.md" = "src/tessellum/data/seed_vault/resources/analysis_thoughts/thought_retrieval_synthesis.md"
 "vault/0_entry_points/acronym_glossary_statistics.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_statistics.md"
 "vault/0_entry_points/acronym_glossary_critical_thinking.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_critical_thinking.md"
 "vault/0_entry_points/acronym_glossary_cognitive_science.md" = "src/tessellum/data/seed_vault/0_entry_points/acronym_glossary_cognitive_science.md"

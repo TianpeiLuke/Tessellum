@@ -16,6 +16,45 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.33] — 2026-05-10
+
+### Added — Trail 3 (Retrieval / System D)
+
+The seed vault now ships **three FZ trails** (was two in v0.0.32). The new trail documents how Tessellum's retrieval system was tested into shape — the 14-strategy bake-off across 4,823 questions, the unified-engine breakthrough, the +12pp hybrid-RRF lift, and the Hit@K-to-answer-quality disconnect that ruled out PPR.
+
+#### Trail 3 — Retrieval (2 nodes)
+
+```
+3     thought_retrieval_evolution    (NEW — 8-step experimental descent)
+└── 3a  thought_retrieval_synthesis  (NEW — 1 substrate + 4 surfaces + 1 metadata filter)
+```
+
+| FZ | Note | Role |
+|----|------|------|
+| `3` | `thought_retrieval_evolution.md` | Eight experimental steps: foundational benchmark (Dense Hit@5=0.815) → shared LIKE bottleneck → gold-design confound → unified-engine hypothesis → parity test (BM25 fails ρ=0.85; Plan B triggered) → Plan B + hybrid RRF (+12pp lift) → priority-graph rescues PPR on Hit@K → ★ Hit@K-to-answer-quality disconnect (ρ=0.37) rules out PPR for production. |
+| `3a` | `thought_retrieval_synthesis.md` | The shipped design: one substrate (SQLite + sqlite-vec + FTS5 in one file), four retrieval surfaces (hybrid RRF default + BM25 + dense + best-first BFS) plus one parallel metadata-filter surface (`tessellum filter`). Five operational rules + a 2×2 of question-shape-to-surface mapping. |
+
+#### `entry_retrieval_trail.md` (NEW per-trail entry point)
+
+Same shape as the existing Architecture and Dialectic trail entries: ASCII tree, FZ table, summary table of the 8 experimental moves, what's shipped (Wave 1-5 mapping), what the trail rejects, reading order, related trails. The per-trail entry is the place to start when reading Trail 3.
+
+#### Updated master `entry_folgezettel_trails.md`
+
+One new row in the trail index pointing at the new per-trail entry. Status line updated to "3 trails shipped, 8 nodes total."
+
+### Seed manifest
+
+- `pyproject.toml` — 3 new `force-include` entries (2 thoughts + 1 entry point).
+- `init.py` — `_SEED_VAULT_MANIFEST` extended 30 → 33 relative paths.
+- `tessellum init` now scaffolds **51 markdown files** (was 48 in v0.0.32).
+
+### Verification
+
+- All 3 new files pass `tessellum format check` with **0 errors and 0 warnings** each.
+- Updated `entry_folgezettel_trails.md` also passes 0/0.
+- Editable + wheel mode both produce 51 files.
+- Full suite: 468 passed, 1 skipped.
+
 ## [0.0.32] — 2026-05-10
 
 ### Added — Trail 2 (Dialectic / DKS) + per-trail entry-point refactor
