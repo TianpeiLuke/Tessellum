@@ -16,6 +16,59 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.25] — 2026-05-10
+
+### Added — 5 universal acronym glossaries to the seed vault
+
+Phase 2 of the code-artifact port (see `plans/plan_code_artifacts_port.md`). The seed vault now ships 5 acronym glossaries indexing **397 acronyms** across foundational technical domains, plus a master index that lets newcomers resolve unfamiliar jargon without leaving the vault.
+
+```
+vault/0_entry_points/
+├── entry_acronym_glossary.md                  # master index of the 5
+├── acronym_glossary_statistics.md             # 54 acronyms — causal inference, Bayesian, distributions
+├── acronym_glossary_critical_thinking.md      # 31 acronyms — logic, fallacies, argumentation
+├── acronym_glossary_cognitive_science.md      # 130 acronyms — biases, dual-process, decision heuristics
+├── acronym_glossary_network_science.md        # 48 acronyms — graph theory, centrality, communities
+└── acronym_glossary_llm.md                    # 134 acronyms — LLM architectures, RAG, agents, eval
+```
+
+#### Why these 5 (and not the original 16)
+
+The source library (the source vault) has 16 glossaries built around the parent project's domain: fraud / abuse / Amazon-internal tooling. Many sections in those glossaries reference internal-only systems (Cradle, Wasabi, Paragon, Triton, Brazil, Coral, Midway, etc.) or Amazon-domain examples (BRP, CUBES, DSI, Weblab, Guardian, GREENTea, etc.) that don't belong in a public OSS slipbox.
+
+Per the plan's design principle ("the public vault must read clean — a first-time reader should not encounter internal jargon"), 11 glossaries were dropped entirely rather than partially scrubbed:
+
+- **`tools`** — overwhelmingly Amazon-internal tool names.
+- **`security`** — Amazon-internal security framework (AAA, ASR, Anvil, Shepherd).
+- **`developer`** — Amazon-internal infrastructure (LDAP/POSIX groups, BuilderHub, AgentSpaces, Cloud Desktop, Bindle, Brazil).
+- **`data_governance`** — Amazon-internal compliance frameworks (RED/Orange/Yellow taxonomy, CAZ, Shepherd).
+- **`ml`** — too entwined with Amazon-internal ML projects (Pangaea, GRAIL, BEAD, Ship2Vec, AmazonBoost, COSA, TFCM, GUARDIAN, etc.). The universal ML concepts are still findable via published references; we don't need to gate access to "Transformer" or "GBDT" through a glossary.
+- **`business`**, **`workflows`**, **`teams`**, **`systems`**, **`data_metrics`**, **`abuse_networks`** — all heavily Amazon-internal.
+
+The 5 kept glossaries (statistics, critical thinking, cognitive science, network science, LLM) are dominated by published research concepts. Each was scrubbed of:
+
+- Sections whose H3 title named an Amazon-internal tool or project codename.
+- Sections whose body opened with an Amazon-domain example (BRP, fraud, abuse, enforcement).
+- Inline mentions of `Amazon`, `BRP`, `CUBES`, `DSI`, `Weblab` (replaced with neutral phrasings or removed).
+- Internal-host URLs (`*.amazon.com`, `*.corp.amazon.com`, `*internal-host`).
+- `**Source**: Internal: ...` lines.
+- "Back to Main Glossary" footer links pointing at non-existent index.
+- YAML keyword entries naming internal tools.
+
+After scrubbing, the 5 files have **0 word-boundary hits** for `Amazon`, `BRP`, `CUBES`, `DSI`, `Weblab`, `Cradle`, `Wasabi`.
+
+#### `entry_acronym_glossary.md` — master index
+
+The master index is the first place a newcomer should land. It explains the convention (one H3 per acronym, `**Full Name**` + `**Description**` + `**Documentation**` + `**Related**`), tells users how to look up a term, and points at the 5 per-domain files. Captured via the existing `acronym_glossary` flavor (no new capture flavor needed).
+
+#### Validation
+
+All 6 files pass `tessellum format check` with 0 errors. Warnings are expected (links to `term_*.md` notes that aren't in the Tessellum seed vault yet — users who add their own term notes will resolve them; the glossary entries still work as standalone records).
+
+#### What's coming
+
+- **v0.0.26 — Phase 3 of `plan_code_artifacts_port.md`**: port two capture skills (`skill_tessellum_capture_code_repo_note` + `skill_tessellum_capture_code_snippet`) from the source vault with sidecars, validated via `tessellum composer validate`.
+
 ## [0.0.24] — 2026-05-10
 
 ### Added — `code_snippet` + `code_repo` capture flavors
