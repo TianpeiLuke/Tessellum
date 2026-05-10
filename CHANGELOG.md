@@ -16,6 +16,77 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.7] — 2026-05-10
+
+### Added — Templates ship in the wheel via `force-include`
+
+Step 3 of `plans/plan_v01_src_tessellum_layout.md`. `pip install tessellum` users now get the 13 canonical BB-type templates without cloning the repo. Prerequisite for upcoming `tessellum init` and `tessellum capture <bb>` CLI subcommands.
+
+#### `pyproject.toml` — `[tool.hatch.build.targets.wheel.force-include]`
+
+```toml
+[tool.hatch.build.targets.wheel.force-include]
+"vault/resources/templates" = "src/tessellum/data/templates"
+```
+
+Hatch grafts files from `vault/resources/templates/` into the wheel at `tessellum/data/templates/` at build time. **Single source of truth in the dogfooded vault**; automatic inclusion in the wheel; no two-copy drift.
+
+#### `tessellum.data.templates_dir()`
+
+New module at `src/tessellum/data/__init__.py` exposing one helper:
+
+```python
+from tessellum.data import templates_dir
+path = templates_dir()  # -> Path to the templates directory
+```
+
+The helper handles **both install modes**:
+
+- **Wheel install**: returns `<site-packages>/tessellum/data/templates/` (where `force-include` grafted them).
+- **Editable install** (`pip install -e .`): `force-include` doesn't run for editable installs, so the helper falls back to `<repo>/vault/resources/templates/` via `Path(__file__).resolve().parents[3]`. Same import works in both modes; no caller-side branching.
+
+Raises `FileNotFoundError` if neither location exists (broken install or misconfigured `force-include`).
+
+#### Tests
+
+`tests/smoke/test_data_loader.py` (new, 16 tests):
+
+- `templates_dir()` returns an existing directory
+- The directory contains ≥ 13 `template_*.md` files
+- Each of the 13 expected templates is present (parametrized)
+- Every template starts with YAML frontmatter
+
+All 16 pass in editable mode (the test environment).
+
+#### Wheel-install verification
+
+Build + clean-venv install + import smoke check:
+
+```bash
+$ python -m build --wheel
+$ unzip -l dist/tessellum-0.0.7-py3-none-any.whl | grep templates
+  tessellum/data/templates/README.md
+  tessellum/data/templates/template_yaml_header.md
+  tessellum/data/templates/template_concept.md
+  ...  (13 templates total + README + __init__.py)
+
+$ pip install dist/tessellum-0.0.7-py3-none-any.whl
+$ python -c "from tessellum.data import templates_dir; print(templates_dir())"
+  /tmp/.../site-packages/tessellum/data/templates
+```
+
+#### Out of scope (deferred to future commits)
+
+- **Seed vault** for `tessellum init` (full directory skeleton, not just templates) — bigger scope, ships when `init` does.
+- **Skills `force-include`** (so `vault/resources/skills/` is grafted too) — only needed when a CLI subcommand reads skill canonicals at runtime.
+- **JSON schemas** under `tessellum.data.schemas/` — when the composer ships and needs schema-validated pipeline configs.
+
+### Bumped
+
+- `src/tessellum/__about__.py`: `__version__` → `"0.0.7"`; status updated.
+- `pyproject.toml`: `project.version` → `"0.0.7"`.
+- All 69 tests pass (53 prior + 16 new in `test_data_loader.py`).
+
 ## [0.0.6] — 2026-05-10
 
 ### Changed — `scripts/` role clarified (docs-only)
@@ -237,7 +308,8 @@ The new validator immediately caught 2 real spec violations + 1 corrupted file i
 
 Tessellum dogfoods itself: the project's public documentation lives in `vault/` as typed atomic notes, not in a separate `docs/` directory. See [DEVELOPING.md § Layout Convention](DEVELOPING.md#layout-convention).
 
-[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.6...HEAD
+[Unreleased]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.7...HEAD
+[0.0.7]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.5...v0.0.6
 [0.0.5]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.4...v0.0.5
 [0.0.4]: https://github.com/TianpeiLuke/Tessellum/compare/v0.0.3...v0.0.4
