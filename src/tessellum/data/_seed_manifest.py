@@ -57,6 +57,11 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     # ── System regularization (the format contract) ──────────────────────
     "resources/term_dictionary/term_format_spec.md",
 
+    # ── COE (Correction of Errors) review-and-reflect surface ────────────
+    "resources/term_dictionary/term_coe.md",                           # method + 9-section shape
+    "resources/skills/skill_tessellum_write_coe.md",                   # 6-step Composer skill canonical
+    "resources/skills/skill_tessellum_write_coe.pipeline.yaml",        # sidecar (Composer-compatible)
+
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
 
@@ -81,6 +86,7 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "0_entry_points/entry_architecture_trail.md",           # per-trail entry: Trail 1
     "0_entry_points/entry_dialectic_trail.md",              # per-trail entry: Trail 2
     "0_entry_points/entry_retrieval_trail.md",              # per-trail entry: Trail 3
+    "0_entry_points/entry_coes.md",                         # COE index (skill writes here)
 
     # ── Acronym glossaries (1 Tessellum-foundations + 5 universal) ───────
     "0_entry_points/acronym_glossary_tessellum_foundations.md",
