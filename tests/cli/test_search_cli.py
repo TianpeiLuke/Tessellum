@@ -34,6 +34,7 @@ _NOTE = textwrap.dedent(
     # Term
 
     The {token} concept is foundational.
+    {extra_body}
     """
 )
 
@@ -42,11 +43,12 @@ _NOTE = textwrap.dedent(
 def indexed_db(tmp_path):
     v = tmp_path / "v"
     (v / "resources/term_dictionary").mkdir(parents=True)
+    # Cross-link the two notes so BFS has something to traverse.
     (v / "resources/term_dictionary/term_alpha.md").write_text(
-        _NOTE.format(token="alpha")
+        _NOTE.format(token="alpha", extra_body="See [Beta](term_beta.md).")
     )
     (v / "resources/term_dictionary/term_beta.md").write_text(
-        _NOTE.format(token="beta")
+        _NOTE.format(token="beta", extra_body="See [Alpha](term_alpha.md).")
     )
     db_path = tmp_path / "search.db"
     build(v, db_path)
@@ -193,14 +195,71 @@ def test_search_dense_json_output_includes_distance(indexed_db, capsys):
 
 
 def test_search_strategies_mutually_exclusive(indexed_db, capsys):
-    """All three strategy flags are in one mutex group."""
+    """All four strategy flags are in one mutex group."""
     for combo in [
         ("--bm25", "--dense"),
         ("--bm25", "--hybrid"),
         ("--dense", "--hybrid"),
+        ("--bm25", "--bfs"),
+        ("--hybrid", "--bfs"),
     ]:
         with pytest.raises(SystemExit):
             main(["search", "alpha", *combo, "--db", str(indexed_db)])
+
+
+def test_search_bfs_flag_uses_graph_strategy(indexed_db, capsys):
+    """--bfs traverses the link graph from a seed note_id."""
+    code = main(
+        [
+            "search",
+            "resources/term_dictionary/term_alpha.md",
+            "--bfs",
+            "--db",
+            str(indexed_db),
+            "--k",
+            "1",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "BFS matches" in out
+
+
+def test_search_bfs_unknown_seed_returns_0(indexed_db, capsys):
+    """Unknown seed produces no hits but is not an error (exit 0)."""
+    code = main(
+        ["search", "does/not/exist.md", "--bfs", "--db", str(indexed_db)]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "no matches" in out.lower()
+
+
+def test_search_bfs_json_output_includes_path_and_depth(indexed_db, capsys):
+    """BFS JSON should expose `depth` and `path` fields per hit."""
+    code = main(
+        [
+            "search",
+            "resources/term_dictionary/term_alpha.md",
+            "--bfs",
+            "--db",
+            str(indexed_db),
+            "--k",
+            "1",
+            "--format",
+            "json",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["strategy"] == "bfs"
+    if payload["hits"]:
+        h = payload["hits"][0]
+        assert "depth" in h
+        assert "path" in h
+        assert isinstance(h["path"], list)
+        assert h["path"][0] == "resources/term_dictionary/term_alpha.md"
 
 
 def test_search_hybrid_json_includes_per_ranker_ranks(indexed_db, capsys):
