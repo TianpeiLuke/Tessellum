@@ -155,6 +155,24 @@ REGISTRY: dict[str, TemplateSpec] = {
         second_category="index",
         description="Acronym glossary indexing term notes by acronym",
     ),
+    "code_snippet": TemplateSpec(
+        flavor="code_snippet",
+        template_filename="template_code_snippet.md",
+        destination="resources/code_snippets",
+        filename_prefix="snippet_",
+        bb_type="procedure",
+        second_category="code_snippets",
+        description="Code snippet documenting one component or algorithm",
+    ),
+    "code_repo": TemplateSpec(
+        flavor="code_repo",
+        template_filename="template_code_repo.md",
+        destination="areas/code_repos",
+        filename_prefix="repo_",
+        bb_type="model",
+        second_category="code_repos",
+        description="Code repository documentation note",
+    ),
 }
 
 
