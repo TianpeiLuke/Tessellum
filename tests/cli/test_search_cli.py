@@ -54,15 +54,21 @@ def indexed_db(tmp_path):
 
 
 def test_search_basic_returns_0(indexed_db, capsys):
+    """v0.0.15 flips the default to hybrid; bare ``search`` runs hybrid."""
     code = main(["search", "alpha", "--db", str(indexed_db)])
     assert code == 0
     out = capsys.readouterr().out
-    assert "BM25 matches" in out
+    assert "HYBRID matches" in out
     assert "term_alpha" in out
 
 
 def test_search_no_match_returns_0(indexed_db, capsys):
-    code = main(["search", "nonexistent_xyz_qqq", "--db", str(indexed_db)])
+    """Default (hybrid) over a nonsense query: hybrid still runs both rankers
+    and gets no overlap → empty fused list. Use --bm25 to force a strict
+    no-match (dense always returns *something* for any query)."""
+    code = main(
+        ["search", "nonexistent_xyz_qqq", "--bm25", "--db", str(indexed_db)]
+    )
     assert code == 0
     out = capsys.readouterr().out
     assert "no matches" in out.lower()
@@ -95,9 +101,10 @@ def test_search_k_flag_limits_results(indexed_db, capsys):
     assert payload["hit_count"] == 1
 
 
-def test_search_json_output_structure(indexed_db, capsys):
+def test_search_bm25_json_output_structure(indexed_db, capsys):
+    """BM25 JSON output includes snippet field on hits."""
     code = main(
-        ["search", "alpha", "--db", str(indexed_db), "--format", "json"]
+        ["search", "alpha", "--bm25", "--db", str(indexed_db), "--format", "json"]
     )
     assert code == 0
     out = capsys.readouterr().out
@@ -115,9 +122,11 @@ def test_search_json_output_structure(indexed_db, capsys):
 
 
 def test_search_no_snippet_flag_omits_snippet(indexed_db, capsys):
+    """--no-snippet only applies to BM25 output."""
     code = main(
         [
             "search", "alpha",
+            "--bm25",
             "--db", str(indexed_db),
             "--no-snippet",
             "--format", "json",
@@ -130,12 +139,24 @@ def test_search_no_snippet_flag_omits_snippet(indexed_db, capsys):
         assert payload["hits"][0]["snippet"] is None
 
 
-def test_search_bm25_flag_accepted(indexed_db, capsys):
-    """The --bm25 flag is accepted (forward-compat for Wave 2-3 selectors)."""
+def test_search_bm25_flag_runs_bm25(indexed_db, capsys):
+    """--bm25 selects BM25-only retrieval; output labelled BM25."""
     code = main(
         ["search", "alpha", "--bm25", "--db", str(indexed_db)]
     )
     assert code == 0
+    out = capsys.readouterr().out
+    assert "BM25 matches" in out
+
+
+def test_search_hybrid_flag_explicit(indexed_db, capsys):
+    """--hybrid is the explicit form of the new default."""
+    code = main(
+        ["search", "alpha", "--hybrid", "--db", str(indexed_db)]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "HYBRID matches" in out
 
 
 def test_search_dense_flag_uses_dense_strategy(indexed_db, capsys):
@@ -171,19 +192,41 @@ def test_search_dense_json_output_includes_distance(indexed_db, capsys):
         assert "score" in payload["hits"][0]
 
 
-def test_search_bm25_and_dense_mutually_exclusive(indexed_db, capsys):
-    """--bm25 and --dense can't both be passed (argparse mutex group)."""
-    with pytest.raises(SystemExit):
-        main(
-            [
-                "search",
-                "alpha",
-                "--bm25",
-                "--dense",
-                "--db",
-                str(indexed_db),
-            ]
-        )
+def test_search_strategies_mutually_exclusive(indexed_db, capsys):
+    """All three strategy flags are in one mutex group."""
+    for combo in [
+        ("--bm25", "--dense"),
+        ("--bm25", "--hybrid"),
+        ("--dense", "--hybrid"),
+    ]:
+        with pytest.raises(SystemExit):
+            main(["search", "alpha", *combo, "--db", str(indexed_db)])
+
+
+def test_search_hybrid_json_includes_per_ranker_ranks(indexed_db, capsys):
+    """Hybrid JSON output should include bm25_rank + dense_rank diagnostic fields."""
+    code = main(
+        [
+            "search",
+            "alpha",
+            "--hybrid",
+            "--db",
+            str(indexed_db),
+            "--k",
+            "1",
+            "--format",
+            "json",
+        ]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["strategy"] == "hybrid"
+    if payload["hits"]:
+        h = payload["hits"][0]
+        # Both rank fields are present (may be None if not in that ranker's top-K).
+        assert "bm25_rank" in h
+        assert "dense_rank" in h
 
 
 def test_banner_lists_search(capsys):
