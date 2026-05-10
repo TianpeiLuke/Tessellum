@@ -9,8 +9,8 @@ keywords:
   - folgezettel trails
   - FZ trail map
   - argument descent
+  - master trail index
   - trail navigation
-  - example trail
 topics:
   - Navigation
   - Folgezettel
@@ -21,83 +21,92 @@ status: active
 building_block: navigation
 ---
 
-# Folgezettel Trail Map
+# Folgezettel Trail Map — Master Index
 
 ## Purpose
 
-A **Folgezettel trail** is a sequence of notes whose `folgezettel:` IDs encode *how thinking developed* — argument → counter → response → synthesis — descended alphanumerically: `1 → 1a → 1a1 → 1a1a`. The trail records the *path*, not just the *result*; reading a trail teaches you what was tried, what was rejected, and why the survivors survived.
+This is the **master index** of all Folgezettel trails in the vault. Each trail is a sequence of typed atomic notes whose `folgezettel:` IDs encode *how thinking developed* — argument → counter → response → synthesis — descended alphanumerically (`1 → 1a → 1a1 → 1a1a`). Each trail has its own per-trail entry point that holds the trail's ASCII tree, FZ table, dialectic summary, and reading order. **This page links to those per-trail entry points; it does not duplicate their content.**
 
-This entry point is the index of all trails in this vault. As of v0.0.31 the seed ships **one example trail** — the **Architecture trail** — which documents the four-step descent from the BB ontology graph to Tessellum's CQRS architectural commitment. The trail exists both to encode the design history and to demonstrate the FZ convention by example.
+For the *what* of Folgezettel as a mechanism, see [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md). For *how to grow* a trail, see the bottom of this page.
 
-For the *what* of Folgezettel as a mechanism, read [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md). This note is the *map*.
+## Trails shipped in the seed vault
 
-## Index
+| Trail # | Root note | Per-trail entry point | Nodes | Subject |
+|--:|---|---|--:|---|
+| **1** | [`thought_building_block_ontology_relationships`](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | [Architecture Trail](entry_architecture_trail.md) | 4 | From the typed BB graph to the two-system CQRS commitment |
+| **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | [Dialectic Trail](entry_dialectic_trail.md) | 2 | How DKS was reasoned into shape: 7-component closed loop on a typed substrate |
 
-| Trail | Root | Nodes | Reading time | Subject |
-|---|---|------:|---:|---|
-| **1** | [Architecture](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | 4 | ~45 min | From the typed BB graph to the two-system CQRS commitment |
+**2 trails, 6 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
 
-(New trails go here as users grow them. The trail root is `<root_thought>.md`; the count is the number of notes whose `folgezettel:` ID starts with the trail ID.)
+## Why per-trail entry points
 
-## Trail 1 — Architecture (the example trail)
+A trail's argumentative shape — what was tried, what was rejected, why the synthesis survived — is load-bearing context that doesn't fit in a single sentence. Putting that context on the master page (this page) would crowd the index as trails accumulate. So the convention is:
 
-The single chain of four notes whose descent shows how Tessellum's CQRS architecture was reasoned into shape, not declared. Each note's `folgezettel:` ID is the trail position; each `folgezettel_parent:` field points one step back. The chain is linear.
+- **Master page** (this file) — one row per trail, just enough to tell you where to go.
+- **Per-trail entry point** — the trail's ASCII tree, FZ table, dialectic summary, reading order, related trails, and "what this trail rejects" carve-outs.
 
+When a new trail joins the vault, it gets its own `entry_<trail_name>_trail.md` and a row here.
+
+## How to grow a new trail
+
+Three steps to start a new trail (call it *Trail N*):
+
+### 1. Pick a trail number
+
+Use the next free integer at the top level (`1`, `2`, `3`, ...). The integer carries no ordering — trails are independent argumentative chains, not phases of one larger argument.
+
+### 2. Author the trail-root note
+
+The root sits at `folgezettel: "N"` with `folgezettel_parent: ""` (empty string — the both-or-neither rule requires the field to be *present*; the value `""` marks "this is the trail root"). Place the file under `vault/resources/analysis_thoughts/` (or wherever its BB type belongs — most trail nodes are `argument` or `counter_argument`, which capture under `analysis_thoughts/`).
+
+### 3. Author the per-trail entry point
+
+Create `vault/0_entry_points/entry_<trail_name>_trail.md` with `building_block: navigation`. Use the existing two entry points ([Architecture](entry_architecture_trail.md), [Dialectic](entry_dialectic_trail.md)) as templates. The entry point must include:
+
+- ASCII tree of the trail (visualising the descent)
+- FZ table (one row per node: FZ ID, note link, BB type, role)
+- Summary of the dialectic progress (what each step rejected and what the final synthesis claims)
+- Reading order (top-down for first read, leaf-up for re-reads)
+- "What this trail rejects" carve-outs (so a reader understands which alternatives were considered and why they failed)
+
+### 4. Add a row here
+
+Append a row to the "Trails shipped in the seed vault" table above:
+
+```markdown
+| **N** | [`thought_<root>`](../resources/analysis_thoughts/thought_<root>.md) | [<Name> Trail](entry_<name>_trail.md) | <nodes> | <one-line subject> |
 ```
-  1       Building Block Ontology Relationships (the substrate)
-  └── 1a  How the CQRS Architecture Evolved (four-step descent)
-      └── 1a1   ★ Synthesis: Two-Systems CQRS Value Proposition (the pivot)
-          └── 1a1a   The Essence of CQRS for Tessellum (the distilled thesis)
-```
 
-| FZ ID | Note | BB | Role |
-|---|---|---|---|
-| `1` | [`thought_building_block_ontology_relationships`](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | argument | **Substrate** — extends Sascha's 8-type BB taxonomy with 10 directed epistemic edges, making the typed graph that everything else descends from. |
-| `1a` | [`thought_cqrs_design_evolution`](../resources/analysis_thoughts/thought_cqrs_design_evolution.md) | argument | **Narrative** — summarizes the four-step descent: typed graph → three-regime framing (rejected) → two-systems counter → CQRS synthesis. |
-| `1a1` | [`thought_synthesis_two_systems_cqrs_value_proposition`](../resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md) | argument | **Pivot** — the clarified two-system architecture: System P (Ontology + DKS, prescriptive) ⊥ System D (Retrieval, descriptive) ⊥ one shared substrate (the vault). |
-| `1a1a` | [`thought_cqrs_essence_for_tessellum`](../resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md) | argument | **Distilled thesis** — one boundary (declaration vs computation), two disciplines, one substrate. The user-facing essence + the rules that fall out of it. |
+### 5. Grow downward by adding children
 
-### Reading order
+To add a child to an existing trail node (FZ ID `Nx`):
 
-The trail is meant to be read **top-down** (`1 → 1a → 1a1 → 1a1a`) once, then **leaf-up** (`1a1a → 1a1 → 1a → 1`) when you want to drill from the conclusion back into the reasoning:
-
-- **First read (45 min)** — start at `1` (substrate), follow the descent. By the end of `1a1a` you understand both the destination *and* why other destinations were rejected.
-- **Subsequent re-reads (5 min)** — start at `1a1a` (the essence). Drop one level to `1a1` if you want the full synthesis; drop one more to `1a` if you want the four-step descent narrative; drop one more to `1` if you want the substrate.
-
-## How to grow a trail
-
-To add a child to an existing node:
-
-1. Pick the parent's FZ ID (e.g., `1a1a`).
-2. Append the next available suffix: numbers if you're continuing the chain (`1a1a1`), letters if you're branching (`1a1a` → siblings `1a1b`, `1a1c`).
-3. Set the new note's frontmatter:
-
+1. Append the next suffix:
+   - Letter → branch (`Nx` → `Nxa`, `Nxb`, `Nxc`, ...)
+   - Number → continue the chain (`Nx` → `Nx1`, `Nx2`, ...)
+2. Set the new note's frontmatter:
    ```yaml
-   folgezettel: "1a1a1"
-   folgezettel_parent: "1a1a"
+   folgezettel: "Nxa"
+   folgezettel_parent: "Nx"
    ```
+   Both fields must be present (`TESS-001` / `TESS-002` enforce the both-or-neither rule). Empty `folgezettel_parent: ""` is reserved for trail roots.
+3. Update the per-trail entry point — add a row in the FZ table; extend the ASCII tree.
 
-   Both fields must be present (the validator enforces the both-or-neither rule — `TESS-001` / `TESS-002`).
+The validator and indexer pick up the new note automatically; no other configuration changes.
 
-4. Add the new note to the trail map above (a new row in the table; update the ASCII descent if it's load-bearing).
+## Why ship FZ trails in the seed?
 
-The full mechanism, including the alphanumeric rules and the convention for branching vs continuation, is in [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md).
+A new Tessellum user reads [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md) (the mechanism) and [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) (the rules), but until they see a real trail in action, the convention is abstract. The two shipped trails are worked examples: every FZ ID is real, every parent-child pair is valid, every link resolves, and the resulting chains record the actual design history of Tessellum's two most novel architectural commitments (CQRS and DKS).
 
-## Why ship an example trail?
-
-A new Tessellum user reads about Folgezettel in `term_folgezettel.md` (the *what*) and `term_format_spec.md` (the *rules*), but until they see a trail in action, the convention is abstract. Trail 1 is the worked example: four real notes whose FZ IDs descend from `1` to `1a1a`, every link resolves, every parent-child pairing is valid, and the resulting chain encodes a real design history rather than a synthetic illustration.
-
-When you grow your first trail, copy Trail 1's shape:
-
-- One root with no parent (the substrate of the argument).
-- One or more child levels descending alphanumerically.
-- A trail-map row in this entry point so the trail is discoverable.
+When you grow your first trail, copy the shape: linear or branching descent, a root with `folgezettel_parent: ""`, a per-trail entry point that summarises the dialectic progress, and a row in this master index.
 
 ## Related Entry Points
 
-- [`entry_master_toc`](entry_master_toc.md) — the vault's navigation root
-- [`entry_building_block_index`](entry_building_block_index.md) — the BB picker matrix (each trail note declares a `building_block:`)
-- [`entry_acronym_glossary`](entry_acronym_glossary.md) — master index of acronym glossaries
+- [`entry_master_toc`](entry_master_toc.md) — vault navigation root
+- [`entry_architecture_trail`](entry_architecture_trail.md) — Trail 1 (Architecture / CQRS)
+- [`entry_dialectic_trail`](entry_dialectic_trail.md) — Trail 2 (Dialectic / DKS)
+- [`entry_building_block_index`](entry_building_block_index.md) — BB picker matrix (each trail note declares a `building_block:`)
+- [`entry_acronym_glossary`](entry_acronym_glossary.md) — acronym glossaries master index
 
 ## Related Terms
 
@@ -107,4 +116,4 @@ When you grow your first trail, copy Trail 1's shape:
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — 1 trail shipped (Architecture), 4 nodes
+**Status**: Active — 2 trails shipped (Architecture, Dialectic), 6 nodes total
