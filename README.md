@@ -12,14 +12,21 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 
 ## The Six Pillars
 
-| Pillar | What it gives you |
-|---|---|
-| **Z** — Zettelkasten | Atomic notes, bidirectional links — Luhmann's method that scaled to ~90k connected ideas |
-| **PARA** — Projects/Areas/Resources/Archives | Tiago Forte's organizational scheme; four-fold structure that survives growth |
-| **BB** — Building Block | 8 typed atomic units with defining epistemic functions ([vault/resources/term_dictionary/term_building_block.md](vault/resources/term_dictionary/term_building_block.md)) |
-| **EF** — Epistemic Function | Each BB has a *function* — claim / refute / observe / synthesize / index |
-| **DKS** — Dialectic | Closed-loop protocol — arguments attract counters, counters absorbed by syntheses ([vault/resources/term_dictionary/term_dialectic_knowledge_system.md](vault/resources/term_dictionary/term_dialectic_knowledge_system.md)) |
-| **CQRS** — Read/Write Split | System P (typed substrate, prescriptive) ⊥ System D (retrieval, descriptive) |
+| # | Pillar | What it gives you | Term note |
+|---|---|---|---|
+| 1 | **Z** — Zettelkasten | Atomic notes, bidirectional links — Luhmann's method that scaled to ~90k connected ideas | [term_zettelkasten](vault/resources/term_dictionary/term_zettelkasten.md) |
+| 2 | **PARA** — Projects/Areas/Resources/Archives | Tiago Forte's organizational scheme; four-fold structure that survives growth | [term_para_method](vault/resources/term_dictionary/term_para_method.md) |
+| 3 | **BB** — Building Block | 8 typed atomic units with defining epistemic functions; 10 directed edges form the dialectic cycle | [term_building_block](vault/resources/term_dictionary/term_building_block.md) |
+| 4 | **EF** — Epistemic Function | Each BB has a *function* — name / structure / predict / claim / refute / observe / act / index | [term_epistemic_function](vault/resources/term_dictionary/term_epistemic_function.md) |
+| 5 | **DKS** — Dialectic Knowledge System | Closed-loop protocol — arguments attract counters, counters absorbed by syntheses, warrants update from observed disagreement | [term_dialectic_knowledge_system](vault/resources/term_dictionary/term_dialectic_knowledge_system.md) |
+| 6 | **CQRS** — Read/Write Split | System P (typed substrate, prescriptive — what you author) ⊥ System D (retrieval, descriptive — what queries return) | [term_cqrs](vault/resources/term_dictionary/term_cqrs.md) |
+
+**Two supporting concepts** that bridge the pillars (also shipped as term notes):
+
+| Concept | What it does | Term note |
+|---|---|---|
+| **Slipbox** | The system class — a typed atomic-note vault with a graph layer; Tessellum is one Slipbox implementation | [term_slipbox](vault/resources/term_dictionary/term_slipbox.md) |
+| **Folgezettel** | The trail mechanism — alphanumeric IDs encode argument descent (1 → 1a → 1a1) so the graph remembers *how thinking developed*, not just *what relates* | [term_folgezettel](vault/resources/term_dictionary/term_folgezettel.md) |
 
 ## What Tessellum Is *Not*
 
