@@ -34,9 +34,9 @@ This directory holds **one template per Building Block type** — eight skeleton
 6. **Remove the `<!-- HOW TO USE -->` commentary block at the top.**
 7. Run `python scripts/check_note_format.py --path <your-file.md>` to validate.
 
-## The 10 Templates + 1 YAML Reference
+## The 12 Templates + 1 YAML Reference
 
-8 BB-type templates + 1 skill-canonical template + 1 experiment template + 1 YAML header reference.
+8 BB-type templates + 1 skill-canonical + 1 experiment + 1 entry-point + 1 acronym-glossary + 1 YAML header reference.
 
 **For YAML conventions in isolation** (no body, just the frontmatter spec): [`template_yaml_header.md`](template_yaml_header.md). Read this if you want to scan the 7 required fields, the closed enums, the open vocabularies, and the type-specific extensions in one place — without picking a BB-type skeleton first.
 
@@ -53,13 +53,16 @@ This directory holds **one template per Building Block type** — eight skeleton
 | [template_hypothesis.md](template_hypothesis.md) | `hypothesis` | `analysis` | `vault/resources/analysis_thoughts/` |
 | [template_empirical_observation.md](template_empirical_observation.md) | `empirical_observation` | `analysis` | `vault/resources/analysis_thoughts/` (inline observations in trails) |
 | [template_experiment.md](template_experiment.md) | `empirical_observation` | `experiment` | `vault/archives/experiments/` (full pre-registered investigations) |
-| [template_navigation.md](template_navigation.md) | `navigation` | `navigation` | `vault/0_entry_points/` |
+| [template_navigation.md](template_navigation.md) | `navigation` | `navigation` | `vault/0_entry_points/` (generic case) |
+| [template_entry_point.md](template_entry_point.md) | `navigation` | `index` | `vault/0_entry_points/entry_*.md` (master TOCs + per-surface entries) |
+| [template_acronym_glossary.md](template_acronym_glossary.md) | `navigation` | `index` (with `glossary` topic tag) | `vault/0_entry_points/acronym_glossary_*.md` |
 
 **Three pairs share a `building_block:` value but have distinct shapes**:
 
 - **`template_procedure` vs `template_skill`** — both are `procedure` BB. `procedure` is for human-readable how-tos. `skill` is for agent-executable skill canonicals — includes `<!-- :: section_id = X :: -->` markers that the composer pipeline relies on for typed-contract parsing, plus `related_skill_headers:` + `pipeline_metadata:` YAML fields.
 - **`template_empirical_observation` vs `template_experiment`** — both are `empirical_observation` BB. `empirical_observation` is for inline observations embedded in thought trails (lighter, less pre-registration emphasis). `experiment` is for full pre-registered investigations archived under `vault/archives/experiments/` (heavier, with explicit Pre-Registration sections that must be filled before running).
 - **`template_concept` vs `template_model`** — `concept` is for definitions of named things (term notes); `model` is for relational structures (architectures, schemas). A note about an ML technique might be either, depending on whether it primarily *names* the technique (concept) or *structures its components* (model).
+- **`template_navigation` vs `template_entry_point` vs `template_acronym_glossary`** — all three are `navigation` BB. `template_navigation` is generic (any index/routing note, anywhere in the vault). `template_entry_point` is the specific case of navigation notes that live in `vault/0_entry_points/entry_*.md` and serve as named master TOCs / per-surface indexes. `template_acronym_glossary` is the further-specialized case of acronym glossary notes (`vault/0_entry_points/acronym_glossary_<domain>.md`) — same YAML pattern as entry points, but the body uses a structured per-acronym `### ACRONYM` pattern with Full Name / Description / Documentation / Related sub-fields.
 
 ## Why Templates Live in the Vault
 

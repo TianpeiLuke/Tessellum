@@ -96,7 +96,9 @@ The canonical executable form of the YAML frontmatter spec. Pick the template ma
 | [`template_hypothesis`](../resources/templates/template_hypothesis.md) | hypothesis | `vault/resources/analysis_thoughts/` |
 | [`template_empirical_observation`](../resources/templates/template_empirical_observation.md) | empirical_observation (inline) | `vault/resources/analysis_thoughts/` |
 | [`template_experiment`](../resources/templates/template_experiment.md) | empirical_observation (full pre-reg) | `vault/archives/experiments/` |
-| [`template_navigation`](../resources/templates/template_navigation.md) | navigation | `vault/0_entry_points/` |
+| [`template_navigation`](../resources/templates/template_navigation.md) | navigation (generic) | `vault/0_entry_points/` or anywhere in the vault |
+| [`template_entry_point`](../resources/templates/template_entry_point.md) | navigation (entry-point shape) | `vault/0_entry_points/entry_*.md` |
+| [`template_acronym_glossary`](../resources/templates/template_acronym_glossary.md) | navigation (acronym glossary shape) | `vault/0_entry_points/acronym_glossary_*.md` |
 
 See [`templates/README.md`](../resources/templates/README.md) for full guidance.
 
