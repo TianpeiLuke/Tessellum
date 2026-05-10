@@ -16,6 +16,58 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.21] — 2026-05-10
+
+### Added — Composer Wave 4: Anthropic LLM bridge
+
+`AnthropicBackend` extends Wave 3's `LLMBackend` Protocol with a real Claude implementation. Behind the `[agent]` extras dependency group — install once, set `ANTHROPIC_API_KEY`, and Composer pipelines dispatch through any Claude model (Sonnet 4.6 by default). MockBackend remains the default for tests + offline development.
+
+```
+$ pip install tessellum[agent]
+$ export ANTHROPIC_API_KEY=sk-ant-...
+$ tessellum composer run vault/resources/skills/skill_tessellum_search_notes.md \
+    --backend=anthropic --model=claude-opus-4-7 \
+    --leaves leaves.json --vault vault/
+```
+
+#### `tessellum.composer.AnthropicBackend`
+
+- **Lazy import** — the `anthropic` package import happens inside `__init__`, so importing `tessellum.composer.llm` doesn't require `[agent]`. Users who only need MockBackend never pay the dependency cost.
+- **Default model**: `claude-sonnet-4-6` — fast + capable, the right default for most Composer workloads. Pass `model="claude-opus-4-7"` when reasoning depth matters or `model="claude-haiku-4-5-20251001"` for cost-sensitive batch jobs.
+- **API key resolution**: `ANTHROPIC_API_KEY` env var by default; explicit override via `api_key=` constructor arg.
+- **Test injection**: `AnthropicBackend(client=fake_client)` lets tests substitute any object with a `messages.create(**kwargs)` method — no SDK install required for the tests, no real network calls.
+- **Response handling**: extracts text from the SDK's content-block list (skipping non-text blocks like tool_use), records `model`, `stop_reason`, `input_tokens`, `output_tokens` in `LLMResponse.metadata` for the run trace.
+
+#### `tessellum composer run --backend`
+
+```
+tessellum composer run <skill>
+    [--backend mock|anthropic]    # default: mock
+    [--model claude-sonnet-4-6]   # only used when --backend=anthropic
+    ... (existing Wave 3 flags)
+```
+
+`--backend=anthropic` without `[agent]` installed returns exit code `2` with a clear hint:
+
+```
+tessellum composer run: --backend=anthropic requires the [agent] extras: pip install tessellum[agent]
+```
+
+`--mock-responses` is silently ignored (with a stderr note) when `--backend=anthropic` — the responses come from Claude, not a fixture.
+
+#### Tests
+
+11 new smoke tests covering: backend ID + default model + custom model, request payload mapping, multi-block text concatenation, non-text block skipping, dict-shaped block support, token-count metadata, real-SDK construction (skipped when `anthropic` not installed), CLI `--backend=anthropic` happy path + missing-SDK exit-2 path. Full suite: 427 passed, 1 skipped (12 of 23 conditional on SDK availability).
+
+#### Why this matters
+
+Composer end-to-end is real now. The same skill canonical that compiles to a typed DAG (Wave 2), executes through MockBackend in tests (Wave 3), can swap to a live Claude call by flipping one CLI flag. The agent ↔ program boundary holds: programs handle structure (DAG, schema validation, materializer dispatch, file I/O); agents handle content (every LLM-mediated decision lives behind one Protocol method). Wave 5+ (batch + eval) builds on this foundation without disturbing the runtime.
+
+#### Deferred (per `plans/plan_composer_port.md`)
+
+- **MCP dispatcher** — kept on the deferred list per the plan's "DEFER unless real demand" guidance. Tessellum v0.1 doesn't need to match the parent project's full MCP architecture; add later when a Tessellum user has a concrete MCP integration need.
+- **OpenAI / local-model backends** — same Protocol, separate `[agent_openai]` / `[agent_local]` extras when users ask. The lazy-import pattern in `AnthropicBackend` is the template.
+
 ## [0.0.20] — 2026-05-10
 
 ### Added — Composer Wave 3: executor + scheduler + materializers + mock LLM

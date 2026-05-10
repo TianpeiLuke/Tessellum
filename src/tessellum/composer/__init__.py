@@ -58,6 +58,7 @@ from tessellum.composer.executor import (
     execute_step,
 )
 from tessellum.composer.llm import (
+    AnthropicBackend,
     LLMBackend,
     LLMRequest,
     LLMResponse,
@@ -115,6 +116,8 @@ __all__ = [
     "LLMRequest",
     "LLMResponse",
     "MockBackend",
+    # LLM backend (Wave 4 — requires [agent] extras)
+    "AnthropicBackend",
     # Materializers (Wave 3)
     "materialize",
     "MaterializedOutput",
