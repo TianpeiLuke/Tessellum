@@ -1,0 +1,162 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tessellum"
+version = "0.0.1"
+description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "Tianpei (Luke) Xie" },
+]
+keywords = [
+    "zettelkasten",
+    "knowledge-management",
+    "knowledge-graph",
+    "atomic-notes",
+    "building-block",
+    "folgezettel",
+    "dialectic",
+    "dks",
+    "cqrs",
+    "epistemic",
+    "agent-memory",
+    "ai-agent",
+    "llm",
+    "mcp",
+    "sqlite-vec",
+    "fts5",
+    "hybrid-retrieval",
+    "rrf",
+    "personal-knowledge-management",
+    "pkm",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Typing :: Typed",
+]
+requires-python = ">=3.11"
+dependencies = [
+    # Storage + retrieval
+    "sqlite-vec>=0.1.6",         # Vector extension for SQLite (one-file unified backend)
+    "rank-bm25",                  # BM25 lexical retrieval
+    "sentence-transformers",      # Dense retrieval embeddings
+    "networkx",                   # Graph traversal, PageRank/PPR
+    # Format + I/O
+    "PyYAML>=6.0,<7.0",
+    "python-frontmatter>=1.1",
+    "jsonschema>=4.0",            # Pipeline schema validation
+    "pydantic>=2.7,<3.0",         # Typed contracts
+    # Embeddings + tokenization
+    "tiktoken",                   # Token counting for context budgets
+    "numpy",
+    # Plotting + export
+    "matplotlib",                 # Graph rendering
+    "Pillow",                     # PNG export
+    "fa2",                        # ForceAtlas2 graph layouts
+    "igraph",                     # Leiden community detection
+    # CLI
+    "click>=8.1",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+mcp = [
+    "mcp>=1.0",                   # MCP stdio server SDK
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+]
+agent = [
+    "anthropic",                  # LLM-augmented retrieval
+]
+papers = [
+    "pyzotero",                   # Zotero save-paper integration
+    "requests",
+]
+ingest = [
+    "watchdog>=4.0",              # Inbox file-watcher
+    "beautifulsoup4",             # HTML/EML
+    "html2text",                  # HTML → Markdown
+    "pdfplumber",                 # PDF extraction
+    "PyPDF2",                     # PDF fallback
+    "python-docx",                # Word documents
+    "python-pptx",                # PowerPoint
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/TianpeiLuke/Tessellum"
+Documentation = "https://github.com/TianpeiLuke/Tessellum/tree/main/docs"
+Repository = "https://github.com/TianpeiLuke/Tessellum"
+Issues = "https://github.com/TianpeiLuke/Tessellum/issues"
+Changelog = "https://github.com/TianpeiLuke/Tessellum/blob/main/CHANGELOG.md"
+
+[project.scripts]
+tessellum = "tessellum.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tessellum"]
+
+[tool.hatch.build.targets.sdist]
+# Tessellum dogfoods itself — there is no separate `docs/` directory; public
+# documentation lives in `vault/` as typed atomic notes. See DEVELOPING.md.
+include = [
+    "src/tessellum",
+    "vault",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "DEVELOPING.md",
+    "pyproject.toml",
+]
+exclude = [
+    "data",
+    "experiments",
+    "inbox",
+    "tests",
+    "notebook",
+    "**/.gitkeep",
+    "**/__pycache__",
+    "**/*.pyc",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
