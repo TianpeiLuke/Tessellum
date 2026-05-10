@@ -116,15 +116,18 @@ my-vault/
 
 ## Order of Operations
 
-1. **Done** — fix CLI entry point (v0.0.1 patch).
-2. **Next** — ship `format/{frontmatter_spec,validator,parser}.py`. Highest leverage per LOC: turns the typed substrate from "static enum" into "library users can import to validate their own notes". Releasable as v0.0.2.
-3. Wire `force-include` for templates + seed vault content. Still pre-CLI work.
-4. Build out CLI: `init` first (depends on seed vault), then `capture` (depends on templates), then `format check` (depends on validator).
+1. **Done (v0.0.1 patch / v0.0.2)** — fix CLI entry point.
+2. **Done (v0.0.2 / v0.0.4)** — ship `format/{frontmatter_spec,validator,parser,link_checker}.py`. Highest leverage per LOC: turns the typed substrate from "static enum" into "library users can import to validate their own notes".
+3. **Done (v0.0.7)** — wire `force-include` for templates. Seed-vault content for `tessellum init` is still pending.
+4. CLI buildout — partial:
+   - **Done (v0.0.3)** — `tessellum format check` (out-of-order; depends only on validator from step 2).
+   - **Done (v0.0.8)** — `tessellum capture <flavor> <slug>`.
+   - Pending — `tessellum init` (depends on seed vault content from step 3).
 5. Ship `indexer/` — DB build is the gateway to all retrieval/composer work.
 6. Ship `retrieval/` — at least BM25 + dense + RRF for `tessellum search`.
-7. Ship `composer/` and `mcp/` last, behind extras.
+7. Ship `composer/` and `mcp/`. **The Composer port is its own substantial subsystem** — see [`plan_composer_port.md`](plan_composer_port.md) for the 5-wave porting plan (Foundation → Compiler → Executor → LLM bridge → Scale). v0.1 should ship at least Composer Wave 1 (foundation: schema + contracts + extractor + loader + `tessellum composer validate` CLI + `tessellum capture skill` paired-sidecar emission).
 
-Each step is independently releasable. v0.1 doesn't need all seven done — a credible v0.1 minimum is steps 1-4 (format library + CLI scaffold + capture). Indexer/retrieval/composer/mcp can be v0.2-0.5.
+Each step is independently releasable. v0.1 doesn't need all seven done — a credible v0.1 minimum is steps 1-4 (format library + CLI scaffold + capture, all already shipped) plus step 7 Wave 1 (Composer foundation). Indexer/retrieval (steps 5-6) and Composer Waves 2-5 can be v0.2-0.5.
 
 ## Open Questions
 
