@@ -22,8 +22,31 @@ The vault template lives under `vault/`; the user's vault is configured via
 the TESSELLUM_VAULT_PATH environment variable or `tessellum.config`.
 """
 
-__version__ = "0.0.1"
+from tessellum.__about__ import __status__, __version__
+from tessellum.format import (
+    BB_SPECS,
+    BBEdge,
+    BBSpec,
+    BuildingBlock,
+    EPISTEMIC_EDGES,
+    EpistemicLayer,
+    downstream,
+    get_spec,
+    types_in_layer,
+    upstream,
+)
 
 __all__ = [
+    "__status__",
     "__version__",
+    "BuildingBlock",
+    "EpistemicLayer",
+    "BBSpec",
+    "BBEdge",
+    "BB_SPECS",
+    "EPISTEMIC_EDGES",
+    "downstream",
+    "get_spec",
+    "types_in_layer",
+    "upstream",
 ]
