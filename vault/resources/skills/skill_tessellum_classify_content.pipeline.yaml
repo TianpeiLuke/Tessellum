@@ -1,0 +1,206 @@
+# tessellum-classify-content — Composer pipeline sidecar
+#
+# 5-step pipeline that segments raw or existing-note content by topic
+# boundaries and labels each segment with one of the 8 BB types + a
+# content-domain hint. Pure analysis — no vault writes.
+#
+# Input: a single leaf with at minimum `content` (string — raw text to
+# classify) and optionally `source` (descriptive label) and
+# `existing_frontmatter` (dict — if classifying an existing note).
+#
+# Output: a structured classification report (JSON) consumed by
+# tessellum-route-content or the future tessellum-decompose-note skill.
+
+version: "1.0"
+
+pipeline:
+  - section_id: step_1_ingest_content
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: []
+    output_key: ingested
+    materializer: deterministic_no_llm
+    expected_output_schema:
+      type: object
+      required: [source, total_lines, raw_text]
+      properties:
+        source:
+          type: string
+        total_lines:
+          type: integer
+        existing_frontmatter:
+          type: ["object", "null"]
+        raw_text:
+          type: string
+    # No prompt — orchestrator splits the raw content, counts lines,
+    # and extracts existing YAML frontmatter (if any) before step 2.
+
+  - section_id: step_2_segment_by_topic_boundaries
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_1_ingest_content]
+    output_key: segments
+    materializer: json_segments
+    expected_output_schema:
+      type: object
+      required: [segments]
+      properties:
+        segments:
+          type: array
+          items:
+            type: object
+            required: [id, start_line, end_line, heading, line_count]
+            properties:
+              id: {type: integer}
+              start_line: {type: integer}
+              end_line: {type: integer}
+              heading: {type: ["string", "null"]}
+              line_count: {type: integer}
+              raw_text: {type: string}
+    prompt_template: |
+      You are running step 2 of tessellum-classify-content: Segment by
+      Topic Boundaries.
+
+      RAW CONTENT
+      {{upstream.ingested.raw_text}}
+
+      Apply the segmentation rules in section "step_2_segment_by_topic_boundaries"
+      of skill_tessellum_classify_content (H2 strongest → H3 → blank+topic
+      shift → list blocks).
+
+      Return ONLY the JSON object specified by expected_output_schema;
+      no prose, no code fences.
+
+  - section_id: step_3_classify_each_segment_by_building_block
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_2_segment_by_topic_boundaries]
+    output_key: bb_labels
+    materializer: json_to_dataclass
+    expected_output_schema:
+      type: object
+      required: [labels]
+      properties:
+        labels:
+          type: array
+          items:
+            type: object
+            required: [segment_id, building_block, confidence]
+            properties:
+              segment_id: {type: integer}
+              building_block:
+                type: string
+                enum:
+                  - "concept"
+                  - "model"
+                  - "procedure"
+                  - "empirical_observation"
+                  - "hypothesis"
+                  - "argument"
+                  - "counter_argument"
+                  - "navigation"
+                  - "mixed"
+              confidence:
+                type: string
+                enum: ["low", "medium", "high"]
+              sub_blocks:
+                type: ["array", "null"]
+                items: {type: string}
+                description: "Populated only when building_block='mixed'"
+    prompt_template: |
+      You are running step 3 of tessellum-classify-content: Classify
+      Each Segment by Building Block.
+
+      SEGMENTS (from step 2)
+      {{upstream.segments}}
+
+      Apply the recognition criteria in section
+      "step_3_classify_each_segment_by_building_block" of
+      skill_tessellum_classify_content. Each BB type's question +
+      recognition signals are in the table there.
+
+      Rules:
+        - Label each segment with exactly one BB type (or "mixed" if
+          >=3 non-navigation types co-exist with no dominant block).
+        - For "mixed", populate sub_blocks with the BB types present.
+        - Assign confidence: high (>=75% match), medium (50-75%),
+          low (<50% — usually means mixed).
+
+      Return ONLY the JSON object specified by expected_output_schema;
+      no prose, no code fences.
+
+  - section_id: step_4_identify_content_domain
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_3_classify_each_segment_by_building_block]
+    output_key: domain_labels
+    materializer: json_to_dataclass
+    expected_output_schema:
+      type: object
+      required: [domains]
+      properties:
+        domains:
+          type: array
+          items:
+            type: object
+            required: [segment_id, content_domain]
+            properties:
+              segment_id: {type: integer}
+              content_domain:
+                type: string
+                description: "Open vocabulary; descriptive prose (e.g., 'knowledge management', 'retrieval', 'paper review')"
+    prompt_template: |
+      You are running step 4 of tessellum-classify-content: Identify
+      Content Domain.
+
+      SEGMENTS WITH BB LABELS
+      segments: {{upstream.segments}}
+      bb_labels: {{upstream.bb_labels}}
+
+      For each segment, identify its subject-matter domain. The
+      Tessellum-flavored examples table in section
+      "step_4_identify_content_domain" suggests common labels; free-form
+      domain strings outside those examples are valid (the router
+      decides downstream).
+
+      Return ONLY the JSON object specified by expected_output_schema;
+      no prose, no code fences.
+
+  - section_id: step_5_output_classification_report
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on:
+      - step_2_segment_by_topic_boundaries
+      - step_3_classify_each_segment_by_building_block
+      - step_4_identify_content_domain
+    output_key: classification_report
+    materializer: deterministic_no_llm
+    # No prompt — orchestrator merges segments + bb_labels + domain_labels
+    # into the final report shape.
+    expected_output_schema:
+      type: object
+      required: [source, total_segments, total_lines, primary_building_block, unique_blocks, block_mixing, rows]
+      properties:
+        source: {type: string}
+        total_segments: {type: integer}
+        total_lines: {type: integer}
+        primary_building_block: {type: string}
+        unique_blocks: {type: integer}
+        block_mixing: {type: boolean}
+        rows:
+          type: array
+          items:
+            type: object
+            required: [segment_id, lines, heading, building_block, content_domain, confidence]
+            properties:
+              segment_id: {type: integer}
+              lines: {type: string}  # e.g., "1-25"
+              heading: {type: ["string", "null"]}
+              building_block: {type: string}
+              content_domain: {type: string}
+              confidence: {type: string}

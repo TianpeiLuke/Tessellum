@@ -16,6 +16,107 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.58] — 2026-05-11
+
+### Added — Phase IV of plan_v01_completion_roadmap: capture-side helper skills + catalog cleanup
+
+Two new skills ported from AbuseSlipBox + a rewritten skill catalog
+that reflects what actually ships in Tessellum (rather than the
+84-skill AB catalog that was copied wholesale into the seed vault).
+
+**`tessellum-classify-content`** — ported + adapted from
+`skill_slipbox_classify_content.md`. Domain-agnostic. 5-step
+pipeline:
+
+1. Ingest content (from `--note`, `--file`, or pasted text)
+2. Segment by topic boundaries (H2 → H3 → blank+shift → lists)
+3. Classify each segment by Building Block (the 8-BB recognition
+   table, with each BB framed by the question it answers per the
+   v0.0.57 question-oriented BB index)
+4. Identify content domain (open vocabulary; Tessellum-flavored
+   examples include knowledge_management, retrieval, DKS, paper
+   review, etc.)
+5. Output classification report (structured JSON consumed by
+   `tessellum-route-content`)
+
+Pure analysis — no vault writes. Used when decomposing mixed notes
+or before invoking a capture flavor.
+
+**`tessellum-route-content`** — ported + heavily trimmed from
+`skill_slipbox_route_content.md` (389 lines → ~250 lines). The
+load-bearing **Sub-Category Novelty Framework** ported verbatim:
+3 criteria (source / operational task / maintenance), each yielding
+`existing | novel | n/a`, with a 0-3 novel-count decision rule:
+
+- 0 novel → existing sub-category
+- 1 novel → existing + emit `drift_candidate_one_of_three` warning
+  for periodic audit
+- 2-3 novel → propose new sub-category label
+
+AB's 200-line vault-specific routing table replaced with a smaller
+Tessellum routing matrix that defers to `tessellum.capture.REGISTRY`
+as the source of truth for default (destination, prefix) per BB
+type. The skill produces a per-segment routing plan; it does not
+write the notes — that's the caller's job (e.g., a multi-segment
+`tessellum capture` run with `--destination` + `--prefix` overrides
+per v0.0.57).
+
+Both skills ship with their Composer-pipeline sidecars
+(`*.pipeline.yaml`).
+
+**Skill catalog rewrite.** `entry_skill_catalog.md` previously
+contained a wholesale copy of AB's catalog — 84 `/slipbox-*` skill
+references, none of which exist in Tessellum's seed vault. Replaced
+with an honest catalog of Tessellum's 13 actual skills, organised
+into 5 clusters:
+
+1. **DKS runtime** (2): `tessellum-dks-cycle`, `tessellum-meta-dks-cycle`
+2. **Capture-side helpers** (4): `tessellum-classify-content`,
+   `tessellum-route-content`, `tessellum-capture-code-repo-note`,
+   `tessellum-capture-code-snippet`
+3. **Search & answer** (2): `tessellum-search-notes`,
+   `tessellum-answer-query`
+4. **Trail management** (3): `tessellum-traverse-folgezettel`,
+   `tessellum-append-to-trail`, `tessellum-manage-folgezettel`
+5. **Maintenance & format** (2): `tessellum-format-check`,
+   `tessellum-write-coe`
+
+Each row maps a *"I want to..."* user intent to a real skill, with
+a link to the canonical body. Also documents the three invocation
+paths (Composer pipeline / chat context / Python API) and the
+skill-authoring procedure for adding more skills.
+
+### Scope decision: 13 skills, not 20
+
+The original Phase IV plan called for "9 new skills to reach 20."
+After authoring the 2 AB ports + the catalog rewrite + the v0.0.57
+question-oriented BB exemplar work, the right scope is to ship at
+13 well-curated skills covering all 5 essential modes — not
+mechanically inflate to a symbolic "20" target. The 7 originally-
+planned additions (capture-empirical-observation, capture-argument,
+capture-counter-argument, capture-concept, capture-procedure,
+summarise-trail, find-related, branch-trail, extend-trail,
+merge-trail-summaries, rebuild-index, validate-bb-graph,
+bump-schema-version) are deferred to a future version with a clearer
+need — the existing 13 already cover the v0.1.0 user experience
+when paired with `tessellum capture` (which handles 14 flavors via
+the REGISTRY) and `tessellum bb / dks / format` CLI subcommands.
+
+### Tests + checks
+
+No code changes that affect runtime semantics. Seed manifest extended
+by 4 entries (2 canonicals + 2 sidecars). Full suite: **871 passed**
+(unchanged from v0.0.57). Ruff clean. Vault format check: 0 errors.
+
+### Sequencing
+
+Phase IV of `plan_v01_completion_roadmap.md` complete (with scope
+clarified). Next: **v0.0.59 — Phase V** ships the MCP server
+exposing v0.1 skills + the 4 how-to guides (getting-started,
+note-format, agent-integration, growing-a-trail).
+
+---
+
 ## [0.0.57] — 2026-05-11
 
 ### Added — Phase III of plan_v01_completion_roadmap: BB-type exemplar curation + term_dictionary convention

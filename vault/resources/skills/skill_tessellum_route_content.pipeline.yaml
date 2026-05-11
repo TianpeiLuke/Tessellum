@@ -1,0 +1,205 @@
+# tessellum-route-content — Composer pipeline sidecar
+#
+# 6-step pipeline that takes a per-segment classification report and
+# emits a per-segment routing plan. Vault-specific — encodes Tessellum's
+# capture-registry defaults + the 3-criterion sub-category novelty
+# framework.
+#
+# Input: a leaf with at minimum `classification_report` (the JSON output
+# of tessellum-classify-content) and optionally
+# `existing_subcategories_under_bb_para` (corpus state for novelty
+# decisions) and `sibling_decisions` (already-routed segments in the
+# current run, for the corpus coherence bias).
+#
+# Output: per-segment routing plan (JSON array). One entry per
+# segment, including target_path + subcategory_novelty + rationale.
+
+version: "1.0"
+
+pipeline:
+  - section_id: step_1_read_classification_report
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: []
+    output_key: report
+    materializer: deterministic_no_llm
+    # Orchestrator validates the classification report shape and
+    # passes it through; no LLM call needed.
+    expected_output_schema:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+
+  - section_id: step_2_map_to_routing_candidate
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_1_read_classification_report]
+    output_key: candidates
+    materializer: deterministic_no_llm
+    # Orchestrator queries tessellum.capture.REGISTRY for each segment's
+    # building_block + content_domain and derives the default
+    # (destination, filename_prefix). LLM not needed.
+    expected_output_schema:
+      type: object
+      required: [candidates]
+      properties:
+        candidates:
+          type: array
+          items:
+            type: object
+            required: [segment_id, default_destination, default_prefix, default_flavor]
+
+  - section_id: step_3_apply_novelty_framework
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_2_map_to_routing_candidate]
+    output_key: novelty_decisions
+    materializer: json_to_dataclass
+    expected_output_schema:
+      type: object
+      required: [decisions]
+      properties:
+        decisions:
+          type: array
+          items:
+            type: object
+            required: [segment_id, subcategory_novelty, subcategory_rationale, proposed_subcategory_label]
+            properties:
+              segment_id: {type: integer}
+              subcategory_novelty:
+                type: string
+                enum:
+                  - "existing"
+                  - "drift_candidate_one_of_three"
+                  - "new_two_of_three"
+                  - "new_three_of_three"
+              subcategory_rationale:
+                type: object
+                required: [source_signal, operational_task_signal, maintenance_signal]
+                properties:
+                  source_signal:
+                    type: string
+                    enum: ["existing", "novel", "n/a"]
+                  operational_task_signal:
+                    type: string
+                    enum: ["existing", "novel", "n/a"]
+                  maintenance_signal:
+                    type: string
+                    enum: ["existing", "novel", "n/a"]
+              proposed_subcategory_label:
+                type: string
+                description: "Existing label OR proposed new label (snake_case)"
+    prompt_template: |
+      You are running step 3 of tessellum-route-content: Apply the
+      3-criterion Sub-Category Novelty Framework.
+
+      CLASSIFICATION REPORT
+      {{upstream.report}}
+
+      ROUTING CANDIDATES (defaults from tessellum.capture.REGISTRY)
+      {{upstream.candidates}}
+
+      CORPUS STATE (existing sub-categories under (BB, PARA))
+      {{leaf.existing_subcategories_under_bb_para}}
+
+      SIBLING DECISIONS (already routed in this run; for coherence bias)
+      {{leaf.sibling_decisions_json}}
+
+      For each segment, apply the 3-criterion framework
+      (source / operational task / maintenance — see section
+      "sub_category_novelty_framework" of
+      skill_tessellum_route_content). Each criterion yields
+      `existing | novel | n/a`. Map the novel count to the decision
+      per the decision rule:
+
+        - 0 of 3 → "existing"
+        - 1 of 3 → "existing" + emit drift_candidate_one_of_three
+        - 2 of 3 → "new_two_of_three"
+        - 3 of 3 → "new_three_of_three"
+
+      For existing decisions, pick the closest-match existing
+      sub-category from the BB index defaults + the corpus state.
+      For new decisions, propose a lowercase snake_case label that:
+        - is specific enough to scope one (BB, PARA)
+        - encodes the maintenance contract if non-obvious
+
+      Return ONLY the JSON object specified by expected_output_schema;
+      no prose, no code fences.
+
+  - section_id: step_4_corpus_coherence_bias
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_3_apply_novelty_framework]
+    output_key: bias_adjusted_decisions
+    materializer: deterministic_no_llm
+    # Orchestrator checks: if >=60% of sibling segments under the same
+    # (BB, PARA) chose sub-category X, and the current segment has
+    # confidence <= medium, override to X.
+
+  - section_id: step_5_compute_target_path
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_4_corpus_coherence_bias]
+    output_key: target_paths
+    materializer: deterministic_no_llm
+    # Orchestrator computes:
+    #   destination = REGISTRY-default OR new directory from new label
+    #   filename_prefix = REGISTRY-default OR derived from new label
+    #   slug = filesystem-safe slug from segment heading/title
+    #   target_path = <destination>/<filename_prefix><slug>.md
+
+  - section_id: step_6_output_routing_plan
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on:
+      - step_3_apply_novelty_framework
+      - step_5_compute_target_path
+    output_key: routing_plan
+    materializer: deterministic_no_llm
+    expected_output_schema:
+      type: object
+      required: [plan]
+      properties:
+        plan:
+          type: array
+          items:
+            type: object
+            required:
+              - segment_id
+              - building_block
+              - second_category
+              - subcategory_novelty
+              - subcategory_rationale
+              - destination
+              - filename_prefix
+              - slug
+              - target_path
+            properties:
+              segment_id: {type: integer}
+              building_block: {type: string}
+              second_category: {type: string}
+              subcategory_novelty:
+                type: string
+                enum:
+                  - "existing"
+                  - "drift_candidate_one_of_three"
+                  - "new_two_of_three"
+                  - "new_three_of_three"
+              subcategory_rationale:
+                type: object
+              destination: {type: string}
+              filename_prefix: {type: string}
+              slug: {type: string}
+              target_path:
+                type: string
+                pattern: "^[a-zA-Z0-9_/]+\\.md$"
+              rationale: {type: string}
+              routing_warning: {type: ["string", "null"]}
