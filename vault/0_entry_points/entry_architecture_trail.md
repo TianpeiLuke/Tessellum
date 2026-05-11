@@ -40,7 +40,8 @@ The trail does two things at once: it records the *design history* (so a contrib
 │       ├── 1a1a   The Essence of CQRS for Tessellum  (distilled thesis + 5 rules)
 │       └── 1a1b   The R-Cross Rules — Formal Discipline for the Two Sub-System Boundaries
 │           └── 1a1b1   Gap Audit: Tessellum Through the R-Cross Lens
-└── 1b   BB Ontology as a Typed Graph — Schema vs Corpus, Finite-State Substrate
+├── 1b   BB Ontology as a Typed Graph — Schema vs Corpus, Finite-State Substrate
+└── 1c   BB-Internal Transitions Evidence — The Architectural Layer the Schema Misses
 ```
 
 ## FZ Table
@@ -54,6 +55,7 @@ The trail does two things at once: it records the *design history* (so a contrib
 | **1a1b** | [`thought_cqrs_r_cross_rules`](../resources/analysis_thoughts/thought_cqrs_r_cross_rules.md) | argument | **Formal rules** — R-P (Schema ⊥ Runtime co-evolution), R-D (Descriptive purity), R-Cross (System boundary). Three rules policing three sub-system boundaries; the architect-facing companion to the user-facing essence at 1a1a. |
 | **1a1b1** | [`thought_cqrs_r_cross_gap_audit`](../resources/analysis_thoughts/thought_cqrs_r_cross_gap_audit.md) | argument | **Gap audit** — applies the three R-rules to Tessellum's current codebase. Each rule's defensive half (what's forbidden) is held; each rule's productive half (what's enabled) is the v0.2+ work. Priority-ordered list of 6 gaps to close. Cross-validated post-Phase-5 (2026-05-10): R-P + R-Cross productive halves now closed. |
 | **1b** | [`thought_bb_ontology_as_typed_graph`](../resources/analysis_thoughts/thought_bb_ontology_as_typed_graph.md) | argument | **Graph formalisation** — sharpens FZ 1 by splitting the ontology into a *schema graph* (closed 8+10) and a *corpus graph* (open, growing). Identifies graph properties (cycle, no source/sink, navigation-as-meta-node, model→procedure short-circuit). Proposes BBNode/BBEdge/BBGraph data structure that DKS's per-component dataclasses become views over. Co-companion of FZ 2a2 (DKS-as-FSM). |
+| **1c** | [`thought_bb_internal_transitions_evidence`](../resources/analysis_thoughts/thought_bb_internal_transitions_evidence.md) | counter_argument | **BB-internal transitions counter** — documents that BB_SCHEMA's 16 edges are all cross-type, but AB Slipbot QA evidence shows same-BB chains dominate (46% of trails; model→model→model scores highest at 4.13/5). The "model" BB is overloaded across 7 system layers (area/intent/model/variable/cradle/etl/table); architectural transitions between sub-kinds are invisible to the current schema. Proposes a parallel Layer B (architectural, sub-kind-parameterised) without splitting BB types. Sets up FZ 2c's adaptation strategy. |
 
 ## The dialectic in one line
 
@@ -94,4 +96,4 @@ Three design framings tested and found wanting:
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Architecture trail (FZ 1) — 7 nodes, two-branch fork at FZ 1 (1a* = CQRS descent, 1b = graph formalisation co-companion of FZ 2a2)
+**Status**: Active — Architecture trail (FZ 1) — 8 nodes, three-branch fork at FZ 1 (1a* CQRS descent + 1b graph formalisation + 1c BB-internal-transitions counter / co-companion of FZ 2c)

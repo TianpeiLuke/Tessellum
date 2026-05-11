@@ -33,11 +33,11 @@ For the *what* of Folgezettel as a mechanism, see [`term_folgezettel`](../resour
 
 | Trail # | Root note | Per-trail entry point | Nodes | Subject |
 |--:|---|---|--:|---|
-| **1** | [`thought_building_block_ontology_relationships`](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | [Architecture Trail](entry_architecture_trail.md) | 7 | From the typed BB graph to the two-system CQRS commitment + R-Cross rules + gap audit + graph-formalisation (1b) |
-| **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | [Dialectic Trail](entry_dialectic_trail.md) | 5 | How DKS was reasoned into shape: 7-component closed loop + DKS × FZ unification + DKS-as-FSM-on-BB-graph + runtime integration |
+| **1** | [`thought_building_block_ontology_relationships`](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | [Architecture Trail](entry_architecture_trail.md) | 8 | From the typed BB graph to two-system CQRS + R-Cross rules + gap audit + graph-formalisation (1b) + BB-internal-transitions counter (1c) |
+| **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | [Dialectic Trail](entry_dialectic_trail.md) | 6 | How DKS was reasoned into shape: 7-component closed loop + DKS × FZ unification + DKS-as-FSM-on-BB-graph + runtime integration + transition-model adaptation (2c) |
 | **3** | [`thought_retrieval_evolution`](../resources/analysis_thoughts/thought_retrieval_evolution.md) | [Retrieval Trail](entry_retrieval_trail.md) | 2 | How retrieval was tested into shape: 14-strategy bake-off → unified engine + hybrid RRF + best-first BFS |
 
-**3 trails, 14 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
+**3 trails, 16 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
 
 ## Why per-trail entry points
 
@@ -118,4 +118,4 @@ When you grow your first trail, copy the shape: linear or branching descent, a r
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — 3 trails shipped (Architecture, Dialectic, Retrieval), 14 nodes total (FZ 1b + FZ 2a2 paired addition: BB-ontology-as-typed-graph and DKS-as-FSM-on-BB-graph, both at 2026-05-10)
+**Status**: Active — 3 trails shipped (Architecture, Dialectic, Retrieval), 16 nodes total (FZ 1c + FZ 2c paired addition: BB-internal-transitions evidence and DKS transition-model adaptation strategy, both 2026-05-10)
