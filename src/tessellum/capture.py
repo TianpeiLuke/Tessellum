@@ -213,6 +213,14 @@ _DATE_LINE_RE = re.compile(
 _STATUS_TEMPLATE_RE = re.compile(r"^status: template\s*$", re.MULTILINE)
 _TRIPLE_NEWLINE_RE = re.compile(r"\n{3,}")
 
+# Inject ``bb_schema_version: <N>`` immediately after the ``building_block:`` line
+# unless the frontmatter already declares it. Captures the indentation (none in
+# practice) + trailing newline so the inserted line slots in cleanly.
+_BUILDING_BLOCK_LINE_RE = re.compile(
+    r"^(building_block:\s*[a-z_]+)\s*$", re.MULTILINE
+)
+_BB_SCHEMA_VERSION_PRESENT_RE = re.compile(r"^bb_schema_version:", re.MULTILINE)
+
 
 def list_flavors() -> list[str]:
     """Sorted list of registered flavor keys (suitable for CLI choices)."""
@@ -284,6 +292,7 @@ def capture(
     text = _strip_how_to_use(text)
     text = _set_date(text, today)
     text = _set_status(text, "draft")
+    text = _set_bb_schema_version(text)
 
     sidecar_path: Path | None = None
     if flavor == "skill":
@@ -329,3 +338,26 @@ def _set_date(text: str, date: dt.date) -> str:
 
 def _set_status(text: str, new_status: str) -> str:
     return _STATUS_TEMPLATE_RE.sub(f"status: {new_status}", text, count=1)
+
+
+def _set_bb_schema_version(text: str) -> str:
+    """Inject ``bb_schema_version: <N>`` immediately after the
+    ``building_block:`` line (frozen-at-creation per D8).
+
+    Reads ``BB_SCHEMA_VERSION`` from :mod:`tessellum.bb.types` at call
+    time (live value, not the package alias — per the v0.0.52
+    import-aliasing quirk).
+
+    No-op when the template already declares ``bb_schema_version:``
+    (back-compat for templates that may include it explicitly) or
+    when no ``building_block:`` line is found (e.g., legacy templates).
+    """
+    if _BB_SCHEMA_VERSION_PRESENT_RE.search(text):
+        return text
+    # Live read — not via package alias.
+    from tessellum.bb.types import BB_SCHEMA_VERSION
+
+    def _replace(m: re.Match[str]) -> str:
+        return f"{m.group(1)}\nbb_schema_version: {BB_SCHEMA_VERSION}"
+
+    return _BUILDING_BLOCK_LINE_RE.sub(_replace, text, count=1)

@@ -28,6 +28,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+import re
+
 from tessellum.bb import BB_SCHEMA, BBGraph, BBType
 from tessellum.bb.graph import BBEdge, BBNode
 
@@ -67,6 +69,43 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "(by default only the count + first few examples are shown).",
     )
     audit.set_defaults(func=run_bb_audit, _bb_op="audit")
+
+    # ── migrate ────────────────────────────────────────────────────────────
+    migrate = sub.add_parser(
+        "migrate",
+        help="Retroactive bb_schema_version validation (Phase B.5). "
+        "Scan a vault for notes whose recorded version is below the "
+        "current BB_SCHEMA_VERSION; report which would pass TESS-005 "
+        "today and which would fail.",
+    )
+    migrate.add_argument(
+        "--vault",
+        type=Path,
+        default=Path("vault"),
+        help="Vault root to scan (default: ./vault/).",
+    )
+    migrate.add_argument(
+        "--target-version",
+        default="current",
+        help="Target version. 'current' (default) uses the live "
+        "BB_SCHEMA_VERSION. Pass an integer to target a specific version.",
+    )
+    migrate.add_argument(
+        "--apply",
+        action="store_true",
+        help="Bump the recorded bb_schema_version on notes that would "
+        "pass TESS-005 under the target version (passive migration). "
+        "Notes that would fail are reported but never auto-rewritten — "
+        "manual review required.",
+    )
+    migrate.add_argument(
+        "--format",
+        dest="output_format",
+        choices=["human", "json"],
+        default="human",
+        help="Output format (default: human).",
+    )
+    migrate.set_defaults(func=run_bb_migrate, _bb_op="migrate")
 
     bb.set_defaults(func=run_bb_audit, _bb_op=None, db=Path("data") / "tessellum.db")
 
@@ -253,3 +292,193 @@ def _emit_json(report: dict, *, show_untyped: bool) -> None:
         # is preserved.
         payload.pop("untyped_edges", None)
     print(json.dumps(payload, indent=2))
+
+
+# ── tessellum bb migrate (Phase B.5) ────────────────────────────────────────
+
+
+_BB_SCHEMA_VERSION_LINE_RE = re.compile(
+    r"^bb_schema_version:\s*(\d+)\s*$", re.MULTILINE
+)
+
+
+def run_bb_migrate(args: argparse.Namespace) -> int:
+    """Retroactive bb_schema_version validation + passive migration."""
+    from tessellum.bb.types import BB_SCHEMA_VERSION
+    from tessellum.format import parse_note, validate
+    from tessellum.format.issue import Severity
+
+    vault_root: Path = args.vault.expanduser().resolve()
+    if not vault_root.is_dir():
+        print(
+            f"tessellum bb migrate: vault root not found at {vault_root}.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.target_version == "current":
+        target = BB_SCHEMA_VERSION
+    else:
+        try:
+            target = int(args.target_version)
+        except (TypeError, ValueError):
+            print(
+                f"tessellum bb migrate: --target-version must be 'current' "
+                f"or an integer; got {args.target_version!r}.",
+                file=sys.stderr,
+            )
+            return 2
+
+    # Walk the vault for .md files
+    md_files = sorted(p for p in vault_root.rglob("*.md") if p.is_file())
+
+    behind: list[dict] = []  # notes with recorded_version < target
+    would_pass: list[dict] = []
+    would_fail: list[dict] = []
+    skipped: list[dict] = []  # parse errors or unparseable notes
+
+    for path in md_files:
+        try:
+            note = parse_note(path)
+        except Exception as e:  # noqa: BLE001 — defensive, surface in skipped
+            skipped.append({"path": str(path.relative_to(vault_root)), "reason": str(e)})
+            continue
+
+        recorded_raw = note.frontmatter.get("bb_schema_version")
+        try:
+            recorded = (
+                int(recorded_raw) if recorded_raw is not None else 1
+            )  # default 1 for v0.0.52-era notes
+        except (TypeError, ValueError):
+            skipped.append(
+                {
+                    "path": str(path.relative_to(vault_root)),
+                    "reason": f"bb_schema_version not an integer: {recorded_raw!r}",
+                }
+            )
+            continue
+
+        if recorded >= target:
+            continue  # already at-or-above target
+
+        # Run validation against the live schema (which reflects target_version
+        # only when target == current; for past targets the live schema is a
+        # superset, but reporting errors against current is the conservative
+        # behavior — would_fail under current implies would_fail under target).
+        issues = validate(path)
+        tess005_errors = [
+            i for i in issues if i.rule_id == "TESS-005" and i.severity == Severity.ERROR
+        ]
+        # TESS-005 is only WARNING today, so passing means: no ERRORs surface.
+        # We classify by whether TESS-005 *warnings* exist (informational).
+        tess005_warnings = [
+            i for i in issues if i.rule_id == "TESS-005"
+        ]
+
+        entry = {
+            "path": str(path.relative_to(vault_root)),
+            "recorded_version": recorded,
+            "target_version": target,
+            "tess005_warnings": len(tess005_warnings),
+        }
+        behind.append(entry)
+        if not tess005_errors:
+            would_pass.append(entry)
+        else:
+            entry["sample_error"] = tess005_errors[0].message[:200]
+            would_fail.append(entry)
+
+    # Apply: bump versions on would_pass entries
+    bumped: list[str] = []
+    if args.apply:
+        for entry in would_pass:
+            full_path = vault_root / entry["path"]
+            try:
+                text = full_path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            new_text, changed = _bump_bb_schema_version(text, target)
+            if changed:
+                full_path.write_text(new_text, encoding="utf-8")
+                bumped.append(entry["path"])
+
+    report = {
+        "vault_root": str(vault_root),
+        "target_version": target,
+        "current_version": BB_SCHEMA_VERSION,
+        "total_md_files": len(md_files),
+        "behind_count": len(behind),
+        "would_pass_count": len(would_pass),
+        "would_fail_count": len(would_fail),
+        "skipped_count": len(skipped),
+        "bumped_count": len(bumped),
+        "apply_mode": args.apply,
+        "behind": behind,
+        "would_pass": would_pass,
+        "would_fail": would_fail,
+        "skipped": skipped,
+        "bumped": bumped,
+    }
+
+    if args.output_format == "json":
+        print(json.dumps(report, indent=2))
+    else:
+        print(f"tessellum bb migrate  (vault: {vault_root})")
+        print(f"  target version:  {target}")
+        print(f"  current version: {BB_SCHEMA_VERSION}")
+        print(f"  total .md files: {len(md_files)}")
+        print(f"  notes behind target: {len(behind)}")
+        print(f"    would pass under target: {len(would_pass)}")
+        print(f"    would fail under target: {len(would_fail)}")
+        if skipped:
+            print(f"  skipped (parse errors): {len(skipped)}")
+        if args.apply:
+            print(f"  versions bumped: {len(bumped)}")
+        elif would_pass:
+            print(
+                f"  (dry run) pass --apply to bump versions on the "
+                f"{len(would_pass)} would-pass notes."
+            )
+        if would_fail:
+            print(
+                "  would-fail notes need manual review — never auto-rewritten."
+            )
+            for entry in would_fail[:5]:
+                print(f"    {entry['path']}: {entry.get('sample_error', '')[:120]}")
+
+    return 0
+
+
+def _bump_bb_schema_version(text: str, target: int) -> tuple[str, bool]:
+    """Replace the ``bb_schema_version:`` line in YAML frontmatter.
+
+    Returns ``(new_text, changed)``. When the field is absent, append it
+    after the first ``building_block:`` line. When present, replace its
+    value with ``target``. Returns ``changed=False`` if the field already
+    equals ``target`` (idempotent).
+    """
+    match = _BB_SCHEMA_VERSION_LINE_RE.search(text)
+    if match:
+        try:
+            current = int(match.group(1))
+        except ValueError:
+            current = -1
+        if current == target:
+            return text, False
+        new_text = (
+            text[: match.start()]
+            + f"bb_schema_version: {target}"
+            + text[match.end():]
+        )
+        return new_text, True
+
+    # Field absent — inject after building_block: line
+    bb_line = re.search(r"^(building_block:\s*[a-z_]+)\s*$", text, re.MULTILINE)
+    if not bb_line:
+        return text, False
+    new_text = (
+        text[: bb_line.end()]
+        + f"\nbb_schema_version: {target}"
+        + text[bb_line.end():]
+    )
+    return new_text, True

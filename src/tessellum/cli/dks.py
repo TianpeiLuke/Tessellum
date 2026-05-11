@@ -89,7 +89,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=Path("data") / "tessellum.db",
         help="With --report --include-bb-graph: index DB to load the "
         "corpus BBGraph from. Default: ./data/tessellum.db. Ignored "
-        "without --include-bb-graph.",
+        "without --include-bb-graph. v0.0.53: also consumed by "
+        "--meta when present and readable, to populate "
+        "MetaObservation.unrealised_schema_edges from BBGraph.",
     )
     # Phase 7 — learned confidence + retrieval-grounded warrants
     dks.add_argument(
@@ -163,6 +165,33 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="With --meta: only propose edits for cycles whose Toulmin "
         "failure mode is the given component. Default: all components.",
+    )
+    dks.add_argument(
+        "--proposer",
+        choices=["heuristic", "llm"],
+        default="heuristic",
+        help="With --meta: proposal strategy. 'heuristic' (default) "
+        "uses the v0.0.52 lookup-table-driven HeuristicProposer; "
+        "'llm' uses the Phase B.2 LLMProposer backed by --backend. "
+        "llm requires --backend anthropic (or mock for testing).",
+    )
+    dks.add_argument(
+        "--attacker",
+        choices=["none", "llm"],
+        default="none",
+        help="With --meta: attack stage. 'none' (default) preserves "
+        "v0.0.52 survive=pass-through behaviour. 'llm' enables the "
+        "Phase B.3 LLMAttacker (dialectical attack on each proposal). "
+        "llm requires --backend anthropic (or mock for testing).",
+    )
+    dks.add_argument(
+        "--survive-threshold",
+        choices=["strict", "majority", "permissive"],
+        default="majority",
+        help="With --meta --attacker llm: aggregation policy for "
+        "deciding survival. 'strict': zero attacks. 'majority' "
+        "(default): <=1 strong AND <=2 moderate. 'permissive': no "
+        "strong attacks. Ignored when --attacker=none (all proposals survive).",
     )
     dks.add_argument(
         "--gate-confidence",
@@ -885,9 +914,15 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
 
     from tessellum.bb.types import BB_SCHEMA, BB_SCHEMA_EPISTEMIC
     from tessellum.dks.meta import (
+        Attacker,
         DEFAULT_MIN_CYCLES,
+        HeuristicProposer,
+        LLMAttacker,
+        LLMProposer,
         MetaCycle,
         MetaObservation,
+        NoOpAttacker,
+        Proposer,
         load_event_log,
         write_event_log,
     )
@@ -931,13 +966,25 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
                 if comp:
                     toulmin[comp] += 1
 
-        # Unrealised schema edges: BB_SCHEMA entries with 0 corpus instances.
-        # Optional — only meaningful if a vault index DB is present + readable;
-        # for v0.0.52 we approximate by reading whether the edge appears in
-        # any cycle trace's folgezettel_nodes pattern. Conservative: empty
-        # tuple by default; meta-DKS can still propose retracts based on
-        # the corpus graph in future phases.
+        # Unrealised schema edges: BB_SCHEMA entries with 0 corpus
+        # instances. v0.0.53 (Phase B.6) — when --bb-db points at a
+        # readable index DB, query BBGraph.from_db and call
+        # ``unrealised_schema_edges()`` to populate the field. Activates
+        # Heuristic-2 (retract-unused-edge) in HeuristicProposer.
+        # When the DB is absent or unreadable, fall back to empty tuple
+        # (v0.0.52 behaviour).
         unrealised: tuple = ()
+        bb_db_path: Path | None = getattr(args, "bb_db", None)
+        if bb_db_path is not None:
+            resolved_db = bb_db_path.expanduser().resolve()
+            if resolved_db.is_file():
+                try:
+                    from tessellum.bb import BBGraph
+
+                    bb_graph = BBGraph.from_db(resolved_db)
+                    unrealised = bb_graph.unrealised_schema_edges()
+                except Exception:  # noqa: BLE001 — defensive
+                    unrealised = ()
 
         observation = MetaObservation(
             timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -947,11 +994,68 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
             unrealised_schema_edges=unrealised,
         )
 
+    # Build backend lazily — both proposer and attacker may need it
+    meta_backend = None
+    if args.proposer == "llm" or args.attacker == "llm":
+        if args.backend == "anthropic":
+            try:
+                from tessellum.composer import AnthropicBackend
+
+                meta_backend = AnthropicBackend(model=args.model)
+            except ImportError as e:
+                print(
+                    "tessellum dks --meta with --proposer llm / --attacker llm: "
+                    "--backend=anthropic requires the [agent] extras: "
+                    "pip install tessellum[agent]",
+                    file=sys.stderr,
+                )
+                print(f"  ({e})", file=sys.stderr)
+                return 2
+        else:
+            mock_responses: dict[str, str] = {}
+            if args.mock_responses is not None:
+                try:
+                    mock_responses = json.loads(
+                        args.mock_responses.expanduser().resolve().read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                except (OSError, json.JSONDecodeError) as e:
+                    print(
+                        f"tessellum dks --meta: --mock-responses "
+                        f"unreadable: {e}",
+                        file=sys.stderr,
+                    )
+                    return 2
+                if not isinstance(mock_responses, dict):
+                    print(
+                        "tessellum dks --meta: --mock-responses must be "
+                        "a JSON object",
+                        file=sys.stderr,
+                    )
+                    return 2
+            meta_backend = MockBackend(responses=mock_responses)
+
+    proposer: Proposer
+    if args.proposer == "llm":
+        proposer = LLMProposer(backend=meta_backend)
+    else:
+        proposer = HeuristicProposer()
+
+    attacker: Attacker
+    if args.attacker == "llm":
+        attacker = LLMAttacker(backend=meta_backend)
+    else:
+        attacker = NoOpAttacker()
+
     cycle = MetaCycle(
         observation=observation,
         min_cycles=min_cycles,
         target_failure=args.target_failure,
         dry_run=not args.apply,
+        proposer=proposer,
+        attacker=attacker,
+        survive_threshold=args.survive_threshold,
     )
     result = cycle.run()
 
@@ -1000,6 +1104,18 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
         "events_path": str(events_path) if events_path else None,
         "migration_note_path": str(migration_note_path) if migration_note_path else None,
         "elapsed_ms": result.elapsed_ms,
+        "attacker": args.attacker,
+        "proposer": args.proposer,
+        "survive_threshold": result.survive_threshold,
+        "attacks": [
+            {
+                "attacked_proposal_index": a.attacked_proposal_index,
+                "attack_kind": a.attack_kind,
+                "reason": a.reason,
+                "strength": a.strength,
+            }
+            for a in result.attacks
+        ],
     }
 
     if args.output_format == "json":

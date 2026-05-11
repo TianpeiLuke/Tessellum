@@ -74,6 +74,21 @@ class MetaObservation:
        wrong (retract candidate) or the runtime never walks it (no
        action needed).
 
+    v0.0.53 adds three signal channels driven by Phase V validation
+    constraints (C1, C3, C4):
+
+    - ``counter_strength_breakdown``: ``{component: {strength: count}}``
+      stratifies the Toulmin distribution by counter strength.
+      Supports "one strong outweighs two weak" weighting (C3).
+    - ``sample_counter_quotes``: ``{component: (quote, ...)}`` carries
+      verbatim counter-argument quotes per Toulmin component so the
+      LLM proposer can ground proposals in specifics rather than
+      aggregates alone (C1).
+    - ``observation_source_metadata``: free-form description of where
+      the cycle-level observations came from (vault dogfood / live
+      capture / synthetic). Lets the LLM proposer assess
+      input-bias risk (C4).
+
     The dataclass is the *input* the MetaCycle reasons over. The
     runtime builds it by reading cycle-level traces under
     ``runs/dks/``.
@@ -84,6 +99,10 @@ class MetaObservation:
     top_attacked_warrants: tuple[tuple[str, int], ...] = ()  # (fz, count) tuples
     toulmin_failure_counts: dict[str, int] = field(default_factory=dict)
     unrealised_schema_edges: tuple[EpistemicEdgeType, ...] = ()
+    # v0.0.53 — Phase V-driven enrichment (optional; default empty)
+    counter_strength_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
+    sample_counter_quotes: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    observation_source_metadata: str = ""
 
 
 # ── SchemaEditProposal — the meta-cycle's argument ─────────────────────────
@@ -115,6 +134,61 @@ class SchemaEditProposal:
     supersedes: EpistemicEdgeType | None = None  # for "refine" only
 
 
+# ── MetaCounterArgument — the meta-cycle's attack (v0.0.53 Phase B.3) ──────
+
+
+META_ATTACK_KIND = Literal[
+    "insufficient_evidence",
+    "input_bias",
+    "overgeneralisation",
+    "collides_with_existing",
+    "weak_signal",
+]
+"""Closed vocabulary for meta-counter attack kinds. Mirrors the
+``attack_kind`` field on the meta-cycle skill canonical's step 2.
+
+``input_bias`` is the C5 Phase V-driven addition — explicitly fires
+when a proposal is responding to input bias, not a real schema gap.
+"""
+
+META_COUNTER_STRENGTH = Literal["weak", "moderate", "strong"]
+"""Same Toulmin-style strength vocabulary used by cycle-level
+:class:`tessellum.dks.core.DKSCounterArgument`."""
+
+
+@dataclass(frozen=True)
+class MetaCounterArgument:
+    """A typed attack against a :class:`SchemaEditProposal`.
+
+    Plays the role of a *counter-argument* in the meta-cycle. v0.0.53's
+    :class:`tessellum.dks.meta.runtime.LLMAttacker` emits these from
+    LLM responses; :class:`tessellum.dks.meta.runtime.NoOpAttacker`
+    (the default) emits none.
+
+    Attacks reference proposals by their index in the build-stage
+    output (matches the wire format the skill canonical specifies).
+    """
+
+    attacked_proposal_index: int
+    attack_kind: META_ATTACK_KIND
+    reason: str
+    strength: META_COUNTER_STRENGTH = "moderate"
+
+
+# ── Survive threshold (Phase B.3) ───────────────────────────────────────────
+
+
+SURVIVE_THRESHOLD = Literal["strict", "majority", "permissive"]
+"""Aggregation policy for the meta-cycle's survive stage.
+
+- ``strict``: a proposal survives iff zero attacks fire against it.
+- ``majority`` (default): a proposal survives iff
+  ``len(strong_attacks) <= 1 and len(moderate_attacks) <= 2``.
+- ``permissive``: a proposal survives iff no ``strong`` attacks fire
+  (any number of ``moderate`` / ``weak`` is tolerated).
+"""
+
+
 __all__ = [
     "META_STATES",
     "MetaEdgeType",
@@ -122,4 +196,9 @@ __all__ = [
     "MetaObservation",
     "SchemaEditProposal",
     "SCHEMA_EDIT_PROPOSAL_KIND",
+    # v0.0.53 — Phase B.3 attack types
+    "MetaCounterArgument",
+    "META_ATTACK_KIND",
+    "META_COUNTER_STRENGTH",
+    "SURVIVE_THRESHOLD",
 ]

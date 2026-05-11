@@ -356,6 +356,36 @@ class BBGraph:
         """
         return tuple(e for e in self._edges if e.edge_type is None)
 
+    def unrealised_schema_edges(self) -> tuple:
+        """Schema edges with zero realised instances in this corpus.
+
+        For each :data:`tessellum.bb.types.BB_SCHEMA` entry, check
+        whether at least one corpus :class:`BBEdge` instantiates its
+        ``(source, target)`` pair. Edges with no instances are
+        returned as :class:`tessellum.bb.types.EpistemicEdgeType`
+        tuples — meta-DKS's Heuristic-2 (retract-unused-edge) consumes
+        this list.
+
+        Note: matches by ``(source, target)`` BB-pair only — not the
+        edge label. A corpus edge with a different label but the same
+        BB-pair counts as realised for the purposes of this audit.
+        """
+        from tessellum.bb.types import BB_SCHEMA
+
+        realised_pairs: set[tuple] = set()
+        for e in self._edges:
+            if e.edge_type is None:
+                continue
+            source_node = self.node(e.source_note_id)
+            target_node = self.node(e.target_note_id)
+            if source_node is None or target_node is None:
+                continue
+            realised_pairs.add((source_node.bb_type, target_node.bb_type))
+        return tuple(
+            edge for edge in BB_SCHEMA
+            if (edge.source, edge.target) not in realised_pairs
+        )
+
     def edges_by_type(self) -> dict[str, int]:
         """Count realised edges per schema edge label.
 

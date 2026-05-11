@@ -251,3 +251,55 @@ def test_graph_iteration_and_containment(corpus_db):
     assert len(ids) == g.node_count
     assert ids[0] in g
     assert "not-a-real-note.md" not in g
+
+
+# ── unrealised_schema_edges (Phase B.6) ────────────────────────────────────
+
+
+def test_unrealised_schema_edges_method_returns_tuple_of_edges(corpus_db):
+    from tessellum.bb.types import BB_SCHEMA, EpistemicEdgeType
+
+    g = BBGraph.from_db(corpus_db)
+    unrealised = g.unrealised_schema_edges()
+    assert isinstance(unrealised, tuple)
+    # Every entry must be an EpistemicEdgeType from BB_SCHEMA
+    for edge in unrealised:
+        assert isinstance(edge, EpistemicEdgeType)
+        assert edge in BB_SCHEMA
+
+
+def test_unrealised_schema_edges_excludes_realised_bb_pairs(corpus_db):
+    from tessellum.bb.types import BB_SCHEMA
+
+    g = BBGraph.from_db(corpus_db)
+    unrealised = g.unrealised_schema_edges()
+    # Every typed edge in the corpus implies its (source, target) pair
+    # must NOT appear in the unrealised list (regardless of label —
+    # match is by BB-pair only).
+    realised_pairs = {
+        (
+            g.node(e.source_note_id).bb_type,
+            g.node(e.target_note_id).bb_type,
+        )
+        for e in g.edges()
+        if e.edge_type is not None
+    }
+    unrealised_pairs = {(edge.source, edge.target) for edge in unrealised}
+    assert unrealised_pairs.isdisjoint(realised_pairs)
+
+
+def test_unrealised_schema_edges_size_consistent_with_schema(corpus_db):
+    """Total = unrealised + realised-pair-count."""
+    from tessellum.bb.types import BB_SCHEMA
+
+    g = BBGraph.from_db(corpus_db)
+    unrealised = g.unrealised_schema_edges()
+    realised_pairs = {
+        (g.node(e.source_note_id).bb_type, g.node(e.target_note_id).bb_type)
+        for e in g.edges()
+        if e.edge_type is not None
+    }
+    realised_in_schema = sum(
+        1 for edge in BB_SCHEMA if (edge.source, edge.target) in realised_pairs
+    )
+    assert len(unrealised) + realised_in_schema == len(BB_SCHEMA)
