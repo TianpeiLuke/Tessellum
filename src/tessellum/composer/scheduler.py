@@ -35,7 +35,12 @@ from pathlib import Path
 from typing import Any
 
 from tessellum.composer.compiler import CompiledPipeline
-from tessellum.composer.executor import StepResult, execute_step
+from tessellum.composer.executor import (
+    MAX_CRASH_RECOVERIES,
+    MAX_LOGIC_RETRIES,
+    StepResult,
+    execute_step_with_retry,
+)
 from tessellum.composer.llm import LLMBackend
 
 
@@ -76,6 +81,9 @@ def run_pipeline(
     vault_root: Path,
     dry_run: bool = False,
     runs_dir: Path | None = None,
+    max_logic_retries: int = MAX_LOGIC_RETRIES,
+    max_crash_recoveries: int = MAX_CRASH_RECOVERIES,
+    progress: bool = False,
 ) -> RunResult:
     """Execute a compiled pipeline against ``leaves``.
 
@@ -110,12 +118,28 @@ def run_pipeline(
     step_results: list[StepResult] = []
     error_count = 0
 
+    # Phase B.2 (v0.0.60) — count non-INFRA steps for progress lines.
+    runnable_steps = [s for s in pipeline.steps if s.role != "INFRA"]
+    total_runnable = len(runnable_steps)
+    runnable_index = 0
+
     for step in pipeline.steps:
         if step.role == "INFRA":
             continue
 
+        runnable_index += 1
         per_leaf = step.aggregation == "per_leaf"
         scope_leaves = leaves if per_leaf else [{"_id": "corpus"}]
+        step_started = time.monotonic()
+        if progress:
+            scope_n = len(scope_leaves)
+            scope_kind = f"per_leaf × {scope_n}" if per_leaf else "corpus_wide"
+            print(
+                f"[composer] step {runnable_index}/{total_runnable} "
+                f"{step.section_id} starting ({scope_kind})",
+                file=__import__("sys").stderr,
+                flush=True,
+            )
 
         # Collect this step's outputs (per leaf or single corpus value)
         # to feed into ``upstream`` after the step completes. For
@@ -125,13 +149,19 @@ def run_pipeline(
         per_step_outputs: list[dict] = []
 
         for leaf in scope_leaves:
-            result = execute_step(
+            # Phase A.1 (v0.0.60) — use the retry-budgeted executor.
+            # Back-compat: budgets default to MAX_LOGIC_RETRIES + MAX_CRASH_RECOVERIES;
+            # tests + callers that explicitly want the no-retry behaviour
+            # can pass max_logic_retries=0 + max_crash_recoveries=0.
+            result = execute_step_with_retry(
                 step,
                 leaf=leaf,
                 upstream=upstream,
                 backend=backend,
                 vault_root=vault_root,
                 dry_run=dry_run,
+                max_logic_retries=max_logic_retries,
+                max_crash_recoveries=max_crash_recoveries,
             )
             step_results.append(result)
             if result.error is not None:
@@ -144,6 +174,21 @@ def run_pipeline(
                 upstream[step.output_key] = per_step_outputs
             else:
                 upstream[step.output_key] = per_step_outputs[0]
+
+        if progress:
+            step_elapsed = time.monotonic() - step_started
+            step_errors = sum(
+                1
+                for r in step_results
+                if r.section_id == step.section_id and r.error is not None
+            )
+            print(
+                f"[composer] step {runnable_index}/{total_runnable} "
+                f"{step.section_id} done — {len(scope_leaves)} leaves, "
+                f"{step_elapsed:.1f}s, {step_errors} errors",
+                file=__import__("sys").stderr,
+                flush=True,
+            )
 
     duration = time.monotonic() - started
 
@@ -219,6 +264,9 @@ def _write_trace(
                 "files_written": [str(p) for p in r.materialized.files_written],
                 "files_applied": [str(p) for p in r.materialized.files_applied],
                 "notes": r.materialized.notes,
+                # Phase A.1 (v0.0.60) — retry telemetry
+                "attempts": r.attempts,
+                "retry_kind_history": list(r.retry_kind_history),
             }
             for r in step_results
         ],

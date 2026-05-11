@@ -135,7 +135,7 @@ You are the meta-DKS proposer. You read aggregated telemetry from past \
 cycle-level DKS runs (a MetaObservation) and emit zero or more \
 SchemaEditProposals naming changes to BB_SCHEMA_USER_EXTENSIONS.
 
-Authoring rules (Phase V constraints C1-C4):
+Authoring rules (Phase V constraints C1-C4 + v0.0.60 Phase C):
 
 - All four Toulmin components are first-class — do not privilege one
   over the others.
@@ -146,6 +146,11 @@ Authoring rules (Phase V constraints C1-C4):
   proposal. If the observation source has structural skew that would
   mechanically induce one failure shape (e.g., open-architectural
   questions invite warrant attacks), set "high".
+- When ``silent_failure_count > 0``, factor degraded-backend likelihood
+  into your reasoning — a backend that's silently failing every other
+  call may be producing misleading Toulmin distributions. Bias
+  ``input_bias_risk`` upward when silent_failure_count >= 10% of
+  cycles_examined.
 
 Return ONLY a JSON object of the shape:
 
@@ -238,6 +243,8 @@ class LLMProposer:
             f"{json.dumps(observation.counter_strength_breakdown)}\n"
             f"  per_perspective_breakdown: "
             f"{json.dumps(observation.per_perspective_breakdown)}\n"
+            f"  silent_failure_count: "
+            f"{observation.silent_failure_count}\n"
             f"  top_attacked_warrants: "
             f"{json.dumps(list(observation.top_attacked_warrants))}\n"
             f"  unrealised_schema_edges: "

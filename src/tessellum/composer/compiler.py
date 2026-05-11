@@ -63,6 +63,40 @@ class CompilerError(Exception):
     """
 
 
+# ── Context-budget constants (Phase B.3, v0.0.60) ───────────────────────────
+
+
+HARD_PROMPT_CAP_CHARS: int = 150_000
+"""Global per-step cap on the rendered user-prompt size.
+
+~50K tokens; Claude Sonnet 4.6's ceiling-ish without context-overflow.
+Each step's rendered prompt (after `{{leaf.X}}` / `{{upstream.Y}}` /
+`{{retry.X}}` substitution) is checked against this cap at runtime;
+the compiler validates the *upper-bound estimate* against it at
+compile time. Override per-step via the sidecar's `max_prompt_chars`
+field.
+
+Per plan_composer_dks_robustness R-4: a global cap protects against
+pipeline composition error (e.g., 5 upstream sources fanning in);
+per-upstream `max_chars` (declared on each step's
+`expected_output_schema`) protects against any single source
+dominating. Compile-time validation enforces sum(soft) ≤ hard.
+"""
+
+
+WARN_AT_PROMPT_FRACTION: float = 0.7
+"""Phase B.3 (v0.0.60). When the estimated prompt size at compile
+time exceeds 70% of the hard cap, emit a warning. Caller decides
+what to do with warnings (CI: treat as error; dev: log)."""
+
+
+DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS: int = 25_000
+"""Phase B.3 (v0.0.60). Default soft cap per upstream output when
+the sidecar's `expected_output_schema.max_chars` is not declared.
+Picked so 5 upstreams comfortably fit under HARD_PROMPT_CAP_CHARS
+with budget for leaf metadata + prompt boilerplate."""
+
+
 @dataclass(frozen=True)
 class CompiledStep:
     """One step in a compiled pipeline.
@@ -87,6 +121,20 @@ class CompiledStep:
             (caught upstream and surfaced as ``CompilerError``).
         output_key: Identifier for downstream ``{{upstream.X}}``
             placeholder resolution.
+        timeout_seconds: Phase B.1 (v0.0.60). Optional per-step
+            watchdog timeout. ``None`` → use the executor's default
+            (typically 120s). When the backend call exceeds this
+            value, the step result is marked
+            ``error="stalled after Xs"`` and the scheduler proceeds.
+            Per R-6, the in-flight call is not cancelled — it
+            completes in the background; its eventual result is
+            discarded.
+        max_prompt_chars: Phase B.3 (v0.0.60). Optional per-step
+            hard cap on the rendered user-prompt size. ``None`` →
+            use ``compiler.HARD_PROMPT_CAP_CHARS``. Runtime check:
+            if the rendered prompt exceeds this, ``execute_step``
+            refuses to dispatch and surfaces a structured error
+            rather than the LLM-side mystery failure.
     """
 
     section_id: str
@@ -99,6 +147,8 @@ class CompiledStep:
     expected_output_schema: dict[str, Any] | None
     prompt_section_text: str | None
     output_key: str | None
+    timeout_seconds: float | None = None
+    max_prompt_chars: int | None = None
 
 
 @dataclass(frozen=True)
@@ -113,6 +163,11 @@ class CompiledPipeline:
             references section_ids in ``steps[:i]``.
         compiled_at: ISO-8601 timestamp of when ``compile_skill`` ran.
         step_count: ``len(steps)`` — convenience for serialization.
+        budget_warnings: Phase B.3 (v0.0.60). List of compile-time
+            warnings about prompt-size estimates that exceed
+            :data:`WARN_AT_PROMPT_FRACTION` (70%) of the hard cap.
+            Each entry is a one-line description. Empty when no
+            warnings; the compiler does not fail on warnings.
     """
 
     skill_path: Path
@@ -120,6 +175,7 @@ class CompiledPipeline:
     pipeline_version: str
     steps: tuple[CompiledStep, ...]
     compiled_at: str = field(default_factory=lambda: dt.datetime.now(dt.UTC).isoformat())
+    budget_warnings: tuple[str, ...] = ()
 
     @property
     def step_count(self) -> int:
@@ -166,12 +222,78 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
     for step in sorted_steps:
         compiled_steps.append(_compile_step(step, skill))
 
+    # Phase B.3 (v0.0.60) — compile-time context-budget validation.
+    budget_warnings = _validate_context_budgets(compiled_steps)
+
     return CompiledPipeline(
         skill_path=skill,
         skill_name=skill.stem,
         pipeline_version=pipeline.version,
         steps=tuple(compiled_steps),
+        budget_warnings=tuple(budget_warnings),
     )
+
+
+def _validate_context_budgets(steps: list[CompiledStep]) -> list[str]:
+    """Phase B.3 (v0.0.60). Estimate per-step prompt size from upstream
+    soft caps + raise ``CompilerError`` on hard-cap overflow + emit
+    warnings at WARN_AT_PROMPT_FRACTION.
+
+    Estimation model (per R-4):
+
+      estimated_prompt_chars(step)
+          = sum(upstream_soft_cap_for(dep) for dep in step.depends_on)
+          + len(step.prompt_section_text)  # boilerplate + leaf-placeholder text
+
+    Soft cap per upstream: from the producer step's
+    ``expected_output_schema.max_chars`` if declared, else
+    DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS.
+
+    Hard cap: step.max_prompt_chars if set, else HARD_PROMPT_CAP_CHARS.
+
+    Raises CompilerError when an estimate exceeds the hard cap.
+    Returns the list of warning strings (estimate > 70% of hard cap).
+    """
+    warnings: list[str] = []
+    soft_cap_by_section: dict[str, int] = {}
+    for s in steps:
+        soft_cap = DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS
+        if s.expected_output_schema and isinstance(
+            s.expected_output_schema.get("max_chars"), int
+        ):
+            soft_cap = int(s.expected_output_schema["max_chars"])
+        soft_cap_by_section[s.section_id] = soft_cap
+
+    for step in steps:
+        hard = (
+            step.max_prompt_chars
+            if step.max_prompt_chars is not None
+            else HARD_PROMPT_CAP_CHARS
+        )
+        upstream_total = sum(
+            soft_cap_by_section.get(dep, DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS)
+            for dep in step.depends_on
+        )
+        prompt_text_len = len(step.prompt_section_text or "")
+        estimated = upstream_total + prompt_text_len
+
+        if estimated > hard:
+            raise CompilerError(
+                f"step {step.section_id!r}: estimated prompt size "
+                f"({estimated} chars: {upstream_total} upstream + "
+                f"{prompt_text_len} prompt-text) exceeds hard cap "
+                f"({hard}). Reduce upstream max_chars declarations or "
+                f"set a larger max_prompt_chars on this step."
+            )
+        if estimated > hard * WARN_AT_PROMPT_FRACTION:
+            warnings.append(
+                f"step {step.section_id!r}: estimated prompt size "
+                f"{estimated} chars is {estimated / hard:.0%} of cap "
+                f"({hard}); consider tightening upstream max_chars or "
+                f"declaring an explicit per-step max_prompt_chars."
+            )
+
+    return warnings
 
 
 def to_dag_json(
@@ -336,6 +458,8 @@ def _compile_step(step: PipelineStep, skill_path: Path) -> CompiledStep:
         expected_output_schema=step.expected_output_schema,
         prompt_section_text=prompt_text,
         output_key=step.output_key,
+        timeout_seconds=step.timeout_seconds,
+        max_prompt_chars=step.max_prompt_chars,
     )
 
 
