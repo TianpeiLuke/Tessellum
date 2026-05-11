@@ -57,6 +57,21 @@ from tessellum.dks.retrieval_client import (
     RetrievalClient,
     RetrievalHit,
 )
+from tessellum.dks.confidence import (
+    # Phase 5 — confidence gating
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    ConstantConfidence,
+    DKSConfidenceModel,
+    EscalationDecision,
+    decide_escalation,
+)
+from tessellum.dks.persistence import (
+    # Phase 5 — warrant persistence
+    HistoryEntry,
+    WarrantHistory,
+    WarrantRegistry,
+    load_warrants_from_vault,
+)
 
 
 __all__ = [
@@ -86,4 +101,15 @@ __all__ = [
     # P-side retrieval (Phase 4)
     "RetrievalClient",
     "RetrievalHit",
+    # Confidence gating (Phase 5)
+    "DEFAULT_CONFIDENCE_THRESHOLD",
+    "DKSConfidenceModel",
+    "ConstantConfidence",
+    "EscalationDecision",
+    "decide_escalation",
+    # Warrant persistence (Phase 5)
+    "WarrantRegistry",
+    "WarrantHistory",
+    "HistoryEntry",
+    "load_warrants_from_vault",
 ]

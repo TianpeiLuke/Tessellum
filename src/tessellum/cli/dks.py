@@ -38,9 +38,11 @@ from pathlib import Path
 
 from tessellum.composer import LLMBackend, MockBackend
 from tessellum.dks import (
+    ConstantConfidence,
     DKSObservation,
     DKSRunner,
     DKSWarrant,
+    WarrantHistory,
     aggregate_warrant_changes,
     allocate_cycle_fz,
 )
@@ -54,8 +56,41 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     dks.add_argument(
         "observations",
         type=Path,
+        nargs="?",
         help="JSONL file — one observation object per line "
-        '({"summary": "...", optional "timestamp", "mode", "parent_fz"}).',
+        '({"summary": "...", optional "timestamp", "mode", "parent_fz"}). '
+        "Optional when --report is passed.",
+    )
+    dks.add_argument(
+        "--report",
+        action="store_true",
+        help="Inter-cycle telemetry mode (Phase 5): aggregate stats across "
+        "every *_aggregate.json under --runs-dir and exit 0. Skips the "
+        "observation run.",
+    )
+    dks.add_argument(
+        "--report-last",
+        type=int,
+        default=None,
+        help="With --report: aggregate only the most recent N runs (by "
+        "aggregate-trace mtime). Default: all runs.",
+    )
+    dks.add_argument(
+        "--gate-confidence",
+        type=float,
+        default=None,
+        help="Phase 5 confidence gate: force a constant confidence score "
+        "(0.0-1.0) for every observation. When > --gate-threshold the "
+        "cycle short-circuits to observation + argument A only. Useful "
+        "for testing gating end-to-end without a learned model.",
+    )
+    dks.add_argument(
+        "--gate-threshold",
+        type=float,
+        default=None,
+        help="Override the default confidence gate threshold "
+        "(tessellum.dks.DEFAULT_CONFIDENCE_THRESHOLD = 0.85). "
+        "Ignored without --gate-confidence.",
     )
     dks.add_argument(
         "--initial-warrants",
@@ -105,6 +140,17 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def run_dks_cli(args: argparse.Namespace) -> int:
+    # Phase 5 — --report short-circuits to inter-cycle telemetry.
+    if args.report:
+        return _run_dks_report(args)
+
+    if args.observations is None:
+        print(
+            "tessellum dks: missing observations file (or pass --report).",
+            file=sys.stderr,
+        )
+        return 2
+
     obs_path: Path = args.observations.expanduser().resolve()
     if not obs_path.is_file():
         print(
@@ -279,15 +325,34 @@ def run_dks_cli(args: argparse.Namespace) -> int:
                 return 2
         backend = MockBackend(responses=responses)
 
+    # Phase 5 — confidence gating (opt-in). The `--gate-confidence` flag
+    # wires a ConstantConfidence model that returns the same score for
+    # every observation; useful for testing gating end-to-end without a
+    # learned model. The threshold defaults to
+    # DEFAULT_CONFIDENCE_THRESHOLD when --gate-threshold is omitted.
+    confidence_model = None
+    if args.gate_confidence is not None:
+        if not 0.0 <= args.gate_confidence <= 1.0:
+            print(
+                f"tessellum dks: --gate-confidence must be in [0.0, 1.0]; "
+                f"got {args.gate_confidence}",
+                file=sys.stderr,
+            )
+            return 2
+        confidence_model = ConstantConfidence(args.gate_confidence)
+
     runner = DKSRunner(
         observations=tuple(observations),
         backend=backend,
         initial_warrants=initial_warrants,
+        confidence_model=confidence_model,
+        confidence_threshold=args.gate_threshold,
     )
     result = runner.run()
 
     trace_paths: list[Path] = []
     aggregate_path: Path | None = None
+    history_path: Path | None = None
     if not args.no_trace:
         runs_dir = args.runs_dir.expanduser().resolve()
         runs_dir.mkdir(parents=True, exist_ok=True)
@@ -311,10 +376,18 @@ def run_dks_cli(args: argparse.Namespace) -> int:
             encoding="utf-8",
         )
 
+        # Phase 5 — append warrant revisions to the persistent history log.
+        if result.warrant_changes:
+            history_path = runs_dir / "warrant_history.jsonl"
+            WarrantHistory(history_path).record_changes(result.warrant_changes)
+
     counts = aggregate_warrant_changes(result.warrant_changes)
+    gated_count = sum(1 for c in result.cycles if c.gated)
     if args.output_format == "json":
         payload = {
             "cycle_count": result.cycle_count,
+            "gated_count": gated_count,
+            "warrant_history_path": str(history_path) if history_path else None,
             "closed_loop_count": result.closed_loop_count,
             "duration_seconds": result.elapsed_ms / 1000.0,
             "summary": counts,
@@ -329,13 +402,19 @@ def run_dks_cli(args: argparse.Namespace) -> int:
     else:
         print(
             f"dks: {result.cycle_count} cycle(s); "
-            f"{result.closed_loop_count} closed loop; "
+            f"{result.closed_loop_count} closed loop, "
+            f"{gated_count} gated; "
             f"{counts['added']} added, {counts['revised']} revised, "
             f"{counts['superseded']} superseded; "
             f"{result.elapsed_ms:.1f}ms"
         )
         for c in result.cycles:
-            tag = "CLOSED" if c.closed_loop else " SHORT"
+            if c.gated:
+                tag = " GATED"
+            elif c.closed_loop:
+                tag = "CLOSED"
+            else:
+                tag = " SHORT"
             print(
                 f"  {tag}  FZ {c.cycle_id}  "
                 f"nodes={len(c.folgezettel_nodes)}  "
@@ -345,6 +424,8 @@ def run_dks_cli(args: argparse.Namespace) -> int:
             print()
             print(f"  traces: {len(trace_paths)} cycle file(s) + aggregate")
             print(f"  aggregate: {aggregate_path}")
+            if history_path is not None:
+                print(f"  warrant history: {history_path}")
 
     return 0
 
@@ -375,6 +456,9 @@ def _serialize_cycle(cycle) -> dict:
         "cycle_id": cycle.cycle_id,
         "mode": cycle.mode,
         "closed_loop": cycle.closed_loop,
+        "escalation_decision": cycle.escalation_decision,
+        "confidence_score": cycle.confidence_score,
+        "gated": cycle.gated,
         "elapsed_ms": cycle.elapsed_ms,
         "backend_id": cycle.backend_id,
         "folgezettel_nodes": list(cycle.folgezettel_nodes),
@@ -384,7 +468,7 @@ def _serialize_cycle(cycle) -> dict:
             "timestamp": cycle.observation.timestamp,
         },
         "argument_a": _arg(cycle.argument_a),
-        "argument_b": _arg(cycle.argument_b),
+        "argument_b": _arg(cycle.argument_b) if cycle.argument_b is not None else None,
         "contradicts": (
             None
             if cycle.contradicts is None
@@ -476,4 +560,176 @@ def _serialize_run(
             }
             for w in result.final_warrants
         ],
+    }
+
+
+# ── --report mode (Phase 5) ─────────────────────────────────────────────────
+
+
+def _run_dks_report(args: argparse.Namespace) -> int:
+    """Inter-cycle telemetry across past DKS runs.
+
+    Scans ``--runs-dir`` for ``*_aggregate.json`` files (written by
+    prior ``tessellum dks`` invocations) and aggregates: total cycles
+    across all runs, closed-loop rate, gated-vs-full ratio, total
+    warrant changes by kind, top-K most-attacked warrant FZs. Exits
+    0 on success (empty runs-dir is treated as zero stats, not error).
+    """
+    runs_dir = args.runs_dir.expanduser().resolve()
+    if not runs_dir.is_dir():
+        if args.output_format == "json":
+            print(json.dumps(_empty_report(runs_dir), indent=2))
+        else:
+            print(
+                f"tessellum dks --report: no runs directory at {runs_dir} "
+                f"(no prior dks runs to aggregate)."
+            )
+        return 0
+
+    aggregates = sorted(
+        runs_dir.glob("*_aggregate.json"),
+        key=lambda p: p.stat().st_mtime,
+    )
+    if args.report_last is not None and args.report_last > 0:
+        aggregates = aggregates[-args.report_last :]
+
+    if not aggregates:
+        if args.output_format == "json":
+            print(json.dumps(_empty_report(runs_dir), indent=2))
+        else:
+            print(
+                f"tessellum dks --report: {runs_dir} contains no "
+                f"*_aggregate.json files (no prior dks runs to aggregate)."
+            )
+        return 0
+
+    run_summaries: list[dict] = []
+    total_cycles = 0
+    total_closed = 0
+    total_gated = 0
+    total_added = 0
+    total_revised = 0
+    total_superseded = 0
+    attacked_fz_counts: dict[str, int] = {}
+
+    for path in aggregates:
+        try:
+            agg = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        cycle_count = int(agg.get("cycle_count", 0))
+        closed = int(agg.get("closed_loop_count", 0))
+        summary = agg.get("summary", {}) or {}
+        added = int(summary.get("added", 0))
+        revised = int(summary.get("revised", 0))
+        superseded = int(summary.get("superseded", 0))
+
+        # Phase 5 fields (only present for v0.0.45+ runs). Tolerant
+        # of older trace files that don't have `gated_count` set.
+        gated = 0
+        for cycle_trace_path in agg.get("cycle_traces", []) or []:
+            try:
+                ct = json.loads(Path(cycle_trace_path).read_text(encoding="utf-8"))
+                if ct.get("gated") or ct.get("escalation_decision") == "gated":
+                    gated += 1
+            except (OSError, json.JSONDecodeError):
+                continue
+
+        for change in agg.get("warrant_changes", []) or []:
+            if change.get("kind") in ("revised", "superseded"):
+                old_fz = change.get("superseded_fz")
+                if old_fz:
+                    attacked_fz_counts[old_fz] = attacked_fz_counts.get(old_fz, 0) + 1
+
+        total_cycles += cycle_count
+        total_closed += closed
+        total_gated += gated
+        total_added += added
+        total_revised += revised
+        total_superseded += superseded
+
+        run_summaries.append(
+            {
+                "aggregate_path": str(path),
+                "timestamp": agg.get("timestamp"),
+                "cycle_count": cycle_count,
+                "closed_loop_count": closed,
+                "gated_count": gated,
+                "added": added,
+                "revised": revised,
+                "superseded": superseded,
+            }
+        )
+
+    top_attacked = sorted(
+        attacked_fz_counts.items(), key=lambda kv: (-kv[1], kv[0])
+    )[:10]
+    closed_rate = total_closed / total_cycles if total_cycles else 0.0
+    gated_rate = total_gated / total_cycles if total_cycles else 0.0
+
+    report = {
+        "runs_dir": str(runs_dir),
+        "run_count": len(run_summaries),
+        "total_cycles": total_cycles,
+        "closed_loop_count": total_closed,
+        "closed_loop_rate": round(closed_rate, 4),
+        "gated_count": total_gated,
+        "gated_rate": round(gated_rate, 4),
+        "warrant_changes": {
+            "added": total_added,
+            "revised": total_revised,
+            "superseded": total_superseded,
+        },
+        "top_attacked_warrant_fz": [
+            {"fz": fz, "attacks": n} for fz, n in top_attacked
+        ],
+        "runs": run_summaries,
+    }
+
+    if args.output_format == "json":
+        print(json.dumps(report, indent=2))
+    else:
+        print(f"dks --report  ({len(run_summaries)} run(s) under {runs_dir})")
+        print(
+            f"  cycles: {total_cycles}  "
+            f"({total_closed} closed = {closed_rate * 100:.1f}%, "
+            f"{total_gated} gated = {gated_rate * 100:.1f}%)"
+        )
+        print(
+            f"  warrant changes: "
+            f"{total_added} added, {total_revised} revised, "
+            f"{total_superseded} superseded"
+        )
+        if top_attacked:
+            print()
+            print("  top attacked warrant FZs:")
+            for fz, n in top_attacked:
+                print(f"    {n:>3}×  FZ {fz}")
+        if run_summaries:
+            print()
+            print("  per-run breakdown:")
+            for rs in run_summaries:
+                print(
+                    f"    {rs['timestamp'] or '(no ts)'}  "
+                    f"cycles={rs['cycle_count']}  "
+                    f"closed={rs['closed_loop_count']}  "
+                    f"gated={rs['gated_count']}  "
+                    f"+{rs['added']}/Δ{rs['revised']}/-{rs['superseded']}"
+                )
+
+    return 0
+
+
+def _empty_report(runs_dir: Path) -> dict:
+    return {
+        "runs_dir": str(runs_dir),
+        "run_count": 0,
+        "total_cycles": 0,
+        "closed_loop_count": 0,
+        "closed_loop_rate": 0.0,
+        "gated_count": 0,
+        "gated_rate": 0.0,
+        "warrant_changes": {"added": 0, "revised": 0, "superseded": 0},
+        "top_attacked_warrant_fz": [],
+        "runs": [],
     }

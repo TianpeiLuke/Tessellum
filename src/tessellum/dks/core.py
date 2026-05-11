@@ -188,26 +188,39 @@ class DKSRuleRevision:
 
 @dataclass(frozen=True)
 class DKSCycleResult:
-    """Output of one complete DKS cycle.
+    """Output of one DKS cycle (full closed loop, short-circuited, or gated).
 
-    ``contradicts``, ``counter``, ``pattern``, and ``rule_revision`` are
-    optional because the cycle short-circuits when A and B agree (no
-    contradiction → no counter → no pattern → no revision). In the
-    short-circuit case, the cycle still produces a 3-node FZ subtree
-    (observation + 2 arguments) and ``closed_loop`` is False.
+    Three terminal shapes:
+
+    1. **Full closed loop** (``closed_loop=True``, ``escalation_decision="full"``)
+       — observation + A + B + contradicts + counter + pattern + revision.
+       6 FZ nodes deposited.
+    2. **Short-circuited** (``closed_loop=False``, ``escalation_decision="full"``)
+       — observation + A + B; arguments agreed so no contradiction, no
+       counter, no pattern, no revision. 3 FZ nodes deposited.
+    3. **Gated** (``closed_loop=False``, ``escalation_decision="gated"``)
+       — observation + A only. The confidence model said existing warrants
+       cover this observation; steps 2-7 short-circuited (per Phase 5 plan).
+       2 FZ nodes deposited; ``argument_b`` is None.
+
+    ``argument_b`` is therefore the load-bearing way to tell gated cycles
+    apart from full ones: gated → ``None``; full or short-circuit →
+    populated.
     """
 
     cycle_id: str
     mode: CycleMode
     observation: DKSObservation
     argument_a: DKSArgument
-    argument_b: DKSArgument
+    argument_b: DKSArgument | None = None
     contradicts: DKSContradicts | None = None
     counter: DKSCounterArgument | None = None
     pattern: DKSPattern | None = None
     rule_revision: DKSRuleRevision | None = None
     elapsed_ms: float = 0.0
     backend_id: str = ""
+    escalation_decision: str = "full"
+    confidence_score: float | None = None
 
     @property
     def folgezettel_nodes(self) -> tuple[str, ...]:
@@ -215,8 +228,9 @@ class DKSCycleResult:
         nodes: list[str] = [
             self.observation.folgezettel,
             self.argument_a.folgezettel,
-            self.argument_b.folgezettel,
         ]
+        if self.argument_b is not None:
+            nodes.append(self.argument_b.folgezettel)
         if self.counter:
             nodes.append(self.counter.folgezettel)
         if self.pattern:
@@ -229,6 +243,11 @@ class DKSCycleResult:
     def closed_loop(self) -> bool:
         """True iff step 7 fired (a revised warrant was produced)."""
         return self.rule_revision is not None
+
+    @property
+    def gated(self) -> bool:
+        """True iff confidence gating skipped steps 2-7."""
+        return self.escalation_decision == "gated"
 
 
 # ── Folgezettel allocator ─────────────────────────────────────────────────
@@ -341,17 +360,22 @@ _SYSTEM_PROMPT = (
 
 
 class DKSCycle:
-    """One complete DKS cycle.
+    """One DKS cycle (full closed loop, short-circuited, or confidence-gated).
 
-    Constructed with an observation + the current warrant set + a backend.
-    ``run()`` drives the 7 components in order and returns a
-    :class:`DKSCycleResult`. Each step is one backend call; component 4
-    (disagreement detection) is computed locally from steps 2 and 3.
+    Constructed with an observation + the current warrant set + a backend,
+    plus an optional confidence model (Phase 5). ``run()`` decides which
+    terminal shape applies:
 
-    The cycle short-circuits when arguments A and B agree — no
-    contradiction, no counter, no pattern, no revision. The 3-node FZ
-    subtree (observation + 2 args) still gets deposited; ``closed_loop``
-    is False.
+    - **gated** (Phase 5): if a confidence model returns a score *above*
+      the threshold, the cycle short-circuits to *observation + argument A*
+      and does not run steps 3-7. ``escalation_decision="gated"``.
+    - **short-circuited**: A and B agree → no contradicts, no steps 5-7.
+      ``escalation_decision="full"``, ``closed_loop=False``.
+    - **full closed loop**: A and B disagree → full 7-component cycle.
+      ``escalation_decision="full"``, ``closed_loop=True``.
+
+    Confidence gating is opt-in. Callers who don't pass
+    ``confidence_model`` get the v0.0.40 behaviour: always full cycle.
     """
 
     def __init__(
@@ -359,19 +383,71 @@ class DKSCycle:
         observation: DKSObservation,
         warrants: tuple[DKSWarrant, ...],
         backend: LLMBackend,
+        *,
+        confidence_model: object | None = None,
+        confidence_threshold: float | None = None,
     ) -> None:
         self.observation = observation
         self.warrants = warrants
         self.backend = backend
+        self.confidence_model = confidence_model
+        # The default threshold lives in tessellum.dks.confidence; we
+        # import lazily here to avoid a circular import at module load
+        # (confidence.py depends on DKSObservation/DKSWarrant from this
+        # module). The default is materialised on first call to .run().
+        self.confidence_threshold = confidence_threshold
         # FZ allocator state — children of the cycle root
         self._cycle_fz_existing: list[str] = [observation.folgezettel]
 
     def run(self) -> DKSCycleResult:
         start = time.monotonic()
         cycle_id = self.observation.folgezettel
+        backend_id = getattr(self.backend, "backend_id", "")
 
-        # Steps 2 + 3: two arguments from different angles
+        # Phase 5 — confidence gating (opt-in). Compute the gate decision
+        # before any LLM call; the gated path saves 6 of the 7 backend
+        # round-trips when it fires.
+        confidence_score: float | None = None
+        gated = False
+        if self.confidence_model is not None:
+            from tessellum.dks.confidence import (
+                DEFAULT_CONFIDENCE_THRESHOLD,
+                decide_escalation,
+            )
+
+            threshold = (
+                self.confidence_threshold
+                if self.confidence_threshold is not None
+                else DEFAULT_CONFIDENCE_THRESHOLD
+            )
+            confidence_score = float(
+                self.confidence_model(self.observation, self.warrants)
+            )
+            gated = decide_escalation(confidence_score, threshold) == "gated"
+
+        # Step 2: argument A (always runs — every cycle deposits at
+        # least observation + A, whether gated or full).
         arg_a = self._step_argument(perspective="conservative", suffix_hint="a")
+
+        if gated:
+            # Skip steps 3-7. Cycle deposits 2 FZ nodes (observation + A).
+            return DKSCycleResult(
+                cycle_id=cycle_id,
+                mode="fresh",
+                observation=self.observation,
+                argument_a=arg_a,
+                argument_b=None,
+                contradicts=None,
+                counter=None,
+                pattern=None,
+                rule_revision=None,
+                elapsed_ms=(time.monotonic() - start) * 1000.0,
+                backend_id=backend_id,
+                escalation_decision="gated",
+                confidence_score=confidence_score,
+            )
+
+        # Step 3: argument B from a different angle.
         arg_b = self._step_argument(perspective="exploratory", suffix_hint="b")
 
         # Step 4: disagreement detection (local, not an LLM call)
@@ -390,7 +466,9 @@ class DKSCycle:
                 pattern=None,
                 rule_revision=None,
                 elapsed_ms=(time.monotonic() - start) * 1000.0,
-                backend_id=getattr(self.backend, "backend_id", ""),
+                backend_id=backend_id,
+                escalation_decision="full",
+                confidence_score=confidence_score,
             )
 
         # Step 5: counter-argument naming the broken Toulmin component
@@ -411,7 +489,9 @@ class DKSCycle:
             pattern=pattern,
             rule_revision=revision,
             elapsed_ms=(time.monotonic() - start) * 1000.0,
-            backend_id=getattr(self.backend, "backend_id", ""),
+            backend_id=backend_id,
+            escalation_decision="full",
+            confidence_score=confidence_score,
         )
 
     # ── Per-step methods ──────────────────────────────────────────────────
@@ -659,6 +739,11 @@ class DKSRunResult:
         """How many cycles closed all 7 components."""
         return sum(1 for c in self.cycles if c.closed_loop)
 
+    @property
+    def gated_count(self) -> int:
+        """How many cycles short-circuited via confidence gating (Phase 5)."""
+        return sum(1 for c in self.cycles if c.gated)
+
 
 class DKSRunner:
     """Drive N sequential DKS cycles, threading warrants across them.
@@ -677,6 +762,13 @@ class DKSRunner:
             across all cycles.
         initial_warrants: Warrant set the first cycle sees. Empty tuple
             means cycle 1 authors warrants from the observation alone.
+        confidence_model: Optional Phase 5 confidence gate. When passed,
+            each cycle scores the observation against the current
+            warrants before running; high-confidence observations
+            short-circuit to observation + argument A only.
+        confidence_threshold: Override the default
+            (:data:`tessellum.dks.confidence.DEFAULT_CONFIDENCE_THRESHOLD`,
+            0.85). Ignored when ``confidence_model`` is ``None``.
     """
 
     def __init__(
@@ -685,10 +777,14 @@ class DKSRunner:
         backend: LLMBackend,
         *,
         initial_warrants: tuple[DKSWarrant, ...] = (),
+        confidence_model: object | None = None,
+        confidence_threshold: float | None = None,
     ) -> None:
         self.observations = observations
         self.backend = backend
         self.initial_warrants = initial_warrants
+        self.confidence_model = confidence_model
+        self.confidence_threshold = confidence_threshold
 
     def run(self) -> DKSRunResult:
         start = time.monotonic()
@@ -697,7 +793,13 @@ class DKSRunner:
         changes: list[WarrantChange] = []
 
         for obs in self.observations:
-            cycle = DKSCycle(obs, tuple(warrants), self.backend).run()
+            cycle = DKSCycle(
+                obs,
+                tuple(warrants),
+                self.backend,
+                confidence_model=self.confidence_model,
+                confidence_threshold=self.confidence_threshold,
+            ).run()
             cycles.append(cycle)
             if cycle.rule_revision is None:
                 continue

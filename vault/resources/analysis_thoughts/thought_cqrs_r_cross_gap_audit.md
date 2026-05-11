@@ -174,12 +174,43 @@ The three rules give the architect a concrete checklist for that future work. Ev
 - [`term_cqrs`](../term_dictionary/term_cqrs.md) — canonical term
 - [`term_dialectic_knowledge_system`](../term_dictionary/term_dialectic_knowledge_system.md) — DKS as System P runtime
 
+## Status After Phase 5 (v0.0.45) — Cross-Validation
+
+DKS Phase 5 shipped on 2026-05-10. Re-running the checklist above:
+
+| Rule | Defensive half (pre-Phase-4) | Productive half (post-Phase-5) | Status |
+|------|------------------------------|--------------------------------|--------|
+| **R-P** (Schema ⊥ Runtime co-evolve) | Closed BB + edge schema; no runtime violating it | DKS runtime exercises every BB-to-BB edge end-to-end (Phase 1-3); TESS-004 + format validator enforce edge presence statically (Phase 4); WarrantRegistry + WarrantHistory + DKSConfidenceModel let the runtime mutate the warrant set with auditable persistence (Phase 5) | **Held — both halves** |
+| **R-D** (Descriptive purity) | Candidate generation is content-aware; BB-as-pre-router stays rejected | DKS does not write to the index; D-side stays BB-agnostic at Stage 1-2 by construction; the optional BB-aware re-rank at Stage 3-4 remains a deferred enhancement (separate work) | **Defensive half held**; productive half partial (not a DKS-phase deliverable) |
+| **R-Cross** (System boundary) | DKS imports no mutating retrieval code; retrieval exposes no mutating API | `tessellum.dks.RetrievalClient` (Phase 4) is the typed, read-only P-side adapter over `hybrid_search`; DKS step 1 + step 6 use it; the `--report` CLI mode (Phase 5) reads through it for inter-cycle telemetry | **Held — both halves** |
+
+**R-P** moves from "held by absence" to "actively enforced": the runtime exists, runs, and writes typed notes that the validator can structurally check. The 8-BB / 10-edge schema is now tested against by every DKS cycle that fires — schema-runtime co-evolution is observable in the corpus, not just promised by the architecture.
+
+**R-Cross** moves from "satisfied at the import-graph level" to "satisfied with a typed runtime contract". The dependency DAG was always one-directional; what was missing was the P-side client that proved P actually *does* read D, formally and without bypass. `RetrievalClient` is that proof; its `db_path` + `search` public surface is the entire contract.
+
+**R-D**'s productive-half gap (BB-aware re-rank at Stage 3-4) was named in the original audit as "open work; half the rule is enforced, half is deferred". Phase 5 did not close it — it isn't a DKS deliverable. The work belongs to a future retrieval-side phase (likely v0.2+ Retrieval Phase 2). Recording this here so the next audit cycle starts from the right baseline.
+
+### What changed materially in v0.0.45 vs v0.0.36
+
+- The R-P productive half required a runtime to enforce it; DKS Phase 1-5 ships that runtime end-to-end.
+- The R-Cross productive half required a typed read client; Phase 4's `RetrievalClient` ships it.
+- The "no active violation today" claim still holds (it was true at v0.0.36 too); the difference is that the *enforcement mechanism* is now load-bearing in the operational sense, not just a documentation claim.
+
+### What this means for the next audit
+
+The next R-rule audit (planned for after the first non-DKS application of the runtime, likely v0.2+) should focus on:
+
+1. Whether DKS-emitted warrants stay typed correctly under sustained load (TESS-004 + `epistemic_congruence` rubric will surface the answer)
+2. Whether R-D's BB-aware re-rank introduces back-door coupling — the dial-down to Stage 1-2 candidate generation must remain BB-agnostic
+3. Whether new runtimes built on the same pattern (e.g. a code-review loop atop Composer + Retrieval + Format) reuse the R-Cross client discipline rather than reinventing it
+
 ## See Also
 
 - [`entry_architecture_trail`](../../0_entry_points/entry_architecture_trail.md) — per-trail entry point; this node is FZ 1a1b1
 - [`entry_folgezettel_trails`](../../0_entry_points/entry_folgezettel_trails.md) — master FZ trail map
+- [`thought_dks_runtime_integration`](thought_dks_runtime_integration.md) — FZ 2b — Phase 4+5's runtime integration synthesis; the closing leaf of Trail 2
 
 ---
 
-**Last Updated**: 2026-05-10
-**Status**: Active — FZ 1a1b1, Architecture trail (leaf of the R-Cross branch)
+**Last Updated**: 2026-05-10 (Phase 5 cross-validation amendment)
+**Status**: Active — FZ 1a1b1, Architecture trail (leaf of the R-Cross branch); productive halves of R-P and R-Cross now closed by DKS Phases 1-5
