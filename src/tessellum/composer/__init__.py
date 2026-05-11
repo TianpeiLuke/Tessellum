@@ -115,8 +115,13 @@ from tessellum.composer.dks import (
     DKSObservation,
     DKSPattern,
     DKSRuleRevision,
+    DKSRunner,
+    DKSRunResult,
     DKSWarrant,
     ToulminComponent,
+    WarrantChange,
+    WarrantChangeKind,
+    aggregate_warrant_changes,
     allocate_cycle_fz,
 )
 from tessellum.composer.skill_extractor import (
@@ -196,10 +201,11 @@ __all__ = [
     "read_recent_messages",
     "resolve_transcript_path",
     "search_transcript",
-    # DKS — Dialectic Knowledge System runtime (Phase 1)
+    # DKS — Dialectic Knowledge System runtime (Phase 1 + Phase 3)
     "ToulminComponent",
     "CycleMode",
     "CounterStrength",
+    "WarrantChangeKind",
     "DKSObservation",
     "DKSWarrant",
     "DKSArgument",
@@ -209,5 +215,9 @@ __all__ = [
     "DKSRuleRevision",
     "DKSCycleResult",
     "DKSCycle",
+    "WarrantChange",
+    "DKSRunResult",
+    "DKSRunner",
     "allocate_cycle_fz",
+    "aggregate_warrant_changes",
 ]

@@ -1,16 +1,16 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.42"
+__version__ = "0.0.43"
 
 __status__ = (
-    "alpha — DKS Phase 2 ships. tessellum-dks-cycle lands as a Composer "
-    "skill: canonical body + .pipeline.yaml sidecar mapping the 7-component "
-    "closed loop onto 7 pipeline steps. Steps 1, 2, 3, 5, 6, 7 each "
-    "materialise a typed atomic note via body_markdown_frontmatter_to_file; "
-    "step 4 is a no_op (the contradicts edge lives as a markdown link in "
-    "the attacker's body). One closed cycle deposits a 6-node Folgezettel "
-    "subtree designed in FZ 2a1. Both canonical + sidecar seed via "
-    "SEED_VAULT_MANIFEST so `tessellum init` copies them into every new "
-    "vault. Phase 3 (multi-cycle CLI) is next."
+    "alpha — DKS Phase 3 ships. Multi-cycle orchestration arrives: "
+    "DKSRunner threads warrants across N sequential cycles, WarrantChange "
+    "tags each rule revision as added/revised/superseded, and the new "
+    "`tessellum composer dks <observations.jsonl>` CLI loads observations, "
+    "runs the DKSRunner over MockBackend or AnthropicBackend, and writes "
+    "per-cycle + aggregate trace JSON to runs/dks/. JSONL entries support "
+    "explicit mode/parent_fz for fresh/extend/branch trail allocation. "
+    "Phase 4 (P-side retrieval client + TESS-004 validator + 6th LLMJudge "
+    "dim) is next."
 )

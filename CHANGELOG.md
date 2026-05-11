@@ -16,6 +16,99 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.43] — 2026-05-10
+
+### Added — DKS Phase 3: multi-cycle orchestration + CLI
+
+Ships the third phase of `plans/plan_dks_implementation.md`. Phase 1
+(v0.0.40) shipped the pure-Python single-cycle core; Phase 2 (v0.0.42)
+wrapped it as a Composer skill. Phase 3 stacks N cycles together,
+threads warrants across them, and exposes the whole thing as a new
+top-level CLI subcommand.
+
+#### `src/tessellum/composer/dks.py` extended (~150 LOC added)
+
+New module surface:
+
+- `DKSRunner` — drives N sequential cycles, sharing one warrant set
+  across them. Each cycle reads the union of `initial_warrants` and
+  every prior cycle's revision; emits a `DKSRunResult` aggregating
+  per-cycle output + warrant-change diff.
+- `DKSRunResult` — frozen dataclass with `cycles: tuple[DKSCycleResult, ...]`,
+  `warrant_changes: tuple[WarrantChange, ...]`, `final_warrants`,
+  `elapsed_ms`, plus `cycle_count` / `closed_loop_count` properties.
+- `WarrantChange` — typed diff entry classifying each revision as one
+  of three kinds via `WarrantChangeKind = Literal["added", "revised", "superseded"]`:
+  - `added` — wholly new warrant (rule_revision.supersedes is None)
+  - `revised` — replaces a prior warrant; carries the new warrant body
+  - `superseded` — paired with `revised`; records the retired FZ
+- `aggregate_warrant_changes(changes) -> {kind: count}` — count helper
+  used in CLI aggregate traces.
+
+All exports added to `tessellum.composer.__init__.py`'s `__all__`.
+
+#### `src/tessellum/cli/composer.py` — new `tessellum composer dks` subcommand
+
+```
+tessellum composer dks <observations.jsonl>
+    [--initial-warrants <warrants.json>]
+    [--backend {mock,anthropic}] [--model <id>]
+    [--mock-responses <responses.json>]
+    [--runs-dir <dir>] [--no-trace]
+    [--format {human,json}]
+```
+
+JSONL entries are observation specs. Each line: a JSON object with a
+required `summary` string and optional `timestamp`, `mode`
+(`"fresh"|"extend"|"branch"`, default `"fresh"`), and `parent_fz`
+(required for `extend`/`branch`). The CLI:
+
+1. Allocates a Folgezettel root per observation via
+   `allocate_cycle_fz()` — three modes from FZ 2a1 honored.
+2. Loads optional `--initial-warrants` JSON list.
+3. Selects backend (`mock` default, `anthropic` requires `[agent]`
+   extras + `ANTHROPIC_API_KEY`).
+4. Runs `DKSRunner` over the observations.
+5. Writes `runs/dks/<UTC-ts>_cycle_<FZ>.json` per cycle plus
+   `runs/dks/<UTC-ts>_aggregate.json` summarising the run (unless
+   `--no-trace`).
+
+Per-cycle trace contains the full 7-component output (observation, A,
+B, contradicts edge, counter, pattern, rule revision) with FZ
+nodes preserved. Aggregate trace adds the run summary
+(`added`/`revised`/`superseded` counts), `final_warrants`, and links
+to every per-cycle trace.
+
+`tessellum composer --help` banner gains the `dks` line; the module
+docstring goes from "Six subcommands" to "Seven subcommands".
+
+#### Tests
+
+- `tests/smoke/test_dks_multi_cycle.py` — 16 tests covering the Python
+  API: single + multi-cycle runs, warrant threading, initial-warrant
+  honouring, all three `WarrantChange` kinds, short-circuit cycles
+  emitting no changes, `aggregate_warrant_changes` correctness, and
+  the empty-observations corner case.
+- `tests/cli/test_dks_cli.py` — 12 tests covering: missing observations
+  file → exit 2; invalid JSONL → exit 2; JSONL missing `summary` →
+  exit 2; invalid mode → exit 2; `extend` without `parent_fz` → exit 2;
+  empty JSONL → exit 0 with "nothing to run"; blank lines skipped; 3
+  observations → 3 cycle traces + 1 aggregate with right shape; per-
+  cycle trace fields complete; `--no-trace` skips runs_dir creation;
+  fresh-mode trail roots are sequential integers; short-circuit cycle
+  yields zero changes; `--format json` payload shape; `--initial-warrants`
+  threads into `final_warrants`; missing initial-warrants file → exit 2.
+
+Full suite: 570 passed, 1 skipped (was 542 / +28 new).
+
+### Changed
+
+- `__about__.py` and `pyproject.toml` bumped to `0.0.43`.
+- `tessellum.composer` public API gains: `DKSRunner`, `DKSRunResult`,
+  `WarrantChange`, `WarrantChangeKind`, `aggregate_warrant_changes`.
+
+---
+
 ## [0.0.42] — 2026-05-10
 
 ### Added — DKS Phase 2: composer skill (`tessellum-dks-cycle`)

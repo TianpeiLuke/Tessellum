@@ -596,11 +596,163 @@ def _get_str(data: dict, key: str, default: str = "") -> str:
     return str(v) if v is not None else default
 
 
+# ── Multi-cycle orchestration (Phase 3) ──────────────────────────────────
+
+
+WarrantChangeKind = Literal["added", "revised", "superseded"]
+"""How a rule revision affects the active warrant set.
+
+- ``added``: the revision introduces a wholly new warrant (``supersedes`` is None)
+- ``revised``: the revision replaces an existing warrant (``supersedes`` set);
+  this entry records the new warrant
+- ``superseded``: companion entry for ``revised`` — records the FZ of the
+  warrant that got displaced. Has no warrant body since Phase 3 does not
+  track FZ→warrant association on the input set.
+"""
+
+
+@dataclass(frozen=True)
+class WarrantChange:
+    """One entry in the per-run warrant-revision diff.
+
+    ``added`` and ``revised`` carry the new warrant in ``warrant``. The
+    paired ``superseded`` entry carries only the FZ in ``superseded_fz``
+    and leaves ``warrant`` as ``None`` — Phase 3 does not track FZ→warrant
+    association on the input warrant set, only the revision-side FZ.
+    """
+
+    cycle_id: str
+    kind: WarrantChangeKind
+    warrant: DKSWarrant | None = None
+    revision_fz: str | None = None
+    superseded_fz: str | None = None
+
+
+@dataclass(frozen=True)
+class DKSRunResult:
+    """Output of an N-cycle DKS run.
+
+    Aggregates per-cycle results plus a flat list of warrant changes
+    classified by kind. ``final_warrants`` is the active warrant set
+    after the last cycle — the union of ``initial_warrants`` and every
+    cycle's revised warrant, in chronological order.
+    """
+
+    cycles: tuple[DKSCycleResult, ...]
+    warrant_changes: tuple[WarrantChange, ...]
+    final_warrants: tuple[DKSWarrant, ...]
+    elapsed_ms: float = 0.0
+    backend_id: str = ""
+
+    @property
+    def cycle_count(self) -> int:
+        return len(self.cycles)
+
+    @property
+    def closed_loop_count(self) -> int:
+        """How many cycles closed all 7 components."""
+        return sum(1 for c in self.cycles if c.closed_loop)
+
+
+class DKSRunner:
+    """Drive N sequential DKS cycles, threading warrants across them.
+
+    Each cycle reads the *current* warrant set (initial + every prior
+    cycle's revision) and may emit a new warrant via step 7. The
+    ``DKSRunResult`` collects the per-cycle outputs plus a chronological
+    diff of warrant changes so callers can audit the trajectory of the
+    rule set across a multi-cycle session.
+
+    Args:
+        observations: Sequence of DKSObservations to drive cycles from.
+            One cycle per observation. Each observation's ``folgezettel``
+            is the cycle root.
+        backend: LLM backend (MockBackend or AnthropicBackend) shared
+            across all cycles.
+        initial_warrants: Warrant set the first cycle sees. Empty tuple
+            means cycle 1 authors warrants from the observation alone.
+    """
+
+    def __init__(
+        self,
+        observations: tuple[DKSObservation, ...],
+        backend: LLMBackend,
+        *,
+        initial_warrants: tuple[DKSWarrant, ...] = (),
+    ) -> None:
+        self.observations = observations
+        self.backend = backend
+        self.initial_warrants = initial_warrants
+
+    def run(self) -> DKSRunResult:
+        start = time.monotonic()
+        warrants: list[DKSWarrant] = list(self.initial_warrants)
+        cycles: list[DKSCycleResult] = []
+        changes: list[WarrantChange] = []
+
+        for obs in self.observations:
+            cycle = DKSCycle(obs, tuple(warrants), self.backend).run()
+            cycles.append(cycle)
+            if cycle.rule_revision is None:
+                continue
+
+            rev = cycle.rule_revision
+            if rev.supersedes:
+                changes.append(
+                    WarrantChange(
+                        cycle_id=cycle.cycle_id,
+                        kind="revised",
+                        warrant=rev.revised_warrant,
+                        revision_fz=rev.folgezettel,
+                        superseded_fz=rev.supersedes,
+                    )
+                )
+                changes.append(
+                    WarrantChange(
+                        cycle_id=cycle.cycle_id,
+                        kind="superseded",
+                        warrant=None,
+                        revision_fz=rev.folgezettel,
+                        superseded_fz=rev.supersedes,
+                    )
+                )
+            else:
+                changes.append(
+                    WarrantChange(
+                        cycle_id=cycle.cycle_id,
+                        kind="added",
+                        warrant=rev.revised_warrant,
+                        revision_fz=rev.folgezettel,
+                        superseded_fz=None,
+                    )
+                )
+            warrants.append(rev.revised_warrant)
+
+        return DKSRunResult(
+            cycles=tuple(cycles),
+            warrant_changes=tuple(changes),
+            final_warrants=tuple(warrants),
+            elapsed_ms=(time.monotonic() - start) * 1000.0,
+            backend_id=getattr(self.backend, "backend_id", ""),
+        )
+
+
+def aggregate_warrant_changes(
+    changes: tuple[WarrantChange, ...],
+) -> dict[str, int]:
+    """Count warrant changes by kind. Used in CLI aggregate traces."""
+    counts: dict[str, int] = {"added": 0, "revised": 0, "superseded": 0}
+    for c in changes:
+        counts[c.kind] = counts.get(c.kind, 0) + 1
+    return counts
+
+
 __all__ = [
     # Types
     "ToulminComponent",
     "CycleMode",
     "CounterStrength",
+    "WarrantChangeKind",
     # Dataclasses
     "DKSObservation",
     "DKSWarrant",
@@ -610,8 +762,12 @@ __all__ = [
     "DKSPattern",
     "DKSRuleRevision",
     "DKSCycleResult",
+    "WarrantChange",
+    "DKSRunResult",
     # Allocator
     "allocate_cycle_fz",
     # Runtime
     "DKSCycle",
+    "DKSRunner",
+    "aggregate_warrant_changes",
 ]
