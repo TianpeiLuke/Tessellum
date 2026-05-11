@@ -1,13 +1,12 @@
 """Build the unified SQLite index from a vault.
 
-Single entry point: :func:`build`. Walks the vault filesystem, parses each
-markdown note via :func:`tessellum.format.parse_note`, extracts internal
-markdown links with broken-path detection, and writes rows into the
-``notes`` + ``note_links`` + ``notes_fts`` (FTS5, v0.0.13) + ``notes_vec``
-(sqlite-vec, v0.0.14) tables in one transaction.
+Single entry point: :func:`build`. Walks the vault filesystem, parses
+each markdown note via :func:`tessellum.format.parse_note`, extracts
+internal markdown links with broken-path detection, and writes rows
+into the ``notes`` + ``note_links`` + ``notes_fts`` (FTS5) +
+``notes_vec`` (sqlite-vec) tables in one transaction.
 
-Idempotent — the DB is dropped + recreated each run. Incremental updates
-ship later.
+Idempotent — the DB is dropped + recreated each run.
 """
 
 from __future__ import annotations
@@ -95,7 +94,7 @@ class BuildResult:
     links_indexed: int
     skipped_files: int
     duration_seconds: float
-    embeddings_generated: int = 0  # Wave 2: count when ``with_dense=True``
+    embeddings_generated: int = 0  # populated when ``with_dense=True``
 
 
 def build(

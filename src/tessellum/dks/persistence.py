@@ -1,4 +1,4 @@
-"""DKS warrant persistence — Phase 5 v0.0.45.
+"""DKS warrant persistence — current warrant set + append-only history log.
 
 Two surfaces:
 
@@ -54,9 +54,10 @@ class WarrantRegistry:
     but removes it from the *active set*. Lookups by FZ are O(1) via a
     lazy index.
 
-    The registry is intentionally simple — DKS Phase 5 ships the
-    *mechanism*; learned-warrant-quality scoring + dependency tracking
-    are deferred to v0.2+ per the plan.
+    The registry is intentionally simple — it provides the
+    book-keeping *mechanism* for warrant supersession; learned
+    warrant-quality scoring and dependency tracking remain out of
+    scope (callers layer those on top via :class:`WarrantHistory`).
     """
 
     def __init__(

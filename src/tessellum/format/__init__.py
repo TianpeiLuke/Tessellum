@@ -1,5 +1,20 @@
-"""tessellum.format — note format primitives: Building Blocks, YAML
-frontmatter spec, parser, validator, link checker."""
+"""tessellum.format — note format primitives.
+
+The format layer defines what a Tessellum atomic note *is*. Five
+concerns, one entry point:
+
+- Building Blocks (:mod:`.building_blocks`): the 8-type BB taxonomy,
+  16-edge schema graph, and epistemic-layer membership.
+- Frontmatter spec (:mod:`.frontmatter_spec`): required/forbidden
+  fields, valid enums, format regexes, recommended thresholds.
+- Parser (:mod:`.parser`): :class:`Note` + :func:`parse_note` /
+  :func:`parse_text`; raw frontmatter preserved for downstream scans.
+- Validator (:mod:`.validator`): :func:`validate` returns a list of
+  :class:`Issue` (with :class:`Severity`); :func:`is_valid` is the
+  pass/fail shortcut.
+- Link checker (:mod:`.link_checker`): :func:`check_links` flags wiki
+  links, broken markdown links, and per-BB cardinality issues.
+"""
 
 from tessellum.format.building_blocks import (
     BB_SPECS,

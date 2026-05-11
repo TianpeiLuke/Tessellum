@@ -60,9 +60,10 @@ class MCPDependency(BaseModel):
 class Query(BaseModel):
     """A declarative query for ``applies_to_files_query`` resolution.
 
-    Resolved by the compiler against the unified DB at compile time.
-    Tessellum's indexer is not yet shipped (Wave 5+); v0.0.9 loaders accept
-    this field but cannot resolve it.
+    Resolved by the compiler against the unified index DB at compile
+    time. Sidecars may declare the field even when the index is
+    unavailable — the loader accepts it; resolution happens later in
+    the compiler.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -92,7 +93,7 @@ class PipelineStep(BaseModel):
     prompt_template: str | None = None
     output_key: str | None = None
     mcp_dependencies: tuple[MCPDependency, ...] = ()
-    # Phase B (v0.0.60) — robustness fields. Both optional.
+    # Robustness fields. Both optional.
     timeout_seconds: float | None = None
     """Per-step watchdog timeout. None → use executor default (120s)."""
     max_prompt_chars: int | None = None

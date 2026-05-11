@@ -1,9 +1,19 @@
-"""Parse a Tessellum note from disk into a typed ``Note`` value.
+"""Parse a Tessellum note from disk or memory into a typed :class:`Note`.
 
-Lightweight regex-based frontmatter parser using PyYAML directly. Captures
-the raw frontmatter text in addition to the parsed mapping so downstream
-checks can scan the YAML source (e.g. for forbidden wiki/markdown links
-inside field values).
+A lightweight regex-based frontmatter parser over PyYAML. Captures the
+raw frontmatter text in addition to the parsed mapping so downstream
+checks can scan the YAML source (e.g. for forbidden wiki/markdown
+links inside field values).
+
+Public API:
+
+- :func:`parse_note` — read + parse a file from disk.
+- :func:`parse_text` — parse an in-memory string.
+- :class:`Note` — typed result with ``frontmatter``, ``body``, and
+  ``raw_frontmatter`` plus convenience properties for the common
+  fields (``tags``, ``building_block``, ``folgezettel``, etc.).
+- :class:`FrontmatterParseError` — raised when frontmatter can't be
+  parsed as a YAML mapping.
 """
 
 from __future__ import annotations

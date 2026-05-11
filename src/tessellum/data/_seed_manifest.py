@@ -70,23 +70,23 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/skills/skill_tessellum_manage_folgezettel.md",          # list / next-FZ / integrity audit
     "resources/skills/skill_tessellum_append_to_trail.md",             # full append-new-node procedure
 
-    # ── DKS Phase 2 (composer skill) — the agent-invocable surface ──────
+    # ── DKS composer skills — the agent-invocable surface ───────────────
     "resources/skills/skill_tessellum_dks_cycle.md",                   # 7-component closed-loop canonical
     "resources/skills/skill_tessellum_dks_cycle.pipeline.yaml",        # sidecar (Composer-compatible)
-    "resources/skills/skill_tessellum_meta_dks_cycle.md",              # 4-step meta-cycle canonical (v0.0.53)
+    "resources/skills/skill_tessellum_meta_dks_cycle.md",              # 4-step meta-cycle canonical
     "resources/skills/skill_tessellum_meta_dks_cycle.pipeline.yaml",   # meta-cycle sidecar
 
-    # ── Capture-side helpers (v0.0.58) — classification + routing ────────
-    "resources/skills/skill_tessellum_classify_content.md",            # 5-step BB classification (ported from AB, adapted)
+    # ── Capture-side helpers — classification + routing ──────────────────
+    "resources/skills/skill_tessellum_classify_content.md",            # 5-step BB classification
     "resources/skills/skill_tessellum_classify_content.pipeline.yaml", # classify sidecar
-    "resources/skills/skill_tessellum_route_content.md",               # 6-step routing + 3-criterion novelty (ported from AB, trimmed)
+    "resources/skills/skill_tessellum_route_content.md",               # 6-step routing + 3-criterion novelty
     "resources/skills/skill_tessellum_route_content.pipeline.yaml",    # route sidecar
 
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
-    "resources/how_to/howto_note_format.md",                           # v0.0.59 — YAML frontmatter spec walkthrough
-    "resources/how_to/howto_agent_integration.md",                     # v0.0.59 — invoke skills from MCP / Composer / Python
-    "resources/how_to/howto_growing_a_trail.md",                       # v0.0.59 — FZ trail authoring + DKS-driven growth
+    "resources/how_to/howto_note_format.md",                           # YAML frontmatter spec walkthrough
+    "resources/how_to/howto_agent_integration.md",                     # invoke skills from MCP / Composer / Python
+    "resources/how_to/howto_growing_a_trail.md",                       # FZ trail authoring + DKS-driven growth
 
     # ── FZ trail nodes (Trail 1: Architecture / CQRS — 8 thoughts) ───────
     "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",        # FZ 1
@@ -103,10 +103,10 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/analysis_thoughts/thought_dks_design_synthesis.md",           # FZ 2a
     "resources/analysis_thoughts/thought_dks_fz_integration.md",             # FZ 2a1 — spatial sharpening (FZ duality)
     "resources/analysis_thoughts/thought_dks_as_fsm_on_bb_graph.md",         # FZ 2a2 — formal sharpening (FSM on BB graph)
-    "resources/analysis_thoughts/thought_dks_runtime_integration.md",        # FZ 2b  — runtime integration (Phase 4)
-    "resources/analysis_thoughts/thought_dks_transition_model_adaptation.md",# FZ 2c  — transition-model adaptation (companion to FZ 1c)
-    "resources/analysis_thoughts/thought_meta_dks_design.md",                # FZ 2c1 — meta-DKS design synthesis (v0.0.52 runtime)
-    "resources/analysis_thoughts/thought_meta_dks_validation_v053.md",       # FZ 2c1a — Phase V validation evidence (v0.0.53)
+    "resources/analysis_thoughts/thought_dks_runtime_integration.md",        # FZ 2b  — runtime integration
+    "resources/analysis_thoughts/thought_dks_transition_model_adaptation.md",# FZ 2c  — transition-model adaptation
+    "resources/analysis_thoughts/thought_meta_dks_design.md",                # FZ 2c1 — meta-DKS design synthesis
+    "resources/analysis_thoughts/thought_meta_dks_validation_v053.md",       # FZ 2c1a — meta-DKS validation evidence
 
     # ── FZ trail nodes (Trail 3: Retrieval / System D — 2 thoughts) ──────
     "resources/analysis_thoughts/thought_retrieval_evolution.md",      # FZ 3

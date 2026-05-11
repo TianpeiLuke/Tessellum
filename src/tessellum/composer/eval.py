@@ -1,4 +1,4 @@
-"""Evaluation framework — Wave 5b.
+"""Scenario-based evaluation framework — structural assertions + LLM judge.
 
 Two complementary kinds of checks:
 
@@ -23,7 +23,7 @@ Two complementary kinds of checks:
      - ``structural_integrity``: does the output respect the format
        contract (frontmatter, sections, etc.)?
      - ``epistemic_congruence``: does the output honour the BB-type
-       expectations the question implies? (added v0.0.44, DKS Phase 4)
+       expectations the question implies?
 
      Each dimension is rated 1-5 by an LLM judge. The default judge is
      ``MockBackend`` (returns canned high scores — useful for testing the
@@ -74,12 +74,11 @@ DEFAULT_RUBRIC_DIMENSIONS: tuple[str, ...] = (
     "accuracy",
     "clarity",
     "structural_integrity",
-    # Added v0.0.44 (DKS Phase 4) — asks the judge whether the response
-    # honours the BB-type expectations the question implies. DKS cycles
-    # produce typed notes (empirical_observation / argument /
-    # counter_argument / model / procedure / concept), and an
-    # epistemically-congruent response must respect those types. See
-    # plans/plan_dks_implementation.md Phase 4.
+    # Asks the judge whether the response honours the BB-type
+    # expectations the question implies. DKS cycles produce typed notes
+    # (empirical_observation / argument / counter_argument / model /
+    # procedure / concept), and an epistemically-congruent response
+    # must respect those types.
     "epistemic_congruence",
 )
 

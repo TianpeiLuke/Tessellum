@@ -9,7 +9,7 @@ Two notes worth knowing:
 1. **Score sign**: sqlite-vec's ``MATCH`` returns ``distance`` (cosine
    distance, lower-is-better). Tessellum's ``DenseHit.score`` is
    ``1 - distance`` so users see "higher = more similar" — matches the
-   ``BM25Hit.score`` convention from Wave 1.
+   ``BM25Hit.score`` "higher = better" convention.
 
 2. **Lazy encoder**: the sentence-transformers model is loaded once per
    process via a module-level singleton. First call adds ~1.5s; the

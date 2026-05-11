@@ -6,7 +6,7 @@ standard stdio transport. Build the ``Server`` instance with
 :func:`build_server`; run it via :func:`run_stdio` (called by
 ``tessellum mcp serve``).
 
-Tool inventory (v0.0.59):
+Tool inventory:
 
 1. ``tessellum_search`` — hybrid BM25 + dense + graph retrieval
 2. ``tessellum_format_check`` — TESS-001..005 validators against a note
@@ -134,7 +134,7 @@ def build_server():
             "description": (
                 "Create a new typed note from a template. Returns the "
                 "created file path. Optional --destination + --prefix "
-                "overrides per v0.0.57."
+                "overrides let the caller override the flavor's defaults."
             ),
             "inputSchema": {
                 "type": "object",

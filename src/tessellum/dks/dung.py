@@ -1,14 +1,14 @@
 """Dung Abstract Argumentation Framework (AF) + grounded semantics.
 
-Phase 10 of ``plans/plan_dks_expansion.md`` (v0.0.54). When a DKS cycle
-runs with N > 2 perspectives, the disagreement detector (step 4)
-produces a *graph* of pairwise contradicts edges, not a single edge.
-Deciding which arguments survive the dialectic in that multi-attack
-setting needs a principled answer to: *given an argument graph + an
-attack relation between arguments, which arguments are acceptable?*
+When a DKS cycle runs with N > 2 perspectives, the disagreement
+detector produces a *graph* of pairwise contradicts edges, not a
+single edge. Deciding which arguments survive the dialectic in that
+multi-attack setting needs a principled answer to: *given an argument
+graph + an attack relation between arguments, which arguments are
+acceptable?*
 
 That is exactly Dung's 1995 abstract argumentation framework. This
-module ships the minimal API needed by DKS Phase 10:
+module ships the minimal API needed by multi-perspective DKS:
 
 - :class:`DungAF` — frozen dataclass of ``(arguments, attacks)``.
 - :func:`grounded_labelling` — Dung's grounded semantics; returns
@@ -22,8 +22,8 @@ non-controversial, deterministic, and always defined.
 
 For N = 2 (Tessellum's default cycle), the grounded labelling
 collapses to the existing single-edge "B attacks A" outcome and
-returns the identical result as today's closed-loop logic — i.e.,
-Phase 10's Dung integration is *additive*, not a replacement.
+returns the identical result as the closed-loop logic — i.e., the
+Dung integration is *additive*, not a replacement.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ DungLabel = Literal["in", "out", "undec"]
 - ``"out"``    — the argument is rejected (attacked by an ``"in"``).
 - ``"undec"``  — neither acceptable nor rejected (mutually attacking
                  with no defender). Treated as "not surviving" for
-                 DKS adequacy termination per Phase 10's plan.
+                 DKS adequacy termination.
 """
 
 

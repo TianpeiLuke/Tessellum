@@ -1,28 +1,28 @@
-"""Pipeline scheduler — runs a CompiledPipeline end-to-end.
+"""Pipeline scheduler — runs a :class:`CompiledPipeline` end-to-end.
 
 Topologically iterates the pipeline (the compiler already topo-sorted),
 running each step against each leaf (``per_leaf``) or once
 (``corpus_wide`` / ``cross_leaf``). Accumulates upstream outputs by
 ``output_key`` so downstream ``{{upstream.X}}`` placeholders resolve.
 
-What this Wave 3 implementation covers:
+Capabilities:
 
-  - Topological dispatch (no batching yet — column-oriented batching
-    surfaces in Wave 5+ if profiling shows the per-leaf calls dominate).
-  - Run trace written to ``runs/composer/<YYYY-MM-DDThh-mm-ss>_<skill>.json``
-    when ``runs_dir`` is set.
-  - INFRA-role steps are skipped (they're informational glue, no
-    LLM dispatch).
+  - Topological dispatch via :func:`run_pipeline`.
+  - Per-step retry budgets (logic + crash, separate) and same-error
+    short-circuit via :func:`execute_step_with_retry`.
+  - Optional per-step heartbeat to stderr via ``progress=True``.
+  - Run trace written to
+    ``runs/composer/<YYYY-MM-DDThh-mm-ss>_<skill>.json`` when
+    ``runs_dir`` is set.
+  - INFRA-role steps are skipped (informational glue, no LLM dispatch).
 
-Deferred:
+Out of scope:
 
-  - Cross-leaf scoping (treated as corpus_wide for now).
+  - Cross-leaf scoping is treated as corpus_wide for now.
   - APPLY-mode ``{{existing.Z}}`` pre-fetch — the materializer reads
-    existing files at write time when needed; Wave 5+ adds compile-time
-    pre-fetch for prompt context.
-  - Column-oriented batching — group N ``per_leaf`` instances into one
-    LLM call. Per FZ 5e1c3a1a5, ~4× cost reduction; defer until backend
-    pricing motivates it.
+    existing files at write time when needed.
+  - Column-oriented batching (group N ``per_leaf`` instances into one
+    LLM call) — defer until backend pricing motivates it.
 """
 
 from __future__ import annotations
@@ -118,7 +118,7 @@ def run_pipeline(
     step_results: list[StepResult] = []
     error_count = 0
 
-    # Phase B.2 (v0.0.60) — count non-INFRA steps for progress lines.
+    # Count non-INFRA steps for progress lines.
     runnable_steps = [s for s in pipeline.steps if s.role != "INFRA"]
     total_runnable = len(runnable_steps)
     runnable_index = 0
@@ -149,10 +149,10 @@ def run_pipeline(
         per_step_outputs: list[dict] = []
 
         for leaf in scope_leaves:
-            # Phase A.1 (v0.0.60) — use the retry-budgeted executor.
-            # Back-compat: budgets default to MAX_LOGIC_RETRIES + MAX_CRASH_RECOVERIES;
-            # tests + callers that explicitly want the no-retry behaviour
-            # can pass max_logic_retries=0 + max_crash_recoveries=0.
+            # Use the retry-budgeted executor. Budgets default to
+            # MAX_LOGIC_RETRIES + MAX_CRASH_RECOVERIES; callers that
+            # explicitly want the no-retry behaviour can pass
+            # max_logic_retries=0 + max_crash_recoveries=0.
             result = execute_step_with_retry(
                 step,
                 leaf=leaf,
@@ -264,7 +264,7 @@ def _write_trace(
                 "files_written": [str(p) for p in r.materialized.files_written],
                 "files_applied": [str(p) for p in r.materialized.files_applied],
                 "notes": r.materialized.notes,
-                # Phase A.1 (v0.0.60) — retry telemetry
+                # Retry telemetry
                 "attempts": r.attempts,
                 "retry_kind_history": list(r.retry_kind_history),
             }

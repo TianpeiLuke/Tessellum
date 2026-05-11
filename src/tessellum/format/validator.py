@@ -389,7 +389,7 @@ def _check_bb_typed_edges(note: Note) -> list[Issue]:
        evidence that a missing epistemic relationship exists).
 
     The richer surface for corpus-graph telemetry is the
-    ``tessellum bb audit`` CLI (Phase 6); TESS-005 is the single-note
+    ``tessellum bb audit`` CLI; TESS-005 is the single-note
     static-validator companion.
 
     Skip rules:
@@ -411,11 +411,10 @@ def _check_bb_typed_edges(note: Note) -> list[Issue]:
     if note.path is None:
         return []
 
-    # Phase I.2 (v0.0.55) — version-aware validation. When the note
-    # records its bb_schema_version, validate against the schema as
-    # of that version (D8 frozen-at-creation). Falls back to the live
-    # ``BB_SCHEMA`` when the field is missing or non-integer
-    # (back-compat for v0.0.52-era notes).
+    # Version-aware validation: when the note records its
+    # bb_schema_version, validate against the schema as of that version
+    # (frozen-at-creation). Falls back to the live ``BB_SCHEMA`` when
+    # the field is missing or non-integer.
     recorded_version_raw = note.frontmatter.get("bb_schema_version")
     schema_version: int | None = None
     try:

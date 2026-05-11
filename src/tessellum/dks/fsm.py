@@ -1,33 +1,29 @@
-"""DKS finite-state-machine dispatcher — Phase 8 of plan_dks_expansion.
+"""DKS finite-state-machine dispatcher.
 
-The deferred FZ 2a2 work: replaces the 7 hand-coded ``_step_*``
-methods on :class:`tessellum.dks.core.DKSCycle` with a generic walker
-over ``BB_SCHEMA``. The walker drives the FSM ⟨Q, Σ, δ, q₀, F⟩
-formalised in FZ 2a2:
+A generic walker over ``BB_SCHEMA`` that drives the FSM
+⟨Q, Σ, δ, q₀, F⟩ formalised in FZ 2a2:
 
   Q  = the 8 BBTypes
   δ  = the 16-edge BB_SCHEMA (epistemic + navigation + DKS extensions)
-  q₀ = BBType.EMPIRICAL_OBSERVATION (every cycle starts here)
+  q₀ = ``BBType.EMPIRICAL_OBSERVATION`` (every cycle starts here)
   F  = {procedure, concept, argument-when-gated}
 
-This module is **additive** — it does not break the existing
-``DKSCycle`` API. ``DKSCycle.run()`` continues to drive the 7 hand-
-coded step methods unchanged. ``DKSStateMachine.walk()`` is the
-alternative dispatcher path that any future second walker (meta-DKS,
-the Phase 10 multi-perspective expansion, etc.) consumes.
+This module is **additive** — it does not change the existing
+:class:`tessellum.dks.core.DKSCycle` API. ``DKSCycle.run()`` continues
+to drive its hand-coded step methods unchanged.
+:meth:`DKSStateMachine.walk` is the alternative dispatcher path that
+callers (e.g., meta-DKS handler swaps, custom multi-perspective
+extensions) consume.
 
-Per D7 (`plan_dks_expansion`): termination uses Dung grounded
-labelling internally (the multi-perspective case generalises N=2's
-adequacy). The ``closed_loop`` query is preserved on
+Termination uses Dung grounded labelling internally (the
+multi-perspective case generalises N=2's adequacy). The
+``closed_loop`` query is preserved on
 :class:`tessellum.dks.core.DKSCycleResult` as a derived property
 (``True`` iff the surviving warrant's grounded label is ``in`` and a
 rule revision was emitted).
 
-For v0.0.51 this lands as a *thin* dispatcher around the same step
-logic ``DKSCycle`` uses — proving the FSM walker is equivalent to the
-hand-coded path. The transition-handler registry surface lets a
-future caller (meta-DKS, Phase 9) inject custom handlers for one BB
-edge without touching the cycle-level code.
+The transition-handler registry surface lets callers inject custom
+handlers for one BB edge without touching the cycle-level code.
 """
 
 from __future__ import annotations
@@ -117,29 +113,24 @@ class TransitionHandler(Protocol):
 class DKSStateMachine:
     """Drives one DKS cycle as a walk over BB_SCHEMA.
 
-    For v0.0.51 the walker delegates to the existing
-    :class:`DKSCycle` for the actual step logic — this proves the
-    FSM dispatcher is *equivalent* to the hand-coded path before any
-    future caller (meta-DKS, multi-perspective debate) builds on top.
-
-    The transition-handler registry (`handlers`) is wired but
-    unused by the default walk path: a future caller can register
-    custom handlers for specific BB edges (e.g. meta-DKS replacing
-    the standard step-6 pattern-discovery with a schema-edit-proposal
-    handler) without touching the cycle-level DKS.
+    The walker delegates to :class:`DKSCycle` for step logic and
+    lifts the result into a typed :class:`BBPath`. The
+    transition-handler registry (``handlers``) lets callers
+    (meta-DKS, multi-perspective debate) override specific BB-edge
+    handlers without touching cycle-level code.
 
     Construction mirrors :class:`DKSCycle`:
 
         - ``backend``: LLMBackend (required)
         - ``confidence_model``: optional gate
         - ``confidence_threshold``: optional override
-        - ``retrieval_client``: optional Phase 7 retrieval
-        - ``semantic_disagreement``: optional Phase 7 step-4 mode
+        - ``retrieval_client``: optional retrieval-grounded warrants
+        - ``semantic_disagreement``: optional step-4 mode
         - ``handlers``: optional registry for handler overrides
 
     ``walk(observation, warrants)`` returns the typed :class:`BBPath`.
     The corresponding :class:`DKSCycleResult` is also accessible via
-    :meth:`last_result` for back-compat with v0.0.50 callers.
+    :meth:`last_result`.
     """
 
     backend: LLMBackend
@@ -157,10 +148,8 @@ class DKSStateMachine:
     ) -> BBPath:
         """Drive the FSM from q₀=OBS to a terminal state.
 
-        v0.0.51 delegates to :class:`DKSCycle.run()` and lifts the
-        per-component result into a :class:`BBPath`. Subsequent versions
-        replace the delegate with a true handler-registry-driven walk;
-        the BBPath shape stays stable.
+        Delegates to :class:`DKSCycle.run()` and lifts the per-component
+        result into a :class:`BBPath`.
         """
         start = time.monotonic()
         cycle = DKSCycle(

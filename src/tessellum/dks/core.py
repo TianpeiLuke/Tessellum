@@ -6,18 +6,23 @@ This file is re-exported by :mod:`tessellum.dks`'s ``__init__`` and is
 not part of the documented public surface; lifting members here in a
 patch release is allowed only via the ``__init__`` re-export list.
 
-Phase 1 of ``plans/plan_dks_implementation.md`` (v0.0.40). Ships:
+Provides:
 
-- Seven typed dataclasses (one per component output)
+- Seven typed dataclasses (one per component output).
 - A Folgezettel-ID allocator implementing the three multi-cycle modes
-  per :doc:`thought_dks_fz_integration` (``fresh`` / ``extend`` / ``branch``)
-- A :class:`DKSCycle` that drives the 7-component closed loop through an
-  :class:`LLMBackend`
+  (``fresh`` / ``extend`` / ``branch``) per
+  :doc:`thought_dks_fz_integration`.
+- :class:`DKSCycle` — drives the 7-component closed loop through an
+  :class:`LLMBackend`. Supports N-perspective debate via the
+  ``perspectives`` kwarg + multi-revision authoring when grounded
+  labelling produces multiple ``in`` survivors.
+- :class:`DKSRunner` — multi-cycle orchestration over a sequence of
+  observations, threading warrant changes between cycles.
 
-Each cycle deposits a 5-node Folgezettel subtree into the substrate
-(observation → 2 sibling arguments → counter → pattern → revised
-warrant). The 4th component (disagreement detection) produces an edge,
-not a node, so it doesn't get an FZ ID of its own.
+Each cycle deposits a Folgezettel subtree into the substrate
+(observation → N sibling arguments → counter → pattern → revised
+warrant(s)). Disagreement detection produces edges, not nodes, so they
+don't get FZ IDs of their own.
 
 The seven components map onto BB-to-BB epistemic edges as documented in
 :doc:`thought_dks_design_synthesis`:
@@ -33,13 +38,6 @@ Step          BB type produced     FZ position
 6. Pattern      model                  FZ <counter>.a
 7. Revision     procedure/concept      FZ <pattern>.a (leaf)
 ============  ===================  =======================
-
-What Phase 1 does NOT ship (deferred to later phases per the plan):
-
-- Composer skill machinery (skill canonical + sidecar) — Phase 2
-- Multi-cycle orchestration / CLI — Phase 3
-- P-side retrieval client + TESS-004 validator + 6th eval dim — Phase 4
-- Confidence gating + warrant persistence — Phase 5
 """
 
 from __future__ import annotations
@@ -131,9 +129,9 @@ class DKSArgument(ArgumentNode):
     fixed at ``BBType.ARGUMENT``. Cycle-specific fields:
     ``warrant`` (the Toulmin-typed standing reason), ``evidence``
     (citation back to the observation), and ``perspective``
-    (added in Phase 10 — D5; the conservative vs exploratory vs
-    skeptical angle the argument took). Default empty perspective
-    preserves Phase 1-7 back-compat.
+    (the conservative vs exploratory vs skeptical angle the argument
+    took). Default empty perspective for cycles that don't run
+    multi-perspective debate.
     """
 
     warrant: DKSWarrant = field(default_factory=lambda: DKSWarrant(claim="", data="", warrant=""))
@@ -219,8 +217,8 @@ class DKSCycleResult:
        — observation + A + B; arguments agreed so no contradiction, no
        counter, no pattern, no revision. 3 FZ nodes deposited.
     3. **Gated** (``closed_loop=False``, ``escalation_decision="gated"``)
-       — observation + A only. The confidence model said existing warrants
-       cover this observation; steps 2-7 short-circuited (per Phase 5 plan).
+       — observation + A only. The confidence model said existing
+       warrants cover this observation; steps 2-7 short-circuited.
        2 FZ nodes deposited; ``argument_b`` is None.
 
     ``argument_b`` is therefore the load-bearing way to tell gated cycles
@@ -241,12 +239,12 @@ class DKSCycleResult:
     backend_id: str = ""
     escalation_decision: str = "full"
     confidence_score: float | None = None
-    # ── Phase 10 — multi-perspective debate (v0.0.54) ─────────────────────
+    # ── Multi-perspective debate ──────────────────────────────────────────
     arguments: tuple[DKSArgument, ...] = ()
     """All arguments produced by this cycle, in perspective order.
     For N=2 (default): ``(argument_a, argument_b)`` or ``(argument_a,)``
     when gated. For N>2: one entry per ``DKSCycle.perspectives`` value.
-    Empty tuple for cycles constructed before v0.0.54 if not provided."""
+    Empty tuple when the caller did not provide a ``perspectives`` list."""
 
     contradicts_edges: tuple[DKSContradicts, ...] = ()
     """All pairwise contradicts edges between arguments. For N=2:
@@ -262,25 +260,22 @@ class DKSCycleResult:
     arguments are those labelled ``"in"``."""
 
     rule_revisions: tuple[DKSRuleRevision, ...] = ()
-    """All :class:`DKSRuleRevision`s emitted by this cycle (v0.0.55).
+    """All :class:`DKSRuleRevision`s emitted by this cycle.
 
     For N=2 cycles + N>2 cycles with a single ``in`` survivor, this
-    tuple has exactly one entry that mirrors the legacy ``rule_revision``
-    field. For N>2 cycles where Dung grounded labelling identifies
-    multiple ``in`` survivors, the cycle emits one revision per
-    survivor (per the Phase 10 multi-revision spec: "emits multiple
-    revisions tagged with their FZs"). Empty when the cycle did not
-    reach step 7 (gated, short-circuited, or all-undec).
+    tuple has exactly one entry that mirrors the legacy
+    ``rule_revision`` field. For N>2 cycles where Dung grounded
+    labelling identifies multiple ``in`` survivors, the cycle emits
+    one revision per survivor. Empty when the cycle did not reach
+    step 7 (gated, short-circuited, or all-undec).
 
     The legacy ``rule_revision`` field is preserved + populated as
-    ``rule_revisions[0] if rule_revisions else None`` so v0.0.54-era
-    callers keep working."""
+    ``rule_revisions[0] if rule_revisions else None``."""
 
     silent_failures: tuple[str, ...] = ()
-    """Phase C (v0.0.60) — telemetry for backend calls inside the
-    cycle that raised an exception but were silently fallen-back to
-    preserve graceful degradation (per Phase 5's ``decide_escalation``
-    contract).
+    """Telemetry for backend calls inside the cycle that raised an
+    exception but were silently fallen-back to preserve graceful
+    degradation.
 
     Each entry is a one-line description of the form
     ``"<site_name>: <ExceptionType>: <message>"``. The cycle's
@@ -297,27 +292,14 @@ class DKSCycleResult:
     - ``_step_argument`` JSON parse — LLM returns unparseable JSON →
       ``_parse_json`` returns ``{}``, the step proceeds with empty
       data."""
-    """All :class:`DKSRuleRevision`s emitted by this cycle (v0.0.55).
-
-    For N=2 cycles + N>2 cycles with a single ``in`` survivor, this
-    tuple has exactly one entry that mirrors the legacy ``rule_revision``
-    field. For N>2 cycles where Dung grounded labelling identifies
-    multiple ``in`` survivors, the cycle emits one revision per
-    survivor (per the Phase 10 multi-revision spec: "emits multiple
-    revisions tagged with their FZs"). Empty when the cycle did not
-    reach step 7 (gated, short-circuited, or all-undec).
-
-    The legacy ``rule_revision`` field is preserved + populated as
-    ``rule_revisions[0] if rule_revisions else None`` so v0.0.54-era
-    callers keep working."""
 
     @property
     def folgezettel_nodes(self) -> tuple[str, ...]:
         """FZ positions this cycle deposited (excluding the edge).
 
-        v0.0.54: extends to all ``arguments`` (not just A/B).
-        v0.0.55: extends to all ``rule_revisions`` (not just the
-        legacy ``rule_revision`` field).
+        Covers all ``arguments`` (not just A/B) and all
+        ``rule_revisions`` (not just the legacy ``rule_revision``
+        field).
         """
         nodes: list[str] = [self.observation.folgezettel]
         if self.arguments:
@@ -345,7 +327,7 @@ class DKSCycleResult:
     @property
     def surviving_argument_fzs(self) -> tuple[str, ...]:
         """Folgezettel IDs of arguments labelled ``"in"`` under Dung
-        grounded semantics (Phase 10).
+        grounded semantics.
 
         For N=2 cycles, this collapses to:
 
@@ -361,7 +343,7 @@ class DKSCycleResult:
         Callers (e.g. ``DKSRunner`` warrant threading) use this to
         decide which warrants to carry forward when multiple
         arguments survive the dialectic — the multi-survivor case
-        introduced by Phase 10's pairwise contradicts graph.
+        produced by the pairwise contradicts graph in N>2 cycles.
         """
         if self.grounded_labelling:
             return tuple(
@@ -493,20 +475,20 @@ _SYSTEM_PROMPT = (
 class DKSCycle:
     """One DKS cycle (full closed loop, short-circuited, or confidence-gated).
 
-    Constructed with an observation + the current warrant set + a backend,
-    plus an optional confidence model (Phase 5). ``run()`` decides which
-    terminal shape applies:
+    Constructed with an observation + the current warrant set + a
+    backend, plus an optional confidence model. ``run()`` decides
+    which terminal shape applies:
 
-    - **gated** (Phase 5): if a confidence model returns a score *above*
-      the threshold, the cycle short-circuits to *observation + argument A*
-      and does not run steps 3-7. ``escalation_decision="gated"``.
-    - **short-circuited**: A and B agree → no contradicts, no steps 5-7.
-      ``escalation_decision="full"``, ``closed_loop=False``.
-    - **full closed loop**: A and B disagree → full 7-component cycle.
-      ``escalation_decision="full"``, ``closed_loop=True``.
+    - **gated**: if a confidence model returns a score *above* the
+      threshold, the cycle short-circuits to *observation + argument
+      A* and does not run steps 3-7. ``escalation_decision="gated"``.
+    - **short-circuited**: A and B agree → no contradicts, no steps
+      5-7. ``escalation_decision="full"``, ``closed_loop=False``.
+    - **full closed loop**: A and B disagree → full 7-component
+      cycle. ``escalation_decision="full"``, ``closed_loop=True``.
 
     Confidence gating is opt-in. Callers who don't pass
-    ``confidence_model`` get the v0.0.40 behaviour: always full cycle.
+    ``confidence_model`` always run the full cycle.
     """
 
     def __init__(
@@ -530,15 +512,16 @@ class DKSCycle:
         # (confidence.py depends on DKSObservation/DKSWarrant from this
         # module). The default is materialised on first call to .run().
         self.confidence_threshold = confidence_threshold
-        # Phase 7 — retrieval-grounded argument step. When supplied, the
+        # Retrieval-grounded argument step. When supplied, the
         # argument-generation prompts get a "Related material from the
-        # substrate" block populated by retrieval_client.search(observation.summary).
+        # substrate" block populated by
+        # retrieval_client.search(observation.summary).
         self.retrieval_client = retrieval_client
-        # Phase 7 — optional LLM-based disagreement detection at step 4.
-        # Off by default preserves Phase 1's local-only behaviour.
+        # Optional LLM-based disagreement detection at step 4. Off by
+        # default falls back to local string-compare on claim text.
         self.semantic_disagreement = semantic_disagreement
-        # Phase 10 — multi-perspective debate. Default ("conservative",
-        # "exploratory") preserves v0.0.40-era A/B behaviour. N>2
+        # Multi-perspective debate. The default ("conservative",
+        # "exploratory") matches the canonical 2-argument cycle. N>2
         # activates pairwise contradicts + Dung grounded labelling.
         if len(perspectives) < 2:
             raise ValueError(
@@ -551,15 +534,15 @@ class DKSCycle:
         self.perspectives: tuple[str, ...] = perspectives
         # FZ allocator state — children of the cycle root
         self._cycle_fz_existing: list[str] = [observation.folgezettel]
-        # Phase C (v0.0.60) — silent-failure telemetry. Each swallow
-        # site appends a one-line description before falling back.
-        # Surfaced on DKSCycleResult.silent_failures.
+        # Silent-failure telemetry. Each swallow site appends a
+        # one-line description before falling back. Surfaced on
+        # DKSCycleResult.silent_failures.
         self._silent_failures: list[str] = []
 
     def _parse_json_or_record(self, content: str, site_name: str) -> dict:
-        """Phase C (v0.0.60) wrapper around :func:`_parse_json` that
-        records a silent failure when content is non-empty but
-        parses to ``{}``. Preserves the v0.0.40 swallow semantics —
+        """Wrapper around :func:`_parse_json` that records a silent
+        failure when content is non-empty but parses to ``{}``.
+        Preserves the historical swallow semantics —
         the empty-dict fallback still happens — but makes the
         silence observable via ``DKSCycleResult.silent_failures``.
         """
@@ -576,8 +559,8 @@ class DKSCycle:
         cycle_id = self.observation.folgezettel
         backend_id = getattr(self.backend, "backend_id", "")
 
-        # Phase 5 — confidence gating (opt-in). Compute the gate decision
-        # before any LLM call; the gated path saves 6 of the 7 backend
+        # Confidence gating (opt-in). Compute the gate decision before
+        # any LLM call; the gated path saves 6 of the 7 backend
         # round-trips when it fires.
         confidence_score: float | None = None
         gated = False
@@ -630,9 +613,9 @@ class DKSCycle:
             perspective=self.perspectives[1], suffix_hint="b"
         )
 
-        # Phase 10 — N>2 dispatch. When the cycle was constructed with
-        # >2 perspectives, generate the additional arguments + compute
-        # pairwise contradicts + grounded labelling + identify the
+        # N>2 dispatch. When the cycle was constructed with more than
+        # two perspectives, generate the additional arguments, compute
+        # pairwise contradicts + grounded labelling, and identify the
         # attacked argument(s). For N=2 the existing path runs.
         if len(self.perspectives) > 2:
             return self._run_n_perspective(
@@ -700,7 +683,7 @@ class DKSCycle:
             silent_failures=tuple(self._silent_failures),
         )
 
-    # ── Phase 10 — N>2 perspective dispatch ─────────────────────────────
+    # ── N>2 perspective dispatch ────────────────────────────────────────
 
     _SUFFIX_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
@@ -805,12 +788,12 @@ class DKSCycle:
         counter = self._step_counter(primary_contradicts, attacked, attacker)
         pattern = self._step_pattern(counter)
 
-        # Phase I.1 (v0.0.55) — multi-revision authoring.
-        # When grounded labelling identifies multiple ``in`` survivors,
-        # emit one DKSRuleRevision per survivor. Each revision uses an
-        # independent LLM call so the revised warrants can differ (the
-        # surviving warrants are themselves distinct; revisions
-        # building from each should be distinct too).
+        # Multi-revision authoring. When grounded labelling identifies
+        # multiple ``in`` survivors, emit one DKSRuleRevision per
+        # survivor. Each revision uses an independent LLM call so the
+        # revised warrants can differ (the surviving warrants are
+        # themselves distinct; revisions building from each should be
+        # distinct too).
         in_fzs = sorted(fz for fz, lbl in labels.items() if lbl == "in")
         revisions: list[DKSRuleRevision] = []
         if len(in_fzs) <= 1:
@@ -860,8 +843,8 @@ class DKSCycle:
     ) -> DKSArgument:
         """Step 2 / step 3 — produce one argument from the warrant set.
 
-        Phase 7 enrichment: when a ``retrieval_client`` is wired into
-        the cycle, the prompt gains a "Related material from the
+        Retrieval enrichment: when a ``retrieval_client`` is wired
+        into the cycle, the prompt gains a "Related material from the
         substrate" block populated by hybrid-search hits against the
         observation summary. The warrant set still flows through
         unchanged — retrieval *augments* the prompt's substrate
@@ -894,9 +877,9 @@ class DKSCycle:
                 qualifier=_get_str(data, "qualifier", ""),
             ),
             evidence=_get_str(data, "evidence"),
-            # Phase I.3 (v0.0.55) — record the perspective string on
-            # every DKSArgument. Surfaces in cycle traces +
-            # MetaObservation per-perspective stratification.
+            # Record the perspective string on every DKSArgument.
+            # Surfaces in cycle traces and MetaObservation
+            # per-perspective stratification.
             perspective=perspective,
         )
 
@@ -905,10 +888,10 @@ class DKSCycle:
     ) -> DKSContradicts | None:
         """Step 4 — detect contradiction between A and B.
 
-        Phase 1 default: simple string-inequality on the claim text.
-        Phase 7 opt-in: when ``semantic_disagreement=True``, do one
-        backend call asking "are these claims substantively different?";
-        fall back to string-compare on parse failure.
+        Default: simple string-inequality on the claim text. With
+        ``semantic_disagreement=True``, do one backend call asking
+        "are these claims substantively different?"; fall back to
+        string-compare on parse failure.
         """
         a_claim = arg_a.warrant.claim.strip()
         b_claim = arg_b.warrant.claim.strip()
@@ -923,8 +906,10 @@ class DKSCycle:
 
         if not disagree:
             return None
-        # B attacks A by default (B is the "exploratory" angle challenging
-        # A's "conservative" one). Phase 5 can make this more sophisticated.
+        # B attacks A by default (B is the "exploratory" angle
+        # challenging A's "conservative" one). N>2 cycles compute the
+        # attack direction from the pairwise contradicts graph and
+        # Dung labelling instead.
         return DKSContradicts(
             attacker_fz=arg_b.folgezettel,
             attacked_fz=arg_a.folgezettel,
@@ -935,7 +920,7 @@ class DKSCycle:
         )
 
     def _llm_check_disagreement(self, claim_a: str, claim_b: str) -> bool | None:
-        """LLM-based disagreement check (Phase 7).
+        """LLM-based disagreement check.
 
         Returns True if the claims substantively disagree, False if
         they're equivalent, None on parse failure (caller falls back
@@ -955,7 +940,7 @@ class DKSCycle:
             data = self._parse_json_or_record(
                 response.content, "_llm_check_disagreement"
             )
-        except Exception as e:  # noqa: BLE001 — silent fallback per Phase 5 contract
+        except Exception as e:  # noqa: BLE001 — silent fallback preserves graceful degradation
             self._silent_failures.append(
                 f"_llm_check_disagreement: {type(e).__name__}: {e}"
             )
@@ -1042,11 +1027,11 @@ class DKSCycle:
     ) -> DKSRuleRevision:
         """Step 7 — revise the warrant the pattern indicts.
 
-        Phase I.1 (v0.0.55): when ``surviving_argument`` is supplied
-        (multi-revision N>2 cycles), the prompt names the surviving
-        warrant so the revised rule can build from it rather than from
-        the pattern alone. The revision's ``folgezettel`` is a child
-        of the survivor's FZ (so each revision is anchored to the
+        When ``surviving_argument`` is supplied (multi-revision N>2
+        cycles), the prompt names the surviving warrant so the revised
+        rule can build from it rather than from the pattern alone.
+        The revision's ``folgezettel`` is a child of the survivor's
+        FZ (so each revision is anchored to the
         survivor it elaborates), not of the pattern's FZ.
         """
         if surviving_argument is not None:
@@ -1105,7 +1090,7 @@ class DKSCycle:
         )
 
     def _format_retrieval_context(self, k: int = 5) -> str:
-        """Phase 7 — produce a "Related material from the substrate" block.
+        """Produce a "Related material from the substrate" block.
 
         Returns the empty string when no retrieval_client is configured
         or the search returns no hits. The block appends to the argument
@@ -1117,7 +1102,7 @@ class DKSCycle:
             return ""
         try:
             hits = self.retrieval_client.search(self.observation.summary, k=k)
-        except Exception as e:  # noqa: BLE001 — silent fallback per Phase 5 contract
+        except Exception as e:  # noqa: BLE001 — silent fallback preserves graceful degradation
             self._silent_failures.append(
                 f"_format_retrieval_context: {type(e).__name__}: {e}"
             )
@@ -1158,7 +1143,7 @@ def _get_str(data: dict, key: str, default: str = "") -> str:
     return str(v) if v is not None else default
 
 
-# ── Multi-cycle orchestration (Phase 3) ──────────────────────────────────
+# ── Multi-cycle orchestration ────────────────────────────────────────────
 
 
 WarrantChangeKind = Literal["added", "revised", "superseded"]
@@ -1167,9 +1152,10 @@ WarrantChangeKind = Literal["added", "revised", "superseded"]
 - ``added``: the revision introduces a wholly new warrant (``supersedes`` is None)
 - ``revised``: the revision replaces an existing warrant (``supersedes`` set);
   this entry records the new warrant
-- ``superseded``: companion entry for ``revised`` — records the FZ of the
-  warrant that got displaced. Has no warrant body since Phase 3 does not
-  track FZ→warrant association on the input set.
+- ``superseded``: companion entry for ``revised`` — records the FZ of
+  the warrant that got displaced. Has no warrant body since the
+  multi-cycle runner does not track FZ→warrant association on the
+  input set.
 """
 
 
@@ -1177,10 +1163,11 @@ WarrantChangeKind = Literal["added", "revised", "superseded"]
 class WarrantChange:
     """One entry in the per-run warrant-revision diff.
 
-    ``added`` and ``revised`` carry the new warrant in ``warrant``. The
-    paired ``superseded`` entry carries only the FZ in ``superseded_fz``
-    and leaves ``warrant`` as ``None`` — Phase 3 does not track FZ→warrant
-    association on the input warrant set, only the revision-side FZ.
+    ``added`` and ``revised`` carry the new warrant in ``warrant``.
+    The paired ``superseded`` entry carries only the FZ in
+    ``superseded_fz`` and leaves ``warrant`` as ``None`` — the
+    multi-cycle runner does not track FZ→warrant association on the
+    input warrant set, only the revision-side FZ.
     """
 
     cycle_id: str
@@ -1217,7 +1204,7 @@ class DKSRunResult:
 
     @property
     def gated_count(self) -> int:
-        """How many cycles short-circuited via confidence gating (Phase 5)."""
+        """How many cycles short-circuited via confidence gating."""
         return sum(1 for c in self.cycles if c.gated)
 
 
@@ -1238,10 +1225,10 @@ class DKSRunner:
             across all cycles.
         initial_warrants: Warrant set the first cycle sees. Empty tuple
             means cycle 1 authors warrants from the observation alone.
-        confidence_model: Optional Phase 5 confidence gate. When passed,
-            each cycle scores the observation against the current
-            warrants before running; high-confidence observations
-            short-circuit to observation + argument A only.
+        confidence_model: Optional confidence gate. When passed, each
+            cycle scores the observation against the current warrants
+            before running; high-confidence observations short-circuit
+            to observation + argument A only.
         confidence_threshold: Override the default
             (:data:`tessellum.dks.confidence.DEFAULT_CONFIDENCE_THRESHOLD`,
             0.85). Ignored when ``confidence_model`` is ``None``.
@@ -1264,10 +1251,10 @@ class DKSRunner:
         self.initial_warrants = initial_warrants
         self.confidence_model = confidence_model
         self.confidence_threshold = confidence_threshold
-        # Phase 7 forward-through to each cycle.
+        # Retrieval + semantic-disagreement forwarded to each cycle.
         self.retrieval_client = retrieval_client
         self.semantic_disagreement = semantic_disagreement
-        # Phase 10 — multi-perspective debate forward-through.
+        # Multi-perspective debate forwarded to each cycle.
         self.perspectives = perspectives
 
     def run(self) -> DKSRunResult:
@@ -1288,10 +1275,10 @@ class DKSRunner:
                 perspectives=self.perspectives,
             ).run()
             cycles.append(cycle)
-            # Phase I.1 (v0.0.55) — iterate every emitted revision.
-            # For N=2 cycles + N>2 single-survivor cycles, rule_revisions
-            # has 0 or 1 entry. For N>2 multi-survivor cycles, this
-            # loop threads each revision into the warrant change log.
+            # Iterate every emitted revision. For N=2 cycles + N>2
+            # single-survivor cycles, rule_revisions has 0 or 1 entry.
+            # For N>2 multi-survivor cycles, this loop threads each
+            # revision into the warrant change log.
             for rev in cycle.rule_revisions:
                 if rev.supersedes:
                     changes.append(

@@ -63,10 +63,10 @@ def templates_dir() -> Path:
 def seed_vault_dir() -> Path:
     """Return the path to the seed-vault tree.
 
-    The seed vault holds starter content for ``tessellum init``: a curated
-    subset of the dogfooded vault (currently just ``term_building_block.md``
-    in v0.0.11; future versions may include more pillar terms behind an opt
-    -in flag).
+    The seed vault holds starter content for ``tessellum init``: a
+    curated subset of the dogfooded vault (the pillar BB-ontology
+    terminology and a handful of entry points; see
+    :mod:`tessellum.data._seed_manifest` for the canonical list).
 
     Mirrors the target vault structure: callers resolve files via
     ``seed_vault_dir() / "resources" / "term_dictionary" / "term_X.md"``.

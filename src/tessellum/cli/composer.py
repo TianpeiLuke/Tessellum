@@ -1,17 +1,17 @@
 """``tessellum composer …`` — Composer pipeline operations.
 
-Six subcommands as of v0.0.27:
+Six subcommands:
 
-    validate <skill>          Schema + cross-file consistency (Wave 1a / 1b).
-    compile <skill>           Compile to a typed DAG with contract checks (Wave 2).
-    run <skill>               Execute the compiled pipeline against leaves (Wave 3).
-    batch <jobs.json>         Run many (skill, leaves) jobs in parallel (Wave 5a).
-    eval <scenarios>          Run scenario assertions + LLMJudge rubric (Wave 5b).
+    validate <skill>          Schema + cross-file consistency.
+    compile <skill>           Compile to a typed DAG with contract checks.
+    run <skill>               Execute the compiled pipeline against leaves.
+    batch <jobs.json>         Run many ``(skill, leaves)`` jobs in parallel.
+    eval <scenarios>          Run scenario assertions + LLMJudge rubric.
     scaffold-sidecar <skill>  Generate a starter pipeline sidecar from a canonical's section anchors.
 
-The DKS runtime (Dialectic Knowledge System) lives at ``tessellum dks``
-as a top-level subcommand peer to ``tessellum composer`` since v0.0.43;
-it uses Composer's LLMBackend abstractions but is otherwise independent.
+The DKS runtime (Dialectic Knowledge System) is a peer subcommand at
+``tessellum dks``. It uses Composer's LLMBackend abstractions but is
+otherwise independent.
 
 Exit codes:
     0  every skill validates / compiles / runs clean
@@ -101,7 +101,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     run_cmd = composer_sub.add_parser(
         "run",
-        help="Execute a compiled pipeline against leaves (Wave 3 — mock LLM by default).",
+        help="Execute a compiled pipeline against leaves (mock LLM by default).",
     )
     run_cmd.add_argument("skill", type=Path, help="Skill canonical (markdown).")
     run_cmd.add_argument(
@@ -162,15 +162,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     run_cmd.add_argument(
         "--progress",
         action="store_true",
-        help="Phase B.2 (v0.0.60): emit per-step start/finish lines to "
-        "stderr. Off by default. Useful for long multi-leaf runs where "
-        "the user wants to see what step is currently running.",
+        help="Emit per-step start/finish lines to stderr. Off by default. "
+        "Useful for long multi-leaf runs where the user wants to see "
+        "what step is currently running.",
     )
     run_cmd.set_defaults(func=run_composer_run_cli)
 
     batch_cmd = composer_sub.add_parser(
         "batch",
-        help="Run many (skill, leaves) jobs in parallel with resume (Wave 5a).",
+        help="Run many (skill, leaves) jobs in parallel with resume.",
     )
     batch_cmd.add_argument(
         "jobs",
@@ -223,7 +223,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     eval_cmd = composer_sub.add_parser(
         "eval",
-        help="Run scenario assertions + LLMJudge rubric on skills (Wave 5b).",
+        help="Run scenario assertions + LLMJudge rubric on skills.",
     )
     eval_cmd.add_argument(
         "scenarios_dir",
@@ -891,8 +891,8 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
             # Default canned response gives every default dim a score of 4 —
             # useful as a sanity check that the rubric pipeline runs
             # end-to-end. Driven by DEFAULT_RUBRIC_DIMENSIONS so adding a
-            # new dim (e.g. `epistemic_congruence` at v0.0.44) does not
-            # require editing the CLI in lockstep.
+            # new rubric dimension does not require editing the CLI in
+            # lockstep.
             from tessellum.composer import DEFAULT_RUBRIC_DIMENSIONS
 
             judge_responses = {

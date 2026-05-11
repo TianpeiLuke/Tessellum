@@ -1,8 +1,8 @@
-"""Composer Wave 2 — compile a skill+sidecar pair into a typed DAG.
+"""Compile a skill canonical + sidecar pair into a typed DAG.
 
 Zero LLM calls. The compiler is pure logic:
 
-    1. Load the skill canonical + sidecar (Wave 1a infrastructure).
+    1. Load the skill canonical + sidecar.
     2. Validate contract integrity — every materializer key resolves
        in :data:`tessellum.composer.contracts.MATERIALIZER_CONTRACTS`,
        and every CORE/DEFERRED step's ``expected_output_schema``
@@ -16,17 +16,15 @@ Zero LLM calls. The compiler is pure logic:
 The output is a typed Python object plus a JSON-serializable form
 (``to_dag_json``) for ``tessellum composer compile`` to write to disk.
 
-What this Wave does NOT cover (deferred):
+Out of scope (handled elsewhere or deliberately omitted):
 
-    - Plan-doc + leaves (multi-skill, per-leaf step instantiation).
-      Wave 2 compiles a single skill into a "pipeline template"; Wave 3
-      executes against concrete data.
-    - APPLY-mode pre-fetching of ``applies_to_files``. Requires
-      indexer-query resolution; surfaces in Wave 3.
-    - LLMBackendContract / MCPContract validation. Backends + MCPs
-      ship in Wave 4; the compiler will gain those checks then.
-    - ``ContractViolation`` for ``apply_mode_directive_required``
-      prompt-text checks. Possible at compile time but minor; defer.
+    - Multi-skill plan-doc instantiation — the compiler produces one
+      pipeline template; the scheduler executes against concrete leaves.
+    - APPLY-mode pre-fetching of ``applies_to_files`` — the
+      materializer reads existing files at write time when needed.
+    - LLMBackendContract / MCPContract validation — the contracts ship
+      as data; the compiler can grow these checks when the runtime
+      needs them.
 """
 
 from __future__ import annotations
@@ -63,7 +61,7 @@ class CompilerError(Exception):
     """
 
 
-# ── Context-budget constants (Phase B.3, v0.0.60) ───────────────────────────
+# ── Context-budget constants ────────────────────────────────────────────────
 
 
 HARD_PROMPT_CAP_CHARS: int = 150_000
@@ -76,25 +74,24 @@ the compiler validates the *upper-bound estimate* against it at
 compile time. Override per-step via the sidecar's `max_prompt_chars`
 field.
 
-Per plan_composer_dks_robustness R-4: a global cap protects against
-pipeline composition error (e.g., 5 upstream sources fanning in);
-per-upstream `max_chars` (declared on each step's
-`expected_output_schema`) protects against any single source
-dominating. Compile-time validation enforces sum(soft) ≤ hard.
+A global cap protects against pipeline composition error (e.g., 5
+upstream sources fanning in); per-upstream `max_chars` (declared on
+each step's `expected_output_schema`) protects against any single
+source dominating. Compile-time validation enforces sum(soft) ≤ hard.
 """
 
 
 WARN_AT_PROMPT_FRACTION: float = 0.7
-"""Phase B.3 (v0.0.60). When the estimated prompt size at compile
-time exceeds 70% of the hard cap, emit a warning. Caller decides
-what to do with warnings (CI: treat as error; dev: log)."""
+"""When the estimated prompt size at compile time exceeds 70% of the
+hard cap, emit a warning. Caller decides what to do with warnings
+(CI: treat as error; dev: log)."""
 
 
 DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS: int = 25_000
-"""Phase B.3 (v0.0.60). Default soft cap per upstream output when
-the sidecar's `expected_output_schema.max_chars` is not declared.
-Picked so 5 upstreams comfortably fit under HARD_PROMPT_CAP_CHARS
-with budget for leaf metadata + prompt boilerplate."""
+"""Default soft cap per upstream output when the sidecar's
+`expected_output_schema.max_chars` is not declared. Picked so 5
+upstreams comfortably fit under HARD_PROMPT_CAP_CHARS with budget for
+leaf metadata + prompt boilerplate."""
 
 
 @dataclass(frozen=True)
@@ -121,19 +118,17 @@ class CompiledStep:
             (caught upstream and surfaced as ``CompilerError``).
         output_key: Identifier for downstream ``{{upstream.X}}``
             placeholder resolution.
-        timeout_seconds: Phase B.1 (v0.0.60). Optional per-step
-            watchdog timeout. ``None`` → use the executor's default
-            (typically 120s). When the backend call exceeds this
-            value, the step result is marked
+        timeout_seconds: Optional per-step watchdog timeout. ``None``
+            → use the executor's default (typically 120s). When the
+            backend call exceeds this value, the step result is marked
             ``error="stalled after Xs"`` and the scheduler proceeds.
-            Per R-6, the in-flight call is not cancelled — it
-            completes in the background; its eventual result is
-            discarded.
-        max_prompt_chars: Phase B.3 (v0.0.60). Optional per-step
-            hard cap on the rendered user-prompt size. ``None`` →
-            use ``compiler.HARD_PROMPT_CAP_CHARS``. Runtime check:
-            if the rendered prompt exceeds this, ``execute_step``
-            refuses to dispatch and surfaces a structured error
+            The in-flight call is not cancelled — it completes in the
+            background; its eventual result is discarded.
+        max_prompt_chars: Optional per-step hard cap on the rendered
+            user-prompt size. ``None`` → use
+            ``compiler.HARD_PROMPT_CAP_CHARS``. Runtime check: if the
+            rendered prompt exceeds this, ``execute_step`` refuses to
+            dispatch and surfaces a structured error
             rather than the LLM-side mystery failure.
     """
 
@@ -163,11 +158,11 @@ class CompiledPipeline:
             references section_ids in ``steps[:i]``.
         compiled_at: ISO-8601 timestamp of when ``compile_skill`` ran.
         step_count: ``len(steps)`` — convenience for serialization.
-        budget_warnings: Phase B.3 (v0.0.60). List of compile-time
-            warnings about prompt-size estimates that exceed
-            :data:`WARN_AT_PROMPT_FRACTION` (70%) of the hard cap.
-            Each entry is a one-line description. Empty when no
-            warnings; the compiler does not fail on warnings.
+        budget_warnings: Compile-time warnings about prompt-size
+            estimates that exceed :data:`WARN_AT_PROMPT_FRACTION`
+            (70%) of the hard cap. Each entry is a one-line
+            description. Empty when no warnings; the compiler does
+            not fail on warnings.
     """
 
     skill_path: Path
@@ -202,8 +197,8 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
             output field, etc.).
         CompilerError: DAG-level errors — cycles, forward references,
             missing prompt-section text.
-        PipelineValidationError: Upstream Wave 1a errors — sidecar
-            missing, schema invalid, orphan section_id.
+        PipelineValidationError: Sidecar missing, schema invalid, or
+            an orphan section_id (raised by the loader).
     """
     skill = Path(skill_path)
     pipeline = load_pipeline(skill)
@@ -222,7 +217,7 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
     for step in sorted_steps:
         compiled_steps.append(_compile_step(step, skill))
 
-    # Phase B.3 (v0.0.60) — compile-time context-budget validation.
+    # Compile-time context-budget validation.
     budget_warnings = _validate_context_budgets(compiled_steps)
 
     return CompiledPipeline(
@@ -235,8 +230,8 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
 
 
 def _validate_context_budgets(steps: list[CompiledStep]) -> list[str]:
-    """Phase B.3 (v0.0.60). Estimate per-step prompt size from upstream
-    soft caps + raise ``CompilerError`` on hard-cap overflow + emit
+    """Estimate per-step prompt size from upstream soft caps, raise
+    ``CompilerError`` on hard-cap overflow, and emit
     warnings at WARN_AT_PROMPT_FRACTION.
 
     Estimation model (per R-4):

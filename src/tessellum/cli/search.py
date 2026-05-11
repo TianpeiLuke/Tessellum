@@ -1,16 +1,15 @@
 """``tessellum search <query>`` — query the indexed vault.
 
-Four retrieval strategies in v0.0.16:
+Four retrieval strategies:
 
     --bm25     Lexical (FTS5)
     --dense    Semantic (sqlite-vec)
     --hybrid   BM25 + dense fused via RRF (default)
     --bfs      Best-first BFS from a seed note over the note_links graph
 
-The default ``hybrid`` was set in v0.0.15 (Wave 3) per the +12pp
-production lift measured in the parent project (FZ 5e1c3a1a1). ``--bfs``
-ships in v0.0.16 — its argument is interpreted as a *seed note_id*
-(vault-relative path), not a free-text query.
+``hybrid`` is the production default — empirically +12pp Hit@5 over
+the best single strategy. ``--bfs`` interprets its argument as a
+*seed note_id* (vault-relative path), not a free-text query.
 
 Exit codes:
     0  search ran (results may be empty if no match)

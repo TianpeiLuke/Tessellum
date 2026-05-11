@@ -2,26 +2,24 @@
 
 Combines BM25 (lexical) and dense (semantic) rankings into a single
 ranked list by summing reciprocal-rank contributions from each ranker.
-Per `plans/plan_retrieval_port.md` Wave 3 — the parent project measured
-+12 percentage points Hit@5 over the best single strategy (FZ 5e1c3a1a1)
+Empirically +12 percentage points Hit@5 over the best single strategy,
 specifically because BM25 and dense retrieve *different* documents.
 
 The RRF formula (Cormack, Clarke, Buettcher 2009):
 
     RRF_score(d) = Σ over rankers r: 1 / (k1 + rank_r(d))
 
-Where ``k1`` is a smoothing constant (60 is the standard default; smaller
-values amplify top-rank contributions, larger values flatten them) and
-``rank_r(d)`` is the 1-indexed rank of document ``d`` in ranker ``r``'s
-result list. Documents absent from a ranker's top-K contribute 0 from
-that ranker.
+Where ``k1`` is a smoothing constant (60 is the standard default;
+smaller values amplify top-rank contributions, larger values flatten
+them) and ``rank_r(d)`` is the 1-indexed rank of document ``d`` in
+ranker ``r``'s result list. Documents absent from a ranker's top-K
+contribute 0 from that ranker.
 
-Implementation note: we run ``bm25_search`` and ``dense_search``
+Implementation note: :func:`bm25_search` and :func:`dense_search` run
 sequentially in Python, then fuse. A single-SQL fusion (UNION ALL of
 both top-K, group by note_id, sum reciprocal ranks) would shave a
-millisecond on a hot DB but loses readability + reuse. For v0.0.15 we
-optimize for clarity; revisit if profiling shows the dual roundtrip is
-material.
+millisecond on a hot DB but loses readability + reuse — clarity wins
+unless profiling shows the dual roundtrip is material.
 """
 
 from __future__ import annotations

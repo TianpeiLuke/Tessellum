@@ -74,20 +74,18 @@ class MetaObservation:
        wrong (retract candidate) or the runtime never walks it (no
        action needed).
 
-    v0.0.53 adds three signal channels driven by Phase V validation
-    constraints (C1, C3, C4):
+    Three signal channels enrich the basic counts so the LLM proposer
+    can reason from specifics rather than aggregates alone:
 
     - ``counter_strength_breakdown``: ``{component: {strength: count}}``
       stratifies the Toulmin distribution by counter strength.
-      Supports "one strong outweighs two weak" weighting (C3).
+      Supports "one strong outweighs two weak" weighting.
     - ``sample_counter_quotes``: ``{component: (quote, ...)}`` carries
-      verbatim counter-argument quotes per Toulmin component so the
-      LLM proposer can ground proposals in specifics rather than
-      aggregates alone (C1).
+      verbatim counter-argument quotes per Toulmin component.
     - ``observation_source_metadata``: free-form description of where
       the cycle-level observations came from (vault dogfood / live
       capture / synthetic). Lets the LLM proposer assess
-      input-bias risk (C4).
+      input-bias risk.
 
     The dataclass is the *input* the MetaCycle reasons over. The
     runtime builds it by reading cycle-level traces under
@@ -99,12 +97,12 @@ class MetaObservation:
     top_attacked_warrants: tuple[tuple[str, int], ...] = ()  # (fz, count) tuples
     toulmin_failure_counts: dict[str, int] = field(default_factory=dict)
     unrealised_schema_edges: tuple[EpistemicEdgeType, ...] = ()
-    # v0.0.53 — Phase V-driven enrichment (optional; default empty)
+    # Enrichment signals (optional; default empty).
     counter_strength_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
     sample_counter_quotes: dict[str, tuple[str, ...]] = field(default_factory=dict)
     observation_source_metadata: str = ""
-    # v0.0.60 — Phase C — DKS silent-failure rate (telemetry only;
-    # doesn't change Phase 5's decide_escalation semantics).
+    # DKS silent-failure rate. Telemetry only — doesn't change the
+    # decide_escalation semantics.
     silent_failure_count: int = 0
     """Aggregate count of silent backend-call failures across the
     cycle traces that produced this :class:`MetaObservation`.
@@ -116,8 +114,7 @@ class MetaObservation:
     (a backend that's silently failing every other call may be
     producing misleading Toulmin distributions)."""
 
-    # v0.0.55 — Phase I.3 — per-perspective stratification (multi-perspective
-    # DKS, FZ 2c1's OQ-2c1-c interaction point).
+    # Per-perspective stratification for multi-perspective DKS runs.
     per_perspective_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
     """Per-perspective Toulmin failure distribution.
 
@@ -128,12 +125,10 @@ class MetaObservation:
 
     Populated by the CLI from per-cycle traces when the
     ``argument_perspective`` field is present on the attacked
-    argument. Defaults to empty for backward compatibility with
-    cycles produced before v0.0.55.
+    argument. Empty when the cycle traces did not record perspectives.
 
     The LLMProposer prompt renders this as a stratified breakdown so
-    the proposer can reason about perspective-specific schema gaps
-    (Phase V constraint C2 stratified by perspective)."""
+    the proposer can reason about perspective-specific schema gaps."""
 
 
 # ── SchemaEditProposal — the meta-cycle's argument ─────────────────────────
@@ -146,12 +141,10 @@ SCHEMA_EDIT_PROPOSAL_KIND = Literal["add", "retract", "refine"]
 class SchemaEditProposal:
     """A typed proposal to mutate ``BB_SCHEMA_USER_EXTENSIONS``.
 
-    Plays the role of an *argument* in the meta-cycle. v0.0.52's
-    minimum-viable proposal generator emits these from rule-based
-    heuristics (e.g. "if Toulmin failure ``counter-example`` exceeds
-    50% of counters, propose adding a ``scope_assertion`` edge").
-    Phase 11+ will replace the heuristic with an LLM-driven
-    proposer.
+    Plays the role of an *argument* in the meta-cycle. Emitted by a
+    :class:`tessellum.dks.meta.runtime.Proposer` — either the
+    rule-based :class:`HeuristicProposer` or the LLM-driven
+    :class:`LLMProposer`.
 
     Maps to a :class:`tessellum.bb.types.SchemaEditEvent` if the
     proposal survives meta-DKS dialectic and lands via
@@ -165,7 +158,7 @@ class SchemaEditProposal:
     supersedes: EpistemicEdgeType | None = None  # for "refine" only
 
 
-# ── MetaCounterArgument — the meta-cycle's attack (v0.0.53 Phase B.3) ──────
+# ── MetaCounterArgument — the meta-cycle's attack ──────────────────────────
 
 
 META_ATTACK_KIND = Literal[
@@ -178,8 +171,8 @@ META_ATTACK_KIND = Literal[
 """Closed vocabulary for meta-counter attack kinds. Mirrors the
 ``attack_kind`` field on the meta-cycle skill canonical's step 2.
 
-``input_bias`` is the C5 Phase V-driven addition — explicitly fires
-when a proposal is responding to input bias, not a real schema gap.
+``input_bias`` fires when a proposal is responding to input bias
+rather than a real schema gap.
 """
 
 META_COUNTER_STRENGTH = Literal["weak", "moderate", "strong"]
@@ -191,7 +184,7 @@ META_COUNTER_STRENGTH = Literal["weak", "moderate", "strong"]
 class MetaCounterArgument:
     """A typed attack against a :class:`SchemaEditProposal`.
 
-    Plays the role of a *counter-argument* in the meta-cycle. v0.0.53's
+    Plays the role of a *counter-argument* in the meta-cycle.
     :class:`tessellum.dks.meta.runtime.LLMAttacker` emits these from
     LLM responses; :class:`tessellum.dks.meta.runtime.NoOpAttacker`
     (the default) emits none.
@@ -206,7 +199,7 @@ class MetaCounterArgument:
     strength: META_COUNTER_STRENGTH = "moderate"
 
 
-# ── Survive threshold (Phase B.3) ───────────────────────────────────────────
+# ── Survive threshold ───────────────────────────────────────────────────────
 
 
 SURVIVE_THRESHOLD = Literal["strict", "majority", "permissive"]
@@ -227,7 +220,7 @@ __all__ = [
     "MetaObservation",
     "SchemaEditProposal",
     "SCHEMA_EDIT_PROPOSAL_KIND",
-    # v0.0.53 — Phase B.3 attack types
+    # Attack types
     "MetaCounterArgument",
     "META_ATTACK_KIND",
     "META_COUNTER_STRENGTH",
