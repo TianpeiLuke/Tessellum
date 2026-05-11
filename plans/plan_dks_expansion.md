@@ -275,7 +275,7 @@ It's mostly internal to `tessellum.dks` — no schema mutations, no validator ex
 - D2: 10% default false-gate rate, configurable via `--target-false-gate-rate <float>` + `--calibrate` mode (resolved; value is empirical and tunable from telemetry).
 - Retrieval grounding mode: re-rank (don't drop warrants; phase-internal).
 
-## Phase 8 — Dispatcher refactor (v0.0.50) — medium-large
+## Phase 8 — Dispatcher refactor (v0.0.51) — medium-large
 
 The deferred FZ 2a2 work. Replaces the 7 hand-coded `_step_*` methods with a generic walker over `BB_SCHEMA`. Per-component dataclasses survive as typed views over `BBNode`; the public API is preserved. This phase exists primarily as the prerequisite for Phase 9 (meta-DKS), but it also pays off in clarity and extensibility for any future walker.
 
@@ -320,7 +320,7 @@ Two reasons:
 - D1: subclass-per-`BBType` frozen dataclasses with `kw_only=True` (resolved). Existing `DKSObservation`/`DKSArgument`/etc. become aliases for the corresponding `*Node` subclasses; backward-compatible.
 - Transition handler registry: instance-scoped (`DKSStateMachine` holds its own). Lets meta-DKS swap handlers without touching cycle-level DKS.
 
-## Phase 9 — Meta-DKS (v0.0.51) — large
+## Phase 9 — Meta-DKS (v0.0.52) — large
 
 The big one. R-P's productive half at its strongest: a *second* DKS walker whose substrate is the schema itself. When the cycle-level DKS keeps hitting the same Toulmin failure on the same warrant shape, meta-DKS proposes a schema edit (add a BB type, add an edge, refine a label). The edit is itself dialectical — it's authored as an argument, attacked, possibly retracted.
 
@@ -367,7 +367,7 @@ The reason this lands as one phase (and not split) is that the meta-FSM is struc
 - D8: frozen-at-creation validation + `tessellum bb migrate` for opt-in retroactive checks (resolved).
 - Cold-start handling: `--dry-run` produces an empty proposal set; first meaningful run requires ≥ N cycle-level runs (lean: N=20 minimum for a Toulmin-failure distribution to be statistically meaningful; configurable via `--min-cycles`).
 
-## Phase 10 — Multi-perspective debate + Dung labelling (v0.0.52) — medium
+## Phase 10 — Multi-perspective debate + Dung labelling (v0.0.53) — medium
 
 The "debate club" deferral from the original plan §6+. The FSM admits N arguments naturally; today's A/B is just N=2. Three things change when N>2.
 
@@ -458,11 +458,12 @@ So a strict-dependency order is: 6, 7, 8, 9, 10. Phases 6 and 7 are parallelisab
 
 | Phase | Version | LOC est. | Forcing function |
 |-------|---------|----------|--------------------|
-| 6 | v0.0.48 | ~300 | None — pure addition |
-| 7 | v0.0.49 | ~280 | Phase 5's gate mechanism shipped; learning signal exists |
-| 8 | v0.0.50 | ~330 | Phase 7 stacked complexity on two steps; refactor before adding more |
-| 9 | v0.0.51 | ~600 | The biggest one. Closes Level 3 learning. R-P productive half at its strongest. |
-| 10 | v0.0.52 | ~370 | Pure expansion; lands last so phases 6-9 stabilise first |
+| 6 | v0.0.48 ✅ | ~300 | None — pure addition |
+| 7 | v0.0.49 ✅ | ~280 | Phase 5's gate mechanism shipped; learning signal exists |
+| (cleanup) | v0.0.50 ✅ | — | Vault cleanup ship between Phase 7 and Phase 8 (LINK-006 template exemption + AB note port); version skipped for Phase 8 |
+| 8 | v0.0.51 | ~330 | Phase 7 stacked complexity on two steps; refactor before adding more |
+| 9 | v0.0.52 | ~600 | The biggest one. Closes Level 3 learning. R-P productive half at its strongest. |
+| 10 | v0.0.53 | ~370 | Pure expansion; lands last so phases 6-9 stabilise first |
 
 Total: ~1,880 LOC across 5 versions. Roughly 2-3 weeks at current cadence.
 
@@ -519,4 +520,4 @@ Three resolutions compose into stronger guarantees than the sum:
 ---
 
 **Last Updated**: 2026-05-10 (resolutions amendment — 7 of 8 open questions decided against best-practice design principles)
-**Status**: Approved — Phases 6-10 ready to execute. Phase 6 starts on this commit's heels. Ships across 5 versions as v0.0.48 → v0.0.52.
+**Status**: Approved — Phases 6 & 7 shipped (v0.0.48 + v0.0.49); cleanup ship at v0.0.50 absorbed a version slot; Phases 8-10 remaining as v0.0.51 → v0.0.53.

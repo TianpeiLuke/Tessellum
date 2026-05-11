@@ -16,6 +16,99 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.50] — 2026-05-10
+
+### Changed — vault cleanup release (validator + dogfood vault)
+
+A maintenance release wrapping three orthogonal improvements that
+emerged from the post-Phase-7 `tessellum format check vault/` sweep.
+No functional changes to Phase 1-7 runtime.
+
+#### `tessellum.format.validator` — LINK-006 `status=template` exemption
+
+Templates are orphans by design — they're scaffolds with placeholder
+content meant to be copied + filled in. Parallel to TESS-004's
+authoring-state exemption logic, LINK-006 now skips `status=template`
+notes. `status=draft` and `status=active` orphans still fire.
+
+Implementation: 5-line addition to `tessellum/format/link_checker.py`
+guarding the `LINK-006` issue emission on `status != "template"`.
+
+The skill canonical (`vault/resources/skills/skill_tessellum_format_check.md`)
+notes the new exemption in its LINK-006 rule row. This file is in
+`SEED_VAULT_MANIFEST` and ships in the wheel.
+
+3 new tests cover the exemption:
+
+- `test_link_006_fires_on_active_orphan` — back-compat baseline
+- `test_link_006_skipped_for_status_template` — new behaviour
+- `test_link_006_still_fires_for_status_draft` — drafts not exempt
+
+#### Dogfood vault — 553 notes ported from AbuseSlipBox
+
+The original Tessellum seed (~50 notes) emitted 1111 LINK-003 warnings
+for body-links into the parent AB project's broader vault — references
+to per-BB term notes, paper digests, AB-specific entry points that
+the narrower seed doesn't carry. Rather than strip the references
+(loss of information) or author stubs for each (vault bloat with no
+content), this version *ports* the source notes from AB into
+Tessellum's dogfood `vault/` directory.
+
+Scope:
+
+- **Single pass, no transitive recursion.** Only directly-referenced
+  AB notes (the 553 LINK-003 targets) get copied; their own internal
+  references to deeper AB content stay as in-note LINK-003s. Pulling
+  the transitive closure would import ~18k files — well beyond
+  Tessellum's scope.
+- **Dogfood-only, NOT shipped to new users.** `SEED_VAULT_MANIFEST`
+  unchanged (~50 entries); `tessellum init <dir>` produces the same
+  starter kit as v0.0.49. The 553 notes live in `vault/` (the
+  source-tree dogfood) and ride in the sdist but not the wheel's
+  per-file seed graft.
+- **5 AB-format quirks fixed at port time** to satisfy Tessellum's
+  stricter validator:
+    - YAML-015 (2): `DKS` tag lowercased to `dks`
+    - TESS-001 (2): added `folgezettel_parent: ""` after `folgezettel:`
+    - TESS-004 (1): `review_lee2026metaharness.md` is a paper review
+      with no argument-link target; reclassified
+      `building_block: counter_argument` → `argument`
+
+#### Validation state
+
+| Metric | v0.0.49 | v0.0.50 |
+|---|---|---|
+| vault/ files | 113 | **666** (+553 AB-ported) |
+| Errors | 0 | 0 |
+| Warnings | 1286 | 5234 |
+
+The warning growth is internal to the ported AB notes — every LINK-003
+from the *original Tessellum seed* now resolves. The new 3964
+LINK-003s are emitted by ported AB notes pointing at *deeper* AB
+content the user explicitly said may not be ported. The 1255 new
+TESS-005s are architectural-layer body-links (intentional per FZ 1c).
+
+`SEED_VAULT_MANIFEST` contents are unchanged → new `pip install
+tessellum && tessellum init` users get the same 50-note starter as
+v0.0.49.
+
+#### Tests
+
+Full suite: 702 passed, 1 skipped (was 699 / +3 LINK-006 tests).
+
+### Why this is a separate version
+
+The validator + skill changes ship to wheel + PyPI users; the 553
+ported notes don't (they're dogfood-only, not in SEED_VAULT_MANIFEST).
+Bumping a version separates "what users get" (LINK-006 exemption +
+template metadata + skill update) from "what the project carries"
+(dogfood vault grows for internal consistency).
+
+Phase 8 (dispatcher refactor) shifts to v0.0.51; Phase 9 to v0.0.52;
+Phase 10 to v0.0.53. The plan amendment lands alongside this version.
+
+---
+
 ## [0.0.49] — 2026-05-10
 
 ### Added — Phase 7 of plan_dks_expansion: learned confidence + retrieval-grounded warrants
