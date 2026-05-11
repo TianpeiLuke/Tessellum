@@ -15,6 +15,7 @@ from tessellum.cli.bb import add_subparser as add_bb_subparser
 from tessellum.cli.capture import add_subparser as add_capture_subparser
 from tessellum.cli.composer import add_subparser as add_composer_subparser
 from tessellum.cli.dks import add_subparser as add_dks_subparser
+from tessellum.cli.mcp import add_subparser as add_mcp_subparser
 from tessellum.cli.filter import add_subparser as add_filter_subparser
 from tessellum.cli.format_check import add_subparser as add_format_subparser
 from tessellum.cli.fz import add_subparser as add_fz_subparser
@@ -44,6 +45,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_bb_subparser(subparsers)
     add_composer_subparser(subparsers)
     add_dks_subparser(subparsers)
+    add_mcp_subparser(subparsers)
     return parser
 
 

@@ -84,6 +84,9 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
 
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
+    "resources/how_to/howto_note_format.md",                           # v0.0.59 — YAML frontmatter spec walkthrough
+    "resources/how_to/howto_agent_integration.md",                     # v0.0.59 — invoke skills from MCP / Composer / Python
+    "resources/how_to/howto_growing_a_trail.md",                       # v0.0.59 — FZ trail authoring + DKS-driven growth
 
     # ── FZ trail nodes (Trail 1: Architecture / CQRS — 8 thoughts) ───────
     "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",        # FZ 1

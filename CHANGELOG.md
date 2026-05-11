@@ -16,6 +16,79 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.59] — 2026-05-11
+
+### Added — Phase V of plan_v01_completion_roadmap: MCP server + how-to library
+
+**Tessellum MCP server** (`src/tessellum/mcp/`). The previously-placeholder
+package now ships as a real MCP stdio server with 7 tools that
+MCP-compatible agents (Claude Desktop, IDEs, etc.) can invoke:
+
+| Tool | What it does |
+|---|---|
+| `tessellum_search` | Hybrid retrieval (BM25 + dense + graph) over the indexed vault |
+| `tessellum_format_check` | Validate notes against TESS-001..005 + YAML rules |
+| `tessellum_bb_audit` | BBGraph telemetry — node + edge counts, untyped + unrealised edges |
+| `tessellum_fz_traverse` | Walk a Folgezettel trail (ancestors / descendants / siblings) |
+| `tessellum_capture` | Create a new typed note from a template (with v0.0.57 destination + prefix overrides) |
+| `tessellum_list_skills` | Enumerate available skill canonicals |
+| `tessellum_get_skill` | Return a skill's canonical body so the calling agent can apply the procedure itself |
+
+**Two-tier interaction model.** The server is deterministic — no LLM
+call on the server side. The runtime tools wrap pure Python APIs;
+the `get_skill` tool returns canonical text the calling agent applies
+in its own context. This keeps the MCP server fast and side-effect-
+free; agents bring their own LLM.
+
+**Built on the official `mcp` Python SDK.** Lazy import — the SDK is
+only imported when the server is constructed, so users without the
+`[mcp]` extras can still load the CLI without errors.
+
+**New CLI subcommand**: `tessellum mcp serve` runs the stdio
+transport. Add to Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "tessellum": {
+      "command": "tessellum",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+**Three new how-to guides** (joining the existing `howto_first_vault`):
+
+- **`howto_note_format.md`** — walks through the 7 required YAML
+  frontmatter fields, the v0.0.55 `bb_schema_version` field, the
+  v0.0.55 `argument_perspective` field, and the common validator
+  errors with fixes.
+- **`howto_agent_integration.md`** — three invocation paths (MCP /
+  Composer pipeline / Python API) with a decision rule for picking
+  between them. Covers the two-tier interaction model and skill
+  authoring.
+- **`howto_growing_a_trail.md`** — FZ trail authoring step-by-step:
+  trail root, descendants, branching, counter-arguments,
+  per-trail-entry-point updates, and DKS-cycle-driven extension.
+
+### Tests
+
+15 new MCP smoke tests under `tests/smoke/test_mcp_server.py`:
+build_server, dispatch routing, list-skills + get-skill, format-check
+tool (clean note + missing path + directory recursion), capture tool
+(default + override paths), error paths for missing-DB tools. Full
+suite: **886 passed** (+15 from v0.0.58).
+
+### Sequencing
+
+Phase V of `plan_v01_completion_roadmap.md` complete. Next:
+**v0.1.0 — Phase VI**: README polish + CHANGELOG consolidation +
+GitHub release + release-time clean-venv quickstart validation. The
+alpha → public-beta cut.
+
+---
+
 ## [0.0.58] — 2026-05-11
 
 ### Added — Phase IV of plan_v01_completion_roadmap: capture-side helper skills + catalog cleanup
