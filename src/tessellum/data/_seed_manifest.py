@@ -62,6 +62,11 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/skills/skill_tessellum_write_coe.md",                   # 6-step Composer skill canonical
     "resources/skills/skill_tessellum_write_coe.pipeline.yaml",        # sidecar (Composer-compatible)
 
+    # ── FZ trail tooling (skills used with `tessellum fz` CLI) ───────────
+    "resources/skills/skill_tessellum_traverse_folgezettel.md",        # ancestors / descendants / siblings
+    "resources/skills/skill_tessellum_manage_folgezettel.md",          # list / next-FZ / integrity audit
+    "resources/skills/skill_tessellum_append_to_trail.md",             # full append-new-node procedure
+
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
 
