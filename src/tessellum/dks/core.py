@@ -404,6 +404,8 @@ class DKSCycle:
         *,
         confidence_model: object | None = None,
         confidence_threshold: float | None = None,
+        retrieval_client: object | None = None,
+        semantic_disagreement: bool = False,
     ) -> None:
         self.observation = observation
         self.warrants = warrants
@@ -414,6 +416,13 @@ class DKSCycle:
         # (confidence.py depends on DKSObservation/DKSWarrant from this
         # module). The default is materialised on first call to .run().
         self.confidence_threshold = confidence_threshold
+        # Phase 7 — retrieval-grounded argument step. When supplied, the
+        # argument-generation prompts get a "Related material from the
+        # substrate" block populated by retrieval_client.search(observation.summary).
+        self.retrieval_client = retrieval_client
+        # Phase 7 — optional LLM-based disagreement detection at step 4.
+        # Off by default preserves Phase 1's local-only behaviour.
+        self.semantic_disagreement = semantic_disagreement
         # FZ allocator state — children of the cycle root
         self._cycle_fz_existing: list[str] = [observation.folgezettel]
 
@@ -517,12 +526,22 @@ class DKSCycle:
     def _step_argument(
         self, perspective: str, suffix_hint: str
     ) -> DKSArgument:
-        """Step 2 / step 3 — produce one argument from the warrant set."""
+        """Step 2 / step 3 — produce one argument from the warrant set.
+
+        Phase 7 enrichment: when a ``retrieval_client`` is wired into
+        the cycle, the prompt gains a "Related material from the
+        substrate" block populated by hybrid-search hits against the
+        observation summary. The warrant set still flows through
+        unchanged — retrieval *augments* the prompt's substrate
+        awareness; it does not replace warrants.
+        """
         warrants_block = self._format_warrants()
+        retrieval_block = self._format_retrieval_context()
         prompt = (
             f"Step: generate argument ({perspective}).\n"
             f"Observation: {self.observation.summary}\n\n"
             f"Available warrants:\n{warrants_block}\n\n"
+            f"{retrieval_block}"
             f"Produce one argument from a {perspective} angle. Return JSON:\n"
             f'{{"claim": "...", "data": "...", "warrant": "...", '
             f'"backing": "...", "qualifier": "...", "evidence": "..."}}'
@@ -548,14 +567,25 @@ class DKSCycle:
     def _step_disagreement(
         self, arg_a: DKSArgument, arg_b: DKSArgument
     ) -> DKSContradicts | None:
-        """Step 4 — detect contradiction between A and B (local computation).
+        """Step 4 — detect contradiction between A and B.
 
-        Two arguments contradict when their claims differ AND they're
-        about the same observation. Phase 1 uses simple string inequality;
-        Phase 3+ can route this through an LLM call if subtle semantic
-        contradictions matter.
+        Phase 1 default: simple string-inequality on the claim text.
+        Phase 7 opt-in: when ``semantic_disagreement=True``, do one
+        backend call asking "are these claims substantively different?";
+        fall back to string-compare on parse failure.
         """
-        if arg_a.warrant.claim.strip() == arg_b.warrant.claim.strip():
+        a_claim = arg_a.warrant.claim.strip()
+        b_claim = arg_b.warrant.claim.strip()
+
+        if self.semantic_disagreement:
+            disagree = self._llm_check_disagreement(a_claim, b_claim)
+            if disagree is None:
+                # Fall back to string compare on parse failure
+                disagree = a_claim != b_claim
+        else:
+            disagree = a_claim != b_claim
+
+        if not disagree:
             return None
         # B attacks A by default (B is the "exploratory" angle challenging
         # A's "conservative" one). Phase 5 can make this more sophisticated.
@@ -567,6 +597,37 @@ class DKSCycle:
                 f"B asserts {arg_b.warrant.claim!r}"
             ),
         )
+
+    def _llm_check_disagreement(self, claim_a: str, claim_b: str) -> bool | None:
+        """LLM-based disagreement check (Phase 7).
+
+        Returns True if the claims substantively disagree, False if
+        they're equivalent, None on parse failure (caller falls back
+        to string-compare).
+        """
+        prompt = (
+            "Step: semantic disagreement check.\n"
+            f"Claim A: {claim_a}\n"
+            f"Claim B: {claim_b}\n\n"
+            'Are these claims substantively different? Return JSON: '
+            '{"disagree": true|false}'
+        )
+        try:
+            response = self.backend.call(
+                LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
+            )
+            data = _parse_json(response.content)
+        except Exception:
+            return None
+        if not isinstance(data, dict) or "disagree" not in data:
+            return None
+        value = data["disagree"]
+        if isinstance(value, bool):
+            return value
+        # Some LLMs return strings; coerce.
+        if isinstance(value, str):
+            return value.strip().lower() in ("true", "yes", "y", "1")
+        return None
 
     def _step_counter(
         self,
@@ -671,6 +732,29 @@ class DKSCycle:
         return "\n".join(
             f"  - claim={w.claim!r} warrant={w.warrant!r}" for w in self.warrants
         )
+
+    def _format_retrieval_context(self, k: int = 5) -> str:
+        """Phase 7 — produce a "Related material from the substrate" block.
+
+        Returns the empty string when no retrieval_client is configured
+        or the search returns no hits. The block appends to the argument
+        prompt (between warrants and the instruction). Errors are
+        swallowed — retrieval grounding is best-effort context, not a
+        hard prerequisite.
+        """
+        if self.retrieval_client is None:
+            return ""
+        try:
+            hits = self.retrieval_client.search(self.observation.summary, k=k)
+        except Exception:
+            return ""
+        if not hits:
+            return ""
+        lines = ["Related material from the substrate (top-K hybrid hits):"]
+        for h in hits:
+            lines.append(f"  - {h.note_name} (score={h.score:.4f})")
+        lines.append("")  # trailing blank for prompt readability
+        return "\n".join(lines) + "\n"
 
 
 # ── Module-level helpers ─────────────────────────────────────────────────
@@ -797,12 +881,17 @@ class DKSRunner:
         initial_warrants: tuple[DKSWarrant, ...] = (),
         confidence_model: object | None = None,
         confidence_threshold: float | None = None,
+        retrieval_client: object | None = None,
+        semantic_disagreement: bool = False,
     ) -> None:
         self.observations = observations
         self.backend = backend
         self.initial_warrants = initial_warrants
         self.confidence_model = confidence_model
         self.confidence_threshold = confidence_threshold
+        # Phase 7 forward-through to each cycle.
+        self.retrieval_client = retrieval_client
+        self.semantic_disagreement = semantic_disagreement
 
     def run(self) -> DKSRunResult:
         start = time.monotonic()
@@ -817,6 +906,8 @@ class DKSRunner:
                 self.backend,
                 confidence_model=self.confidence_model,
                 confidence_threshold=self.confidence_threshold,
+                retrieval_client=self.retrieval_client,
+                semantic_disagreement=self.semantic_disagreement,
             ).run()
             cycles.append(cycle)
             if cycle.rule_revision is None:

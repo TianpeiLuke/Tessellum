@@ -215,6 +215,144 @@ def test_runner_threads_confidence_model_into_every_cycle():
     assert result.warrant_changes == ()
 
 
+# ── CalibratedConfidence (Phase 7) ──────────────────────────────────────────
+
+
+def test_calibrated_confidence_empty_history_returns_baseline(tmp_path):
+    """No history events → return the baseline (default 0.5)."""
+    from tessellum.dks import CalibratedConfidence, WarrantHistory
+
+    history = WarrantHistory(tmp_path / "empty.jsonl")
+    model = CalibratedConfidence(warrant_history=history, baseline=0.42)
+    obs = DKSObservation(folgezettel="1", summary="x")
+    assert model(obs, ()) == 0.42
+
+
+def test_calibrated_confidence_none_history_returns_baseline():
+    """No history at all → baseline."""
+    from tessellum.dks import CalibratedConfidence
+
+    model = CalibratedConfidence(warrant_history=None, baseline=0.5)
+    obs = DKSObservation(folgezettel="1", summary="x")
+    assert model(obs, ()) == 0.5
+
+
+def test_calibrated_confidence_all_added_returns_high_confidence(tmp_path):
+    """History of only `added` events (no attacks) → confidence ≈ 1.0."""
+    from tessellum.dks import (
+        CalibratedConfidence,
+        DKSWarrant,
+        WarrantChange,
+        WarrantHistory,
+    )
+
+    history = WarrantHistory(tmp_path / "h.jsonl")
+    for i in range(5):
+        history.record_change(
+            WarrantChange(
+                cycle_id=str(i), kind="added",
+                warrant=DKSWarrant(claim=f"c{i}", data="d", warrant="w"),
+            )
+        )
+
+    model = CalibratedConfidence(warrant_history=history)
+    obs = DKSObservation(folgezettel="1", summary="x")
+    # No attacks → attack_rate = 0 → confidence = 1.0
+    assert model(obs, ()) == 1.0
+
+
+def test_calibrated_confidence_all_revised_returns_low_confidence(tmp_path):
+    """History of `revised` events (all attacks) → confidence ≈ 0."""
+    from tessellum.dks import (
+        CalibratedConfidence,
+        DKSWarrant,
+        WarrantChange,
+        WarrantHistory,
+    )
+
+    history = WarrantHistory(tmp_path / "h.jsonl")
+    for i in range(5):
+        # Each revised event pairs with a superseded event in real runs;
+        # here we record just the revised so the attack rate maxes out.
+        history.record_change(
+            WarrantChange(
+                cycle_id=str(i), kind="revised",
+                warrant=DKSWarrant(claim=f"c{i}", data="d", warrant="w"),
+                superseded_fz="0a",
+            )
+        )
+
+    model = CalibratedConfidence(warrant_history=history)
+    obs = DKSObservation(folgezettel="1", summary="x")
+    # All attacks → attack_rate = 1.0 → confidence = 0.0
+    assert model(obs, ()) == 0.0
+
+
+def test_calibrated_confidence_superseded_events_are_not_double_counted(tmp_path):
+    """`revised` + `superseded` pair represents ONE attack; only the
+    `revised` event contributes to the attack-rate signal."""
+    from tessellum.dks import (
+        CalibratedConfidence,
+        DKSWarrant,
+        WarrantChange,
+        WarrantHistory,
+    )
+
+    history = WarrantHistory(tmp_path / "h.jsonl")
+    history.record_change(WarrantChange(cycle_id="1", kind="added", warrant=DKSWarrant(claim="c", data="d", warrant="w")))
+    history.record_change(WarrantChange(cycle_id="2", kind="revised", warrant=DKSWarrant(claim="c", data="d", warrant="w"), superseded_fz="0a"))
+    history.record_change(WarrantChange(cycle_id="2", kind="superseded", superseded_fz="0a"))
+
+    model = CalibratedConfidence(
+        warrant_history=history, recency_halflife_cycles=10000
+    )  # large halflife → roughly equal weights
+    obs = DKSObservation(folgezettel="1", summary="x")
+    score = model(obs, ())
+    # 1 revised out of (1 added + 1 revised) = 0.5 attack rate, ignoring superseded.
+    # Confidence = 1 - 0.5 = 0.5.
+    assert 0.45 < score < 0.55
+
+
+# ── calibrate_from_traces (Phase 7) ─────────────────────────────────────────
+
+
+def test_calibrate_returns_zero_for_missing_dir(tmp_path):
+    from tessellum.dks import calibrate_from_traces
+
+    result = calibrate_from_traces(tmp_path / "missing")
+    assert result.cycles_examined == 0
+    assert result.would_gate_count == 0
+    assert result.suggested_threshold is None
+
+
+def test_calibrate_reports_recorded_false_gates(tmp_path):
+    """A cycle trace with confidence=0.9 AND closed_loop=True is a false gate
+    at threshold 0.5 — the model would have gated when the cycle found an
+    attack."""
+    import json as _json
+
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+
+    # Two cycle traces:
+    # cycle_1: confidence=0.9 + closed_loop=True → false gate at threshold 0.5
+    # cycle_2: confidence=0.3 + closed_loop=False → not gated
+    (runs_dir / "20260101T000000Z_cycle_1.json").write_text(
+        _json.dumps({"confidence_score": 0.9, "closed_loop": True, "cycle_id": "1"})
+    )
+    (runs_dir / "20260101T000000Z_cycle_2.json").write_text(
+        _json.dumps({"confidence_score": 0.3, "closed_loop": False, "cycle_id": "2"})
+    )
+
+    from tessellum.dks import calibrate_from_traces
+
+    result = calibrate_from_traces(runs_dir, current_threshold=0.5)
+    assert result.cycles_examined == 2
+    assert result.would_gate_count == 1  # cycle_1 has 0.9 > 0.5
+    assert result.false_gate_count == 1
+    assert result.false_gate_rate == 1.0
+
+
 def test_runner_records_mixed_gated_and_full_when_threshold_split():
     """Custom threshold separates gated vs full at constant confidence."""
     obs = (

@@ -64,6 +64,12 @@ from tessellum.dks.confidence import (
     DKSConfidenceModel,
     EscalationDecision,
     decide_escalation,
+    # Phase 7 — learned confidence + calibration
+    DEFAULT_RECENCY_HALFLIFE_CYCLES,
+    DEFAULT_TARGET_FALSE_GATE_RATE,
+    CalibratedConfidence,
+    CalibrationResult,
+    calibrate_from_traces,
 )
 from tessellum.dks.persistence import (
     # Phase 5 — warrant persistence
@@ -107,6 +113,12 @@ __all__ = [
     "ConstantConfidence",
     "EscalationDecision",
     "decide_escalation",
+    # Learned confidence + calibration (Phase 7)
+    "DEFAULT_RECENCY_HALFLIFE_CYCLES",
+    "DEFAULT_TARGET_FALSE_GATE_RATE",
+    "CalibratedConfidence",
+    "CalibrationResult",
+    "calibrate_from_traces",
     # Warrant persistence (Phase 5)
     "WarrantRegistry",
     "WarrantHistory",

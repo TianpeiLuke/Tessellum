@@ -91,6 +91,48 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "corpus BBGraph from. Default: ./data/tessellum.db. Ignored "
         "without --include-bb-graph.",
     )
+    # Phase 7 — learned confidence + retrieval-grounded warrants
+    dks.add_argument(
+        "--confidence-model",
+        choices=["constant", "calibrated"],
+        default="constant",
+        help="Confidence model for the gate (Phase 5 + Phase 7). "
+        "`constant` uses ConstantConfidence(--gate-confidence). "
+        "`calibrated` uses CalibratedConfidence reading "
+        "warrant_history.jsonl under --runs-dir for an attack-rate signal.",
+    )
+    dks.add_argument(
+        "--calibrate",
+        action="store_true",
+        help="Calibration mode (Phase 7): scan past per-cycle traces "
+        "under --runs-dir, report the achieved false-gate rate at "
+        "--gate-threshold, and suggest a threshold that hits "
+        "--target-false-gate-rate. Skips the observations run.",
+    )
+    dks.add_argument(
+        "--target-false-gate-rate",
+        type=float,
+        default=None,
+        help="With --calibrate: target false-gate rate (default 0.10). "
+        "Per D2 in plan_dks_expansion: configurable + observable. "
+        "Ignored without --calibrate.",
+    )
+    dks.add_argument(
+        "--retrieval-db",
+        type=Path,
+        default=None,
+        help="With a normal run: build a RetrievalClient against this "
+        "index DB and pass it to each cycle. Argument-generation prompts "
+        "gain a 'Related material from the substrate' block populated by "
+        "hybrid-search hits against the observation summary. Off by default.",
+    )
+    dks.add_argument(
+        "--semantic-disagreement",
+        action="store_true",
+        help="Use one LLM call at step 4 to check whether claims "
+        "substantively disagree, instead of string-compare. Falls back "
+        "to string-compare on parse failure. Off by default.",
+    )
     dks.add_argument(
         "--gate-confidence",
         type=float,
@@ -160,9 +202,13 @@ def run_dks_cli(args: argparse.Namespace) -> int:
     if args.report:
         return _run_dks_report(args)
 
+    # Phase 7 — --calibrate short-circuits to calibration replay.
+    if args.calibrate:
+        return _run_dks_calibrate(args)
+
     if args.observations is None:
         print(
-            "tessellum dks: missing observations file (or pass --report).",
+            "tessellum dks: missing observations file (or pass --report / --calibrate).",
             file=sys.stderr,
         )
         return 2
@@ -341,13 +387,26 @@ def run_dks_cli(args: argparse.Namespace) -> int:
                 return 2
         backend = MockBackend(responses=responses)
 
-    # Phase 5 — confidence gating (opt-in). The `--gate-confidence` flag
-    # wires a ConstantConfidence model that returns the same score for
-    # every observation; useful for testing gating end-to-end without a
-    # learned model. The threshold defaults to
-    # DEFAULT_CONFIDENCE_THRESHOLD when --gate-threshold is omitted.
+    # Phase 5 — confidence gating (opt-in via --gate-confidence
+    # ConstantConfidence). Phase 7 adds --confidence-model=calibrated
+    # to use CalibratedConfidence (reads warrant_history.jsonl under
+    # --runs-dir for an attack-rate signal).
     confidence_model = None
-    if args.gate_confidence is not None:
+    if args.confidence_model == "calibrated":
+        # CalibratedConfidence lives in tessellum.dks; WarrantHistory is
+        # already imported at module level (line 45). Import only the
+        # name not already in module scope to avoid shadowing the
+        # module-level WarrantHistory as a local (Python rebinds the
+        # symbol throughout the function once any inner import binds it).
+        from tessellum.dks import CalibratedConfidence
+
+        calibration_history_path = (
+            args.runs_dir.expanduser().resolve() / "warrant_history.jsonl"
+        )
+        confidence_model = CalibratedConfidence(
+            warrant_history=WarrantHistory(calibration_history_path)
+        )
+    elif args.gate_confidence is not None:
         if not 0.0 <= args.gate_confidence <= 1.0:
             print(
                 f"tessellum dks: --gate-confidence must be in [0.0, 1.0]; "
@@ -357,12 +416,30 @@ def run_dks_cli(args: argparse.Namespace) -> int:
             return 2
         confidence_model = ConstantConfidence(args.gate_confidence)
 
+    # Phase 7 — retrieval-grounded warrants (opt-in via --retrieval-db).
+    retrieval_client = None
+    if args.retrieval_db is not None:
+        from tessellum.dks import RetrievalClient
+
+        try:
+            retrieval_client = RetrievalClient(
+                args.retrieval_db.expanduser().resolve()
+            )
+        except FileNotFoundError as e:
+            print(
+                f"tessellum dks: --retrieval-db unreadable: {e}",
+                file=sys.stderr,
+            )
+            return 2
+
     runner = DKSRunner(
         observations=tuple(observations),
         backend=backend,
         initial_warrants=initial_warrants,
         confidence_model=confidence_model,
         confidence_threshold=args.gate_threshold,
+        retrieval_client=retrieval_client,
+        semantic_disagreement=args.semantic_disagreement,
     )
     result = runner.run()
 
@@ -751,6 +828,88 @@ def _run_dks_report(args: argparse.Namespace) -> int:
         elif isinstance(bb_graph, dict) and bb_graph.get("error"):
             print()
             print(f"  bb graph: error — {bb_graph['error']}")
+
+    return 0
+
+
+# ── --calibrate mode (Phase 7) ─────────────────────────────────────────────
+
+
+def _run_dks_calibrate(args: argparse.Namespace) -> int:
+    """Calibration replay over past per-cycle traces.
+
+    Reads every ``*_cycle_*.json`` under ``--runs-dir``, examines the
+    recorded ``confidence_score`` + ``closed_loop`` fields, and reports
+    how the current ``--gate-threshold`` (or default 0.85) would have
+    behaved. Suggests a threshold that achieves
+    ``--target-false-gate-rate`` (default 0.10 per D2).
+
+    Skips the observations run (no cycles fire during calibration).
+    """
+    from tessellum.dks import (
+        DEFAULT_CONFIDENCE_THRESHOLD,
+        DEFAULT_TARGET_FALSE_GATE_RATE,
+        calibrate_from_traces,
+    )
+
+    runs_dir = args.runs_dir.expanduser().resolve()
+    threshold = (
+        args.gate_threshold
+        if args.gate_threshold is not None
+        else DEFAULT_CONFIDENCE_THRESHOLD
+    )
+    target_rate = (
+        args.target_false_gate_rate
+        if args.target_false_gate_rate is not None
+        else DEFAULT_TARGET_FALSE_GATE_RATE
+    )
+
+    result = calibrate_from_traces(
+        runs_dir,
+        current_threshold=threshold,
+        target_false_gate_rate=target_rate,
+    )
+
+    payload = {
+        "runs_dir": str(runs_dir),
+        "cycles_examined": result.cycles_examined,
+        "current_threshold": result.current_threshold,
+        "target_false_gate_rate": result.target_false_gate_rate,
+        "would_gate_count": result.would_gate_count,
+        "false_gate_count": result.false_gate_count,
+        "false_gate_rate": result.false_gate_rate,
+        "suggested_threshold": result.suggested_threshold,
+    }
+
+    if args.output_format == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"dks --calibrate  ({result.cycles_examined} cycles examined under {runs_dir})")
+        if result.cycles_examined == 0:
+            print(
+                "  No per-cycle traces with confidence_score found. "
+                "Run `tessellum dks <obs.jsonl>` with a confidence model "
+                "(e.g. --confidence-model calibrated) first."
+            )
+        else:
+            print(
+                f"  threshold={result.current_threshold}: "
+                f"{result.would_gate_count} would-gate, "
+                f"{result.false_gate_count} false-gate "
+                f"({result.false_gate_rate * 100:.1f}% — "
+                f"target {result.target_false_gate_rate * 100:.1f}%)"
+            )
+            if result.suggested_threshold is not None:
+                print(
+                    f"  suggested threshold to hit target: "
+                    f"{result.suggested_threshold:.4f}"
+                )
+            else:
+                print(
+                    "  No threshold in [0, 1] hits the target with positive "
+                    "would-gate count. Try lowering --target-false-gate-rate "
+                    "or accumulating more diverse confidence-score data."
+                )
 
     return 0
 

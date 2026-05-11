@@ -16,6 +16,136 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.49] — 2026-05-10
+
+### Added — Phase 7 of plan_dks_expansion: learned confidence + retrieval-grounded warrants
+
+Operationalises FZ 2a2's **Level 2 learning** — the FSM's transition
+preferences become data-driven instead of constant. Replaces
+`ConstantConfidence` with a model that reads `WarrantHistory` for a
+recency-weighted attack-rate signal, grounds argument-generation in
+retrieved corpus context, and adds optional LLM-based disagreement
+detection at step 4.
+
+Per D2 (false-gate rate target is configurable + observable):
+calibration is first-class via a new `--calibrate` mode that reports
+the achieved rate from past traces.
+
+#### `tessellum.dks.confidence` — Phase 7 additions
+
+- **`CalibratedConfidence`** — frozen dataclass implementing
+  `DKSConfidenceModel`. Reads a `WarrantHistory` log, computes the
+  recency-weighted fraction of historical revisions that supersede a
+  prior warrant (i.e. attacks), and returns `1.0 - attack_rate` as the
+  confidence score. Empty history → neutral `baseline=0.5`. The
+  `superseded` tombstone events are skipped to avoid double-counting
+  (each attack is one `revised` + one `superseded` pair).
+- **`CalibrationResult`** — frozen dataclass with cycles_examined,
+  would_gate_count, false_gate_count, false_gate_rate,
+  current_threshold, target_false_gate_rate, suggested_threshold.
+- **`calibrate_from_traces(runs_dir, current_threshold, target_false_gate_rate)`**
+  — scans `runs/dks/*_cycle_*.json` for confidence_score +
+  closed_loop, computes the false-gate rate at the current threshold,
+  and runs a 1-D search over candidate thresholds for the smallest one
+  that achieves the target rate.
+- **Constants**: `DEFAULT_TARGET_FALSE_GATE_RATE = 0.10` (per D2);
+  `DEFAULT_RECENCY_HALFLIFE_CYCLES = 50`.
+
+#### `tessellum.dks.core.DKSCycle` — Phase 7 additions
+
+Two new constructor kwargs (back-compat: both default to off):
+
+- **`retrieval_client: RetrievalClient | None = None`** — when wired,
+  `_step_argument`'s prompt gains a "Related material from the
+  substrate" block populated by
+  `retrieval_client.search(observation.summary, k=5)`. Warrants flow
+  through unchanged; retrieval *augments* the prompt context. Errors
+  in retrieval are swallowed (best-effort enrichment, not a hard
+  prerequisite).
+- **`semantic_disagreement: bool = False`** — when True,
+  `_step_disagreement` does one LLM call asking "are these claims
+  substantively different?" instead of string-compare. Falls back to
+  string-compare on parse failure (preserves Phase 1's local-only
+  fallback).
+
+`DKSRunner` forwards both kwargs to every cycle.
+
+#### `tessellum dks` CLI — new surfaces
+
+- **`--calibrate`** — calibration replay mode. Reads past per-cycle
+  traces under `--runs-dir`, reports false-gate rate at the current
+  threshold (`--gate-threshold`, default 0.85), suggests a threshold
+  that hits `--target-false-gate-rate` (default 0.10). Skips the
+  observations run (positional now optional in `--calibrate` mode too).
+- **`--target-false-gate-rate <float>`** — D2's empirical default
+  (0.10) is the lean; configurable for cost-sensitive (lower) or
+  quality-sensitive (higher) deployments.
+- **`--confidence-model {constant,calibrated}`** — default `constant`
+  (preserves v0.0.48 behaviour). `calibrated` wires
+  `CalibratedConfidence(WarrantHistory(runs_dir / "warrant_history.jsonl"))`.
+- **`--retrieval-db <path>`** — builds a `RetrievalClient` and passes
+  it to each cycle. Missing DB → exit 2.
+- **`--semantic-disagreement`** — boolean flag forwarded to
+  `DKSCycle.semantic_disagreement`.
+
+`tessellum dks --help` updated. Banner unchanged.
+
+#### Tests
+
+- `tests/smoke/test_dks_confidence.py` +7: empty-history baseline,
+  none-history baseline, all-added → confidence 1.0, all-revised →
+  confidence 0.0, superseded-not-double-counted, calibrate empty dir,
+  calibrate reports false-gate.
+- `tests/smoke/test_dks_phase7_cycle.py` (8 new tests): retrieval
+  client absent → back-compat, retrieval client present → substrate
+  context injected, empty retrieval → block omitted; semantic
+  disagreement off by default, on calls LLM, overrides string-compare,
+  falls back on parse failure.
+- `tests/cli/test_dks_calibrate_cli.py` (8 new tests): `--calibrate`
+  empty dir, reports false-gate rate, custom target rate; calibrated
+  model writes confidence score = 0.5 (empty history baseline);
+  `--retrieval-db` missing → exit 2, present → runs clean;
+  `--semantic-disagreement` flag forwards; `--calibrate` skips obs
+  positional.
+
+Full suite: 699 passed, 1 skipped (was 677 / +22 new).
+
+### Note on shadowing fix
+
+The CLI's `--confidence-model=calibrated` branch initially imported
+`WarrantHistory` locally inside the conditional, which (per Python
+scoping rules) rebinds `WarrantHistory` to a function-local through
+the entire `run_dks_cli` body — making the module-level import
+shadowed and the trace-write path raise `UnboundLocalError` when the
+conditional didn't execute. Fix: only import `CalibratedConfidence`
+in the inner scope; rely on the module-level `WarrantHistory` import.
+
+### What didn't land
+
+Per the Phase 7 scope (deliberate carve-outs):
+
+- The retrieval-grounding feature does **not** rank or filter warrants
+  themselves — warrants currently arrive at `DKSCycle` without FZ
+  associations, so re-ranking by retrieval relevance requires a
+  warrant→FZ mapping that Phase 5's `WarrantRegistry` provides but
+  this version doesn't thread through. Deferred until the dispatcher
+  refactor (Phase 8) cleans up the warrant flow.
+- The semantic-disagreement signal is `bool` only (disagree / not).
+  Multi-class disagreement (which Toulmin component is broken) lives
+  in step 5's `_step_counter`; step 4 stays minimal.
+- `CalibratedConfidence` combines just the attack-rate signal.
+  Retrieval-similarity and baseline-rate signals are documented in the
+  plan but deferred to v0.2+ once telemetry shows the simple signal
+  needs more sources.
+
+### Next
+
+Phase 8 — dispatcher refactor (the FZ 2a2 deferred work). Replaces
+the 7 hand-coded `_step_*` methods with `DKSStateMachine.walk()` over
+`BB_SCHEMA`. Subclass-per-BBType dataclasses (D1) become the data shape.
+
+---
+
 ## [0.0.48] — 2026-05-10
 
 ### Added — Phase 6 of plan_dks_expansion: validator + telemetry generalisation
