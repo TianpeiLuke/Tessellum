@@ -880,17 +880,16 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
             )
             return 2
         if not judge_responses:
-            # Default canned response gives every dim a score of 4 — useful
-            # as a sanity check that the rubric pipeline runs end-to-end.
+            # Default canned response gives every default dim a score of 4 —
+            # useful as a sanity check that the rubric pipeline runs
+            # end-to-end. Driven by DEFAULT_RUBRIC_DIMENSIONS so adding a
+            # new dim (e.g. `epistemic_congruence` at v0.0.44) does not
+            # require editing the CLI in lockstep.
+            from tessellum.composer import DEFAULT_RUBRIC_DIMENSIONS
+
             judge_responses = {
                 "Rubric dimensions to score": json.dumps(
-                    {
-                        "relevance": {"score": 4, "justification": "ok"},
-                        "completeness": {"score": 4, "justification": "ok"},
-                        "accuracy": {"score": 4, "justification": "ok"},
-                        "clarity": {"score": 4, "justification": "ok"},
-                        "structural_integrity": {"score": 4, "justification": "ok"},
-                    }
+                    {d: {"score": 4, "justification": "ok"} for d in DEFAULT_RUBRIC_DIMENSIONS}
                 )
             }
         judge = LLMJudge(MockBackend(responses=judge_responses))

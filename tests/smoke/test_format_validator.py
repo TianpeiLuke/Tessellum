@@ -166,6 +166,134 @@ def test_note_second_category_field_is_forbidden():
     assert any(i.severity is Severity.ERROR for i in issues)
 
 
+# ── TESS-004 — counter_argument must link to argument (Phase 4) ─────────────
+
+
+_COUNTER_FM_ACTIVE = textwrap.dedent(
+    """
+    ---
+    tags:
+      - resource
+      - analysis
+      - dks
+    keywords:
+      - counter
+      - argument
+      - dialectic
+    topics:
+      - Topic A
+      - Topic B
+    language: markdown
+    date of note: 2026-05-10
+    status: active
+    building_block: counter_argument
+    folgezettel: "5a"
+    folgezettel_parent: "5"
+    ---
+    """
+).strip()
+
+
+_ARGUMENT_FM = textwrap.dedent(
+    """
+    ---
+    tags:
+      - resource
+      - analysis
+    keywords:
+      - argument
+      - alpha
+      - beta
+    topics:
+      - Topic A
+      - Topic B
+    language: markdown
+    date of note: 2026-05-10
+    status: active
+    building_block: argument
+    folgezettel: "5"
+    folgezettel_parent: ""
+    ---
+
+    # The Attacked Argument
+    """
+).strip()
+
+
+def _write_pair(tmp_path, counter_body: str, *, counter_status: str = "active"):
+    """Returns the counter note's path after writing both files."""
+    arg = tmp_path / "argument.md"
+    arg.write_text(_ARGUMENT_FM + "\n")
+
+    fm = _COUNTER_FM_ACTIVE.replace(f"status: active", f"status: {counter_status}")
+    counter = tmp_path / "counter.md"
+    counter.write_text(fm + "\n\n# Counter\n\n" + counter_body + "\n")
+    return counter
+
+
+def test_tess_004_counter_argument_with_argument_link_is_ok(tmp_path):
+    """Counter that links to a real BB=argument note: no TESS-004."""
+    body = "Attacks the argument: [the argument](argument.md)"
+    counter_path = _write_pair(tmp_path, body)
+    issues = [i for i in validate(counter_path) if i.rule_id == "TESS-004"]
+    assert issues == []
+
+
+def test_tess_004_counter_argument_without_any_link_is_error(tmp_path):
+    """Counter with NO body links and status=active → TESS-004 error."""
+    body = "This counter argues against the attacked claim but provides no link."
+    counter_path = _write_pair(tmp_path, body)
+    issues = [i for i in validate(counter_path) if i.rule_id == "TESS-004"]
+    assert len(issues) == 1
+    assert issues[0].severity is Severity.ERROR
+
+
+def test_tess_004_counter_argument_linking_to_non_argument_is_error(tmp_path):
+    """Counter that links to a concept (not BB=argument) → TESS-004 error."""
+    concept = tmp_path / "concept.md"
+    concept.write_text(
+        _ARGUMENT_FM.replace("building_block: argument", "building_block: concept") + "\n"
+    )
+    body = "Links to a concept instead: [some concept](concept.md)"
+    counter_path = _write_pair(tmp_path, body)
+    issues = [i for i in validate(counter_path) if i.rule_id == "TESS-004"]
+    assert len(issues) == 1
+    assert issues[0].severity is Severity.ERROR
+
+
+def test_tess_004_template_status_is_exempt(tmp_path):
+    """status=template skips TESS-004 — templates can have placeholder links."""
+    body = "Placeholder link: [argument](placeholder_argument.md)"
+    counter_path = _write_pair(tmp_path, body, counter_status="template")
+    issues = [i for i in validate(counter_path) if i.rule_id == "TESS-004"]
+    assert issues == []
+
+
+def test_tess_004_draft_status_is_exempt(tmp_path):
+    """status=draft skips TESS-004 — work in progress."""
+    body = "No link yet."
+    counter_path = _write_pair(tmp_path, body, counter_status="draft")
+    issues = [i for i in validate(counter_path) if i.rule_id == "TESS-004"]
+    assert issues == []
+
+
+def test_tess_004_non_counter_argument_notes_unaffected(tmp_path):
+    """A note that is NOT a counter_argument never triggers TESS-004."""
+    arg = tmp_path / "arg.md"
+    arg.write_text(_ARGUMENT_FM + "\n\nBody with no link to any argument.\n")
+    issues = [i for i in validate(arg) if i.rule_id == "TESS-004"]
+    assert issues == []
+
+
+def test_tess_004_skips_when_path_is_unknown():
+    """In-memory note (parse_text) has note.path=None → TESS-004 silently skipped."""
+    fm_text = "---\n" + _COUNTER_FM_ACTIVE.strip("-\n") + "\n---\n\nBody with no links.\n"
+    note = parse_text(fm_text)
+    assert note.path is None
+    issues = [i for i in validate(note) if i.rule_id == "TESS-004"]
+    assert issues == []
+
+
 def test_validate_accepts_path(tmp_path):
     other = tmp_path / "other.md"
     other.write_text("text\n", encoding="utf-8")  # exists for LINK-003

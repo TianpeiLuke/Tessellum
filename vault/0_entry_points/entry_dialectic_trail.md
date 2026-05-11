@@ -37,11 +37,12 @@ The trail is short by design — two notes. The first narrates the six-step desc
 
 ```
 2     How DKS Was Reasoned Into Shape  (six-step descent)
-└── 2a  ★ DKS Design Synthesis  (7-component pattern + 3 formal foundations + 2 timescales)
-    └── 2a1   DKS × Folgezettel — One Mechanism, Two Axes
+├── 2a  ★ DKS Design Synthesis  (7-component pattern + 3 formal foundations + 2 timescales)
+│   └── 2a1   DKS × Folgezettel — One Mechanism, Two Axes
+└── 2b   DKS Runtime Integration — How the Closed Loop Wires Into the Rest of Tessellum
 ```
 
-Three nodes, linear. Trail roots at FZ 2 with no parent (`folgezettel_parent: ""`); 2a descends from 2; 2a1 sharpens the synthesis by exposing DKS and FZ as the same mechanism viewed from different axes.
+Four nodes, two-branch fork at FZ 2. 2a + 2a1 are the design synthesis branch (*what is DKS?*); 2b is the runtime-integration branch (*what does the live runtime touch?*), landing after Phase 4 wired DKS through Composer / Retrieval / Format / Eval.
 
 ## FZ Table
 
@@ -49,7 +50,8 @@ Three nodes, linear. Trail roots at FZ 2 with no parent (`folgezettel_parent: ""
 |-------|------|----|------|
 | **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | argument | **Narrative** — six-step descent: practical question → three-layer framing (intermediate) → empirical anchor (domain instance with closed loop) → formal foundations (Dung + Toulmin + IBIS) → substrate-protocol separation counter → six completing innovations. |
 | **2a** | [`thought_dks_design_synthesis`](../resources/analysis_thoughts/thought_dks_design_synthesis.md) | argument | **★ Synthesis** — the 7-component pattern (one per BB-to-BB epistemic edge), three formal foundations (Dung AF + Toulmin warrant + IBIS deliberation), four design commitments (queryable + mutable substrate, warrant-level learning, dialectical adequacy termination, confidence-gated escalation), two timescales (intra-record minutes + inter-cycle weeks). |
-| **2a1** | [`thought_dks_fz_integration`](../resources/analysis_thoughts/thought_dks_fz_integration.md) | argument | **Sharpening** — DKS and Folgezettel are the same mechanism viewed from two axes (spatial = FZ, temporal = DKS). Every cycle deposits a 5-node FZ subtree; multi-cycle runs choose between *start fresh / extend leaf / branch interior*. TESS-004 becomes structurally enforceable through `folgezettel_parent`. The integration turns FZ from a hand-authored convention into a machine-produced invariant. |
+| **2a1** | [`thought_dks_fz_integration`](../resources/analysis_thoughts/thought_dks_fz_integration.md) | argument | **Sharpening** — DKS and Folgezettel are the same mechanism viewed from two axes (spatial = FZ, temporal = DKS). Every cycle deposits a 6-node FZ subtree; multi-cycle runs choose between *start fresh / extend leaf / branch interior*. TESS-004 becomes structurally enforceable through `folgezettel_parent`. The integration turns FZ from a hand-authored convention into a machine-produced invariant. |
+| **2b** | [`thought_dks_runtime_integration`](../resources/analysis_thoughts/thought_dks_runtime_integration.md) | argument | **Runtime Integration** — what the live runtime touches: Composer (dispatcher), Retrieval (P-side RetrievalClient — R-Cross productive half), Format (TESS-004 enforces counter→argument link), Eval (`epistemic_congruence` 6th rubric dim), Capture (no new flavor), Indexer (read-only via D). R-Cross both halves now enforced; R-P moves from "held by absence" to "actively enforced". |
 
 ## Summary of dialectic progress
 
@@ -92,13 +94,15 @@ Five framings the descent considered and explicitly rejected:
 
 ## What ships in Tessellum today
 
-DKS is **defined** in the seed vault — as a [term note](../resources/term_dictionary/term_dialectic_knowledge_system.md), as this trail, and as a row in [`entry_building_block_index`](entry_building_block_index.md). The 7-component **runtime** is the substantial v0.2+ delta. What v0.1 ships is the foundation:
+DKS is **defined** in the seed vault — as a [term note](../resources/term_dictionary/term_dialectic_knowledge_system.md), as this trail, and as a row in [`entry_building_block_index`](entry_building_block_index.md). As of v0.0.44 (DKS Phase 4) the 7-component **runtime** is live: pure-Python core API (`tessellum.dks`), composer skill (`skill_tessellum_dks_cycle` canonical + sidecar), multi-cycle CLI (`tessellum dks <observations.jsonl>`), P-side retrieval client (`tessellum.dks.RetrievalClient`), TESS-004 validator rule, and `epistemic_congruence` 6th LLMJudge dim.
+
+What still ships at v0.1 as the foundation:
 
 - the typed substrate (Building Block ontology + format spec + Folgezettel mechanism),
 - the read/write split (System P ⊥ System D),
 - the Composer runtime that can dispatch the 7 components when a user wires them.
 
-This trail is the architectural commitment that constrains how the runtime gets built.
+This trail is the architectural commitment that constrains how the runtime gets built. FZ 2b documents how the runtime actually wires together post-Phase-4.
 
 ## Reading order
 
@@ -124,4 +128,4 @@ This trail is the architectural commitment that constrains how the runtime gets 
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Dialectic trail (FZ 2) — 3 nodes, depth 3 (linear)
+**Status**: Active — Dialectic trail (FZ 2) — 4 nodes, depth 3 (two-branch fork at FZ 2 after Phase 4 lands FZ 2b)

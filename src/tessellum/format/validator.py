@@ -46,6 +46,8 @@ _DATE_RE = re.compile(DATE_FORMAT_REGEX)
 _TAG_RE = re.compile(TAG_FORMAT_REGEX)
 _WIKI_LINK_RE = re.compile(r"\[\[.*?\]\]")
 _MD_LINK_RE = re.compile(r"\[[^\]]+\]\([^)]+\)")
+_FENCED_CODE_RE = re.compile(r"```[^\n]*\n.*?```", re.DOTALL)
+_BODY_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
 def validate(target: Path | str | Note) -> list[Issue]:
@@ -98,6 +100,7 @@ def validate(target: Path | str | Note) -> list[Issue]:
     issues.extend(_check_forbidden(fm))
     issues.extend(_check_yaml_links(note.raw_frontmatter))
     issues.extend(check_links(note))
+    issues.extend(_check_counter_argument_link(note))
 
     return issues
 
@@ -277,6 +280,89 @@ def _check_forbidden(fm: dict) -> list[Issue]:
                 msg = "field is forbidden by the spec"
             issues.append(Issue(Severity.ERROR, "TESS-003", forbidden, msg))
     return issues
+
+
+def _check_counter_argument_link(note: Note) -> list[Issue]:
+    """TESS-004 — a ``counter_argument`` note must link to the argument
+    it attacks.
+
+    DKS step 5 emits a ``counter_argument`` whose body should name the
+    attacked argument by FZ and link to it. Without that link the
+    typed-edge contract from FZ 1a1b1 / FZ 2a1 isn't structurally
+    enforceable — readers can't tell *which* argument the counter is
+    against. R-P (Schema ⊥ Runtime co-evolution) requires that the
+    BB-to-BB edges declared in the schema be observable in the corpus.
+
+    Rule: for any note with ``building_block: counter_argument`` AND
+    ``status: active``, scan the body for at least one internal ``.md``
+    link whose target, resolved on disk, has ``building_block:
+    argument`` in its frontmatter. If no such link is found, emit a
+    TESS-004 ERROR.
+
+    Authoring-state exemption: when ``status`` is anything other than
+    ``active`` (``template`` / ``draft`` / ``stub`` / ``archived``),
+    the rule is skipped — templates exist to be copied and filled, and
+    drafts are still in progress. Same logic as the plan's open
+    question at FZ Phase-4 (plans/plan_dks_implementation.md): error
+    only once the note is promoted to ``active``.
+
+    Note: this rule does NOT require the link target's FZ to match the
+    counter's ``folgezettel_parent``. The validator runs over a single
+    note's frontmatter + body; it does not have an index. The
+    *stronger* invariant ("counter's folgezettel_parent resolves to a
+    BB=argument note") is enforced by the indexer + DKS runtime at
+    write time; this rule is the static, single-note backstop.
+    """
+    if note.frontmatter.get("building_block") != "counter_argument":
+        return []
+    if note.frontmatter.get("status") != "active":
+        return []
+    if note.path is None:
+        return []
+
+    body_no_code = _FENCED_CODE_RE.sub("", note.body)
+    found_argument_link = False
+
+    for m in _BODY_MD_LINK_RE.finditer(body_no_code):
+        target = m.group(2).strip()
+        if not target.endswith(".md") or target.startswith(("http://", "https://", "mailto:", "/")):
+            continue
+        path_part = target.split("#", 1)[0]
+        if not path_part:
+            continue
+
+        try:
+            resolved = (note.path.parent / path_part).resolve()
+        except (OSError, ValueError):
+            continue
+        if not resolved.is_file():
+            continue
+
+        # Peek at the target's frontmatter cheaply. Parsing the full
+        # note is OK — parser is light (PyYAML on the frontmatter slice).
+        try:
+            target_note = parse_note(resolved)
+        except Exception:
+            # Malformed target — surfaced by LINK-003 / target-side
+            # validation, not by TESS-004. Don't double-report.
+            continue
+        if target_note.frontmatter.get("building_block") == "argument":
+            found_argument_link = True
+            break
+
+    if found_argument_link:
+        return []
+
+    return [
+        Issue(
+            Severity.ERROR,
+            "TESS-004",
+            "links",
+            "counter_argument note must link to at least one argument note "
+            "in its body (the attacked argument); none of its internal "
+            "markdown links resolve to a building_block: argument note",
+        )
+    ]
 
 
 def _check_yaml_links(raw_frontmatter: str) -> list[Issue]:

@@ -52,6 +52,11 @@ from tessellum.dks.core import (
     # Helpers
     aggregate_warrant_changes,
 )
+from tessellum.dks.retrieval_client import (
+    # P-side R-Cross client (Phase 4)
+    RetrievalClient,
+    RetrievalHit,
+)
 
 
 __all__ = [
@@ -78,4 +83,7 @@ __all__ = [
     "DKSRunner",
     # Helpers
     "aggregate_warrant_changes",
+    # P-side retrieval (Phase 4)
+    "RetrievalClient",
+    "RetrievalHit",
 ]
