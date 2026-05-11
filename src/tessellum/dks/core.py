@@ -48,8 +48,9 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import ClassVar, Literal
 
+from tessellum.bb.types import BBType
 from tessellum.composer.llm import LLMBackend, LLMRequest
 
 # ── Type aliases ──────────────────────────────────────────────────────────
@@ -88,7 +89,11 @@ class DKSObservation:
     """Step 1 — what happened.
 
     Becomes an ``empirical_observation`` note at the cycle root FZ.
+    Per FZ 2a2, this dataclass is a typed view over a ``BBNode`` of
+    type ``BBType.EMPIRICAL_OBSERVATION``.
     """
+
+    bb_type: ClassVar[BBType] = BBType.EMPIRICAL_OBSERVATION
 
     folgezettel: str
     summary: str
@@ -116,8 +121,11 @@ class DKSArgument:
     """Step 2 or 3 — a typed claim grounded in a warrant.
 
     Becomes an ``argument`` note at FZ ``<cycle_root>.a`` or
-    ``<cycle_root>.b``.
+    ``<cycle_root>.b``. Typed view over a ``BBNode`` of type
+    ``BBType.ARGUMENT``.
     """
+
+    bb_type: ClassVar[BBType] = BBType.ARGUMENT
 
     folgezettel: str
     warrant: DKSWarrant
@@ -145,8 +153,11 @@ class DKSCounterArgument:
 
     Becomes a ``counter_argument`` note at FZ ``<attacked_fz>.a``. The
     ``folgezettel_parent`` field of that note equals ``attacked_fz``,
-    which is what TESS-004 (FZ-integrated) checks.
+    which is what TESS-004 (FZ-integrated) checks. Typed view over a
+    ``BBNode`` of type ``BBType.COUNTER_ARGUMENT``.
     """
+
+    bb_type: ClassVar[BBType] = BBType.COUNTER_ARGUMENT
 
     folgezettel: str
     attacked_fz: str
@@ -162,7 +173,14 @@ class DKSPattern:
 
     Becomes a ``model`` note at FZ ``<counter_fz>.a``. ``observed`` is the
     tuple of contradict FZs (or descriptions) that feed this pattern.
+    Typed view over a ``BBNode`` of type ``BBType.MODEL``. The
+    realised corpus edge ``COUNTER_ARGUMENT → MODEL`` instantiates the
+    schema edge ``pattern_of_failure`` registered in
+    ``BB_SCHEMA_DKS_EXTENSIONS`` (the Phase-4-class extension to the
+    original 10-edge schema from FZ 1).
     """
+
+    bb_type: ClassVar[BBType] = BBType.MODEL
 
     folgezettel: str
     description: str

@@ -24,18 +24,11 @@ VALID_PARA_BUCKETS: frozenset[str] = frozenset(
     }
 )
 
-VALID_BUILDING_BLOCKS: frozenset[str] = frozenset(
-    {
-        "concept",
-        "procedure",
-        "model",
-        "argument",
-        "counter_argument",
-        "hypothesis",
-        "empirical_observation",
-        "navigation",
-    }
-)
+# Derived from `tessellum.bb.BBType` (v0.0.47+): BBType is the single
+# source of truth for the 8 BB types. Keep the local `frozenset[str]`
+# alias for back-compat with v0.0.46 consumers that import this name
+# directly.
+from tessellum.bb.types import VALID_BB_TYPE_VALUES as VALID_BUILDING_BLOCKS  # noqa: E402, F401
 
 VALID_STATUSES: frozenset[str] = frozenset(
     {

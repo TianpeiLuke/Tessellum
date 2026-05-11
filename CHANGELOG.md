@@ -16,6 +16,118 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.47] — 2026-05-10
+
+### Added — `tessellum.bb`: BB ontology as a typed module (FSM refactor, part 1)
+
+Implements the data structure FZ 1b proposed and FZ 2a2 formalised:
+the BB ontology becomes a first-class top-level module with the 8
+types + schema graph as the source of truth.
+
+The DKS dispatcher refactor (replacing the 7 hand-coded step methods
+with `DKSStateMachine.walk()`) is *not* in this version — per FZ 2a2's
+explicit deferral reasoning, that waits for a forcing function (the
+second walker, or meta-DKS). What this version ships is the *data
+structure under the runtime*; the runtime's behaviour is unchanged.
+
+#### `src/tessellum/bb/types.py` — schema graph
+
+- **`BBType` (StrEnum, 8 values)** — the canonical BB enum. Replaces
+  `tessellum.format.frontmatter_spec.VALID_BUILDING_BLOCKS` as the
+  source of truth; the latter is now a derived `frozenset[str]` alias
+  for back-compat.
+- **`EpistemicEdgeType` (frozen dataclass)** — `(source, target, label)`
+  triple. Each instance is a *type* of transition, not an instance.
+- **`BB_SCHEMA_EPISTEMIC` (8 edges)** — the BB→BB epistemic edges from
+  FZ 1: naming / structuring / predicting / codifying / testing /
+  challenging / motivates_new / execution_data. These form the
+  dialectic cycle DKS walks.
+- **`BB_SCHEMA_NAVIGATION` (7 edges)** — NAV→X indexing edges, one per
+  non-NAV type. FZ 1's narrative collapses these into a single
+  "indexes all" family; the implementation expands them so the FSM
+  type-checks NAV transitions like any other.
+- **`BB_SCHEMA_DKS_EXTENSIONS` (1 edge)** — `counter_argument → model`
+  (`pattern_of_failure`). DKS step 6 walks this edge but FZ 1's
+  10-edge schema doesn't declare it; FZ 1b + FZ 2a2 flagged the gap
+  and this is the canonical resolution. R-P productive-half edit
+  driven by the runtime.
+- **`BB_SCHEMA` (16 edges total)** — concatenation of the above.
+- **Lookups**: `find_edge_type(source, target, label=None)`,
+  `edges_from(source)`, `edges_to(target)`, `is_valid_transition(source, target)`.
+
+#### `src/tessellum/bb/graph.py` — corpus graph view
+
+- **`BBNode`** (frozen dataclass) — a typed corpus note: `note_id`,
+  `note_name`, `bb_type: BBType`, optional `folgezettel`,
+  `folgezettel_parent`, `note_status`.
+- **`BBEdge`** (frozen dataclass) — a realised relation: source/target
+  ids, the schema `EpistemicEdgeType` it instantiates (or `None` if
+  untyped), `provenance` (`"body_link" | "folgezettel_parent" |
+  "contradicts" | "schema"`).
+- **`BBGraph`** — a typed view over a set of nodes + edges, with:
+  - `BBGraph.schema()` — synthetic schema graph (8 nodes + 16 edges)
+  - `BBGraph.from_db(db_path)` — loads the corpus graph from a built
+    unified index DB; surfaces body-link + folgezettel-parent edges,
+    type-checks each against the schema (untyped edges retained with
+    `edge_type=None`)
+  - `out_edges` / `in_edges` / `nodes_of_type` / `node` lookups
+  - `untyped_edges()` — corpus edges not matching any schema entry
+    (Phase-4-class extension candidates or validator-flag targets)
+  - `edges_by_type()` — dict of `label → count`, useful for telemetry
+
+#### `tessellum.indexer.db.Database` — new `all_links()` method
+
+Returns every `LinkRow` in the index. Used by `BBGraph.from_db()` to
+materialise the corpus edges; complements the existing
+`links_from(note_id)` and `links_to(note_id)` for full-corpus walkers.
+
+#### DKS dataclass annotations
+
+Four DKS component dataclasses gain a `bb_type: ClassVar[BBType]`
+pointing at the BB type they produce:
+
+| Dataclass | `.bb_type` |
+|---|---|
+| `DKSObservation` | `BBType.EMPIRICAL_OBSERVATION` |
+| `DKSArgument` | `BBType.ARGUMENT` |
+| `DKSCounterArgument` | `BBType.COUNTER_ARGUMENT` |
+| `DKSPattern` | `BBType.MODEL` |
+
+`DKSWarrant` (sub-structure, not a BB-typed node), `DKSContradicts`
+(an edge, not a node), and `DKSRuleRevision` (whose BB is procedure
+**or** concept, decided at materialisation) are intentionally unannotated.
+
+#### `tessellum.format.frontmatter_spec.VALID_BUILDING_BLOCKS`
+
+Now an import from `tessellum.bb.types.VALID_BB_TYPE_VALUES` rather
+than a hand-coded frozenset. Single source of truth: change `BBType`
+to change every consumer at once. No public-API break.
+
+### Tests
+
+- `tests/smoke/test_bb_types.py` (16 tests) — BBType cardinality + exact
+  values; BB_SCHEMA composition (8 + 7 + 1 = 16); FZ 1 narrative match;
+  CTR→MOD extension confirmed; lookup helpers; `VALID_BUILDING_BLOCKS`
+  alignment.
+- `tests/smoke/test_bb_graph.py` (14 tests) — schema-graph builder;
+  corpus-graph from_db loader; body-link + folgezettel-parent edge
+  surfacing; type-checking against schema; CTR→MOD extension matches
+  a realised corpus edge; untyped-edge detection; `edges_by_type`
+  telemetry; node lookup by id; missing-DB raises.
+
+Full suite: 657 passed, 1 skipped (was 627 / +30 new).
+
+### Why this lands as v0.0.47 (not a major-version)
+
+Tessellum is pre-v0.1 alpha. The change is *additive*: new module,
+new dataclass ClassVars, derived alias for the legacy
+`VALID_BUILDING_BLOCKS` frozenset. Existing imports of
+`from tessellum.format import VALID_BUILDING_BLOCKS` continue to work.
+The DKS runtime is unchanged (per FZ 2a2's deferral); only the
+underlying ontology gains a typed surface.
+
+---
+
 ## [0.0.46] — 2026-05-10
 
 ### Added — seed vault: FZ 1b + FZ 2a2 (graph + FSM design lens)
