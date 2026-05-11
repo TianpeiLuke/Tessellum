@@ -29,7 +29,7 @@ mutates the substrate.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Iterator
 
@@ -44,26 +44,92 @@ from tessellum.bb.types import (
 # ── BBNode + BBEdge — corpus instance dataclasses ─────────────────────────
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class BBNode:
     """One BB-typed note in the corpus.
 
-    A thin view on the unified-index ``notes`` table. ``bb_type`` is the
-    parsed enum form of the ``building_block:`` YAML field; ``None`` is
-    impossible here (corpus nodes without a valid bb_type are filtered
-    out at construction time).
+    Per design decision D1 (`plan_dks_expansion`), BBNode is the *base*
+    of a subclass hierarchy: one frozen dataclass per :class:`BBType`,
+    each fixing ``bb_type`` via ``field(default=..., init=False)``. This
+    keeps the discriminator out of every constructor call while
+    preserving static type checking — callers write
+    ``ArgumentNode(note_id=..., warrant=...)`` and ``bb_type`` is
+    populated automatically.
 
     Schema-graph synthetic nodes (one per BBType, produced by
-    :meth:`BBGraph.schema`) have ``note_id == bb_type.value`` and the
-    rest of the fields are placeholders.
+    :meth:`BBGraph.schema`) use ``BBNode`` directly with explicit
+    ``bb_type``; they're not "real" corpus instances and don't need
+    the type-specific subclass machinery.
     """
 
-    note_id: str
-    note_name: str
-    bb_type: BBType
+    note_id: str = ""
+    note_name: str = ""
+    bb_type: BBType = BBType.NAVIGATION  # base default; subclasses override
     folgezettel: str | None = None
     folgezettel_parent: str | None = None
     note_status: str | None = None
+
+
+# Subclass per BBType — D1 resolution. Each fixes bb_type via
+# field(default=X, init=False), so callers don't pass it and the
+# discriminator is statically typed by the class.
+
+
+@dataclass(frozen=True, kw_only=True)
+class EmpiricalObservationNode(BBNode):
+    bb_type: BBType = field(default=BBType.EMPIRICAL_OBSERVATION, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ConceptNode(BBNode):
+    bb_type: BBType = field(default=BBType.CONCEPT, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ModelNode(BBNode):
+    bb_type: BBType = field(default=BBType.MODEL, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class HypothesisNode(BBNode):
+    bb_type: BBType = field(default=BBType.HYPOTHESIS, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ArgumentNode(BBNode):
+    bb_type: BBType = field(default=BBType.ARGUMENT, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class CounterArgumentNode(BBNode):
+    bb_type: BBType = field(default=BBType.COUNTER_ARGUMENT, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProcedureNode(BBNode):
+    bb_type: BBType = field(default=BBType.PROCEDURE, init=False)
+
+
+@dataclass(frozen=True, kw_only=True)
+class NavigationNode(BBNode):
+    bb_type: BBType = field(default=BBType.NAVIGATION, init=False)
+
+
+_NODE_CLASS_BY_BB_TYPE: dict[BBType, type[BBNode]] = {
+    BBType.EMPIRICAL_OBSERVATION: EmpiricalObservationNode,
+    BBType.CONCEPT: ConceptNode,
+    BBType.MODEL: ModelNode,
+    BBType.HYPOTHESIS: HypothesisNode,
+    BBType.ARGUMENT: ArgumentNode,
+    BBType.COUNTER_ARGUMENT: CounterArgumentNode,
+    BBType.PROCEDURE: ProcedureNode,
+    BBType.NAVIGATION: NavigationNode,
+}
+
+
+def node_class_for(bb_type: BBType) -> type[BBNode]:
+    """Return the typed `BBNode` subclass for a given `BBType`."""
+    return _NODE_CLASS_BY_BB_TYPE[bb_type]
 
 
 @dataclass(frozen=True)
@@ -184,10 +250,11 @@ class BBGraph:
             bb_value = row.building_block
             if bb_value is None or bb_value not in BBType._value2member_map_:
                 continue
-            node = BBNode(
+            bb_type = BBType(bb_value)
+            node_cls = _NODE_CLASS_BY_BB_TYPE[bb_type]
+            node = node_cls(
                 note_id=row.note_id,
                 note_name=row.note_name,
-                bb_type=BBType(bb_value),
                 folgezettel=row.folgezettel,
                 folgezettel_parent=row.folgezettel_parent,
                 note_status=row.note_status,
@@ -308,4 +375,14 @@ __all__ = [
     "BBNode",
     "BBEdge",
     "BBGraph",
+    # Per-BBType subclasses (D1)
+    "EmpiricalObservationNode",
+    "ConceptNode",
+    "ModelNode",
+    "HypothesisNode",
+    "ArgumentNode",
+    "CounterArgumentNode",
+    "ProcedureNode",
+    "NavigationNode",
+    "node_class_for",
 ]

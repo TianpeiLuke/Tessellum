@@ -16,6 +16,149 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.51] — 2026-05-10
+
+### Added — Phase 8 of plan_dks_expansion: dispatcher refactor (FZ 2a2 deferred work)
+
+D1 resolution implemented end-to-end. The 8-BBType BBNode hierarchy
+that FZ 1b proposed + the FSM dispatcher that FZ 2a2 formalised both
+land in this version.
+
+Per the plan's deferral reasoning: Phase 8 is the *enabler* for
+Phase 9 (meta-DKS) — without a graph-walker dispatcher, every
+meta-cycle has to rewrite the per-component code or work around it.
+This version ships the *data structure* + *FSM walker* surface; the
+hand-coded `DKSCycle.run()` path stays operationally intact for
+back-compat. Meta-DKS swaps walkers in v0.0.52.
+
+#### `tessellum.bb.graph` — subclass-per-`BBType` BBNode hierarchy (D1)
+
+`BBNode` now uses `kw_only=True` and serves as the base of eight
+frozen-dataclass subclasses, one per BBType:
+
+| Subclass | `bb_type` |
+|---|---|
+| `EmpiricalObservationNode` | `BBType.EMPIRICAL_OBSERVATION` |
+| `ConceptNode` | `BBType.CONCEPT` |
+| `ModelNode` | `BBType.MODEL` |
+| `HypothesisNode` | `BBType.HYPOTHESIS` |
+| `ArgumentNode` | `BBType.ARGUMENT` |
+| `CounterArgumentNode` | `BBType.COUNTER_ARGUMENT` |
+| `ProcedureNode` | `BBType.PROCEDURE` |
+| `NavigationNode` | `BBType.NAVIGATION` |
+
+Each fixes `bb_type` via `field(default=BBType.X, init=False)` —
+callers don't pass it; the discriminator is statically typed by the
+class. A lookup helper `node_class_for(bb_type)` returns the
+subclass for a given BBType. `BBGraph.from_db()` instantiates the
+typed subclass per row.
+
+#### DKS cycle dataclasses inherit from `*Node` subclasses
+
+`DKSObservation` extends `EmpiricalObservationNode`, `DKSArgument`
+extends `ArgumentNode`, `DKSCounterArgument` extends
+`CounterArgumentNode`, `DKSPattern` extends `ModelNode`. Each adds
+its cycle-specific fields on top of the BBNode-base fields.
+`DKSArgument` gains a `perspective: str = ""` field, anchoring D5
+(Phase 10's YAML field) at the data-shape layer one phase early.
+
+`DKSRuleRevision` stays standalone — it can produce either a
+procedure or a concept; a future refactor may split into typed
+subclasses or add `bb_type` as a runtime field. Out of scope for
+v0.0.51.
+
+`DKSWarrant` + `DKSContradicts` are not BB-typed (sub-structure +
+edge respectively) and stay standalone.
+
+#### `tessellum.dks.fsm` — new module: `DKSStateMachine` + `BBPath`
+
+```python
+sm = DKSStateMachine(backend=mock_backend, confidence_model=..., ...)
+path: BBPath = sm.walk(observation)
+# path.steps = [(edge, BBNode), ...]
+# path.terminal_state in {PROCEDURE, ARGUMENT}
+```
+
+Per FZ 2a2's FSM formalism:
+
+- `BBPathStep`: `(edge: EpistemicEdgeType | None, node: BBNode)` pair.
+  The first step has `edge=None` (q₀ = the observation, no incoming
+  transition). All later steps carry the schema edge that produced
+  the node.
+- `BBPath`: chronological list of steps + `terminal_state` (BBType in
+  F = {PROCEDURE, ARGUMENT}) + `elapsed_ms`. Properties
+  `transition_count` (= len(steps) − 1) and `nodes` (the ordered
+  tuple of BBNode instances).
+- `TransitionHandler`: Protocol for per-edge handlers; v0.0.51 wires
+  the registry on `DKSStateMachine.handlers` but doesn't yet dispatch
+  through it. Phase 9 (meta-DKS) is the first caller that *uses* it
+  to swap step-6 pattern-discovery for a schema-edit-proposal handler.
+- `DKSStateMachine.walk(observation, warrants)` returns the BBPath;
+  `DKSStateMachine.last_result` exposes the underlying
+  `DKSCycleResult` for back-compat with callers expecting the v0.0.49
+  shape.
+
+v0.0.51's `walk()` delegates to `DKSCycle.run()` for the actual step
+logic — this proves the FSM walker is *equivalent* to the hand-coded
+path. Phase 9 swaps in the true handler-registry-driven walk.
+
+#### Termination semantics (D7)
+
+`terminal_state` selection follows the FZ 2a2 mapping:
+
+- `rule_revision` present → terminal at `PROCEDURE`
+- `argument_b None` (gated) or both arguments agreed (short-circuit)
+  → terminal at `ARGUMENT`
+
+The existing `closed_loop` property on `DKSCycleResult` is preserved
+unchanged — D7 generalises to Dung grounded labelling internally
+when Phase 10 lands; for N=2 (the v0.0.51 default) Dung and the
+current adequacy semantics agree.
+
+#### Tests
+
+`tests/smoke/test_dks_fsm.py` (16 tests):
+
+- D1 subclass hierarchy: each DKS dataclass `isinstance` of the
+  corresponding `*Node` subclass; `bb_type` populated correctly;
+  frozen-instance check; BBNode-base fields accessible from DKS-typed
+  instances.
+- FSM walks: closed loop (terminal=PROCEDURE, 6 steps); short-circuit
+  (terminal=ARGUMENT, 3 steps); gated (terminal=ARGUMENT, 2 steps).
+- BBPath structure: first step has `edge=None`; later steps have
+  typed edges; `transition_count` + `nodes` properties.
+- Back-compat: `walk()` produces matching `DKSCycleResult` shape vs
+  `DKSCycle.run()`; `last_result` records the most recent result.
+- Handler registry surface: accepts custom handlers without using
+  them (Phase 9 will dispatch through).
+
+Full suite: 718 passed, 1 skipped (was 702 / +16 new).
+
+### Why this lands incrementally
+
+Phase 8 was always the *prerequisite* for Phase 9 (meta-DKS), not a
+behaviour change in itself. v0.0.51 ships D1 (data shape) + the
+walker surface (`DKSStateMachine`); v0.0.52 will replace the
+delegate-to-`DKSCycle` implementation with handler-driven dispatch
++ ship the first real consumer (meta-DKS proposing schema edits
+through the registry). Splitting the work this way keeps each
+version's tests focused.
+
+### What didn't land
+
+Per the Phase 8 scope (deliberate deferrals):
+
+- `DKSStateMachine.walk()` does not yet dispatch through the
+  handler registry — handlers are wired but unused. Phase 9 is the
+  first caller that pays into the registry.
+- `DKSRuleRevision` stays standalone (procedure-or-concept ambiguity
+  doesn't fit a single `*Node` subclass). Phase 11+ can refactor.
+- The Dung grounded labelling implementation lands in Phase 10
+  (multi-perspective debate); v0.0.51 uses the same adequacy
+  semantics as v0.0.49 (`closed_loop` derived from `rule_revision`).
+
+---
+
 ## [0.0.50] — 2026-05-10
 
 ### Changed — vault cleanup release (validator + dogfood vault)

@@ -78,6 +78,13 @@ from tessellum.dks.persistence import (
     WarrantRegistry,
     load_warrants_from_vault,
 )
+from tessellum.dks.fsm import (
+    # Phase 8 — FSM dispatcher (deferred FZ 2a2 work)
+    BBPath,
+    BBPathStep,
+    DKSStateMachine,
+    TransitionHandler,
+)
 
 
 __all__ = [
@@ -107,6 +114,11 @@ __all__ = [
     # P-side retrieval (Phase 4)
     "RetrievalClient",
     "RetrievalHit",
+    # FSM dispatcher (Phase 8 — deferred FZ 2a2 work)
+    "BBPath",
+    "BBPathStep",
+    "DKSStateMachine",
+    "TransitionHandler",
     # Confidence gating (Phase 5)
     "DEFAULT_CONFIDENCE_THRESHOLD",
     "DKSConfidenceModel",

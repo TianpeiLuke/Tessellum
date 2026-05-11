@@ -1,17 +1,21 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.50"
+__version__ = "0.0.51"
 
 __status__ = (
-    "alpha — vault cleanup release. LINK-006 status=template exemption "
-    "lands in the format validator + skill canonical + tests (parallel "
-    "to TESS-004's authoring-state exemption — templates are orphans "
-    "by design). Dogfood vault gains 553 ported notes from the parent "
-    "AB project to resolve every broken-link target from the original "
-    "Tessellum seed (the SEED_VAULT_MANIFEST stays unchanged at ~50 "
-    "entries; the ports are dogfood-only). 5 AB-vault format quirks "
-    "fixed at port time (DKS→dks tags, folgezettel-pair completion, "
-    "paper-review reclassification). v0.0.49's Phase 7 behaviour "
-    "unchanged."
+    "alpha — Phase 8 of plan_dks_expansion lands: dispatcher refactor "
+    "(the FZ 2a2-deferred work). D1 resolution implemented end-to-end: "
+    "subclass-per-BBType frozen dataclasses with kw_only=True. "
+    "EmpiricalObservationNode/ConceptNode/ModelNode/HypothesisNode/"
+    "ArgumentNode/CounterArgumentNode/ProcedureNode/NavigationNode "
+    "each fix bb_type via field(default=..., init=False). DKS cycle "
+    "dataclasses (DKSObservation/DKSArgument/DKSCounterArgument/"
+    "DKSPattern) inherit from the corresponding *Node — every cycle-"
+    "step output is a typed BBNode subclass. New tessellum.dks.fsm "
+    "module ships DKSStateMachine with .walk() returning BBPath, plus "
+    "a TransitionHandler registry surface for future meta-DKS handler "
+    "swaps. v0.0.51 walk() delegates to DKSCycle internally; the "
+    "registry is wired but not yet dispatched-through (Phase 9 "
+    "meta-DKS pays into it). DKSCycle's public API unchanged."
 )

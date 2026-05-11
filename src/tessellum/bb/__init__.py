@@ -48,9 +48,18 @@ from tessellum.bb.types import (
     is_valid_transition,
 )
 from tessellum.bb.graph import (
+    ArgumentNode,
     BBEdge,
     BBGraph,
     BBNode,
+    ConceptNode,
+    CounterArgumentNode,
+    EmpiricalObservationNode,
+    HypothesisNode,
+    ModelNode,
+    NavigationNode,
+    ProcedureNode,
+    node_class_for,
 )
 
 
@@ -72,4 +81,14 @@ __all__ = [
     "BBNode",
     "BBEdge",
     "BBGraph",
+    # Per-BBType BBNode subclasses (D1, Phase 8)
+    "EmpiricalObservationNode",
+    "ConceptNode",
+    "ModelNode",
+    "HypothesisNode",
+    "ArgumentNode",
+    "CounterArgumentNode",
+    "ProcedureNode",
+    "NavigationNode",
+    "node_class_for",
 ]

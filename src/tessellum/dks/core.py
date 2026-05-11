@@ -50,6 +50,12 @@ import time
 from dataclasses import dataclass, field
 from typing import ClassVar, Literal
 
+from tessellum.bb.graph import (
+    ArgumentNode,
+    CounterArgumentNode,
+    EmpiricalObservationNode,
+    ModelNode,
+)
 from tessellum.bb.types import BBType
 from tessellum.composer.llm import LLMBackend, LLMRequest
 
@@ -84,19 +90,21 @@ CounterStrength = Literal["weak", "moderate", "strong"]
 # ── Component-output dataclasses ──────────────────────────────────────────
 
 
-@dataclass(frozen=True)
-class DKSObservation:
+@dataclass(frozen=True, kw_only=True)
+class DKSObservation(EmpiricalObservationNode):
     """Step 1 — what happened.
 
-    Becomes an ``empirical_observation`` note at the cycle root FZ.
-    Per FZ 2a2, this dataclass is a typed view over a ``BBNode`` of
-    type ``BBType.EMPIRICAL_OBSERVATION``.
+    Per D1 (`plan_dks_expansion`) + FZ 2a2: subclass of
+    :class:`EmpiricalObservationNode`, so ``bb_type`` is fixed at
+    ``BBType.EMPIRICAL_OBSERVATION`` via the parent's
+    ``field(default=..., init=False)``.
+
+    The cycle-specific fields (``summary``, ``timestamp``) layer on
+    top of the BBNode-base fields (``note_id``, ``note_name``,
+    ``folgezettel``, ``folgezettel_parent``, ``note_status``).
     """
 
-    bb_type: ClassVar[BBType] = BBType.EMPIRICAL_OBSERVATION
-
-    folgezettel: str
-    summary: str
+    summary: str = ""
     timestamp: str | None = None
 
 
@@ -116,20 +124,22 @@ class DKSWarrant:
     rebuttal: str = ""
 
 
-@dataclass(frozen=True)
-class DKSArgument:
+@dataclass(frozen=True, kw_only=True)
+class DKSArgument(ArgumentNode):
     """Step 2 or 3 — a typed claim grounded in a warrant.
 
-    Becomes an ``argument`` note at FZ ``<cycle_root>.a`` or
-    ``<cycle_root>.b``. Typed view over a ``BBNode`` of type
-    ``BBType.ARGUMENT``.
+    Per D1 + FZ 2a2: subclass of :class:`ArgumentNode`; ``bb_type``
+    fixed at ``BBType.ARGUMENT``. Cycle-specific fields:
+    ``warrant`` (the Toulmin-typed standing reason), ``evidence``
+    (citation back to the observation), and ``perspective``
+    (added in Phase 10 — D5; the conservative vs exploratory vs
+    skeptical angle the argument took). Default empty perspective
+    preserves Phase 1-7 back-compat.
     """
 
-    bb_type: ClassVar[BBType] = BBType.ARGUMENT
-
-    folgezettel: str
-    warrant: DKSWarrant
-    evidence: str
+    warrant: DKSWarrant = field(default_factory=lambda: DKSWarrant(claim="", data="", warrant=""))
+    evidence: str = ""
+    perspective: str = ""
 
 
 @dataclass(frozen=True)
@@ -147,43 +157,36 @@ class DKSContradicts:
     reason: str
 
 
-@dataclass(frozen=True)
-class DKSCounterArgument:
+@dataclass(frozen=True, kw_only=True)
+class DKSCounterArgument(CounterArgumentNode):
     """Step 5 — names which Toulmin component is broken.
 
-    Becomes a ``counter_argument`` note at FZ ``<attacked_fz>.a``. The
-    ``folgezettel_parent`` field of that note equals ``attacked_fz``,
-    which is what TESS-004 (FZ-integrated) checks. Typed view over a
-    ``BBNode`` of type ``BBType.COUNTER_ARGUMENT``.
+    Per D1 + FZ 2a2: subclass of :class:`CounterArgumentNode`;
+    ``bb_type`` fixed at ``BBType.COUNTER_ARGUMENT``. Cycle-specific
+    fields target the attacked argument's FZ + the broken Toulmin
+    component + the strength of the attack. TESS-004 enforces the
+    ``folgezettel_parent → argument`` link at the static layer; this
+    dataclass captures the structured Toulmin failure mode.
     """
 
-    bb_type: ClassVar[BBType] = BBType.COUNTER_ARGUMENT
-
-    folgezettel: str
-    attacked_fz: str
-    broken_component: ToulminComponent
-    counter_claim: str
-    reason: str
-    strength: CounterStrength
+    attacked_fz: str = ""
+    broken_component: ToulminComponent = "warrant"
+    counter_claim: str = ""
+    reason: str = ""
+    strength: CounterStrength = "moderate"
 
 
-@dataclass(frozen=True)
-class DKSPattern:
+@dataclass(frozen=True, kw_only=True)
+class DKSPattern(ModelNode):
     """Step 6 — model aggregating contradictions into structural regularity.
 
-    Becomes a ``model`` note at FZ ``<counter_fz>.a``. ``observed`` is the
-    tuple of contradict FZs (or descriptions) that feed this pattern.
-    Typed view over a ``BBNode`` of type ``BBType.MODEL``. The
-    realised corpus edge ``COUNTER_ARGUMENT → MODEL`` instantiates the
-    schema edge ``pattern_of_failure`` registered in
-    ``BB_SCHEMA_DKS_EXTENSIONS`` (the Phase-4-class extension to the
-    original 10-edge schema from FZ 1).
+    Per D1 + FZ 2a2: subclass of :class:`ModelNode`; ``bb_type``
+    fixed at ``BBType.MODEL``. The realised corpus edge
+    ``COUNTER_ARGUMENT → MODEL`` instantiates the schema edge
+    ``pattern_of_failure`` (registered in ``BB_SCHEMA_DKS_EXTENSIONS``).
     """
 
-    bb_type: ClassVar[BBType] = BBType.MODEL
-
-    folgezettel: str
-    description: str
+    description: str = ""
     observed: tuple[str, ...] = ()
 
 
