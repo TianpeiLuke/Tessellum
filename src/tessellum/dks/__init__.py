@@ -85,6 +85,19 @@ from tessellum.dks.fsm import (
     DKSStateMachine,
     TransitionHandler,
 )
+from tessellum.dks.meta import (
+    # Phase 9 — meta-DKS (schema-mutation runtime)
+    DEFAULT_MIN_CYCLES,
+    META_SCHEMA,
+    MetaCycle,
+    MetaCycleResult,
+    MetaEdgeType,
+    MetaObservation,
+    SchemaEditProposal,
+    SCHEMA_EDIT_PROPOSAL_KIND,
+    load_event_log,
+    write_event_log,
+)
 
 
 __all__ = [
@@ -136,4 +149,15 @@ __all__ = [
     "WarrantHistory",
     "HistoryEntry",
     "load_warrants_from_vault",
+    # Meta-DKS (Phase 9 — schema-mutation runtime)
+    "DEFAULT_MIN_CYCLES",
+    "META_SCHEMA",
+    "MetaCycle",
+    "MetaCycleResult",
+    "MetaEdgeType",
+    "MetaObservation",
+    "SchemaEditProposal",
+    "SCHEMA_EDIT_PROPOSAL_KIND",
+    "load_event_log",
+    "write_event_log",
 ]

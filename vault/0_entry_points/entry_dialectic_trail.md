@@ -42,9 +42,10 @@ The trail is short by design — two notes. The first narrates the six-step desc
 │   └── 2a2   DKS as a Finite-State Machine on the BB Ontology Graph
 ├── 2b   DKS Runtime Integration — How the Closed Loop Wires Into the Rest of Tessellum
 └── 2c   Adapting DKS to Learn the BB-Internal Transition Model — Three-Stage Hybrid (companion to FZ 1c)
+    └── 2c1   Meta-DKS Design — How DKS Mutates Its Own Schema (v0.0.52 runtime)
 ```
 
-Six nodes, three-branch fork at FZ 2 with a sub-fork at 2a. 2a + (2a1, 2a2) are the design synthesis branch. 2b is the runtime-integration branch. 2c is the adaptation-strategy branch — pairs with cross-trail FZ 1c (evidence) to specify how DKS learns the transition model over time.
+Seven nodes, three-branch fork at FZ 2 with a sub-fork at 2a. 2a + (2a1, 2a2) are the design synthesis branch. 2b is the runtime-integration branch. 2c is the adaptation-strategy branch — pairs with cross-trail FZ 1c (evidence) to specify how DKS learns the transition model over time. 2c1 (added v0.0.52) is meta-DKS's design synthesis — the runtime that operationalises 2c's third stage (meta-DKS-driven governance).
 
 ## FZ Table
 
@@ -56,6 +57,7 @@ Six nodes, three-branch fork at FZ 2 with a sub-fork at 2a. 2a + (2a1, 2a2) are 
 | **2a2** | [`thought_dks_as_fsm_on_bb_graph`](../resources/analysis_thoughts/thought_dks_as_fsm_on_bb_graph.md) | argument | **Formal sharpening** — DKS is a finite-state machine ⟨Q,Σ,δ,q₀,F⟩ over the BB ontology graph (states = 8 BB types, δ = 10-edge schema, q₀ = OBS, F = {PRO, CON, ARG-gated}). The 7 components are 7 transitions; the three terminal paths (closed loop / short-circuit / gated) are the FSM's accepting walks. Surfaces three learning levels: instance (every cycle), edge-weight (inter-cycle), schema (meta-DKS; R-P productive half at its strongest). Co-companion of FZ 1b (graph) — sibling of 2a1 (spatial). |
 | **2b** | [`thought_dks_runtime_integration`](../resources/analysis_thoughts/thought_dks_runtime_integration.md) | argument | **Runtime Integration** — what the live runtime touches: Composer (dispatcher), Retrieval (P-side RetrievalClient — R-Cross productive half), Format (TESS-004 enforces counter→argument link), Eval (`epistemic_congruence` 6th rubric dim), Capture (no new flavor), Indexer (read-only via D). R-Cross both halves now enforced; R-P moves from "held by absence" to "actively enforced". |
 | **2c** | [`thought_dks_transition_model_adaptation`](../resources/analysis_thoughts/thought_dks_transition_model_adaptation.md) | argument | **Adaptation strategy** — companion to FZ 1c. Surveys 2024-2026 KG literature (AutoSchemaKG, AdaKGC, OntoRAG, Tree-KG, GraphRAG-driven schema bootstrapping). Proposes a three-stage hybrid: corpus-statistics discovery → LLM-validated formalisation → meta-DKS-driven governance. Layer B (architectural edges parameterised by `note_second_category`) lives in event-sourced schema (D3); Phase 11+ ships `tessellum bb learn-transitions` + `bb label-transitions`. Long-term: transition matrix becomes a queryable, dialectically-revised resource. |
+| **2c1** | [`thought_meta_dks_design`](../resources/analysis_thoughts/thought_meta_dks_design.md) | argument | **Meta-DKS design synthesis** — the runtime FZ 2c's third stage operationalises (v0.0.52). Four design commitments: D3 event-sourced schema (retractable state, append-only history via `SchemaEditEvent` fold); D4 `META_SCHEMA` in code, PR-gated (the recursion stop — one level of meta, anchored by human-authored meta-meta-schema); D8 frozen-at-creation `bb_schema_version` (corpus migration becomes a query, not a rewrite). MetaCycle walks 4 transitions (proposing → attacking → aggregating → landing); v0.0.52 ships heuristic-based proposer with `--min-cycles=20` cold-start guard; Phase 11+ swaps in LLM-driven dialectic. R-P productive half lands here at full strength — the first phase where the schema *changes* in response to runtime evidence. |
 
 ## Summary of dialectic progress
 
@@ -132,4 +134,4 @@ This trail is the architectural commitment that constrains how the runtime gets 
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Dialectic trail (FZ 2) — 6 nodes, depth 3 (three-branch fork at FZ 2; sub-fork at 2a with siblings 2a1 spatial + 2a2 formal; 2c adaptation pairs with cross-trail FZ 1c)
+**Status**: Active — Dialectic trail (FZ 2) — 7 nodes, depth 3 (three-branch fork at FZ 2; sub-fork at 2a with siblings 2a1 spatial + 2a2 formal; 2c adaptation pairs with cross-trail FZ 1c; 2c1 added v0.0.52 — meta-DKS runtime synthesis)
