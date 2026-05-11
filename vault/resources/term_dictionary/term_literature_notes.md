@@ -117,7 +117,7 @@ In the vault, literature notes map to:
 - [BASB](term_basb.md) — Forte's system uses Progressive Summarization for the same processing step where Zettelkasten uses literature notes
 - [Hub Notes](term_hub_notes.md) — hub notes navigate the slip-box to find trains of thought fed by literature notes
 - [Index Notes](term_index_notes.md) — keywords chosen for the register come from the literature note processing step
-- [Analytical Reading](term_analytical_reading.md) — literature notes are the Zettelkasten output of Adler's interpretive stage (Stage 2: come to terms, grasp propositions, know arguments)
+- Analytical Reading — literature notes are the Zettelkasten output of Adler's interpretive stage (Stage 2: come to terms, grasp propositions, know arguments)
 
 ## References
 
@@ -125,4 +125,4 @@ In the vault, literature notes map to:
 - Doto, B. (2024). *A System for Writing*. Part I: "Making Notes."
 - [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — theory of literature note creation
 - [Digest: A System for Writing](../digest/digest_system_for_writing_doto.md) — practical examples of reference note creation
-- [Digest: Make It Stick](../digest/digest_make_it_stick_brown.md) — generation effect and elaboration as learning mechanisms
+- Digest: Make It Stick — generation effect and elaboration as learning mechanisms

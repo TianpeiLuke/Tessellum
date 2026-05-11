@@ -184,11 +184,11 @@ Over time:
 - **Reusability**: Notes serve multiple queries
 ## Related Terms
 
-- [RAG](term_rag.md) - Retrieval Augmented Generation
-- [LLM](term_llm.md) - Large Language Models
-- [Embedding](term_embedding.md) - Dense vector representations for retrieval
-- [Knowledge Graph](term_knowledge_graph.md) - Graph-based knowledge representation
-- [Context Engineering](term_context_engineering.md) - Optimizing LLM context
+- RAG - Retrieval Augmented Generation
+- LLM - Large Language Models
+- Embedding - Dense vector representations for retrieval
+- Knowledge Graph - Graph-based knowledge representation
+- Context Engineering - Optimizing LLM context
 - [Trusted System](term_trusted_system.md) - The Zettelkasten is a paradigmatic trusted system: complete capture (fleeting/literature notes), regular review (link maintenance), reliable retrieval (graph traversal)
 - [Open Loops](term_open_loops.md) - The Zettelkasten closes intellectual open loops: uncaptured ideas nag at working memory until externalized as fleeting → literature → permanent notes
 - [Commonplace Book](term_commonplace_book.md) - Historical predecessor; the Zettelkasten adds explicit linking and atomic note structure to the commonplace tradition
@@ -218,7 +218,7 @@ Over time:
 
 | Question | FAQ |
 |----------|-----|
-| What is the difference between Zettelkasten and Wikipedia? | [faq_zettelkasten_vs_wikipedia](../faqs/faq_zettelkasten_vs_wikipedia.md) |
+| What is the difference between Zettelkasten and Wikipedia? | faq_zettelkasten_vs_wikipedia |
 ## Summary
 
 | Aspect | Details |

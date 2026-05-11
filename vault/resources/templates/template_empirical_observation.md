@@ -68,7 +68,7 @@ Link to the hypothesis note if it exists as a separate note.>
 
 > **H**: <state the hypothesis precisely, in one sentence>.
 
-This was authored as: [<Hypothesis Title>](thought_hypothesis.md) (if separate)
+This was authored as: <Hypothesis Title> (if separate)
 
 ## Observation
 
@@ -167,10 +167,10 @@ Be explicit. Link to the hypothesis note.>
 
 | Hypothesis tested | Verdict |
 |---|---|
-| [<hypothesis title>](thought_hypothesis.md) | <SUPPORTS / REFUTES / PARTIAL / INDETERMINATE> |
+| <hypothesis title> | <SUPPORTS / REFUTES / PARTIAL / INDETERMINATE> |
 
 ## References
 
-- [Hypothesis tested](thought_hypothesis.md)
-- [Method's source](thought_method.md) — if the procedure was defined elsewhere
-- [Related observation](thought_other_observation.md) — for cross-reference
+- Hypothesis tested
+- Method's source — if the procedure was defined elsewhere
+- Related observation — for cross-reference

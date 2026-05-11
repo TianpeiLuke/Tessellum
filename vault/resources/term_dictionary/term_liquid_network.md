@@ -138,21 +138,21 @@ The Zettelkasten and slip-box methodology create personal or organizational liqu
 
 - [Term: Adjacent Possible](term_adjacent_possible.md) -- the liquid network is the environment that maximizes exploration of the adjacent possible
 - [Term: Slow Hunch](term_slow_hunch.md) -- liquid networks keep slow hunches alive long enough to find their missing pieces
-- [Term: Serendipity](term_serendipity.md) -- liquid networks systematically produce serendipitous connections between diverse ideas
-- [Term: Exaptation](term_exaptation.md) -- diverse liquid networks increase the probability that ideas will be repurposed across domains
+- Term: Serendipity -- liquid networks systematically produce serendipitous connections between diverse ideas
+- Term: Exaptation -- diverse liquid networks increase the probability that ideas will be repurposed across domains
 - [Term: Commonplace Book](term_commonplace_book.md) -- a personal-scale liquid network for recorded ideas, organized for recombination
 - [Term: Zettelkasten](term_zettelkasten.md) -- the slip-box creates a liquid network of atomic notes connected by explicit links
 - [Term: SlipBox](term_slipbox.md) -- the vault's graph architecture is a liquid network by design
 - [Term: Systems Thinking](term_systems_thinking.md) -- understanding the feedback loops and emergence within innovation environments
-- [Term: Design Thinking](term_design_thinking.md) -- the Ideate phase depends on liquid-network conditions for divergent thinking
-- [Term: Question Storming](term_question_storming.md) -- a structured technique for creating temporary liquid-network conditions in group settings
+- Term: Design Thinking -- the Ideate phase depends on liquid-network conditions for divergent thinking
+- Term: Question Storming -- a structured technique for creating temporary liquid-network conditions in group settings
 - [Intermediate Packets](term_intermediate_packets.md) — a liquid network of diverse IPs enables unexpected recombination and creative collisions
 - [Permanent Notes](term_permanent_notes.md) — the slip-box as a liquid network where permanent notes collide to generate insight
 - [Hub Notes](term_hub_notes.md) — hub notes create navigational structure within the liquid network of ideas
 
 ## References
 
-- Source: [Digest: Where Good Ideas Come From](../digest/digest_good_ideas_johnson.md) -- Johnson's formalization of the liquid network concept
+- Source: Digest: Where Good Ideas Come From -- Johnson's formalization of the liquid network concept
 - [Wikipedia: Where Good Ideas Come From](https://en.wikipedia.org/wiki/Where_Good_Ideas_Come_From) -- overview of Johnson's innovation framework
 - [Jane Jacobs: The Death and Life of Great American Cities (1961)](<internal-link-removed>) -- foundational urban theory underlying the liquid network concept
 - [AnnaLee Saxenian: Regional Advantage (1994)](<internal-link-removed>) -- empirical comparison of liquid vs. solid innovation ecosystems

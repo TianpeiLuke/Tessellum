@@ -117,24 +117,24 @@ Information should surface in the context where it's needed. GTD organizes by @c
 ## Related Terms
 
 - [Open Loops](term_open_loops.md) — the cognitive phenomenon that trusted systems resolve; every unexternalized commitment is an open loop consuming working memory
-- [System 1 and System 2](term_system_1_and_system_2.md) — trusted systems free System 2 bandwidth by offloading tracking to the external system; enables deeper analytical thinking
+- System 1 and System 2 — trusted systems free System 2 bandwidth by offloading tracking to the external system; enables deeper analytical thinking
 - [Zettelkasten](term_zettelkasten.md) — a trusted system for intellectual work; the vault implements capture (notes), organization (links, categories), review (database updates), and retrieval (graph traversal)
-- [Habit Loop](term_habit_loop.md) — maintaining a trusted system requires a habit loop: cue (new input arrives), craving (desire for clarity), response (capture and process), reward (clean mind)
-- [Choice Architecture](term_choice_architecture.md) — trusted system design is choice architecture for your future self: organizing information so the right items surface at the right time
-- [Commitment Device](term_commitment_device.md) — the Weekly Review appointment is a commitment device that prevents review neglect; calendar-blocking is the precommitment
+- Habit Loop — maintaining a trusted system requires a habit loop: cue (new input arrives), craving (desire for clarity), response (capture and process), reward (clean mind)
+- Choice Architecture — trusted system design is choice architecture for your future self: organizing information so the right items surface at the right time
+- Commitment Device — the Weekly Review appointment is a commitment device that prevents review neglect; calendar-blocking is the precommitment
 - [Compound Effect](term_compound_effect.md) — trust in the system compounds: consistent capture and review build a system whose value grows nonlinearly over time (more notes = more connections = more serendipitous retrieval)
-- [Flow State](term_flow_state.md) — a trusted system is a prerequisite for flow: open loops prevent the sustained concentration flow demands
-- [Deliberate Practice](term_deliberate_practice.md) — maintaining a trusted system is a skill that improves through deliberate practice; the three mastery tiers in GTD parallel Ericsson's expertise development
-- [WYSIATI](term_wysiati.md) — a trusted system counteracts WYSIATI by making all commitments visible, not just the ones currently in awareness
+- Flow State — a trusted system is a prerequisite for flow: open loops prevent the sustained concentration flow demands
+- Deliberate Practice — maintaining a trusted system is a skill that improves through deliberate practice; the three mastery tiers in GTD parallel Ericsson's expertise development
+- WYSIATI — a trusted system counteracts WYSIATI by making all commitments visible, not just the ones currently in awareness
 - [SlipBox](term_slipbox.md) — the vault's implementation of a trusted system for knowledge management
-- [Natural Planning Model](term_natural_planning_model.md) — the outputs of natural planning (projects, next actions, reference) must be captured in a trusted system to close open loops
+- Natural Planning Model — the outputs of natural planning (projects, next actions, reference) must be captured in a trusted system to close open loops
 - [Progressive Summarization](term_progressive_summarization.md) — builds trust in the note system; well-distilled notes are reliably retrievable
 - [Intermediate Packets](term_intermediate_packets.md) — IPs must be stored in a trusted system to be reliably retrievable
 - [CODE Method](term_code_method.md) — the CODE method requires a trusted system as its substrate
 - [BASB](term_basb.md) — Building a Second Brain; the Second Brain IS a trusted system for knowledge management
 - [Fleeting Notes](term_fleeting_notes.md) — fleeting notes work only when the processing pipeline is trusted
 - [Permanent Notes](term_permanent_notes.md) — permanent notes are the core of the Zettelkasten as a trusted system for intellectual work
-- [Zeigarnik Effect](term_zeigarnik_effect.md) — trusted systems work because externalization discharges Zeigarnik tension; the planning override requires a trusted destination
+- Zeigarnik Effect — trusted systems work because externalization discharges Zeigarnik tension; the planning override requires a trusted destination
 - [Hub Notes](term_hub_notes.md) — hub notes contribute to system trust by making retrieval reliable and predictable
 - [Index Notes](term_index_notes.md) — the keyword register ensures findability; without reliable entry points the system loses trust
 
@@ -147,7 +147,7 @@ Information should surface in the context where it's needed. GTD organizes by @c
 - Forte, T. (2022). *Building a Second Brain*. Atria Books. — Modern application of trusted system principles to digital knowledge management
 - [Wikipedia: Extended Mind Thesis](https://en.wikipedia.org/wiki/Extended_mind_thesis) — philosophical foundation for treating external systems as cognitive extensions
 - [Digest: Search Alone Is Not Enough](../digest/digest_search_not_enough_christian.md) — the "false reliability" failure mode: if search requires biological memory to interpret results, the system is not truly trusted
-- Source: [Digest: Getting Things Done](../digest/digest_getting_things_done_allen.md)
+- Source: Digest: Getting Things Done
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — slip-box as a trusted external memory system
 - Source: [Digest: A System for Writing](../digest/digest_system_for_writing_doto.md) — system trust through folgezettel and reliable navigation
 - Source: [Digest: Building a Second Brain](../digest/digest_building_second_brain_forte.md) — the Second Brain as a trusted system for knowledge management

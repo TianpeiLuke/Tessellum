@@ -29,7 +29,7 @@ building_block: concept
 
 ## Definition
 
-The **Circle of Influence** is a [mental model](term_mental_model.md) introduced by **Stephen R. Covey** in *The 7 Habits of Highly Effective People* (1989) as part of **Habit 1: Be Proactive**. It distinguishes between three concentric zones of attention: the **Circle of Concern** (all things a person worries about), the **Circle of Influence** (the subset of concerns a person can actually affect), and the **Circle of Control** (the innermost subset of things under direct personal control, such as attitude, effort, and behavior).
+The **Circle of Influence** is a mental model introduced by **Stephen R. Covey** in *The 7 Habits of Highly Effective People* (1989) as part of **Habit 1: Be Proactive**. It distinguishes between three concentric zones of attention: the **Circle of Concern** (all things a person worries about), the **Circle of Influence** (the subset of concerns a person can actually affect), and the **Circle of Control** (the innermost subset of things under direct personal control, such as attitude, effort, and behavior).
 
 Covey's core insight is that **proactive people** focus their time and energy on the Circle of Influence — working on things they can do something about — while **reactive people** dissipate energy on the Circle of Concern, fixating on problems they cannot change (e.g., the economy, other people's behavior, the past). The critical dynamic is that focus determines trajectory: proactive focus on the Circle of Influence causes it to **expand** over time, while reactive focus on the Circle of Concern causes the Circle of Influence to **shrink**. This creates a self-reinforcing loop — agency begets more agency, and helplessness begets more helplessness.
 
@@ -44,14 +44,14 @@ Covey's core insight is that **proactive people** focus their time and energy on
 
 ## Related Terms
 
-- **[Growth Mindset](term_growth_mindset.md)**: The belief that abilities are developable through effort — provides the cognitive foundation for proactive Circle of Influence focus; without believing change is possible, focusing on influence feels futile
+- **Growth Mindset**: The belief that abilities are developable through effort — provides the cognitive foundation for proactive Circle of Influence focus; without believing change is possible, focusing on influence feels futile
 - **[Systems Thinking](term_systems_thinking.md)**: Understanding interconnected feedback loops within complex systems — the Circle of Influence model is itself a systems insight: proactive focus creates a positive feedback loop (influence expands), while reactive focus creates a negative one (influence contracts)
-- **[Status Quo Bias](term_status_quo_bias.md)**: The preference for the current state of affairs — reactive Circle of Concern focus often reflects status quo bias, treating external conditions as immovable when they are actually within the Circle of Influence
-- **[Grit](term_grit.md)**: Perseverance and passion for long-term goals — grit operationalizes sustained Circle of Influence focus over years, maintaining proactive effort despite setbacks that tempt retreat into reactive concern
-- **[Choice Architecture](term_choice_architecture.md)**: Designing environments to guide better decisions — an applied expression of Circle of Influence thinking, restructuring controllable environmental factors rather than lamenting uncontrollable human tendencies
-- **[Barbell Strategy](term_barbell_strategy.md)**: Taleb's risk management heuristic maps directly to Circle of Influence thinking — allocate 85-90% to what's safely within your Circle of Control (ultra-safe assets) and 10-15% to asymmetric bets, while explicitly avoiding the "middle" where you're exposed to risks you can't influence
-- **[Antifragility](term_antifragility.md)**: Both describe self-reinforcing positive feedback loops — Covey's proactive focus expands the Circle of Influence over time, while Taleb's antifragile systems convert stressors into growth; both frameworks turn adversity into expanded capability
-- **[Via Negativa](term_via_negativa.md)**: Both redirect energy away from futile effort — Circle of Influence says stop worrying about the Circle of Concern; via negativa says improvement comes from removing harmful things rather than adding new interventions
+- **Status Quo Bias**: The preference for the current state of affairs — reactive Circle of Concern focus often reflects status quo bias, treating external conditions as immovable when they are actually within the Circle of Influence
+- **Grit**: Perseverance and passion for long-term goals — grit operationalizes sustained Circle of Influence focus over years, maintaining proactive effort despite setbacks that tempt retreat into reactive concern
+- **Choice Architecture**: Designing environments to guide better decisions — an applied expression of Circle of Influence thinking, restructuring controllable environmental factors rather than lamenting uncontrollable human tendencies
+- **Barbell Strategy**: Taleb's risk management heuristic maps directly to Circle of Influence thinking — allocate 85-90% to what's safely within your Circle of Control (ultra-safe assets) and 10-15% to asymmetric bets, while explicitly avoiding the "middle" where you're exposed to risks you can't influence
+- **Antifragility**: Both describe self-reinforcing positive feedback loops — Covey's proactive focus expands the Circle of Influence over time, while Taleb's antifragile systems convert stressors into growth; both frameworks turn adversity into expanded capability
+- **Via Negativa**: Both redirect energy away from futile effort — Circle of Influence says stop worrying about the Circle of Concern; via negativa says improvement comes from removing harmful things rather than adding new interventions
 
 ## References
 

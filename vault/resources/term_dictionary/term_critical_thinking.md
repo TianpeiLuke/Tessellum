@@ -114,33 +114,33 @@ Critical thinking is distinct from but overlapping with several related construc
 ## Related Terms
 
 ### Thinking Frameworks
-- **[Cognitive Bias](term_cognitive_bias.md)**: The systematic errors in System 1 thinking that critical thinking is designed to detect and override — biases are what happens when critical thinking is absent
-- **[WYSIATI](term_wysiati.md)**: "What You See Is All There Is" — the bias critical thinking most directly counteracts by asking "What information is missing?"
+- **Cognitive Bias**: The systematic errors in System 1 thinking that critical thinking is designed to detect and override — biases are what happens when critical thinking is absent
+- **WYSIATI**: "What You See Is All There Is" — the bias critical thinking most directly counteracts by asking "What information is missing?"
 - **[Systems Thinking](term_systems_thinking.md)**: Complements critical thinking by providing tools for analyzing complex, interconnected systems rather than isolated claims
-- **[Design Thinking](term_design_thinking.md)**: Complements critical thinking with creative and human-centered approaches; critical thinking evaluates what design thinking generates
+- **Design Thinking**: Complements critical thinking with creative and human-centered approaches; critical thinking evaluates what design thinking generates
 - **[MECE](term_mece.md)**: A structural tool for decomposing problems that operationalizes the critical thinking principle of comprehensive analysis
 
 ### Argumentation and Logic
 - **[Argumentation](term_argumentation.md)**: The broader discipline of constructing and evaluating arguments; critical thinking provides the evaluative standards that argumentation theory applies
-- **[Logical Fallacies](term_logical_fallacies.md)**: Systematic violations of good reasoning that critical thinking training teaches people to recognize and avoid
-- **[Research Argument](term_research_argument.md)**: Booth's five-component model operationalizes critical thinking for academic writing — every component maps to a critical thinking skill
+- **Logical Fallacies**: Systematic violations of good reasoning that critical thinking training teaches people to recognize and avoid
+- **Research Argument**: Booth's five-component model operationalizes critical thinking for academic writing — every component maps to a critical thinking skill
 - **[Socratic Questioning](term_socratic_questioning.md)**: The foundational pedagogical method of critical thinking — probing assumptions, evidence, implications, and perspectives through systematic questioning
-- **[Steelmanning](term_steelmanning.md)**: The practice of constructing the strongest version of an opposing argument — embodies Paul's "strong-sense" critical thinking
+- **Steelmanning**: The practice of constructing the strongest version of an opposing argument — embodies Paul's "strong-sense" critical thinking
 
 ### Inquiry Methods
-- **[Five Whys](term_five_whys.md)**: An iterative questioning technique that operationalizes critical thinking's demand to probe beneath surface explanations
-- **[Question Storming](term_question_storming.md)**: Generating diverse questions before seeking answers — a practice that develops critical thinking dispositions (curiosity, open-mindedness)
-- **[Active Listening](term_active_listening.md)**: A prerequisite for critical evaluation — understanding a claim accurately before assessing it
-- **[Analytical Reading](term_analytical_reading.md)**: Adler's method of active reading maps directly to Facione's core skills — interpretation, analysis, evaluation, inference
+- **Five Whys**: An iterative questioning technique that operationalizes critical thinking's demand to probe beneath surface explanations
+- **Question Storming**: Generating diverse questions before seeking answers — a practice that develops critical thinking dispositions (curiosity, open-mindedness)
+- **Active Listening**: A prerequisite for critical evaluation — understanding a claim accurately before assessing it
+- **Analytical Reading**: Adler's method of active reading maps directly to Facione's core skills — interpretation, analysis, evaluation, inference
 
 ## References
 
 ### Vault Sources
-- [Critical Thinking Think Smarter (Hartley)](../digest/digest_critical_thinking_hartley.md) — practitioner's guide covering fallacy taxonomy, SEEC framework, and strategic analysis models
-- [The Craft of Research (Booth)](../digest/digest_craft_of_research_booth.md) — the five-component argument model operationalizes critical thinking for academic writing
-- [Thinking, Fast and Slow (Kahneman)](../digest/digest_thinking_fast_and_slow_kahneman.md) — dual-process theory provides the cognitive science foundation for understanding when and why critical thinking fails
-- [How to Win An Argument (Wayne)](../digest/digest_winning_arguments_wayne.md) — practical argumentation combining critical analysis with audience awareness
-- [The 5 Elements of Effective Thinking (Burger)](../digest/digest_effective_thinking_burger.md) — deep understanding as the foundation of effective critical thinking
+- Critical Thinking Think Smarter (Hartley) — practitioner's guide covering fallacy taxonomy, SEEC framework, and strategic analysis models
+- The Craft of Research (Booth) — the five-component argument model operationalizes critical thinking for academic writing
+- Thinking, Fast and Slow (Kahneman) — dual-process theory provides the cognitive science foundation for understanding when and why critical thinking fails
+- How to Win An Argument (Wayne) — practical argumentation combining critical analysis with audience awareness
+- The 5 Elements of Effective Thinking (Burger) — deep understanding as the foundation of effective critical thinking
 
 ### External Sources
 - [Dewey, J. (1910). *How We Think*. D.C. Heath](https://en.wikipedia.org/wiki/How_We_Think) — foundational work introducing "reflective thinking" as an educational goal

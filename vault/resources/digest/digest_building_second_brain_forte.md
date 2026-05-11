@@ -243,39 +243,39 @@ The vault's architecture directly implements several BASB concepts:
 - [CODE Method](../term_dictionary/term_code_method.md) — the book's central four-phase lifecycle framework (Capture → Organize → Distill → Express)
 - [Progressive Summarization](../term_dictionary/term_progressive_summarization.md) — Forte's multi-layer distillation technique; the primary method for the Distill phase
 - [Intermediate Packets](../term_dictionary/term_intermediate_packets.md) — modular, reusable knowledge units; the primary output of the Express phase
-- [Divergence and Convergence](../term_dictionary/term_divergence_and_convergence.md) — the two modes of creative work; Capture + Organize are divergent, Distill + Express are convergent
+- Divergence and Convergence — the two modes of creative work; Capture + Organize are divergent, Distill + Express are convergent
 - [Trusted System](../term_dictionary/term_trusted_system.md) — Allen's concept that Forte builds upon; the Second Brain IS a trusted system
 - [Open Loops](../term_dictionary/term_open_loops.md) — Forte extends Allen's insight: not just unprocessed tasks but unprocessed *information* creates cognitive load
 - [Zettelkasten](../term_dictionary/term_zettelkasten.md) — the vault's primary methodology; BASB is a complementary approach with different organizational philosophy
 - [SlipBox](../term_dictionary/term_slipbox.md) — the vault's implementation of the Zettelkasten; uses PARA-like top-level categories with Zettelkasten-style linking
 - [Commonplace Book](../term_dictionary/term_commonplace_book.md) — historical predecessor to both Zettelkasten and BASB; BASB modernizes the commonplace tradition for digital tools
-- [Habit Loop](../term_dictionary/term_habit_loop.md) — the maintenance habits (weekly review, project checklists) form habit loops that sustain the system
+- Habit Loop — the maintenance habits (weekly review, project checklists) form habit loops that sustain the system
 - [Compound Effect](../term_dictionary/term_compound_effect.md) — the Second Brain compounds: each note adds marginal value to the whole through connections
-- [Choice Architecture](../term_dictionary/term_choice_architecture.md) — PARA and capture criteria are choice architecture for information management
-- [Deliberate Practice](../term_dictionary/term_deliberate_practice.md) — building and maintaining a Second Brain is a skill that improves through deliberate practice
-- [Natural Planning Model](../term_dictionary/term_natural_planning_model.md) — Forte's Divergence ↔ Convergence mirrors Allen's NPM phases (brainstorm → organize)
+- Choice Architecture — PARA and capture criteria are choice architecture for information management
+- Deliberate Practice — building and maintaining a Second Brain is a skill that improves through deliberate practice
+- Natural Planning Model — Forte's Divergence ↔ Convergence mirrors Allen's NPM phases (brainstorm → organize)
 - [Spaced Repetition](../term_dictionary/term_spaced_repetition.md) — periodic review of notes creates natural spaced repetition for captured ideas
 - [Slow Hunch](../term_dictionary/term_slow_hunch.md) — the "slow burn" approach to idea incubation parallels Johnson's slow hunch concept
 - [Adjacent Possible](../term_dictionary/term_adjacent_possible.md) — each captured note expands the adjacent possible of the knowledge system
 
 ### Related Digest Notes
-- [The PARA Method](digest_para_method_forte.md) — Forte's dedicated deep-dive into the Organize phase; expands on the PARA framework introduced in Ch. 5 of BASB
-- [Getting Things Done](digest_getting_things_done_allen.md) — GTD manages tasks; BASB manages knowledge; both build trusted systems
-- [Atomic Habits](digest_atomic_habits_clear.md) — Clear builds behaviors; Forte builds knowledge systems; both emphasize compounding small actions
-- [Where Good Ideas Come From](digest_good_ideas_johnson.md) — Johnson's slow hunch, liquid network, and adjacent possible directly underpin BASB's incubation superpowers
-- [Where Research Begins](digest_where_research_begins_mullaney.md) — Mullaney's Problem vs. Topic parallels Forte's Twelve Favorite Problems as a capture filter
-- [Make It Stick](digest_make_it_stick_brown.md) — Brown's retrieval practice and desirable difficulty explain why writing notes in your own words (Layer 4) produces deeper learning
+- The PARA Method — Forte's dedicated deep-dive into the Organize phase; expands on the PARA framework introduced in Ch. 5 of BASB
+- Getting Things Done — GTD manages tasks; BASB manages knowledge; both build trusted systems
+- Atomic Habits — Clear builds behaviors; Forte builds knowledge systems; both emphasize compounding small actions
+- Where Good Ideas Come From — Johnson's slow hunch, liquid network, and adjacent possible directly underpin BASB's incubation superpowers
+- Where Research Begins — Mullaney's Problem vs. Topic parallels Forte's Twelve Favorite Problems as a capture filter
+- Make It Stick — Brown's retrieval practice and desirable difficulty explain why writing notes in your own words (Layer 4) produces deeper learning
 - [How to Take Smart Notes](digest_smart_notes_ahrens.md) — Ahrens provides the theoretical foundation for the Zettelkasten method; BASB's Progressive Summarization is an alternative to Ahrens' literature → permanent note pipeline
 - [A System for Writing](digest_system_for_writing_doto.md) — Doto's practical Zettelkasten primer; explicitly distinguishes the "second brain" approach from the narrow Zettelkasten focus on writing
-- [The 7 Habits of Highly Effective People](digest_7_habits_covey.md) — Forte's CODE method is a knowledge management system; Covey's 7 Habits is a life management system; both emphasize systems over goals
-- [Mind Mapping](digest_mind_mapping_knight.md) — Forte's CODE method (Capture → Organize → Distill → Express) maps to Knight's note-taking process (Preview → Read → Mind Map → Review); Knight's keyword-only rule is an extreme form of Progressive Summarization
-- [Thinking in Systems](digest_thinking_in_systems_meadows.md) — Forte's CODE framework is a knowledge management system with stocks (captured notes) and flows (processing pipeline); Progressive Summarization is a balancing feedback loop that prevents information overload
+- The 7 Habits of Highly Effective People — Forte's CODE method is a knowledge management system; Covey's 7 Habits is a life management system; both emphasize systems over goals
+- Mind Mapping — Forte's CODE method (Capture → Organize → Distill → Express) maps to Knight's note-taking process (Preview → Read → Mind Map → Review); Knight's keyword-only rule is an extreme form of Progressive Summarization
+- Thinking in Systems — Forte's CODE framework is a knowledge management system with stocks (captured notes) and flows (processing pipeline); Progressive Summarization is a balancing feedback loop that prevents information overload
 - [The Zettelkasten Iceberg](digest_zettelkasten_iceberg_sascha.md) — Sascha positions BASB as Level 1 (surface PKM); CODE operates at the linked note-taking layer, useful for project management but insufficient for durable knowledge creation
 - [Search Alone Is Not Enough](digest_search_not_enough_christian.md) — BASB relies more on search and tagging (Tiers 2-3 of Christian's hierarchy); vulnerable to the failure modes Christian identifies (terminology evolution, cognitive load, false reliability)
-- [Building a Second Brain and Zettelkasten](digest_basb_vs_zettelkasten_sascha.md) — Sascha's integration piece; BASB manages resources upstream, ZKM processes ideas downstream; "BASB is a cat, ZKM is a dog"
-- [Digest: The Lean Product Playbook](digest_lean_product_playbook_olsen.md) — Olsen's MVP fidelity spectrum mirrors Forte's Progressive Summarization — both advocate starting with minimal investment and layering detail only where warranted
-- [The Product is Docs](digest_product_is_docs_gales.md) — Gales's CODE method for documentation (audience → metrics → release → feedback) parallels Forte's CODE for personal knowledge (Capture → Organize → Distill → Express); both apply product lifecycle thinking to knowledge management
-- [Docs for Developers (Bhatti)](digest_docs_for_developers_bhatti.md) — Bhatti's documentation lifecycle (Understand → Plan → Draft → Edit → Publish → Measure → Maintain) parallels Forte's CODE method; both treat content as a managed pipeline with feedback loops
+- Building a Second Brain and Zettelkasten — Sascha's integration piece; BASB manages resources upstream, ZKM processes ideas downstream; "BASB is a cat, ZKM is a dog"
+- Digest: The Lean Product Playbook — Olsen's MVP fidelity spectrum mirrors Forte's Progressive Summarization — both advocate starting with minimal investment and layering detail only where warranted
+- The Product is Docs — Gales's CODE method for documentation (audience → metrics → release → feedback) parallels Forte's CODE for personal knowledge (Capture → Organize → Distill → Express); both apply product lifecycle thinking to knowledge management
+- Docs for Developers (Bhatti) — Bhatti's documentation lifecycle (Understand → Plan → Draft → Edit → Publish → Measure → Maintain) parallels Forte's CODE method; both treat content as a managed pipeline with feedback loops
 
 ---
 

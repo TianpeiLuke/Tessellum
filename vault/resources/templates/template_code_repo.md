@@ -75,8 +75,8 @@ note in the vault.>
 
 | Module | Sub-note | One-line description |
 | ------ | -------- | -------------------- |
-| <module_a> | [`repo_<slug>_<module_a>.md`](repo_<slug>_<module_a>.md) | <description> |
-| <module_b> | [`repo_<slug>_<module_b>.md`](repo_<slug>_<module_b>.md) | <description> |
+| <module_a> | `repo_<slug>_<module_a>.md` | <description> |
+| <module_b> | `repo_<slug>_<module_b>.md` | <description> |
 
 ## Code Structure
 
@@ -108,15 +108,15 @@ they're load-bearing (e.g., to motivate which modules deserve sub-notes).>
 
 ### Related Terms
 
-- [`term_<concept>.md`](../../resources/term_dictionary/term_<concept>.md) — <relationship>
+- `term_<concept>.md` — <relationship>
 
 ### Related Code Repos
 
-- [`repo_<other>.md`](repo_<other>.md) — <relationship>
+- `repo_<other>.md` — <relationship>
 
 ### Related Code Snippets
 
-- [`snippet_<repo>_<component>.md`](../../resources/code_snippets/snippet_<repo>_<component>.md) — <component>
+- `snippet_<repo>_<component>.md` — <component>
 
 ### External Links
 

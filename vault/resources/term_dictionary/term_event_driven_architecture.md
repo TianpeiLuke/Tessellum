@@ -117,50 +117,50 @@ building_block: concept
 ## Related Terms
 
 ### Messaging and Streaming
-- **[Health Check](term_health_check.md)**: Health check failures often trigger events (alerts, auto-scaling, failover) in event-driven infrastructure
-- **[Message Queue](term_message_queue.md)**: Message queues serve as the point-to-point event transport layer between decoupled producers and consumers in EDA
-- **[Pub/Sub](term_pub_sub.md)**: Pub/Sub is the foundational fan-out communication pattern underlying event-driven systems
-- **[Rate Limiting](term_rate_limiting.md)**: Asynchronous event-driven patterns reduce synchronous request pressure; rate limiting protects synchronous API endpoints that EDA complements with async flows
-- **[REST](term_rest.md)**: REST provides synchronous request-response communication while EDA provides asynchronous event-based communication — often combined in the same system
-- **[Term: Apache Kafka](term_kafka.md)** -- De facto event broker for EDA; distributed commit log with publish-subscribe and retention
-- **[Term: Apache Flink](term_flink.md)** -- Stream processor for complex event processing in EDA systems
-- **[Term: Stream Processing](term_stream_processing.md)** -- Processing paradigm that operates on event streams produced by EDA
-- **[Term: Apache Spark](term_spark.md)** -- Can consume event streams via Structured Streaming for analytical processing
+- **Health Check**: Health check failures often trigger events (alerts, auto-scaling, failover) in event-driven infrastructure
+- **Message Queue**: Message queues serve as the point-to-point event transport layer between decoupled producers and consumers in EDA
+- **Pub/Sub**: Pub/Sub is the foundational fan-out communication pattern underlying event-driven systems
+- **Rate Limiting**: Asynchronous event-driven patterns reduce synchronous request pressure; rate limiting protects synchronous API endpoints that EDA complements with async flows
+- **REST**: REST provides synchronous request-response communication while EDA provides asynchronous event-based communication — often combined in the same system
+- **Term: Apache Kafka** -- De facto event broker for EDA; distributed commit log with publish-subscribe and retention
+- **Term: Apache Flink** -- Stream processor for complex event processing in EDA systems
+- **Term: Stream Processing** -- Processing paradigm that operates on event streams produced by EDA
+- **Term: Apache Spark** -- Can consume event streams via Structured Streaming for analytical processing
 
 ### Distributed Systems Theory
-- **[PACELC](term_pacelc.md)**: EDA's asynchronous nature is an explicit choice for low latency over strong consistency — the EL (Else Latency) side of PACELC
+- **PACELC**: EDA's asynchronous nature is an explicit choice for low latency over strong consistency — the EL (Else Latency) side of PACELC
 
 ### Data Engineering Patterns
-- **[Term: Change Data Capture](term_change_data_capture.md)** -- Database changes emitted as events; a key EDA pattern for data integration
-- **[Term: ETL](term_etl.md)** -- Traditional batch pattern; EDA enables streaming ETL as an alternative
-- **[Term: Batch Processing](term_batch_processing.md)** -- Contrasting paradigm; EDA shifts from scheduled to event-triggered processing
-- **[Term: Clickstream](term_clickstream.md)** -- User interaction events commonly processed through EDA patterns
+- **Term: Change Data Capture** -- Database changes emitted as events; a key EDA pattern for data integration
+- **Term: ETL** -- Traditional batch pattern; EDA enables streaming ETL as an alternative
+- **Term: Batch Processing** -- Contrasting paradigm; EDA shifts from scheduled to event-triggered processing
+- **Term: Clickstream** -- User interaction events commonly processed through EDA patterns
 
 ### Infrastructure
-- **[HAProxy](term_haproxy.md)**: HAProxy can proxy event stream connections (WebSocket, SSE) and is often combined with event-driven frontends in distributed architectures
-- **[NGINX](term_nginx.md)**: NGINX handles synchronous HTTP/gRPC ingress at the edge while event-driven architecture handles asynchronous internal communication between services
-- **[Reverse Proxy](term_reverse_proxy.md)**: Reverse proxies handle synchronous ingress traffic; EDA handles asynchronous internal communication -- complementary patterns in modern architectures
-- **[Round Robin](term_round_robin.md)**: In event-driven systems, Round Robin distributes events across consumer instances in a competing-consumers pattern (e.g., Kafka consumer group partition assignment)
+- **HAProxy**: HAProxy can proxy event stream connections (WebSocket, SSE) and is often combined with event-driven frontends in distributed architectures
+- **NGINX**: NGINX handles synchronous HTTP/gRPC ingress at the edge while event-driven architecture handles asynchronous internal communication between services
+- **Reverse Proxy**: Reverse proxies handle synchronous ingress traffic; EDA handles asynchronous internal communication -- complementary patterns in modern architectures
+- **Round Robin**: In event-driven systems, Round Robin distributes events across consumer instances in a competing-consumers pattern (e.g., Kafka consumer group partition assignment)
 
 ### Caching
-- **[Cache Invalidation](term_cache_invalidation.md)**: Event-driven cache invalidation consumes change events from producers to invalidate or update cache entries in real time, replacing polling-based invalidation
-- **[Cache Stampede](term_cache_stampede.md)**: Event-driven architectures can mitigate cache stampedes by broadcasting cache-miss events to a single handler rather than allowing concurrent regeneration
+- **Cache Invalidation**: Event-driven cache invalidation consumes change events from producers to invalidate or update cache entries in real time, replacing polling-based invalidation
+- **Cache Stampede**: Event-driven architectures can mitigate cache stampedes by broadcasting cache-miss events to a single handler rather than allowing concurrent regeneration
 
 ### System Design
-- **[API Gateway](term_api_gateway.md)**: API Gateways serve as the synchronous ingress layer that often routes requests into asynchronous event-driven pipelines for downstream processing
-- **[GraphQL](term_graphql.md)**: GraphQL subscriptions provide an event-driven API pattern where clients subscribe to real-time data changes over WebSocket connections
-- **[Scalability](term_scalability.md)**: Asynchronous messaging decouples producers from consumers, enabling each to scale independently; Kafka consumer groups scale read throughput by adding consumers
-- **[WebSocket](term_websocket.md)**: WebSocket enables event-driven real-time communication between client and server; events pushed without polling
-- **[Write-Back Cache](term_write_back_cache.md)**: The async flush in write-back caching is conceptually similar to EDA's asynchronous event processing; both decouple producers from downstream persistence
-- **[Write-Through Cache](term_write_through_cache.md)**: Write-back caching often uses event-driven async writes; write-through avoids this complexity by using synchronous writes
+- **API Gateway**: API Gateways serve as the synchronous ingress layer that often routes requests into asynchronous event-driven pipelines for downstream processing
+- **GraphQL**: GraphQL subscriptions provide an event-driven API pattern where clients subscribe to real-time data changes over WebSocket connections
+- **Scalability**: Asynchronous messaging decouples producers from consumers, enabling each to scale independently; Kafka consumer groups scale read throughput by adding consumers
+- **WebSocket**: WebSocket enables event-driven real-time communication between client and server; events pushed without polling
+- **Write-Back Cache**: The async flush in write-back caching is conceptually similar to EDA's asynchronous event processing; both decouple producers from downstream persistence
+- **Write-Through Cache**: Write-back caching often uses event-driven async writes; write-through avoids this complexity by using synchronous writes
 
 ### Architecture
-- **[Term: Data Engineering Lifecycle](term_data_engineering_lifecycle.md)** -- EDA influences the ingestion and serving stages of the lifecycle
-- **[Term: DataOps](term_dataops.md)** -- Operational practices for managing event-driven data pipelines
-- **[Term: Directed Acyclic Graph](term_directed_acyclic_graph.md)** -- Event flow topologies can form DAGs of processing stages
+- **Term: Data Engineering Lifecycle** -- EDA influences the ingestion and serving stages of the lifecycle
+- **Term: DataOps** -- Operational practices for managing event-driven data pipelines
+- **Term: Directed Acyclic Graph** -- Event flow topologies can form DAGs of processing stages
 
 ### Performance
-- **[Throughput](term_throughput.md)**: Event-driven architecture achieves high throughput through asynchronous processing and message queue buffering
+- **Throughput**: Event-driven architecture achieves high throughput through asynchronous processing and message queue buffering
 
 ### Architectural Patterns
 - **[CQRS](term_cqrs.md)**: Command Query Responsibility Segregation is the natural pairing — commands produce events that feed read-side projections; event-driven systems are the typical substrate for CQRS implementations
@@ -168,7 +168,7 @@ building_block: concept
 ## References
 
 ### Vault References
-- [Digest: Fundamentals of Data Engineering](../digest/digest_fundamentals_data_engineering_reis.md) -- Event-driven patterns in data ingestion and architecture
+- Digest: Fundamentals of Data Engineering -- Event-driven patterns in data ingestion and architecture
 
 ### External References
 - Reis, J. & Housley, M. (2022). *Fundamentals of Data Engineering*. O'Reilly Media. -- Architecture patterns for ingestion and serving

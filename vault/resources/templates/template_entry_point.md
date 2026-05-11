@@ -71,9 +71,9 @@ as "I want to X → see Y".>
 
 | If you want to... | Read |
 |---|---|
-| <use case 1> | [Note Title](path/to/note.md) |
-| <use case 2> | [Note Title](path/to/note.md) |
-| <use case 3> | [Note Title](path/to/note.md) |
+| <use case 1> | Note Title |
+| <use case 2> | Note Title |
+| <use case 3> | Note Title |
 
 ## <Section A — Primary Categorization>
 
@@ -92,8 +92,8 @@ Pick the scheme that fits the surface — there's no universal answer.>
 
 | Note | What it covers |
 |---|---|
-| [Title](path/to/note.md) | <one-line description> |
-| [Title](path/to/note.md) | <one-line description> |
+| Title | <one-line description> |
+| Title | <one-line description> |
 
 ## <Section B — Secondary Categorization>
 
@@ -103,7 +103,7 @@ bucket and access pattern).>
 
 | Note | What it covers |
 |---|---|
-| [Title](path/to/note.md) | <one-line description> |
+| Title | <one-line description> |
 
 ## Statistics
 
@@ -124,7 +124,7 @@ what's new since they last visited.>
 
 | Date | Note |
 |---|---|
-| YYYY-MM-DD | [Title](path/to/note.md) |
+| YYYY-MM-DD | Title |
 
 ## How to Use
 
@@ -132,8 +132,8 @@ what's new since they last visited.>
 workflow: do they read top-to-bottom? Pick by use case? Follow links by some
 ordering? This converts a flat index into a guided tour.>
 
-- **If you want to <use case A>**: start with [Note X](path.md)
-- **If you want to <use case B>**: read [Note Y](path.md) first, then [Note Z](path.md)
+- **If you want to <use case A>**: start with Note X
+- **If you want to <use case B>**: read Note Y first, then Note Z
 - **For an audit**: run `<command or skill>` to surface integrity issues
 
 ## Related Entry Points
@@ -141,9 +141,9 @@ ordering? This converts a flat index into a guided tour.>
 <Sibling navigation notes. Helps readers who are in the wrong entry point find
 the right one without going back to the Master TOC.>
 
-- [Master TOC](entry_master_toc.md) — top-level vault navigation
-- [Related Entry A](entry_related_a.md) — <how it relates>
-- [Related Entry B](entry_related_b.md) — <how it relates>
+- Master TOC — top-level vault navigation
+- Related Entry A — <how it relates>
+- Related Entry B — <how it relates>
 
 ## References
 

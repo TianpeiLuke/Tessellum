@@ -78,22 +78,22 @@ The history of argumentation can be traced through five major periods:
 ## Related Terms
 
 ### Core Components
-- **[Research Argument](term_research_argument.md)**: Booth's five-component model (claim, reasons, evidence, warrants, acknowledgments) is a practical adaptation of Toulmin's model for academic writing — the most directly applied argumentation framework in this vault
-- **[Logos](term_logos.md)**: The logical structure of an argument — one of Aristotle's three modes of persuasion and the dimension most directly addressed by argumentation theory
-- **[Ethos](term_ethos.md)**: Speaker credibility — argumentation theory shows that logical structure alone is insufficient; the source must be trustworthy
-- **[Pathos](term_pathos.md)**: Emotional engagement — argumentation theory shows that logical structure alone is insufficient; the audience must also care about the outcome
-- **[Persuasion](term_persuasion.md)**: The broader process of changing minds through communication; argumentation provides the logical backbone (logos) while persuasion adds delivery (ethos + pathos)
+- **Research Argument**: Booth's five-component model (claim, reasons, evidence, warrants, acknowledgments) is a practical adaptation of Toulmin's model for academic writing — the most directly applied argumentation framework in this vault
+- **Logos**: The logical structure of an argument — one of Aristotle's three modes of persuasion and the dimension most directly addressed by argumentation theory
+- **Ethos**: Speaker credibility — argumentation theory shows that logical structure alone is insufficient; the source must be trustworthy
+- **Pathos**: Emotional engagement — argumentation theory shows that logical structure alone is insufficient; the audience must also care about the outcome
+- **Persuasion**: The broader process of changing minds through communication; argumentation provides the logical backbone (logos) while persuasion adds delivery (ethos + pathos)
 
 ### Argumentation Practices
-- **[Steelmanning](term_steelmanning.md)**: Constructing the strongest version of an opponent's argument — a practice that embodies the pragma-dialectical ideal of engaging charitably with opposing positions
+- **Steelmanning**: Constructing the strongest version of an opponent's argument — a practice that embodies the pragma-dialectical ideal of engaging charitably with opposing positions
 - **[Socratic Questioning](term_socratic_questioning.md)**: A dialectical method that probes the components of an argument through systematic questioning — testing claims, reasons, evidence, and warrants
-- **[Active Listening](term_active_listening.md)**: A prerequisite for effective argumentation — understanding the opponent's actual position before constructing a response
+- **Active Listening**: A prerequisite for effective argumentation — understanding the opponent's actual position before constructing a response
 
 ### Fallacies (Argumentation Failures)
-- **[Logical Fallacies](term_logical_fallacies.md)**: Systematic violations of argumentation standards — each fallacy type maps to a failure in a specific argument component
-- **[Straw Man](term_straw_man.md)**: Distorting an opponent's argument to make it easier to attack — a violation of the pragma-dialectical rule requiring faithful representation
-- **[Ad Hominem](term_ad_hominem.md)**: Attacking the arguer rather than the argument — a violation of the rule separating argument quality from arguer characteristics
-- **[Circular Reasoning](term_circular_reasoning.md)**: Using the conclusion as a premise — a structural failure where the warrant is identical to the claim
+- **Logical Fallacies**: Systematic violations of argumentation standards — each fallacy type maps to a failure in a specific argument component
+- **Straw Man**: Distorting an opponent's argument to make it easier to attack — a violation of the pragma-dialectical rule requiring faithful representation
+- **Ad Hominem**: Attacking the arguer rather than the argument — a violation of the rule separating argument quality from arguer characteristics
+- **Circular Reasoning**: Using the conclusion as a premise — a structural failure where the warrant is identical to the claim
 - **[Critical Thinking](term_critical_thinking.md)**: The parent discipline of evaluative reasoning; argumentation provides the structures critical thinking evaluates
 
 ### Computational Argumentation
@@ -104,10 +104,10 @@ The history of argumentation can be traced through five major periods:
 ## References
 
 ### Vault Sources
-- [The Craft of Research (Booth)](../digest/digest_craft_of_research_booth.md) — the five-component argument model that operationalizes Toulmin's framework for academic research
-- [How to Win An Argument (Wayne)](../digest/digest_winning_arguments_wayne.md) — practical argumentation combining logical structure with emotional intelligence and audience awareness
-- [Critical Thinking (Hartley)](../digest/digest_critical_thinking_hartley.md) — fallacy taxonomy and reasoning frameworks as the evaluative complement to argumentation
-- [Thinking, Fast and Slow (Kahneman)](../digest/digest_thinking_fast_and_slow_kahneman.md) — dual-process theory explains why arguments must engage both System 1 (intuitive) and System 2 (deliberative) reasoning
+- The Craft of Research (Booth) — the five-component argument model that operationalizes Toulmin's framework for academic research
+- How to Win An Argument (Wayne) — practical argumentation combining logical structure with emotional intelligence and audience awareness
+- Critical Thinking (Hartley) — fallacy taxonomy and reasoning frameworks as the evaluative complement to argumentation
+- Thinking, Fast and Slow (Kahneman) — dual-process theory explains why arguments must engage both System 1 (intuitive) and System 2 (deliberative) reasoning
 
 ### External Sources
 - [Toulmin, S.E. (1958). *The Uses of Argument*. Cambridge University Press](https://en.wikipedia.org/wiki/The_Uses_of_Argument) — the foundational model of argument structure: claim, grounds, warrant, backing, qualifier, rebuttal

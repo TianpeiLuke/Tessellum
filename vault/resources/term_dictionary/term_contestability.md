@@ -64,17 +64,17 @@ Contestability has emerged as a first-class desideratum for high-stakes AI deplo
 - **[Argumentation](term_argumentation.md)**: the parent field that has long treated arguments as objects to be challenged; contestability is the algorithmic refinement of this norm for AI systems
 - **[Dialectic Knowledge System](term_dialectic_knowledge_system.md)**: a vault knowledge architecture where contestability is a built-in property — every claim is paired with explicit, editable warrants and counter-arguments
 - **[Dialectical Adequacy](term_dialectical_adequacy.md)**: a dialectically adequate argument is one that has survived contestation; contestability is the *interface* by which adequacy is tested
-- **[Hallucination](term_hallucination.md)**: contestability is one of the most promising mitigations for LLM hallucinations — a hallucinated reason becomes a contestable argument that a human reviewer can suppress
-- **[Chain of Thought](term_chain_of_thought.md)**: CoT explanations are not contestable in any formal sense — re-prompting may or may not change the answer in a traceable way; contestability is what CoT lacks
-- **[LLM as a Judge](term_llm_as_a_judge.md)**: an LLM-as-judge verdict is contestable only if the rubric scores it produces are themselves editable by a human reviewer with deterministic downstream effect
-- **[Multi-Agent Debate](term_multi_agent_debate.md)**: MAD provides multiple perspectives but does not by itself give the user editable handles into the resolution process; contestability is the additional structural property that QBAF-based aggregation supplies
-- **[Counterfactual Reasoning](term_counterfactual_reasoning.md)**: contestability is the operational realisation of counterfactual reasoning — "what would have changed the decision?" becomes a button the user can press
-- **[Logical Fallacies](term_logical_fallacies.md)**: a contestable system lets a user mark a fallacious argument as low-strength and watch the verdict update — a powerful tool for collaborative reasoning hygiene
+- **Hallucination**: contestability is one of the most promising mitigations for LLM hallucinations — a hallucinated reason becomes a contestable argument that a human reviewer can suppress
+- **Chain of Thought**: CoT explanations are not contestable in any formal sense — re-prompting may or may not change the answer in a traceable way; contestability is what CoT lacks
+- **LLM as a Judge**: an LLM-as-judge verdict is contestable only if the rubric scores it produces are themselves editable by a human reviewer with deterministic downstream effect
+- **Multi-Agent Debate**: MAD provides multiple perspectives but does not by itself give the user editable handles into the resolution process; contestability is the additional structural property that QBAF-based aggregation supplies
+- **Counterfactual Reasoning**: contestability is the operational realisation of counterfactual reasoning — "what would have changed the decision?" becomes a button the user can press
+- **Logical Fallacies**: a contestable system lets a user mark a fallacious argument as low-strength and watch the verdict update — a powerful tool for collaborative reasoning hygiene
 - **[Critical Thinking](term_critical_thinking.md)**: contestability is the AI-system-design analogue of the critical-thinking habit of treating every conclusion as provisional and revisable in light of stronger reasons
-- **[Neuro-Symbolic](term_neuro_symbolic.md)**: contestability is most easily achieved by neuro-symbolic systems where the symbolic component is the deterministic, editable substrate — as in ArgLLMs (LLM + QBAF + DF-QuAD)
-- **[Steelmanning](term_steelmanning.md)**: a contestable system invites steelmanning — users can add the strongest possible attacker to the QBAF and observe whether the verdict actually changes
-- **[Active Listening](term_active_listening.md)**: the user-side complement to contestability — to contest well, the user must first carefully read the system's argument graph rather than reacting to its bottom line
-- **[Hallucination](term_hallucination.md)**: contestability mitigates downstream harm from hallucinated reasoning by exposing each hallucinated artefact as an editable, weight-adjustable node
+- **Neuro-Symbolic**: contestability is most easily achieved by neuro-symbolic systems where the symbolic component is the deterministic, editable substrate — as in ArgLLMs (LLM + QBAF + DF-QuAD)
+- **Steelmanning**: a contestable system invites steelmanning — users can add the strongest possible attacker to the QBAF and observe whether the verdict actually changes
+- **Active Listening**: the user-side complement to contestability — to contest well, the user must first carefully read the system's argument graph rather than reacting to its bottom line
+- **Hallucination**: contestability mitigates downstream harm from hallucinated reasoning by exposing each hallucinated artefact as an editable, weight-adjustable node
 
 ## References
 

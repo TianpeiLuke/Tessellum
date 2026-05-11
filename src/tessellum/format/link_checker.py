@@ -120,13 +120,19 @@ def check_links(note: Note) -> list[Issue]:
                 )
 
     if not has_internal_md_link:
-        issues.append(
-            Issue(
-                Severity.WARNING,
-                "LINK-006",
-                "links",
-                "note has no internal links to other notes (orphan)",
+        # Templates are orphans by design — they're scaffolds with
+        # placeholder content meant to be copied + filled in. Skip
+        # LINK-006 for status=template, matching TESS-004's authoring-
+        # state exemption pattern.
+        status = note.frontmatter.get("status")
+        if status != "template":
+            issues.append(
+                Issue(
+                    Severity.WARNING,
+                    "LINK-006",
+                    "links",
+                    "note has no internal links to other notes (orphan)",
+                )
             )
-        )
 
     return issues

@@ -95,7 +95,7 @@ The BB-specific section is the only piece that differs by `building_block`:
 
 The shared `## Patterns` template (sub-sections + dual code blocks per pattern) is defined ONCE under [Patterns Template](#patterns-template-shared-across-all-bb-types) below — every BB type uses the identical Patterns shape.
 
-**Reference implementation:** [`snippet_<example>.md`](../code_snippets/snippet_<example>.md) is the worked example of the new shape (9 patterns, dual blocks per pattern, Composition row at the end). Read it before authoring a new snippet — it's the model.
+**Reference implementation:** `snippet_<example>.md` is the worked example of the new shape (9 patterns, dual blocks per pattern, Composition row at the end). Read it before authoring a new snippet — it's the model.
 
 ### YAML Frontmatter (ALL types) <!-- :: section_id = yaml_frontmatter_all_types :: -->
 

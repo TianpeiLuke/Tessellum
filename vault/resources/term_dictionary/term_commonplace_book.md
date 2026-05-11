@@ -164,11 +164,11 @@ Johnson argues in *Where Good Ideas Come From* that the commonplace book is not 
 - [Term: Slow Hunch](term_slow_hunch.md) -- the commonplace book is the original technology for keeping slow hunches alive
 - [Term: Liquid Network](term_liquid_network.md) -- the commonplace book creates a personal-scale liquid network of recorded ideas
 - [Term: Adjacent Possible](term_adjacent_possible.md) -- each new commonplace book entry expands the intellectual adjacent possible for recombination
-- [Term: Serendipity](term_serendipity.md) -- thematic re-reading of commonplace books produces serendipitous connections between ideas from different sources
-- [Term: Exaptation](term_exaptation.md) -- commonplace books enable exaptation by placing ideas from different domains in proximity
+- Term: Serendipity -- thematic re-reading of commonplace books produces serendipitous connections between ideas from different sources
+- Term: Exaptation -- commonplace books enable exaptation by placing ideas from different domains in proximity
 - [Term: Zettelkasten](term_zettelkasten.md) -- the modern descendant of the commonplace book tradition, adding atomicity and explicit bidirectional linking
 - [Term: SlipBox](term_slipbox.md) -- the vault's graph structure is a computational implementation of commonplace book principles
-- [Term: a domain workflow SlipBox](term_mo_slipbox.md) -- modus operandi slip-box as a specialized commonplace book for abuse patterns
+- Term: a domain workflow SlipBox -- modus operandi slip-box as a specialized commonplace book for abuse patterns
 - [Term: Retrieval Practice](term_retrieval_practice.md) -- periodically re-reading and actively recalling commonplace book entries strengthens retention
 - [Term: Spaced Repetition](term_spaced_repetition.md) -- algorithmic resurfacing of knowledge automates the commonplace book's periodic re-reading practice
 - [Term: Elaborative Interrogation](term_elaborative_interrogation.md) -- asking "Why?" about a recorded passage deepens processing beyond passive commonplacing
@@ -184,7 +184,7 @@ Johnson argues in *Where Good Ideas Come From* that the commonplace book is not 
 
 ## References
 
-- Source: [Digest: Where Good Ideas Come From](../digest/digest_good_ideas_johnson.md) -- Johnson's argument for commonplace books as innovation infrastructure
+- Source: Digest: Where Good Ideas Come From -- Johnson's argument for commonplace books as innovation infrastructure
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — commonplace book as Zettelkasten predecessor; Zettelkasten adds atomicity and linking
 - Source: [Digest: A System for Writing](../digest/digest_system_for_writing_doto.md) — Doto contrasts Zettelkasten with commonplace book tradition
 - [Wikipedia: Commonplace Book](https://en.wikipedia.org/wiki/Commonplace_book) -- comprehensive overview of the history and practice

@@ -131,22 +131,22 @@ Retrieval practice maps naturally onto Zettelkasten / SlipBox note-taking practi
 
 - [Term: Spaced Repetition](term_spaced_repetition.md) -- distributing retrieval events over increasing intervals maximizes the testing effect
 - [Term: Desirable Difficulties](term_desirable_difficulties.md) -- retrieval practice is the prototypical desirable difficulty
-- [Term: Interleaving](term_interleaving.md) -- mixing retrieval across topics forces discrimination and strengthens flexible recall
+- Term: Interleaving -- mixing retrieval across topics forces discrimination and strengthens flexible recall
 - [Term: Elaborative Interrogation](term_elaborative_interrogation.md) -- asking "why" questions during retrieval deepens encoding
-- [Term: Cognitive Bias](term_cognitive_bias.md) -- fluency illusions from rereading create false confidence in mastery
-- [Term: System 1 and System 2](term_system_1_and_system_2.md) -- retrieval practice forces effortful System 2 processing over automatic System 1 familiarity
+- Term: Cognitive Bias -- fluency illusions from rereading create false confidence in mastery
+- Term: System 1 and System 2 -- retrieval practice forces effortful System 2 processing over automatic System 1 familiarity
 - [Term: Socratic Questioning](term_socratic_questioning.md) -- Socratic method is a form of guided retrieval practice through questioning
 - [Term: Zettelkasten](term_zettelkasten.md) -- note-writing in own words embodies retrieval practice
 - [Term: SlipBox](term_slipbox.md) -- SlipBox review workflows naturally incorporate retrieval practice
-- [Deliberate Practice](term_deliberate_practice.md) -- retrieval practice is a specific form of deliberate practice for learning; structured, effortful, with immediate feedback
-- [Habit Loop](term_habit_loop.md) -- retrieval practice follows a habit loop: cue (question) → craving (wanting to know) → response (recall attempt) → reward (feedback)
+- Deliberate Practice -- retrieval practice is a specific form of deliberate practice for learning; structured, effortful, with immediate feedback
+- Habit Loop -- retrieval practice follows a habit loop: cue (question) → craving (wanting to know) → response (recall attempt) → reward (feedback)
 - [Literature Notes](term_literature_notes.md) — writing literature notes from memory (after closing the book) exercises retrieval
 - [Permanent Notes](term_permanent_notes.md) — creating permanent notes by recalling and connecting is retrieval practice applied to knowledge building
-- [Active Reading](term_active_reading.md) — Adler's four reader questions force active retrieval during reading, preventing passive reception
+- Active Reading — Adler's four reader questions force active retrieval during reading, preventing passive reception
 
 ## References
 
-- Source: [Digest: Make It Stick](../digest/digest_make_it_stick_brown.md)
+- Source: Digest: Make It Stick
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — navigating the slip-box by link traversal is a form of retrieval practice
 - [Roediger & Karpicke (2006) -- Test-Enhanced Learning](https://journals.sagepub.com/doi/10.1111/j.1467-9280.2006.01693.x) -- landmark study demonstrating the testing effect with prose passages
 - [Roediger & Karpicke (2006) -- The Power of Testing Memory](http://psychnet.wustl.edu/memory/wp-content/uploads/2018/04/Roediger-Karpicke-2006_PPS.pdf) -- comprehensive review article on the testing effect
