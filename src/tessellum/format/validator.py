@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tessellum.bb.types import BBType, VALID_BB_TYPE_VALUES, find_edge_type
 from tessellum.format.frontmatter_spec import (
     DATE_FORMAT_REGEX,
     FORBIDDEN_FIELDS,
@@ -101,6 +102,7 @@ def validate(target: Path | str | Note) -> list[Issue]:
     issues.extend(_check_yaml_links(note.raw_frontmatter))
     issues.extend(check_links(note))
     issues.extend(_check_counter_argument_link(note))
+    issues.extend(_check_bb_typed_edges(note))
 
     return issues
 
@@ -363,6 +365,111 @@ def _check_counter_argument_link(note: Note) -> list[Issue]:
             "markdown links resolve to a building_block: argument note",
         )
     ]
+
+
+def _check_bb_typed_edges(note: Note) -> list[Issue]:
+    """TESS-005 — informational: body-links between BB-typed notes that
+    don't instantiate a BB_SCHEMA edge.
+
+    BB_SCHEMA describes *epistemic transitions* — typed edges DKS walks
+    when producing new notes. The corpus has *many* legitimate body
+    links beyond epistemic transitions: cross-references between
+    sibling thoughts (ARG→ARG), term lookups (ARG→CONCEPT), skill
+    pointers (ARG→PROCEDURE). Those are not bugs.
+
+    TESS-005 surfaces the *narrower* case: a body link between two
+    *different* BB-typed notes where the BB-pair is in neither
+    direction of :data:`BB_SCHEMA`. That is — the BB-pair has no
+    declared epistemic relationship at all. Such links are flagged
+    as ``WARNING`` (never ``ERROR``) so the user can decide whether
+    to:
+
+    1. Remove or retarget the link (it was an authoring mistake).
+    2. Accept it as documentation (cross-reference, not a transition).
+    3. Propose a new edge in ``BB_SCHEMA_DKS_EXTENSIONS`` (the link is
+       evidence that a missing epistemic relationship exists).
+
+    The richer surface for corpus-graph telemetry is the
+    ``tessellum bb audit`` CLI (Phase 6); TESS-005 is the single-note
+    static-validator companion.
+
+    Skip rules:
+
+    - Source's ``status`` ≠ ``"active"`` (template / draft / stub /
+      archived are authoring-state-exempt, same as TESS-004).
+    - Source and target have the same ``bb_type`` (cross-references
+      between sibling notes are not epistemic transitions; the schema
+      is silent on same-BB edges by design).
+    - Source or target are not BB-typed (the rule needs both ends typed).
+    - The link target can't be resolved or parsed (LINK-003 / format
+      errors on the target handle those cases).
+    """
+    bb_value = note.frontmatter.get("building_block")
+    if bb_value not in VALID_BB_TYPE_VALUES:
+        return []
+    if note.frontmatter.get("status") != "active":
+        return []
+    if note.path is None:
+        return []
+
+    source_bb = BBType(bb_value)
+    body_no_code = _FENCED_CODE_RE.sub("", note.body)
+    issues: list[Issue] = []
+    seen: set[str] = set()  # dedup multiple links to the same target
+
+    for m in _BODY_MD_LINK_RE.finditer(body_no_code):
+        target = m.group(2).strip()
+        if not target.endswith(".md") or target.startswith(
+            ("http://", "https://", "mailto:", "/")
+        ):
+            continue
+        path_part = target.split("#", 1)[0]
+        if not path_part or path_part in seen:
+            continue
+
+        try:
+            resolved = (note.path.parent / path_part).resolve()
+        except (OSError, ValueError):
+            continue
+        if not resolved.is_file():
+            continue
+
+        try:
+            target_note = parse_note(resolved)
+        except Exception:
+            continue
+
+        target_bb_value = target_note.frontmatter.get("building_block")
+        if target_bb_value not in VALID_BB_TYPE_VALUES:
+            continue
+        target_bb = BBType(target_bb_value)
+        seen.add(path_part)
+
+        # Skip same-BB links — those are cross-references between
+        # siblings, not epistemic transitions. The schema is silent on
+        # them by design.
+        if target_bb is source_bb:
+            continue
+
+        # Bidirectional match against BB_SCHEMA.
+        if find_edge_type(source_bb, target_bb) is not None:
+            continue
+        if find_edge_type(target_bb, source_bb) is not None:
+            continue
+
+        issues.append(
+            Issue(
+                Severity.WARNING,
+                "TESS-005",
+                "links",
+                f"body link from {source_bb.value!r} to {target_bb.value!r} "
+                f"({path_part}): BB-pair not in BB_SCHEMA in either "
+                f"direction. Either retarget the link, accept as "
+                f"documentation, or propose a schema extension.",
+            )
+        )
+
+    return issues
 
 
 def _check_yaml_links(raw_frontmatter: str) -> list[Issue]:

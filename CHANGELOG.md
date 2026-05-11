@@ -16,6 +16,110 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.48] — 2026-05-10
+
+### Added — Phase 6 of plan_dks_expansion: validator + telemetry generalisation
+
+First phase of the expansion plan. Closes the easy half of the gap FZ 1b
+flagged: corpus-edge validation today only fires on one BB→BB pair
+(TESS-004's counter→argument). Generalising it pays off immediately and
+lays groundwork for meta-DKS's observation source (Phase 9).
+
+#### `tessellum.format.validator` — TESS-005
+
+Informational rule: body-links between BB-typed notes whose pair isn't
+in `BB_SCHEMA` (in either direction) → WARNING. Skip rules:
+
+- `status` != `active` (template / draft / stub / archived exempt;
+  same as TESS-004)
+- Source and target have the same `bb_type` (cross-references between
+  siblings aren't epistemic transitions; the schema is silent on
+  same-BB edges by design)
+- Source or target are not BB-typed
+- Link target can't be resolved or parsed (handled by LINK-003)
+
+WARNING-only (never ERROR). BB_SCHEMA describes epistemic transitions;
+the corpus has many legitimate body-link types beyond transitions
+(cross-references, term lookups, skill pointers). TESS-005 surfaces
+the narrower "BB-pair has no declared epistemic relationship at all"
+case so the user can decide whether to retarget, accept as
+documentation, or propose a schema extension.
+
+The richer surface for vault-wide corpus telemetry is the new
+`tessellum bb audit` CLI.
+
+#### `tessellum bb` — new top-level CLI subcommand group
+
+Per resolution D6 (peer of `dks`/`composer`/`fz`/`format`; cohesive
+namespace per module boundary; growth headroom for Phase 8+).
+
+```
+tessellum bb audit [--db <path>] [--format human|json] [--show-untyped]
+```
+
+Reads `BBGraph.from_db()` + emits: total node count by BBType, total
+edge count by EpistemicEdgeType label, list of untyped corpus edges
+(by BB-pair + optionally per-edge), list of orphan BBNodes (no
+inbound/outbound corpus edges), list of unrealised schema edges (0
+instances in the corpus). The vault-scoped cousin of `tessellum dks
+--report` (which is run-scoped).
+
+Future Phase 6+ operations under this namespace:
+
+- `tessellum bb walk <fz>` — Phase 8+ (FSM walk visualisation)
+- `tessellum bb validate-schema` — Phase 9 (meta-DKS schema-edit validation)
+- `tessellum bb migrate` — Phase 9 (retroactive schema-version validation)
+
+#### `tessellum dks --report` extensions
+
+- `--include-bb-graph` — opt-in flag. When set, joins per-run aggregate
+  stats with `BBGraph.from_db()` corpus telemetry: node counts by BB
+  type, edge counts by schema label, untyped-edge BB-pair tallies.
+- `--bb-db <path>` — index DB to load the corpus BBGraph from
+  (default: `./data/tessellum.db`; ignored without `--include-bb-graph`).
+
+Best-effort: missing index DB → `bb_graph.error` sentinel in the
+report payload; exit code stays 0.
+
+#### Plan amendment — `plans/plan_dks_expansion.md` resolutions
+
+The 8 open questions originally listed in the plan have been resolved
+against best-practice design principles. A new "Resolved decisions"
+section near the top of the plan documents each resolution + the
+principle that drives it. D1-D8 cover BBNode payload shape (subclass
+per BBType), confidence calibration target, schema mutation discipline
+(event-sourced), meta-meta-schema location, argument perspectives in
+YAML, `bb` CLI namespace, termination semantics (Dung + closed_loop
+derived), and corpus migration discipline. Only D2's value (10%
+default false-gate rate) remains empirically tunable.
+
+### Tests
+
+- `tests/smoke/test_format_validator.py` +7 TESS-005 tests: forward
+  edge passes, reverse edge passes, same-BB skip, unrelated-pair
+  warning, template-status exempt, path=None skipped, CTR→MOD DKS
+  extension passes.
+- `tests/cli/test_bb_audit_cli.py` (10 tests): missing DB → exit 2,
+  bare `tessellum bb` → exit 2, human summary, JSON shape, --show-untyped
+  toggles verbose list, unrealised-schema-edges reported, orphan
+  detection, banner.
+- `tests/cli/test_dks_report_cli.py` +3 for --include-bb-graph: empty
+  payload tolerance, bb_graph section attached when DB present,
+  omitted by default.
+
+Full suite: 677 passed, 1 skipped (was 657 / +20 new).
+
+### Why this lands first in Phase 6
+
+Pure expansion. No public-API break, no refactor, no runtime change.
+Builds the telemetry meta-DKS (Phase 9) will need (top-K underused
+schema edges, top-K most-violated transitions). Pays off immediately
+for hand-authored vault hygiene — TESS-005 + `bb audit` together let
+a user see structural patterns in their vault's BB graph without
+running any DKS cycle.
+
+---
+
 ## [0.0.47] — 2026-05-10
 
 ### Added — `tessellum.bb`: BB ontology as a typed module (FSM refactor, part 1)

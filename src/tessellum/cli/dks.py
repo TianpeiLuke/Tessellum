@@ -76,6 +76,22 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "aggregate-trace mtime). Default: all runs.",
     )
     dks.add_argument(
+        "--include-bb-graph",
+        action="store_true",
+        help="With --report: join the per-run aggregate stats with "
+        "`BBGraph.from_db()` corpus telemetry (node counts by BB type, "
+        "edge counts by schema label, untyped-edge BB-pair tallies). "
+        "Requires --bb-db or default index DB path.",
+    )
+    dks.add_argument(
+        "--bb-db",
+        type=Path,
+        default=Path("data") / "tessellum.db",
+        help="With --report --include-bb-graph: index DB to load the "
+        "corpus BBGraph from. Default: ./data/tessellum.db. Ignored "
+        "without --include-bb-graph.",
+    )
+    dks.add_argument(
         "--gate-confidence",
         type=float,
         default=None,
@@ -686,6 +702,9 @@ def _run_dks_report(args: argparse.Namespace) -> int:
         "runs": run_summaries,
     }
 
+    if getattr(args, "include_bb_graph", False):
+        report["bb_graph"] = _build_bb_graph_section(args.bb_db)
+
     if args.output_format == "json":
         print(json.dumps(report, indent=2))
     else:
@@ -716,8 +735,73 @@ def _run_dks_report(args: argparse.Namespace) -> int:
                     f"gated={rs['gated_count']}  "
                     f"+{rs['added']}/Δ{rs['revised']}/-{rs['superseded']}"
                 )
+        bb_graph = report.get("bb_graph")
+        if isinstance(bb_graph, dict) and "error" not in bb_graph:
+            print()
+            print(
+                f"  bb graph: {bb_graph['node_count']} nodes, "
+                f"{bb_graph['edge_count']} edges, "
+                f"{bb_graph['untyped_edge_count']} untyped"
+            )
+            top_pairs = bb_graph.get("untyped_edges_by_bb_pair", [])[:5]
+            for pair in top_pairs:
+                print(
+                    f"    {pair['count']:>3}×  {pair['source']} -> {pair['target']}"
+                )
+        elif isinstance(bb_graph, dict) and bb_graph.get("error"):
+            print()
+            print(f"  bb graph: error — {bb_graph['error']}")
 
     return 0
+
+
+def _build_bb_graph_section(db_path: Path) -> dict:
+    """Phase 6 — corpus-graph telemetry joined into `dks --report`.
+
+    Loads ``BBGraph.from_db()`` and returns a JSON-safe summary:
+    node counts by BB type, edge counts by schema label, untyped-edge
+    BB-pair tallies. Best-effort: if the index DB can't be read, we
+    return a sentinel ``{"error": ...}`` payload rather than crashing
+    the report.
+    """
+    from collections import defaultdict
+
+    db = db_path.expanduser().resolve()
+    if not db.is_file():
+        return {"error": f"index DB not found at {db}"}
+
+    from tessellum.bb import BB_SCHEMA, BBGraph, BBType
+
+    try:
+        graph = BBGraph.from_db(db)
+    except Exception as e:  # noqa: BLE001 — best-effort; surface as data
+        return {"error": f"failed to load BBGraph from {db}: {e}"}
+
+    untyped_pair_counts: dict[tuple[str, str], int] = defaultdict(int)
+    for e in graph.untyped_edges():
+        src = graph.node(e.source_note_id)
+        tgt = graph.node(e.target_note_id)
+        if src is None or tgt is None:
+            continue
+        untyped_pair_counts[(src.bb_type.value, tgt.bb_type.value)] += 1
+
+    return {
+        "db_path": str(db),
+        "node_count": graph.node_count,
+        "edge_count": graph.edge_count,
+        "nodes_by_type": {
+            bb.value: len(graph.nodes_of_type(bb)) for bb in BBType
+        },
+        "edges_by_label": graph.edges_by_type(),
+        "untyped_edge_count": len(graph.untyped_edges()),
+        "untyped_edges_by_bb_pair": [
+            {"source": s, "target": t, "count": c}
+            for (s, t), c in sorted(
+                untyped_pair_counts.items(), key=lambda kv: (-kv[1], kv[0])
+            )
+        ],
+        "schema_edge_count": len(BB_SCHEMA),
+    }
 
 
 def _empty_report(runs_dir: Path) -> dict:

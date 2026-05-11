@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -423,3 +424,132 @@ def test_all_eight_building_blocks_are_accepted(bb_value):
     )
     bb_issues = [i for i in validate(note) if i.field == "building_block"]
     assert bb_issues == []
+
+
+# ── TESS-005 — every BB→BB body-link should instantiate BB_SCHEMA (Phase 6) ─
+
+
+_GENERIC_FM_TEMPLATE = textwrap.dedent(
+    """\
+    ---
+    tags:
+      - resource
+      - analysis
+    keywords: [a, b, c]
+    topics: [Tx, Ty]
+    language: markdown
+    date of note: 2026-05-10
+    status: {status}
+    building_block: {bb}
+    ---
+
+    # {title}
+
+    {body}
+    """
+)
+
+
+def _write_note(tmp_path, slug, bb, body, status="active") -> Path:
+    p = tmp_path / f"{slug}.md"
+    p.write_text(
+        _GENERIC_FM_TEMPLATE.format(
+            status=status, bb=bb, title=slug.replace("_", " ").title(), body=body
+        )
+    )
+    return p
+
+
+def test_tess_005_realised_schema_edge_passes(tmp_path):
+    """A body link in the *forward* direction of a BB_SCHEMA edge passes."""
+    _write_note(tmp_path, "model_a", "model", "Body.")
+    # OBS body links to MOD — reverse direction of OBS→CON→MOD. Not in
+    # schema directly (no OBS→MOD edge). Use a real schema pair:
+    # MOD→PRO (codifying). Source = model, target = procedure.
+    _write_note(tmp_path, "procedure_a", "procedure", "Body.")
+    src = _write_note(
+        tmp_path, "model_src", "model",
+        "Codifies into [procedure_a](procedure_a.md).",
+    )
+    issues = [i for i in validate(src) if i.rule_id == "TESS-005"]
+    assert issues == []
+
+
+def test_tess_005_back_reference_passes(tmp_path):
+    """A body link in the *reverse* direction of a BB_SCHEMA edge passes.
+
+    Schema: argument is produced by hypothesis (HYP→ARG, testing). A
+    body link from argument back to hypothesis is the *back-reference*
+    — the natural corpus pattern. Bidirectional match catches it.
+    """
+    _write_note(tmp_path, "hypothesis_a", "hypothesis", "Body.")
+    src = _write_note(
+        tmp_path, "argument_a", "argument",
+        "Tests [hypothesis_a](hypothesis_a.md).",
+    )
+    issues = [i for i in validate(src) if i.rule_id == "TESS-005"]
+    assert issues == []
+
+
+def test_tess_005_same_bb_cross_reference_is_skipped(tmp_path):
+    """ARG → ARG cross-reference is not a transition; rule skips it."""
+    _write_note(tmp_path, "argument_a", "argument", "Body.")
+    src = _write_note(
+        tmp_path, "argument_b", "argument",
+        "Cross-reference to [argument_a](argument_a.md).",
+    )
+    issues = [i for i in validate(src) if i.rule_id == "TESS-005"]
+    assert issues == []
+
+
+def test_tess_005_unrelated_pair_emits_warning(tmp_path):
+    """ARG → CONCEPT is not in BB_SCHEMA in either direction → WARNING.
+
+    Term lookups are legitimate corpus patterns but flagged for the
+    user's awareness — they could be authoring mistakes, accepted
+    documentation, or candidates for a schema extension.
+    """
+    _write_note(tmp_path, "concept_a", "concept", "Body.")
+    src = _write_note(
+        tmp_path, "argument_a", "argument",
+        "References [concept_a](concept_a.md).",
+    )
+    issues = [i for i in validate(src) if i.rule_id == "TESS-005"]
+    assert len(issues) == 1
+    assert issues[0].severity is Severity.WARNING
+
+
+def test_tess_005_template_status_is_exempt(tmp_path):
+    """status=template skips TESS-005 — templates can have placeholders."""
+    _write_note(tmp_path, "concept_a", "concept", "Body.")
+    src = _write_note(
+        tmp_path, "argument_a", "argument",
+        "[concept_a](concept_a.md)",
+        status="template",
+    )
+    issues = [i for i in validate(src) if i.rule_id == "TESS-005"]
+    assert issues == []
+
+
+def test_tess_005_skips_when_path_is_unknown():
+    """In-memory note (parse_text) has note.path=None → rule skipped."""
+    fm = VALID_FRONTMATTER + "building_block: argument\n"
+    body = "Link to [concept_a](concept_a.md)"
+    note = parse_text(f"---\n{fm.strip()}\n---\n{body}\n")
+    assert note.path is None
+    issues = [i for i in validate(note) if i.rule_id == "TESS-005"]
+    assert issues == []
+
+
+def test_tess_005_dks_extension_edge_passes(tmp_path):
+    """The CTR→MOD DKS extension is in BB_SCHEMA — body link counter→model passes."""
+    _write_note(tmp_path, "model_a", "model", "Body.")
+    src = _write_note(
+        tmp_path, "counter_one", "counter_argument",
+        # Need a body link to an argument note for TESS-004 too:
+        "[an_arg](an_arg.md). Pattern aggregates in [model_a](model_a.md).",
+    )
+    # Author the argument so TESS-004 is satisfied separately
+    _write_note(tmp_path, "an_arg", "argument", "Body.")
+    issues = [i for i in validate(src) if i.rule_id == "TESS-005"]
+    assert issues == []
