@@ -13,6 +13,7 @@ import sys
 from tessellum.__about__ import __status__, __version__
 from tessellum.cli.capture import add_subparser as add_capture_subparser
 from tessellum.cli.composer import add_subparser as add_composer_subparser
+from tessellum.cli.dks import add_subparser as add_dks_subparser
 from tessellum.cli.filter import add_subparser as add_filter_subparser
 from tessellum.cli.format_check import add_subparser as add_format_subparser
 from tessellum.cli.fz import add_subparser as add_fz_subparser
@@ -40,6 +41,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_filter_subparser(subparsers)
     add_fz_subparser(subparsers)
     add_composer_subparser(subparsers)
+    add_dks_subparser(subparsers)
     return parser
 
 
@@ -66,6 +68,7 @@ def _print_banner() -> None:
     print("  tessellum search <query>            — content retrieval (--bm25/--dense/--hybrid/--bfs)")
     print("  tessellum filter --tag <t> [--bb …] — metadata filter (tags, BB, status, dates, ...)")
     print("  tessellum fz {list|show|ancestors|descendants|path|all} — Folgezettel trail explorer")
+    print("  tessellum dks <observations.jsonl> — run a multi-cycle DKS session")
     print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
     print()
     print("  tessellum composer compile <skill>  — compile to a typed DAG (Wave 2)")

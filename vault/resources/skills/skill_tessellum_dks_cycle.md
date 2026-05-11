@@ -28,7 +28,7 @@ pipeline_metadata: ./skill_tessellum_dks_cycle.pipeline.yaml
 
 This is the **single canonical body** for the `tessellum-dks-cycle` skill — the agent-invocable surface of the Dialectic Knowledge System (DKS) Phase 2 runtime. The skill drives one complete 7-component closed loop from an observation to a revised warrant, producing six typed notes (one per non-edge component) plus one `contradicts` link. It is invoked directly by Tessellum's composer; no ecosystem shims are needed.
 
-DKS Phase 1 (v0.0.40) shipped the Python API at [`src/tessellum/composer/dks.py`](../../../src/tessellum/composer/dks.py); this skill is the Composer-pipeline counterpart, mapping each of the 7 components to one Composer step.
+DKS Phase 1 (v0.0.40) shipped the Python API; v0.0.43 lifted it to its own top-level package at [`src/tessellum/dks/`](../../../src/tessellum/dks/) (peer to `tessellum.composer`, not nested inside it). This skill is the Composer-pipeline counterpart, mapping each of the 7 components to one Composer step.
 
 ## Skill description <!-- :: section_id = skill_description :: -->
 
@@ -55,7 +55,7 @@ Default DB / vault paths follow the standard Tessellum convention (`./vault/`, `
 ## Resources <!-- :: section_id = resources :: -->
 
 - **Sidecar**: `./skill_tessellum_dks_cycle.pipeline.yaml` (mapped via the frontmatter `pipeline_metadata` field)
-- **Core API**: [`src/tessellum/composer/dks.py`](../../../src/tessellum/composer/dks.py) — `DKSObservation`, `DKSArgument`, `DKSWarrant`, `DKSContradicts`, `DKSCounterArgument`, `DKSPattern`, `DKSRuleRevision`, `DKSCycleResult`
+- **Core API**: [`src/tessellum/dks/`](../../../src/tessellum/dks/) — `DKSObservation`, `DKSArgument`, `DKSWarrant`, `DKSContradicts`, `DKSCounterArgument`, `DKSPattern`, `DKSRuleRevision`, `DKSCycleResult`, `DKSRunner`, `DKSRunResult` (import from `tessellum.dks`)
 - **FZ allocator**: `allocate_cycle_fz(existing_trails, mode, parent_fz)` — three modes (`fresh` / `extend` / `branch`)
 - **Trail explorer**: `tessellum fz` (v0.0.41) — inspect the produced FZ subtree after the run
 - **Method references**:

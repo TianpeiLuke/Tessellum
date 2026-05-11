@@ -11,7 +11,7 @@
 # objects representing the current rule set), and `observed_contradictions`
 # (array of prior counter FZs the pattern step may aggregate over).
 #
-# The Phase 1 Python core (tessellum.composer.dks) holds the dataclass
+# The Python core (tessellum.dks; peer module to tessellum.composer) holds the dataclass
 # definitions this sidecar mirrors. Steps 1, 2, 3, 5, 6, 7 each materialise
 # a typed atomic note (six produced notes per closed-loop cycle). Step 4
 # is a no_op — the contradicts edge is a markdown link in the attacker's

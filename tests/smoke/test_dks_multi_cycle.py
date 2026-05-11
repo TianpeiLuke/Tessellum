@@ -19,12 +19,12 @@ import json
 
 import pytest
 
-from tessellum.composer import (
+from tessellum.composer import MockBackend
+from tessellum.dks import (
     DKSObservation,
     DKSRunner,
     DKSRunResult,
     DKSWarrant,
-    MockBackend,
     WarrantChange,
     aggregate_warrant_changes,
 )
