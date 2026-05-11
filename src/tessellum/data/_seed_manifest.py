@@ -57,6 +57,9 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     # ── System regularization (the format contract) ──────────────────────
     "resources/term_dictionary/term_format_spec.md",
 
+    # ── Canonical BB exemplar — model (areas/code_repos/ per convention) ──
+    "areas/code_repos/repo_tessellum.md",                              # ★ canonical model exemplar
+
     # ── COE (Correction of Errors) review-and-reflect surface ────────────
     "resources/term_dictionary/term_coe.md",                           # method + 9-section shape
     "resources/skills/skill_tessellum_write_coe.md",                   # 6-step Composer skill canonical

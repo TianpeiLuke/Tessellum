@@ -16,6 +16,118 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.57] — 2026-05-11
+
+### Added — Phase III of plan_v01_completion_roadmap: BB-type exemplar curation + term_dictionary convention
+
+Phase III turned out to be curation, not authoring. A gap-check on
+the primer-term inventory came back clean (all 6 already in the seed
+manifest); the question of "what is an example note?" resolved into
+"a real vault canonical, framed by the question its BB type answers."
+The deliverables are smaller than the plan projected:
+
+**Question-oriented BB exemplar table.** `entry_building_block_index`
+gains a "Canonical exemplars — one per BB type" section. One row per
+BB type, each pointing at a real, well-formed note in the seed vault,
+framed by the question that BB answers:
+
+| BB type | Question | Canonical exemplar |
+|---|---|---|
+| `empirical_observation` | *What happened?* | `paper_khattab2023dspy_exp_result` |
+| `concept` | *What is it called?* | `term_dialectic_knowledge_system` |
+| `model` | *How is it structured?* | `repo_tessellum` (new — see below) |
+| `hypothesis` | *What will happen next?* | `lit_khattab2023dspy` |
+| `argument` | *Is the prediction true?* | `thought_dks_design_synthesis` (FZ 2a) |
+| `counter_argument` | *What are the flaws?* | `counter_two_systems_not_three_ontology_and_dks_are_one` |
+| `procedure` | *How do we act on this?* | `skill_tessellum_dks_cycle` |
+| `navigation` | *Where does this live?* | `entry_dialectic_trail` |
+
+Each exemplar is real vault content — not synthetic teaching
+examples. The substrate's BB pattern is taught by reading substantive
+material that happens to embody the pattern, not by reading sanitised
+exemplars that only demonstrate it.
+
+**`term_dictionary/` is concept-only — convention clarified.** The
+long-standing-but-undocumented rule: notes in
+`resources/term_dictionary/` are always `building_block: concept`
+(they answer *"what is it called?"*). Model-typed notes — those
+answering *"how is it structured?"* — live in `areas/` with
+appropriate sub-categories (`areas/code_repos/` for repo
+architecture, `areas/tools/` for algorithms, `areas/teams/` for team
+structure).
+
+Capture registry updated: `tessellum capture model <slug>` now writes
+to `areas/` with the `model_` filename prefix (was
+`resources/term_dictionary/` with `term_` prefix). Future captures
+land in the right place automatically.
+
+**Capture destination + filename prefix are now caller-overridable.**
+The REGISTRY values are *defaults*, not constraints. Agents and
+callers know the specific note's sub-category better than the
+registry can — a `model`-flavored note about a repo wants
+`areas/code_repos/`; one about an algorithm wants `areas/tools/`.
+New optional kwargs on `tessellum.capture.capture()`: `destination`
+and `filename_prefix`. CLI flags: `--destination <subdir>` and
+`--prefix <name_>`. Example:
+
+```
+tessellum capture model my_algo \
+    --destination areas/tools \
+    --prefix tool_
+# → areas/tools/tool_my_algo.md
+```
+
+Back-compat: when neither override is supplied, behaviour matches
+the prior REGISTRY-driven path.
+
+**Canonical model exemplar.** New
+`vault/areas/code_repos/repo_tessellum.md` describes Tessellum's own
+repository as a structured system: 8 first-class components
+(BB ontology, Capture, Composer, Indexer, Retrieval, DKS, Format,
+CLI) plus inter-component flows plus build system. Doubles as the
+canonical `model` exemplar the BB index points at. Added to seed
+manifest.
+
+**Known TODOs flagged in the index.** Two existing notes violate the
+new convention — `term_format_spec.md` and `term_pixie_random_walk.md`
+are `building_block: model` but live in `term_dictionary/`. The
+index documents the violation; relocation is deferred (14 backlinks
+each to retarget).
+
+### What this phase scrapped
+
+The plan originally projected 8 new "BB-type example notes" + a
+PARA primer term + AB content port. All three reduced to no-ops:
+
+- The 8 example notes — 5 drafts written, then scrapped after the
+  user observed: "examples should not be a separate namespace; every
+  vault note is already an example of its BB type, and the validators
+  don't know what `example_*` filenames mean." The new convention is
+  to point at real canonicals.
+- The PARA primer — gap-check found `term_para_method.md` already
+  shipped at v0.0.49.
+- AB port — survey found AB's content is heavily ML-domain-specific;
+  porting it would change Tessellum's character without improving
+  exemplar coverage. Tessellum's seed vault already has 5+ canonical
+  exemplars per BB type.
+
+### Tests + suite
+
+4 new capture-override tests (`test_capture_destination_override`,
+`test_capture_filename_prefix_override`,
+`test_capture_destination_override_validates_existence`,
+`test_capture_no_overrides_falls_back_to_registry_defaults`). Full
+suite: **871 passed** (+4 from v0.0.56).
+
+### Sequencing
+
+Phase III of `plan_v01_completion_roadmap.md` complete. Next:
+**v0.0.58 — Phase IV** authors 9 new skill canonicals to reach the
+v0.1.0 target of 20 essential skills (5 capture + 5 search/answer +
+5 trail management + 5 maintenance).
+
+---
+
 ## [0.0.56] — 2026-05-11
 
 ### Added — Phase II of plan_v01_completion_roadmap: CI workflow + ship-the-wheel discipline

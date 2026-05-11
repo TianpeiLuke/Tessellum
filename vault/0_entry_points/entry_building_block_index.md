@@ -34,7 +34,7 @@ For the full *why* of each type — origin, examples, when to reach for it — r
 |---|---|---|---|---|---|
 | `empirical_observation` | What happened? | Testing (observe → record) | Knowledge | Observation, Method, Result, References | `resources/analysis_thoughts/` |
 | `concept` | What is it called? | Naming (boundary-drawing) | Knowledge | Definition, Examples, References | `resources/term_dictionary/` |
-| `model` | How is it structured? | Structuring (relational) | Knowledge | Architecture, Components, Relationships, References | `resources/term_dictionary/` |
+| `model` | How is it structured? | Structuring (relational) | Knowledge | Architecture, Components, Relationships, References | `areas/` (with sub-categories like `areas/code_repos/`, `areas/tools/`, `areas/teams/`) |
 | `hypothesis` | What will happen next? | Predicting (forward-looking) | Reasoning | Hypothesis, Reasoning, Falsifiability, References | `resources/analysis_thoughts/` |
 | `argument` | Is the prediction true? | Claiming (justified position) | Reasoning | Claim, Reason, Evidence, References | `resources/analysis_thoughts/` |
 | `counter_argument` | What are the flaws? | Refuting (challenging) | Reasoning | Counter-claim, Reason, Strength, References | `resources/analysis_thoughts/` |
@@ -85,6 +85,10 @@ The "Required sections" column lists the H2 sections each BB must have. Template
 
 The "Default directory" column matches the capture registry. `tessellum capture <flavor> <slug>` writes to the right place automatically. If you author manually, place the file under the listed directory.
 
+**Convention: `term_dictionary/` is concept-only.** Notes in `resources/term_dictionary/` should always be `building_block: concept` (they answer *"what is it called?"*). Structural notes — those answering *"how is it structured?"* — are `model`-typed and live in `areas/` with appropriate sub-categories (`areas/code_repos/` for repo architecture, `areas/tools/` for algorithms, `areas/teams/` for team structure, etc.). Two legacy `term_dictionary/` files (`term_format_spec.md`, `term_pixie_random_walk.md`) currently violate this convention; relocation is pending.
+
+**The directories above are defaults, not constraints.** `tessellum capture <flavor> <slug>` writes to the registry's default location, but agents/callers know the specific note's sub-category better than the registry can. Pass `--destination <subdir>` and `--prefix <name_>` to land a note where it belongs — e.g., `tessellum capture model my_algo --destination areas/tools --prefix tool_` lands a model-typed algorithm note at `areas/tools/tool_my_algo.md`. The registry default is a sensible starting point when the agent has no better information.
+
 ## Reading the layers as a workflow
 
 The four layers form a knowledge-production cycle a vault embodies over time:
@@ -97,6 +101,23 @@ Meta layer       : navigation indexes the other three
 ```
 
 A *useful* vault grows along this cycle. A vault dominated by `concept` notes is a glossary; one dominated by `procedure` notes is a runbook; one with all four layers in balance is a Tessellum.
+
+## Canonical exemplars — one per BB type
+
+For each Building Block, this table points at a real, well-formed note in this seed vault that exemplifies the type. Read the exemplar to see what its question — "What happened?" / "What is it called?" / etc. — actually looks like *answered* in concrete prose. The exemplars are real vault content, not synthetic teaching examples: they prove the BB pattern survives substantive material.
+
+| BB type | Question it answers | Canonical exemplar | What you'll learn from it |
+|---|---|---|---|
+| `empirical_observation` | **What happened?** | [`paper_khattab2023dspy_exp_result`](../resources/papers/paper_khattab2023dspy_exp_result.md) | A factual, past-tense record of an experiment's measured outcomes — no interpretation, just data. The DKS-cycle `q₀` shape: what gets fed into step 1. |
+| `concept` | **What is it called?** | [`term_dialectic_knowledge_system`](../resources/term_dictionary/term_dialectic_knowledge_system.md) | A named entity (DKS) defined with full Toulmin-style backing: heritage, definition, when to invoke. The reference shape every other note links *into*. |
+| `model` | **How is it structured?** | [`repo_tessellum`](../areas/code_repos/repo_tessellum.md) | A repository decomposed into 8 first-class components + their inter-component flows + the build system that ships them. The shape an `argument` builds *on top of*. Lives in `areas/` because `model` notes describe ongoing structured systems, not named entities (those go to `concept` in `term_dictionary/`). |
+| `hypothesis` | **What will happen next?** | [`lit_khattab2023dspy`](../resources/papers/lit_khattab2023dspy.md) | A falsifiable forward-looking claim with stated test conditions. Drives an `argument` once evidence accumulates; retires to `archived` when settled. |
+| `argument` | **Is the prediction true?** | [`thought_dks_design_synthesis`](../resources/analysis_thoughts/thought_dks_design_synthesis.md) | A reasoned position with full Toulmin structure: claim + data + warrant + qualifier + rebuttal. The synthesis shape that anchors an FZ trail node. |
+| `counter_argument` | **What are the flaws?** | [`counter_two_systems_not_three_ontology_and_dks_are_one`](../resources/analysis_thoughts/counter_two_systems_not_three_ontology_and_dks_are_one.md) | A targeted attack on a specific argument's warrant or premise. Names *which Toulmin component is broken* and proposes a tightening. Step 5 output shape. |
+| `procedure` | **How do we act on this?** | [`skill_tessellum_dks_cycle`](../resources/skills/skill_tessellum_dks_cycle.md) | An operational rule expressed as agent-invocable canonical: setup, step-by-step, error handling, constraints. The "do X to get Y" shape. |
+| `navigation` | **Where does this live?** | [`entry_dialectic_trail`](entry_dialectic_trail.md) | A typed index over a coherent slice of the vault (here, the FZ 2 dialectic trail). Routes readers; doesn't argue. The meta-layer shape. |
+
+Each exemplar pairs with the corresponding row in the "8 Building Block types" table above. To author your own note of a type, start by reading its exemplar — it shows the H2 sections, voice, and density that work for that type. Then copy the template from `vault/resources/templates/` (or run `tessellum capture <flavor> <slug>` which does it for you).
 
 ## Related Entry Points
 

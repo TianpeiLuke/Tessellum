@@ -77,8 +77,8 @@ REGISTRY: dict[str, TemplateSpec] = {
     "model": TemplateSpec(
         flavor="model",
         template_filename="template_model.md",
-        destination="resources/term_dictionary",
-        filename_prefix="term_",
+        destination="areas",
+        filename_prefix="model_",
         bb_type="model",
         second_category="terminology",
         description="Relational structure (architecture, schema, system model)",
@@ -244,6 +244,8 @@ def capture(
     *,
     force: bool = False,
     today: dt.date | None = None,
+    destination: str | None = None,
+    filename_prefix: str | None = None,
 ) -> CaptureResult:
     """Create a new vault note from a typed template.
 
@@ -254,6 +256,17 @@ def capture(
             ``0_entry_points/``, ``resources/``, etc.).
         force: If ``True``, overwrite an existing target file.
         today: Override the date stamped into the note (default: ``date.today()``).
+        destination: Override the REGISTRY-default destination directory
+            (relative to ``vault_root``). Agents/callers know the
+            specific note's sub-category better than the registry can:
+            a ``model``-flavored note about a repo wants
+            ``areas/code_repos/``; one about an algorithm wants
+            ``areas/tools/``. REGISTRY's value is the *default*, not a
+            constraint.
+        filename_prefix: Override the REGISTRY-default filename prefix
+            (e.g., ``repo_`` for repo architecture, ``tool_`` for
+            algorithm/tool notes, ``team_`` for team structure).
+            REGISTRY's value is the default.
 
     Returns:
         CaptureResult with the path of the created file.
@@ -275,14 +288,20 @@ def capture(
     if not src.is_file():
         raise FileNotFoundError(f"template not found: {src}")
 
-    dest_dir = vault_root / spec.destination
+    effective_destination = destination if destination is not None else spec.destination
+    effective_prefix = (
+        filename_prefix if filename_prefix is not None else spec.filename_prefix
+    )
+
+    dest_dir = vault_root / effective_destination
     if not dest_dir.is_dir():
         raise FileNotFoundError(
             f"destination directory does not exist: {dest_dir}. "
-            f"Vault may be missing the {spec.destination} subdirectory."
+            f"Either create the {effective_destination} subdirectory or "
+            f"pass a different destination= override."
         )
 
-    dest = dest_dir / f"{spec.filename_prefix}{slug}.md"
+    dest = dest_dir / f"{effective_prefix}{slug}.md"
     if dest.exists() and not force:
         raise FileExistsError(
             f"target file already exists: {dest}. Pass force=True to overwrite."

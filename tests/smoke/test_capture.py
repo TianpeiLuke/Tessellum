@@ -293,3 +293,55 @@ def test_capture_does_not_overwrite_explicit_bb_schema_version(vault_root, tmp_p
     if BB_SCHEMA_VERSION != 999:
         # Count occurrences — there should be exactly 1 (the pinned one)
         assert text.count("bb_schema_version:") == 1
+
+
+# ── destination + filename_prefix overrides (Phase III, v0.0.57) ───────────
+
+
+def test_capture_destination_override(vault_root):
+    """Caller-supplied destination overrides REGISTRY default."""
+    (vault_root / "areas" / "code_repos").mkdir(parents=True, exist_ok=True)
+    result = capture(
+        flavor="model",
+        slug="some_repo",
+        vault_root=vault_root,
+        destination="areas/code_repos",
+    )
+    assert result.path.parent.name == "code_repos"
+    assert result.path.parent.parent.name == "areas"
+
+
+def test_capture_filename_prefix_override(vault_root):
+    """Caller-supplied filename_prefix overrides REGISTRY default."""
+    (vault_root / "areas" / "code_repos").mkdir(parents=True, exist_ok=True)
+    result = capture(
+        flavor="model",
+        slug="some_repo",
+        vault_root=vault_root,
+        destination="areas/code_repos",
+        filename_prefix="repo_",
+    )
+    assert result.path.name == "repo_some_repo.md"
+
+
+def test_capture_destination_override_validates_existence(vault_root):
+    """Override destination must exist; clear error otherwise."""
+    with pytest.raises(FileNotFoundError, match="does not exist"):
+        capture(
+            flavor="model",
+            slug="orphan",
+            vault_root=vault_root,
+            destination="areas/nonexistent_subdir",
+        )
+
+
+def test_capture_no_overrides_falls_back_to_registry_defaults(vault_root):
+    """Without overrides, REGISTRY destination + prefix apply (back-compat)."""
+    result = capture(
+        flavor="concept",
+        slug="my_concept",
+        vault_root=vault_root,
+    )
+    # concept default: resources/term_dictionary/ + term_ prefix
+    assert result.path.parent.name == "term_dictionary"
+    assert result.path.name == "term_my_concept.md"
