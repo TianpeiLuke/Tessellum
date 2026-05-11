@@ -16,6 +16,137 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.45] — 2026-05-10
+
+### Added — DKS Phase 5: production polish (confidence gating + warrant persistence + telemetry)
+
+The final phase per `plans/plan_dks_implementation.md`. Phase 1-4 built
+the closed-loop runtime; Phase 5 makes it operationally tunable: a
+confidence gate that decides whether to run the full 7-component
+cycle, a persistent warrant set that survives across sessions, and a
+`--report` CLI mode that surfaces inter-cycle telemetry.
+
+#### `src/tessellum/dks/confidence.py` — confidence gating
+
+New module with the minimal interface the plan called for:
+
+- `DKSConfidenceModel` — Protocol; callable with signature
+  `(observation, warrants) -> float in [0, 1]`. The model returns the
+  confidence that existing warrants will hold for the given observation.
+- `ConstantConfidence(score=0.0)` — trivial dataclass implementation;
+  useful for tests + for callers who want to disable gating
+  (`ConstantConfidence(0.0)` → every cycle full) or force gating
+  (`ConstantConfidence(1.0)` → every cycle short-circuits).
+- `DEFAULT_CONFIDENCE_THRESHOLD = 0.85` — per the plan's open-question
+  lean. High enough that easy cases skip; low enough that contested
+  cases get the full treatment.
+- `decide_escalation(confidence, threshold)` — strict-greater rule:
+  `confidence > threshold` → `"gated"`; equality at threshold falls
+  through to `"full"` (safety bias).
+
+#### `DKSCycle` + `DKSCycleResult` extended
+
+- `DKSCycle.__init__` now takes optional `confidence_model=` +
+  `confidence_threshold=` kwargs. When a model is provided, the cycle
+  scores the observation *before* steps 2-3; high-confidence
+  observations short-circuit to observation + argument A only.
+- `DKSCycleResult.argument_b: DKSArgument | None` (was required) —
+  gated cycles produce no B. Existing callers that always do full
+  cycles see no behaviour change; deserialisers updated.
+- New `DKSCycleResult` fields: `escalation_decision: str` (default
+  `"full"`), `confidence_score: float | None`, plus `.gated` property.
+- `DKSCycleResult.folgezettel_nodes` correctly handles the
+  2-node-subtree case (gated) and the 3-node case (short-circuit on A/B
+  agreement) and the 6-node case (full closed loop).
+- `DKSRunner` threads `confidence_model` + `confidence_threshold` into
+  every cycle; `DKSRunResult.gated_count` property added.
+
+#### `src/tessellum/dks/persistence.py` — warrant persistence
+
+Three surfaces:
+
+- `WarrantRegistry` — typed wrapper holding the current warrant set,
+  keyed by Folgezettel. API: `add`, `supersede` (drops the old entry,
+  adds the new one), `snapshot` (tuple for `DKSRunner.run`),
+  `snapshot_with_fz`, plus `__contains__` / `__iter__` / `__len__`.
+- `WarrantHistory(path)` — append-only JSONL log. Methods:
+  `record_change`, `record_changes`, `all`, `tail(n)`. Tolerant of
+  malformed lines (skipped, not fatal); creates parent dirs on first
+  write. `HistoryEntry` pairs the change with a UTC ISO-8601 timestamp.
+- `load_warrants_from_vault(vault_path)` — walks
+  `resources/skills/procedure_*.md` + `resources/term_dictionary/concept_*.md`,
+  returning a `WarrantRegistry` of notes tagged `dks` with a non-empty
+  `folgezettel`. Matches the convention the DKS skill's step 7 uses.
+
+#### `tessellum dks` CLI — new surfaces
+
+- `--gate-confidence <0.0-1.0>` — force a `ConstantConfidence` model.
+- `--gate-threshold <0.0-1.0>` — override the default threshold.
+- `--report` + `--report-last <N>` — inter-cycle telemetry mode. Skips
+  the observations run; scans `--runs-dir` for `*_aggregate.json`
+  files (and the per-cycle traces they reference) to aggregate:
+  total cycles, closed-loop rate, gated rate, total warrant changes
+  by kind, top-K most-attacked warrant FZs, and a per-run breakdown.
+  `observations` positional is now optional (required when not in
+  `--report` mode; error message guides the user).
+- Each closed-loop run now appends its warrant changes to
+  `<runs-dir>/warrant_history.jsonl` (unless `--no-trace`). Gated
+  runs produce no changes → no history file.
+- Per-cycle trace JSON gains `escalation_decision`, `confidence_score`,
+  `gated` fields. Aggregate trace gains `gated_count` +
+  `warrant_history_path`. Backwards-compatible: pre-v0.0.45 aggregate
+  traces still parse cleanly under `--report` (gated count derived
+  from per-cycle files; missing → 0).
+- Human-readable run summary now labels each cycle as `GATED` /
+  `CLOSED` / `SHORT`.
+
+#### Tests
+
+- `tests/smoke/test_dks_confidence.py` (13 tests) — default threshold;
+  `ConstantConfidence` boundary cases; `decide_escalation` strict-greater
+  rule; cycle with no model runs full loop (Phase 1 back-compat); high
+  confidence gates (2 FZ nodes, no B); low confidence runs full loop
+  (with `confidence_score` recorded); custom threshold; at-threshold
+  falls through; `DKSRunner` threads model into every cycle.
+- `tests/smoke/test_dks_persistence.py` (17 tests) — `WarrantRegistry`
+  add/supersede/snapshot/iteration/duplicate; `WarrantHistory`
+  record/all/tail/empty/malformed-line tolerance/parent-dir creation;
+  `load_warrants_from_vault` empty/dks-tagged/non-dks-skipped/concept-too.
+- `tests/cli/test_dks_report_cli.py` (12 tests) — high gate → all
+  gated; low gate → all closed; custom threshold; out-of-range
+  rejection; warrant history written on closed runs; not on gated;
+  `--report` empty/aggregating/no-observations-required/`--report-last`
+  filtering; missing observations + missing `--report` → exit 2.
+
+Full suite: 627 passed, 1 skipped (was 585 / +42 new).
+
+#### Documentation
+
+- `vault/resources/analysis_thoughts/thought_cqrs_r_cross_gap_audit.md`
+  (FZ 1a1b1) — appends a "Status After Phase 5" cross-validation
+  section. Confirms that the productive halves of R-P and R-Cross
+  identified in the original audit are now closed by DKS Phases 1-5,
+  and explicitly records that R-D's BB-aware-rerank gap remains
+  deferred (not a DKS deliverable). Includes a forward look for the
+  next audit cycle.
+
+### Changed
+
+- `tessellum.composer` / `tessellum.dks` public-API additions:
+  `DKSConfidenceModel`, `ConstantConfidence`, `EscalationDecision`,
+  `DEFAULT_CONFIDENCE_THRESHOLD`, `decide_escalation`, `WarrantRegistry`,
+  `WarrantHistory`, `HistoryEntry`, `load_warrants_from_vault`.
+- `__about__.py` and `pyproject.toml` bumped to `0.0.45`.
+
+### Plan status
+
+`plans/plan_dks_implementation.md` is now fully shipped (Phases 1-5 at
+v0.0.40, v0.0.42, v0.0.43, v0.0.44, v0.0.45). The runtime is
+feature-complete; next milestone is v0.1 polish (CI workflow, MCP
+server exposing v0.1 skills as tools, public docs).
+
+---
+
 ## [0.0.44] — 2026-05-10
 
 ### Added — DKS Phase 4: integration with the rest of Tessellum
