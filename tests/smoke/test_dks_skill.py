@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from tessellum.composer.compiler import compile_skill
 from tessellum.composer.loader import load_pipeline

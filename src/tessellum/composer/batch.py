@@ -29,7 +29,6 @@ What this module does NOT do (deferred):
 
 from __future__ import annotations
 
-import dataclasses
 import json
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field

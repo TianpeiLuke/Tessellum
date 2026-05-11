@@ -268,7 +268,6 @@ def test_capture_does_not_overwrite_explicit_bb_schema_version(vault_root, tmp_p
     # Build a fake template with an explicit version.
     fake_templates = tmp_path / "fake_templates"
     fake_templates.mkdir()
-    canonical = (vault_root.parent.parent / "vault" / "resources" / "templates" / "template_argument.md")
     # Use the real argument template as a base but inject bb_schema_version explicitly
     from tessellum.data import templates_dir
 

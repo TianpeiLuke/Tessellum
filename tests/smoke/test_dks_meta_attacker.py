@@ -16,14 +16,10 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from tessellum.bb.types import BBType, EpistemicEdgeType
 from tessellum.composer.llm import MockBackend
 from tessellum.dks.meta import (
-    Attacker,
-    DEFAULT_MIN_CYCLES,
-    HeuristicProposer,
     LLMAttacker,
     MetaCounterArgument,
     MetaCycle,

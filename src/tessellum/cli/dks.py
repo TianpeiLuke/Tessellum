@@ -969,7 +969,6 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
     """
     from collections import Counter
 
-    from tessellum.bb.types import BB_SCHEMA, BB_SCHEMA_EPISTEMIC
     from tessellum.dks.meta import (
         Attacker,
         DEFAULT_MIN_CYCLES,
@@ -980,7 +979,6 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
         MetaObservation,
         NoOpAttacker,
         Proposer,
-        load_event_log,
         write_event_log,
     )
 

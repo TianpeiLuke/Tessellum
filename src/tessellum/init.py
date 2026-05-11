@@ -95,7 +95,7 @@ _BARE_PARA_DIRS: tuple[str, ...] = (
 #
 # Adding a seed file = appending one line to that module's
 # ``SEED_VAULT_MANIFEST``. No edit to this file or pyproject is needed.
-from tessellum.data._seed_manifest import SEED_VAULT_MANIFEST as _SEED_VAULT_MANIFEST
+from tessellum.data._seed_manifest import SEED_VAULT_MANIFEST as _SEED_VAULT_MANIFEST  # noqa: E402
 
 
 def scaffold(target_dir: Path | str, *, force: bool = False) -> ScaffoldResult:

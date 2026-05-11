@@ -6,7 +6,6 @@ sentence-transformers model per test (~1.5s amortized over the file).
 
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 
 import pytest

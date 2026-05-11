@@ -67,7 +67,7 @@ def scenarios_dir(tmp_path: Path) -> Path:
     scenarios.mkdir()
     (scenarios / "case_a.scenario.yaml").write_text(
         textwrap.dedent(
-            f"""\
+            """\
             name: "Case A"
             skill: ../skill_demo.md
             vault: ../vault

@@ -213,7 +213,7 @@ def test_database_links_from(vault, tmp_path):
     build(vault, db_path)
     with Database(db_path) as db:
         outlinks = db.links_from("resources/term_dictionary/term_alpha.md")
-    targets = {l.target_note_id for l in outlinks}
+    targets = {lk.target_note_id for lk in outlinks}
     assert "resources/term_dictionary/term_beta.md" in targets
 
 
@@ -222,7 +222,7 @@ def test_database_links_to(vault, tmp_path):
     build(vault, db_path)
     with Database(db_path) as db:
         inlinks = db.links_to("resources/term_dictionary/term_alpha.md")
-    sources = {l.source_note_id for l in inlinks}
+    sources = {lk.source_note_id for lk in inlinks}
     assert "resources/term_dictionary/term_beta.md" in sources
     assert "0_entry_points/entry_master_toc.md" in sources
 
@@ -257,7 +257,7 @@ def test_external_links_not_indexed(vault, tmp_path):
     build(vault, db_path)
     with Database(db_path) as db:
         outlinks = db.links_from("resources/term_dictionary/term_beta.md")
-    targets = {l.target_note_id for l in outlinks}
+    targets = {lk.target_note_id for lk in outlinks}
     assert all("example.com" not in t for t in targets)
 
 

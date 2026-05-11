@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from tessellum.bb.types import BBType, EpistemicEdgeType
+from tessellum.bb.types import EpistemicEdgeType
 
 
 # ── META_SCHEMA — the meta-meta-schema (D4) ────────────────────────────────

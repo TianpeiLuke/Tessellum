@@ -28,7 +28,6 @@ from tessellum.bb import (
 from tessellum.composer import MockBackend
 from tessellum.dks import (
     BBPath,
-    BBPathStep,
     ConstantConfidence,
     DKSArgument,
     DKSCounterArgument,

@@ -97,7 +97,7 @@ def test_scaffolded_vault_validates_with_no_errors(tmp_path):
         if errors:
             error_files.append(f)
     assert not error_files, (
-        f"scaffolded vault has files with ERROR-severity issues:\n"
+        "scaffolded vault has files with ERROR-severity issues:\n"
         + "\n".join(f"  {f}" for f in error_files)
     )
 

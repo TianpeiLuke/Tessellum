@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import textwrap
-from pathlib import Path
 
 import pytest
 
@@ -17,7 +16,6 @@ from tessellum.composer import MockBackend
 from tessellum.dks import (
     DKSCycle,
     DKSObservation,
-    DKSWarrant,
     RetrievalClient,
 )
 from tessellum.indexer import build

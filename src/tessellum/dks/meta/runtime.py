@@ -14,7 +14,6 @@ only when explicitly requested (e.g. snapshot compaction).
 from __future__ import annotations
 
 import json
-import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -31,11 +30,9 @@ from tessellum.bb.types import (
 )
 from tessellum.composer.llm import LLMBackend, LLMRequest
 from tessellum.dks.meta.types import (
-    META_ATTACK_KIND,
     MetaCounterArgument,
     MetaObservation,
     SchemaEditProposal,
-    SURVIVE_THRESHOLD,
 )
 
 

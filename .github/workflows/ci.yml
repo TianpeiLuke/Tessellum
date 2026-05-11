@@ -1,0 +1,111 @@
+# Tessellum CI — Phase II of plan_v01_completion_roadmap (v0.0.56).
+#
+# Runs on every push to main + every pull request. Four jobs:
+#
+#   - lint:      ruff check src/ tests/ (style + unused-import + f-strings)
+#   - test:      pytest tests/ (full suite under Python 3.11 + 3.12)
+#   - format:    tessellum format check on the seed vault (validators
+#                must accept their own dogfooded notes)
+#   - build:     hatch build (sdist + wheel build cleanly; templates ship)
+#
+# Concurrency: per-branch — superseded runs cancel.
+# Dependency caching: pip wheel cache keyed on pyproject.toml.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install ruff
+        run: pip install ruff
+      - name: Run ruff
+        run: ruff check src/ tests/
+
+  test:
+    name: test (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install package + dev deps
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[agent,dev]"
+      - name: Run pytest
+        run: pytest tests/ -v --tb=short
+
+  format:
+    name: format-check (seed vault)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install package
+        run: pip install -e .
+      - name: Validate seed vault frontmatter + links
+        # Default exit-on-error semantics: errors fail; warnings
+        # (e.g. TESS-005 documentation links from procedure → argument)
+        # are advisory and don't fail CI.
+        run: tessellum format check vault/
+
+  build:
+    name: build (hatch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install hatch
+        run: pip install hatch
+      - name: Build sdist + wheel
+        run: hatch build
+      - name: Verify templates ship in wheel
+        run: |
+          python -c "
+          import zipfile, glob, sys
+          wheel = glob.glob('dist/tessellum-*.whl')[0]
+          with zipfile.ZipFile(wheel) as z:
+              names = z.namelist()
+          template_count = sum(1 for n in names if n.startswith('tessellum/data/templates/'))
+          assert template_count >= 14, f'expected >=14 templates, got {template_count}'
+          print(f'OK: {template_count} templates shipped in {wheel}')
+          "
+      - name: Upload wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 14

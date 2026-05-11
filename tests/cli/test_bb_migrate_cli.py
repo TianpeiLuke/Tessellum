@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from tessellum.cli.main import main
 
@@ -115,6 +114,7 @@ def test_migrate_note_at_target_is_not_behind(tmp_path, capsys):
     code = main(
         ["bb", "migrate", "--vault", str(vault), "--target-version", "2", "--format", "json"]
     )
+    assert code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["behind_count"] == 0
 
@@ -126,6 +126,7 @@ def test_migrate_note_above_target_is_not_behind(tmp_path, capsys):
     code = main(
         ["bb", "migrate", "--vault", str(vault), "--target-version", "2", "--format", "json"]
     )
+    assert code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["behind_count"] == 0
 
@@ -138,6 +139,7 @@ def test_migrate_missing_version_field_defaults_to_v1(tmp_path, capsys):
     code = main(
         ["bb", "migrate", "--vault", str(vault), "--target-version", "2", "--format", "json"]
     )
+    assert code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["behind_count"] == 1
 
@@ -149,6 +151,7 @@ def test_migrate_non_integer_version_is_skipped(tmp_path, capsys):
     code = main(
         ["bb", "migrate", "--vault", str(vault), "--target-version", "2", "--format", "json"]
     )
+    assert code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["skipped_count"] == 1
     assert payload["behind_count"] == 0
@@ -219,10 +222,11 @@ def test_migrate_apply_idempotent(tmp_path, capsys):
     """Running --apply twice doesn't double-bump."""
     vault = tmp_path / "vault"
     vault.mkdir()
-    note_path = _write_note(vault, "idempotent", version=1)
+    _write_note(vault, "idempotent", version=1)
     main(["bb", "migrate", "--vault", str(vault), "--target-version", "2", "--apply", "--format", "json"])
     capsys.readouterr()  # drain
     code = main(["bb", "migrate", "--vault", str(vault), "--target-version", "2", "--apply", "--format", "json"])
+    assert code == 0
     payload = json.loads(capsys.readouterr().out)
     # Second run: already at target → 0 behind, 0 bumped
     assert payload["behind_count"] == 0

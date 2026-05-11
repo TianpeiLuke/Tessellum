@@ -32,8 +32,7 @@ What this Wave does NOT cover (deferred):
 from __future__ import annotations
 
 import datetime as dt
-import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -45,7 +44,6 @@ from tessellum.composer.contracts import (
 from tessellum.composer.loader import (
     Pipeline,
     PipelineStep,
-    PipelineValidationError,
     load_pipeline,
 )
 from tessellum.composer.skill_extractor import (

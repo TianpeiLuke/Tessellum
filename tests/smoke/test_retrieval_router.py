@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from tessellum.retrieval import RouterDecision, classify_query
 

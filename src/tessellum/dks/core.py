@@ -48,7 +48,7 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal
+from typing import Literal
 
 from tessellum.bb.graph import (
     ArgumentNode,
@@ -56,7 +56,6 @@ from tessellum.bb.graph import (
     EmpiricalObservationNode,
     ModelNode,
 )
-from tessellum.bb.types import BBType
 from tessellum.composer.llm import LLMBackend, LLMRequest
 
 # ── Type aliases ──────────────────────────────────────────────────────────

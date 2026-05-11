@@ -16,6 +16,69 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.56] — 2026-05-11
+
+### Added — Phase II of plan_v01_completion_roadmap: CI workflow + ship-the-wheel discipline
+
+No new runtime features. This version lands the regression-detection
+infrastructure that every future release benefits from.
+
+**GitHub Actions CI** (`.github/workflows/ci.yml`). Four jobs run on
+every push to `main` + every pull request:
+
+- `lint` — `ruff check src/ tests/`. Single Python (3.12). Fails on
+  any violation.
+- `test` — `pytest tests/` matrix on Python 3.11 + 3.12. Installs
+  the `[agent,dev]` extras so the full LLM-backed + dev-dependency
+  surface is exercised.
+- `format-check` — `tessellum format check vault/`. The seed vault
+  must satisfy its own validators (default semantics: errors fail,
+  warnings advisory).
+- `build` — `hatch build` produces sdist + wheel; an inline Python
+  assertion verifies the wheel contains at least 14 templates under
+  `tessellum/data/templates/` (today's wheel ships 18). Wheel
+  uploaded as an artifact with 14-day retention.
+
+Concurrency: per-branch, with `cancel-in-progress` so superseded
+runs don't queue. Pip wheel cache keyed on `pyproject.toml`.
+
+**Pre-CI codebase hygiene**. Running ruff against the codebase
+surfaced 121 violations; this version addresses them:
+
+- 105 auto-fixed: unused imports (`F401`), empty f-string
+  placeholders (`F541`), redefined unused names (`F811`).
+- 15 manually addressed:
+  - 8 `F841` unused variables (CLI test files capturing `code = main(...)`
+    without asserting; added `assert code == 0` so the exit code is
+    actually validated).
+  - 3 `E741` ambiguous variable names (`l` → `lk` in `test_indexer.py`).
+  - 1 `E402` module-level import not at top of file (an intentional
+    lazy import in `init.py`; suppressed with `# noqa: E402`).
+  - Misc unused locals dropped from test helpers.
+
+Codebase now lints clean. CI's `lint` job catches any future violation
+before it merges.
+
+**Hatch force-include verification**. `pyproject.toml` already
+contained the right `[tool.hatch.build.targets.wheel.force-include]`
+block; this version's `build` job in CI verifies it works at every
+build (asserts template count). Confirmed 18 templates ship in the
+v0.0.55 + v0.0.56 wheels.
+
+### Tests
+
+No new tests — Phase II is infrastructure, not features. Full suite:
+**867 passed** (unchanged from v0.0.55).
+
+### Sequencing
+
+Phase II of `plan_v01_completion_roadmap.md` complete. Next:
+**v0.0.57 — Phase III** authors 8 BB-type teaching exemplars + the
+primer term notes (Z / PARA / BB / Epistemic Function / CQRS gap
+check) for the v0.1.0 seed vault.
+
+---
+
 ## [0.0.55] — 2026-05-11
 
 ### Added — Phase I of plan_v01_completion_roadmap: close deferred alpha surface

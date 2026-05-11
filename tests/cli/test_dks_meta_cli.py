@@ -13,10 +13,8 @@ Surfaces under test (v0.0.52):
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
-import pytest
 
 from tessellum.cli.main import main
 
