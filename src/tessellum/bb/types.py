@@ -135,14 +135,13 @@ BB_SCHEMA_NAVIGATION: tuple[EpistemicEdgeType, ...] = tuple(
 
 # The DKS runtime's step 6 (pattern discovery) walks an edge from a
 # ``counter_argument`` to a ``model`` — the pattern aggregates the
-# contradiction into a typed regularity. FZ 1's 10-edge narrative does
-# not declare this edge; FZ 1b + FZ 2a2 flag it as a Phase-4-class
-# schema-extension opportunity (R-P's productive half).
+# contradiction into a typed regularity. The 10-edge core narrative does
+# not declare this edge; the design trail flags it as a schema-extension
+# opportunity (R-P's productive half).
 #
-# Including it here makes the FSM type-check DKS's step 6 cleanly. The
-# alternative (declaring step 6's edge as a non-typed "plumbing" link)
-# was the v0.0.40–v0.0.46 status quo; this tuple is the canonical place
-# to record the runtime-driven schema growth.
+# Including it here makes the FSM type-check DKS's step 6 cleanly. This
+# tuple is the canonical place to record runtime-driven schema growth
+# that the static palette would otherwise miss.
 BB_SCHEMA_DKS_EXTENSIONS: tuple[EpistemicEdgeType, ...] = (
     EpistemicEdgeType(
         BBType.COUNTER_ARGUMENT, BBType.MODEL, "pattern_of_failure"
@@ -150,19 +149,19 @@ BB_SCHEMA_DKS_EXTENSIONS: tuple[EpistemicEdgeType, ...] = (
 )
 
 
-# ── BB_SCHEMA_USER_EXTENSIONS — event-sourced runtime growth (Phase 9) ─────
+# ── BB_SCHEMA_USER_EXTENSIONS — event-sourced runtime growth ──────────────
 
 
-# D3 resolution: schema growth is *event-sourced*. Meta-DKS (Phase 9)
-# proposes schema edits as :class:`SchemaEditEvent`s; the current
-# active set ``BB_SCHEMA_USER_EXTENSIONS`` is the fold over an
-# append-only event log. Retractions are first-class events; the log
-# itself is never rewritten.
+# Schema growth is *event-sourced*. Meta-DKS proposes schema edits as
+# :class:`SchemaEditEvent`s; the current active set
+# ``BB_SCHEMA_USER_EXTENSIONS`` is the fold over an append-only event
+# log. Retractions are first-class events; the log itself is never
+# rewritten.
 #
-# v0.0.52 ships the *mechanism* with an empty default event log. Real
-# events land via ``tessellum dks meta --apply`` and live at
-# ``runs/dks/meta/schema_events.jsonl`` — outside the package + the
-# vault, in the same shape as Phase 5's warrant_history.jsonl.
+# The package ships with an empty default event log. Real events land
+# via ``tessellum dks meta --apply`` and live at
+# ``runs/dks/meta/schema_events.jsonl`` — outside the package and the
+# vault, in the same shape as the warrant_history.jsonl trace.
 
 
 SCHEMA_EDIT_KIND = Literal["added", "retracted", "refined"]
@@ -241,9 +240,9 @@ def fold_schema_events(
     return tuple(active)
 
 
-# Default event log: empty. v0.0.52 ships the *mechanism*; the log
-# grows when ``tessellum dks meta --apply`` runs. Override via
-# :func:`set_user_extensions_from_events` for tests + CLI integration.
+# Default event log: empty. The log grows when ``tessellum dks meta
+# --apply`` runs. Override via :func:`set_user_extensions_from_events`
+# for tests + CLI integration.
 _SCHEMA_EVENT_LOG: list[SchemaEditEvent] = []
 
 # Active user-extensions set — folded from the event log at module
@@ -285,13 +284,13 @@ def schema_event_log() -> tuple[SchemaEditEvent, ...]:
     return tuple(_SCHEMA_EVENT_LOG)
 
 
-# ── BB_SCHEMA_AT_VERSION — version-aware schema reconstruction (v0.0.55) ───
+# ── BB_SCHEMA_AT_VERSION — version-aware schema reconstruction ─────────────
 
 
 def BB_SCHEMA_AT_VERSION(
     version: int,
 ) -> tuple[EpistemicEdgeType, ...]:
-    """Reconstruct the BB_SCHEMA tuple as of a specific version (Phase I.2).
+    """Reconstruct the BB_SCHEMA tuple as of a specific version.
 
     The frozen-at-creation D8 discipline (every captured note records
     its ``bb_schema_version`` in YAML frontmatter) is only useful if
@@ -306,9 +305,9 @@ def BB_SCHEMA_AT_VERSION(
     log; this function folds it at the requested version.
 
     Args:
-        version: Integer ≥ 1. Version 1 = the static v0.0.47 schema
-            with no user extensions; each ``added`` or ``retracted``
-            event bumps the version by 1.
+        version: Integer ≥ 1. Version 1 = the core static schema with
+            no user extensions; each ``added`` or ``retracted`` event
+            bumps the version by 1.
 
     Returns:
         The full ``BB_SCHEMA`` tuple as of the requested version.
@@ -353,15 +352,14 @@ def BB_SCHEMA_AT_VERSION(
 _SCHEMA_AT_VERSION_CACHE: dict[tuple, tuple[EpistemicEdgeType, ...]] = {}
 
 
-# ── BB_SCHEMA_VERSION — bumps on every landed event (Phase 9) ──────────────
+# ── BB_SCHEMA_VERSION — bumps on every landed event ────────────────────────
 
 
-# Version 1 = the static schema shipped in v0.0.47 with the project's
-# initial DKS extensions. Every ``added`` or ``retracted`` event from
-# meta-DKS bumps the version. Per D8: corpus notes record their
-# ``bb_schema_version`` at creation, and TESS-005 validates against
-# that recorded version (not the current one) for frozen-at-creation
-# semantics.
+# Version 1 = the core static schema with the project's initial DKS
+# extensions. Every ``added`` or ``retracted`` event from meta-DKS
+# bumps the version. Corpus notes record their ``bb_schema_version``
+# at creation, and TESS-005 validates against that recorded version
+# (not the current one) for frozen-at-creation semantics.
 BB_SCHEMA_VERSION: int = 1
 
 

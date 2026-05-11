@@ -1,22 +1,22 @@
 """LLM backend abstraction.
 
-Wave 3 ships ``MockBackend`` (canned responses, no network) so the
-executor + scheduler are testable end-to-end without API keys. Wave 4
-adds ``AnthropicBackend`` behind the ``[agent]`` extras dependency
-group; both implement the same ``LLMBackend`` Protocol.
+A backend is *just* a callable — given an :class:`LLMRequest` (system
+prompt + user prompt + max_tokens), return an :class:`LLMResponse`
+(content + timing + diagnostic metadata). All backends declared in
+:data:`tessellum.composer.contracts.BACKEND_CONTRACTS` should match
+this shape; the compiler validates the contract; the executor invokes
+the ``call`` method.
 
-A backend is *just* a callable — given an ``LLMRequest`` (system prompt
-+ user prompt + max_tokens), return an ``LLMResponse`` (content +
-timing + diagnostic metadata). All backends declared in
-``tessellum.composer.contracts.BACKEND_CONTRACTS`` should match this
-shape; the compiler validates the contract; the executor invokes the
-``call`` method.
+Two backends ship:
 
-To use ``AnthropicBackend`` install the optional dependency::
+- :class:`MockBackend` — canned responses, no network. Makes the
+  executor + scheduler testable end-to-end without API keys.
+- :class:`AnthropicBackend` — production Anthropic Messages API
+  client. Available with the ``[agent]`` extras::
 
-    pip install tessellum[agent]
+      pip install tessellum[agent]
 
-and set ``ANTHROPIC_API_KEY`` in the environment.
+  and ``ANTHROPIC_API_KEY`` in the environment.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ class LLMResponse:
             to the step's materializer wire_format).
         elapsed_ms: Wall-clock time of the call.
         backend_id: ``MockBackend`` → ``"mock"``; ``AnthropicBackend``
-            → ``"anthropic"`` (Wave 4); etc.
+            → ``"anthropic"``; etc.
         metadata: Free-form diagnostics (token counts, model name,
             ``stop_reason``, etc.). Surfaces in the run trace.
     """

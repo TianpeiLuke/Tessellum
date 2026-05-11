@@ -1,12 +1,10 @@
-"""Multi-job batch runner — Wave 5a.
+"""Multi-job batch runner — runs many ``(skill, leaves)`` jobs through
+:func:`tessellum.composer.run_pipeline` in parallel, with resume support.
 
-Runs many ``(skill, leaves)`` jobs through ``run_pipeline`` in
-parallel, with resume support.
-
-Why a batch runner: when you have 50 skills × 1000 leaves to evaluate
-(e.g., for the eval framework, or to bulk-regenerate trail summaries
-across an entire vault), invoking ``tessellum composer run`` 50 times
-sequentially leaves the LLM API mostly idle. The batch runner uses a
+When you have 50 skills × 1000 leaves to evaluate (e.g., for the eval
+framework, or to bulk-regenerate trail summaries across an entire
+vault), invoking ``tessellum composer run`` 50 times sequentially
+leaves the LLM API mostly idle. The batch runner uses a
 ``ThreadPoolExecutor`` because LLM calls are I/O-bound — ~95% of wall
 time is waiting on the network.
 
@@ -15,16 +13,13 @@ Resume: each job produces a deterministically-named output file
 runner starts, the job is skipped — restarting after a crash recovers
 all completed work, costs the same API tokens twice for nothing.
 
-What this module does NOT do (deferred):
+Out of scope:
 
-  - Token-budget pacing — the parent project's ``BatchPolicy`` includes
-    a tokens-per-minute throttle. Skip it for v0.1; the SDK handles
-    rate-limits itself with retries.
-  - Cross-job upstream dependencies — each job is independent here.
-    A skill's internal pipeline still has dependencies (Wave 3); we
-    just don't chain across jobs at the batch layer.
+  - Token-budget pacing — the SDK handles rate-limits itself with retries.
+  - Cross-job upstream dependencies — each job is independent at the
+    batch layer. A skill's internal pipeline still has dependencies.
   - Streaming progress callbacks — the runner returns once everything
-    finishes. Wave 5b's eval framework adds progress reporting.
+    finishes. Use the eval framework's reporting hooks for progress.
 """
 
 from __future__ import annotations

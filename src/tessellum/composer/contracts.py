@@ -16,14 +16,9 @@ Three contract families:
 Each is a frozen Pydantic V2 model. Concrete instances live in module-level
 registries (`MATERIALIZER_CONTRACTS`, `BACKEND_CONTRACTS`, `MCP_CONTRACTS`).
 
-In v0.0.9 (Wave 1), the contracts are pure data — no compiler runs against
-them yet. Wave 2 ships the compiler; Wave 4 ships the LLM dispatch. The
-contracts ship in Wave 1 so users can author sidecars knowing what the
-compiler will eventually validate.
-
-`ContractViolation` is the exception raised by the compiler (Wave 2) when
-declarations drift. Defined here so library users can catch it the same way
-they import the contract types.
+:class:`ContractViolation` is the exception raised by the compiler when
+declarations drift. Defined here so library users can catch it the same
+way they import the contract types.
 """
 
 from __future__ import annotations
@@ -244,8 +239,8 @@ class LLMBackendContract(BaseModel):
     but the configured backend has tool access) and subprocess argv-overflow
     at compile time.
 
-    The default registry ships only ``mock`` (for testing). Real backends
-    (Anthropic API, OpenAI, etc.) ship with the LLM bridge in Wave 4.
+    The default registry ships ``mock`` (for testing) plus the
+    ``anthropic`` bridge under the ``[agent]`` extras.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")

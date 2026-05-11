@@ -1,23 +1,21 @@
 """``tessellum bb`` — BB ontology + corpus-graph operations.
 
 Top-level subcommand group for everything related to the BB ontology
-(types, schema, corpus graph). Phase 6 (v0.0.48) ships the first
-operation:
+(types, schema, corpus graph). Two subcommands:
 
-- ``tessellum bb audit`` — vault-wide telemetry over ``BBGraph.from_db()``.
-  Reports node counts by BB type, edge counts by epistemic-edge label,
-  untyped corpus edges, orphan BB nodes (no inbound/outbound corpus
-  edges), and unrealised schema edges (0 instances in the corpus).
-
-Future phases (per `plans/plan_dks_expansion.md`):
-
-- ``tessellum bb walk <fz>`` — visualise an FSM walk (Phase 8+)
-- ``tessellum bb validate-schema`` — meta-DKS schema-edit validation (Phase 9)
-- ``tessellum bb migrate`` — retroactive schema-version validation (Phase 9)
+- ``tessellum bb audit`` — vault-wide telemetry over
+  ``BBGraph.from_db()``. Reports node counts by BB type, edge counts
+  by epistemic-edge label, untyped corpus edges, orphan BB nodes (no
+  inbound/outbound corpus edges), and unrealised schema edges (0
+  instances in the corpus).
+- ``tessellum bb migrate`` — retroactive ``bb_schema_version``
+  classification across the vault. Walks every note, computes which
+  schema version's edge palette its outbound BB edges fit under, and
+  optionally writes the result into frontmatter.
 
 Exit codes:
-    0  audit completed (warnings are not failure)
-    2  invocation error (DB missing, etc.)
+    0  command completed (warnings are not failure)
+    2  invocation error (DB missing, vault not found, etc.)
 """
 
 from __future__ import annotations
@@ -348,7 +346,7 @@ def run_bb_migrate(args: argparse.Namespace) -> int:
         try:
             recorded = (
                 int(recorded_raw) if recorded_raw is not None else 1
-            )  # default 1 for v0.0.52-era notes
+            )  # default to version 1 when the note omits the field
         except (TypeError, ValueError):
             skipped.append(
                 {

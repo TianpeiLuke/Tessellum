@@ -1,10 +1,10 @@
 """Best-first BFS over the note-link graph.
 
-Retrieval Wave 4 per ``plans/plan_retrieval_port.md``. **No PPR** — the
-parent project's FZ 5e2b1c trail measured a Hit@K↔answer-quality
-correlation of only ρ=0.37, meaning PPR's expensive multi-hop walks
-optimized retrieval metrics that don't translate to better answers.
-Best-first BFS is simpler, faster, and Pareto-optimal in production.
+**No Personalized PageRank** — empirical measurement of the
+Hit@K↔answer-quality correlation came out at ρ=0.37, meaning PPR's
+expensive multi-hop walks optimized retrieval metrics that don't
+translate to better answers. Best-first BFS is simpler, faster, and
+Pareto-optimal in production.
 
 Key design points:
 

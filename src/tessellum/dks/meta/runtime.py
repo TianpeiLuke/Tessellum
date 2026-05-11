@@ -1,14 +1,26 @@
-"""Meta-DKS runtime — observation builder + MetaCycle dispatcher + event log I/O.
+"""Meta-DKS runtime — proposer/attacker strategies + :class:`MetaCycle` dispatcher + event log I/O.
 
-The mechanics that turn telemetry into schema events. v0.0.52 ships
-heuristic-based proposal generation; Phase 11+ will swap in an
-LLM-driven proposer that uses the Composer skill canonical for the
-meta-cycle.
+The mechanics that turn telemetry into schema events. Two pluggable
+strategy interfaces ship:
+
+- :class:`Proposer` — generates :class:`SchemaEditProposal` from a
+  :class:`MetaObservation`. Two implementations:
+  :class:`HeuristicProposer` (lookup-table-driven) and
+  :class:`LLMProposer` (LLM-backed; reasons about all four Toulmin
+  components symmetrically, surfaces input-bias risk).
+- :class:`Attacker` — generates :class:`MetaCounterArgument` against
+  each proposal. :class:`NoOpAttacker` is the default (no attacks);
+  :class:`LLMAttacker` runs the dialectical attack step.
+
+:class:`MetaCycle` composes one proposer + one attacker + a survival
+threshold (``strict`` / ``majority`` / ``permissive``) into the four
+meta-FSM stages: build proposals → filter → survive → emit events.
 
 Event log shape: JSONL at ``runs/dks/meta/schema_events.jsonl``.
 Each line is one :class:`tessellum.bb.types.SchemaEditEvent`. The log
-is append-only by convention; ``write_event_log`` truncates+rewrites
-only when explicitly requested (e.g. snapshot compaction).
+is append-only by convention; :func:`write_event_log`
+truncates + rewrites only when explicitly requested (e.g. snapshot
+compaction).
 """
 
 from __future__ import annotations
@@ -39,33 +51,30 @@ from tessellum.dks.meta.types import (
 DEFAULT_MIN_CYCLES: int = 20
 """Cold-start guard: meta-DKS produces no proposals below this many cycles.
 
-Per `plan_dks_expansion` open-question lean: a Toulmin-failure
-distribution needs ≥ ~20 cycles to be statistically meaningful.
-Configurable via ``--min-cycles`` on the CLI.
+A Toulmin-failure distribution needs ≥ ~20 cycles to be statistically
+meaningful. Configurable via ``--min-cycles`` on the CLI.
 """
 
 
 _TOULMIN_FAILURE_DOMINANCE_THRESHOLD: float = 0.5
 """When one Toulmin failure mode exceeds 50% of counters, propose a
-related schema edit. Heuristic; replace with learned thresholds in
-Phase 11+."""
+related schema edit. Heuristic threshold; calibrate against
+production traces if the dominance signal proves noisy."""
 
 
-# ── Proposer strategies (v0.0.53) ───────────────────────────────────────────
+# ── Proposer strategies ─────────────────────────────────────────────────────
 
 
 class Proposer(Protocol):
     """Strategy interface for SchemaEditProposal generation.
 
-    Two implementations ship in v0.0.53:
+    Two implementations ship:
 
-    - :class:`HeuristicProposer` — the v0.0.52 lookup-table approach,
-      kept as the default for backward compatibility and as the
-      ``--proposer heuristic`` CLI mode.
-    - :class:`LLMProposer` — Phase V-driven LLM-backed proposer that
-      receives the full :class:`MetaObservation` (including the
-      v0.0.53 strength breakdown + sample quotes + source metadata)
-      and emits well-formed proposals via an
+    - :class:`HeuristicProposer` — lookup-table-driven; the default and
+      the ``--proposer heuristic`` CLI mode.
+    - :class:`LLMProposer` — LLM-backed; receives the full
+      :class:`MetaObservation` (strength breakdown, sample quotes,
+      source metadata) and emits well-formed proposals via an
       :class:`tessellum.composer.llm.LLMBackend`.
     """
 
@@ -77,7 +86,7 @@ class Proposer(Protocol):
 
 @dataclass
 class HeuristicProposer:
-    """v0.0.52 heuristic proposer — lookup-table-driven.
+    """Heuristic proposer — lookup-table-driven.
 
     Two rules:
 
@@ -87,9 +96,9 @@ class HeuristicProposer:
     2. **Unrealised schema edge** (retraction, ≥50 cycles): if a
        declared edge has zero corpus instances, propose retract.
 
-    This is the default proposer for ``MetaCycle``. Phase V validation
-    (FZ 2c1a) documented its blind spots; the :class:`LLMProposer`
-    addresses them.
+    This is the default proposer for :class:`MetaCycle`.
+    :class:`LLMProposer` addresses the heuristic's blind spots by
+    reasoning over the full :class:`MetaObservation`.
     """
 
     def generate(
@@ -135,7 +144,7 @@ You are the meta-DKS proposer. You read aggregated telemetry from past \
 cycle-level DKS runs (a MetaObservation) and emit zero or more \
 SchemaEditProposals naming changes to BB_SCHEMA_USER_EXTENSIONS.
 
-Authoring rules (Phase V constraints C1-C4 + v0.0.60 Phase C):
+Authoring rules:
 
 - All four Toulmin components are first-class — do not privilege one
   over the others.
@@ -299,17 +308,17 @@ def _edge_to_dict(edge: EpistemicEdgeType) -> dict:
     }
 
 
-# ── Attacker strategies (v0.0.53 Phase B.3) ─────────────────────────────────
+# ── Attacker strategies ─────────────────────────────────────────────────────
 
 
 class Attacker(Protocol):
     """Strategy interface for :class:`MetaCounterArgument` generation.
 
-    Two implementations ship in v0.0.53:
+    Two implementations ship:
 
     - :class:`NoOpAttacker` — default. Returns ``[]`` for every
-      proposal. Preserves v0.0.52 "survive=pass-through" behaviour
-      when meta-DKS is run with ``--attacker none``.
+      proposal. Effectively a pass-through survival policy when
+      meta-DKS is run with ``--attacker none``.
     - :class:`LLMAttacker` — LLM-backed dialectical attacker. Reads
       the proposal list + the :class:`MetaObservation` and emits
       typed counter-arguments per the meta-cycle skill canonical's
@@ -328,8 +337,8 @@ class Attacker(Protocol):
 class NoOpAttacker:
     """Default attacker — emits zero counter-arguments.
 
-    Preserves the v0.0.52 ``survive = filter(generate)`` semantics
-    when the user has not opted into ``--attacker llm``.
+    Equivalent to a ``survive = filter(generate)`` policy when the
+    user has not opted into ``--attacker llm``.
     """
 
     def attack(
@@ -529,7 +538,7 @@ class MetaCycleResult:
     generated, surviving proposals after dialectic, the events
     written (if --apply was used), and the elapsed time.
 
-    v0.0.53 adds:
+    Two telemetry fields surface the dialectic outcome:
 
     - ``attacks``: the :class:`MetaCounterArgument`s emitted by the
       configured attacker (default :class:`NoOpAttacker` → empty).
@@ -542,7 +551,7 @@ class MetaCycleResult:
     events_landed: tuple[SchemaEditEvent, ...]
     elapsed_ms: float = 0.0
     dry_run: bool = True
-    # v0.0.53 — Phase B.3 attack telemetry
+    # Attack telemetry — populated by the configured attacker.
     attacks: tuple[MetaCounterArgument, ...] = ()
     survive_threshold: str = "majority"
 
@@ -556,20 +565,22 @@ class MetaCycle:
 
     Stages:
 
-    1. **Build proposals** from the :class:`MetaObservation`. v0.0.52
-       uses heuristics (Toulmin-failure dominance, attacked-warrant
-       concentration). Each proposal is a :class:`SchemaEditProposal`.
+    1. **Build proposals** from the :class:`MetaObservation` via the
+       configured :class:`Proposer` (heuristic by default; LLM-backed
+       under ``--proposer llm``). Each proposal is a
+       :class:`SchemaEditProposal`.
     2. **Filter** by basic sanity (no duplicate edges; no edge that
        already exists in ``BB_SCHEMA``; no proposal naming a BB type
        not in :class:`BBType`).
-    3. **Survive**: in v0.0.52 every well-formed proposal survives
-       (the meta-cycle's *attack* step is a stub for Phase 11+'s
-       LLM-driven dialectic).
+    3. **Survive**: dispatch to the configured :class:`Attacker`. The
+       default :class:`NoOpAttacker` makes every well-formed proposal
+       survive; :class:`LLMAttacker` runs the dialectical attack step
+       and the ``survive_threshold`` decides per-proposal survival.
     4. **Emit events**: when ``dry_run=False``, turn surviving
        proposals into :class:`SchemaEditEvent` instances + return
        them. The caller (CLI) writes them to disk.
 
-    All four stages run synchronously; no LLM calls in v0.0.52.
+    All four stages run synchronously.
     """
 
     observation: MetaObservation
@@ -621,7 +632,7 @@ class MetaCycle:
     ) -> list[SchemaEditProposal]:
         """Per-proposal survival decision using the configured threshold."""
         if not attacks:
-            # NoOpAttacker path — preserve v0.0.52 "everything survives".
+            # NoOpAttacker path — pass-through survival policy.
             return list(filtered_proposals)
         attacks_by_index: dict[int, list[MetaCounterArgument]] = {}
         for a in attacks:
@@ -638,9 +649,9 @@ class MetaCycle:
     def _generate_proposals(self) -> list[SchemaEditProposal]:
         """Delegate to the configured :class:`Proposer` strategy.
 
-        Default proposer is :class:`HeuristicProposer` (v0.0.52
-        behaviour). Pass ``proposer=LLMProposer(backend=...)`` for the
-        Phase B.2 LLM-driven proposer.
+        Default proposer is :class:`HeuristicProposer`. Pass
+        ``proposer=LLMProposer(backend=...)`` for the LLM-driven
+        proposer.
         """
         return self.proposer.generate(
             self.observation, target_failure=self.target_failure
@@ -726,14 +737,15 @@ _TOULMIN_TO_PROPOSED_EDGE: dict[str, tuple[BBType, BBType, str]] = {
         "premise_grounding",
     ),
     # ``undercutting`` doesn't map cleanly to a single edge — emit
-    # no proposal for it in v0.0.52. Phase 11+ may add a learned mapping.
+    # no proposal for it. The :class:`LLMProposer` can reason about it
+    # directly via the full :class:`MetaObservation`.
 }
 
 
 def _proposal_for_toulmin_dominance(
     component: str, count: int, total: int
 ) -> SchemaEditProposal | None:
-    """v0.0.52's lookup-based heuristic proposer."""
+    """Resolve a Toulmin-dominance signal to a proposed schema edge."""
     mapping = _TOULMIN_TO_PROPOSED_EDGE.get(component)
     if mapping is None:
         return None

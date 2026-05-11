@@ -1,25 +1,36 @@
 """Single-step execution — resolve, dispatch, validate, materialize.
 
 The executor is the unit operation that the scheduler iterates: given a
-``CompiledStep`` plus a leaf and the upstream context, it:
+:class:`CompiledStep` plus a leaf and the upstream context, it:
 
   1. Resolves placeholders in the step's prompt section text:
-     - ``{{leaf.X}}``   — looked up in the per-leaf data dict
-     - ``{{upstream.Y}}`` — looked up in the running upstream context
-       (Wave 3 minimum; ``{{existing.Z}}`` for APPLY-mode pre-fetch is
-       deferred to a later milestone — the materializer enforces APPLY
-       file existence at write time instead).
-  2. Builds an ``LLMRequest`` and invokes the configured backend.
-  3. Validates the response against ``expected_output_schema`` if set
-     (best-effort: JSON parse + jsonschema; failures surface as
-     ``StepResult.error`` rather than raising — one bad step doesn't
-     kill the pipeline).
-  4. Hands the response off to the materializer for the step's
-     materializer key. Materializer errors also surface on
-     ``StepResult.error``.
 
-Returns a ``StepResult`` carrying the response, the materialized output,
-timing, and any error.
+     - ``{{leaf.X}}``     — looked up in the per-leaf data dict.
+     - ``{{upstream.Y}}`` — looked up in the running upstream context.
+     - ``{{retry.attempt}}`` / ``{{retry.error}}`` — substituted on
+       retries (see :func:`execute_step_with_retry`).
+  2. Wraps :meth:`LLMBackend.call` with a per-step watchdog
+     (:data:`DEFAULT_TIMEOUT_SECONDS`, overridable per sidecar). On
+     timeout, returns a stalled :class:`StepResult` without cancelling
+     the in-flight call.
+  3. Enforces the rendered-prompt size cap
+     (:data:`tessellum.composer.compiler.HARD_PROMPT_CAP_CHARS`,
+     overridable per step). Refuses to dispatch oversized prompts and
+     surfaces a structured error.
+  4. Validates the response against ``expected_output_schema`` if set
+     (best-effort: JSON parse + jsonschema; failures surface as
+     :attr:`StepResult.error` rather than raising — one bad step
+     doesn't kill the pipeline).
+  5. Hands the response off to the materializer for the step's
+     materializer key. Materializer errors also surface on
+     :attr:`StepResult.error`.
+
+Returns a :class:`StepResult` carrying the response, the materialized
+output, timing, and any error.
+
+:func:`execute_step_with_retry` wraps :func:`execute_step` with
+separate logic and crash retry budgets + same-error loop detection.
+The scheduler calls the retry variant by default.
 """
 
 from __future__ import annotations
@@ -48,7 +59,7 @@ class ExecutorError(Exception):
     """Raised on hard executor failures — missing prompt text, etc."""
 
 
-# ── Retry budgets (Phase A.1, v0.0.60) ─────────────────────────────────────
+# ── Retry budgets ──────────────────────────────────────────────────────────
 
 
 MAX_LOGIC_RETRIES: int = 3
@@ -56,35 +67,35 @@ MAX_LOGIC_RETRIES: int = 3
 materializer errors, contract violations). Each retry burns one slot
 from this budget.
 
-Per plan_composer_dks_robustness R-1: separate from crash recoveries
-so subprocess flakes don't consume the algorithmic retry budget."""
+Separate from crash recoveries so subprocess flakes don't consume the
+algorithmic retry budget."""
 
 
 MAX_CRASH_RECOVERIES: int = 2
 """Default cap on retries for *crash* failures (backend.call raising
 any Exception — network errors, timeouts, OOMs, etc.). Independent
-budget from MAX_LOGIC_RETRIES per R-1."""
+budget from MAX_LOGIC_RETRIES so a flaky network can't starve the
+algorithmic retry slots."""
 
 
 _ERROR_HASH_PREFIX_LEN: int = 200
-"""Per R-7: hash the first 200 chars of the normalized error message
-to detect same-error loops. 200 chars is enough to distinguish most
-error-payload shapes without overfitting to a specific line/column
-hint."""
+"""Hash the first 200 chars of the normalized error message to detect
+same-error loops. 200 chars is enough to distinguish most error-payload
+shapes without overfitting to a specific line/column hint."""
 
 
 DEFAULT_TIMEOUT_SECONDS: float = 120.0
-"""Phase B.1 (v0.0.60). Default per-step watchdog timeout. Overridable
-via the sidecar's ``timeout_seconds`` field or the
-:func:`execute_step` / :func:`execute_step_with_retry` ``timeout_seconds``
-kwarg.
+"""Default per-step watchdog timeout. Overridable via the sidecar's
+``timeout_seconds`` field or the :func:`execute_step` /
+:func:`execute_step_with_retry` ``timeout_seconds`` kwarg.
 
-Per R-3 (revised): implemented via ``concurrent.futures.ThreadPoolExecutor``
-+ ``Future.result(timeout=N)`` rather than asyncio. Pragmatic deviation
-from the plan's original asyncio choice: thread-based timeout is simpler
-(no backend refactor required), portable (works under any Python),
-and achieves the same outcome — per R-6, we mark the step stalled
-without trying to cancel the in-flight call.
+Implemented via ``concurrent.futures.ThreadPoolExecutor`` +
+``Future.result(timeout=N)`` rather than asyncio: thread-based
+timeout is simpler (no backend refactor required), portable (works
+under any Python), and achieves the same outcome — when the wait
+expires we mark the step stalled without trying to cancel the
+in-flight call (it completes in the background; its result is
+discarded).
 """
 
 
@@ -95,8 +106,7 @@ class StepResult:
     Attributes:
         section_id: Which step ran.
         leaf_id: Identifier of the leaf for ``per_leaf`` steps; ``None``
-            for ``corpus_wide`` and ``cross_leaf`` (Wave 3 collapses
-            cross_leaf into corpus_wide).
+            for ``corpus_wide`` and ``cross_leaf`` aggregations.
         response: The raw LLM response.
         materialized: The materialized output. ``MaterializedOutput()``
             (empty) if materialization failed; ``error`` will be set.
@@ -104,17 +114,16 @@ class StepResult:
         error: ``None`` on success; a string describing the failure
             otherwise. Soft errors (schema validation drift, materializer
             failures) populate this without raising.
-        attempts: Phase A.1 (v0.0.60) — number of attempts that ran
-            for this step. ``1`` for first-call success; ``>1`` when
+        attempts: Number of attempts that ran for this step. ``1`` for
+            first-call success; ``>1`` when
             :func:`execute_step_with_retry` retried before either
             succeeding or exhausting its budgets.
-        retry_kind_history: Phase A.1 (v0.0.60) — per-attempt failure
-            kind. Each entry is one of ``"logic"`` (schema /
-            materializer / contract error), ``"crash"`` (backend
-            raised), or ``"success"`` (the attempt that produced the
-            returned response). The final entry is always ``"success"``
-            on a returned-clean result, or the last failure kind on
-            budget-exhausted results.
+        retry_kind_history: Per-attempt failure kind. Each entry is one
+            of ``"logic"`` (schema / materializer / contract error),
+            ``"crash"`` (backend raised), or ``"success"`` (the attempt
+            that produced the returned response). The final entry is
+            always ``"success"`` on a returned-clean result, or the
+            last failure kind on budget-exhausted results.
     """
 
     section_id: str
@@ -129,7 +138,8 @@ class StepResult:
 
 _LEAF_PLACEHOLDER_RE = re.compile(r"\{\{\s*leaf\.([a-z0-9_]+)\s*\}\}")
 _UPSTREAM_PLACEHOLDER_RE = re.compile(r"\{\{\s*upstream\.([a-z0-9_]+)\s*\}\}")
-# Phase A.2 (v0.0.60) — retry-aware placeholders.
+# Retry-aware placeholders — substituted with the previous attempt's
+# response and error when execute_step_with_retry retries.
 _RETRY_PLACEHOLDER_RE = re.compile(r"\{\{\s*retry\.([a-z0-9_]+)\s*\}\}")
 
 
@@ -156,24 +166,24 @@ def execute_step(
         upstream: Map of ``output_key`` → structured outputs from
             previously-run steps. ``{{upstream.Y}}`` placeholders look
             up ``Y`` here.
-        backend: An :class:`LLMBackend` (Mock for testing; real for
-            production once Wave 4 ships).
+        backend: An :class:`LLMBackend` (mock for tests; real
+            backends for production runs).
         vault_root: Root for materializer file paths.
         dry_run: Skip filesystem writes; structured payloads still flow.
-        retry_attempt: Phase A.2 (v0.0.60). Attempt number (1 on first
-            call; ≥2 on retries from :func:`execute_step_with_retry`).
-            Substituted into ``{{retry.attempt}}`` placeholders and
-            prefixed onto the system prompt when ≥2.
-        retry_last_error: Phase A.2 (v0.0.60). The previous attempt's
-            normalized error message (None on first call). Substituted
-            into ``{{retry.error}}`` placeholders and included in the
+        retry_attempt: Attempt number (1 on first call; ≥2 on retries
+            from :func:`execute_step_with_retry`). Substituted into
+            ``{{retry.attempt}}`` placeholders and prefixed onto the
+            system prompt when ≥2.
+        retry_last_error: The previous attempt's normalized error
+            message (None on first call). Substituted into
+            ``{{retry.error}}`` placeholders and included in the
             system-prompt prefix when ≥2.
-        timeout_seconds: Phase B.1 (v0.0.60). Per-call watchdog
-            timeout. ``None`` → use ``step.timeout_seconds`` if set,
-            else :data:`DEFAULT_TIMEOUT_SECONDS`. When the backend
-            call exceeds the timeout, the call is *not* cancelled
-            (per R-6) — the executor returns a stalled StepResult
-            and the thread continues in the background.
+        timeout_seconds: Per-call watchdog timeout. ``None`` → use
+            ``step.timeout_seconds`` if set, else
+            :data:`DEFAULT_TIMEOUT_SECONDS`. When the backend call
+            exceeds the timeout, the call is *not* cancelled — the
+            executor returns a stalled StepResult and the thread
+            continues in the background.
 
     Returns:
         StepResult.
@@ -193,9 +203,9 @@ def execute_step(
         retry_last_error=retry_last_error,
     )
 
-    # Phase A.2 (v0.0.60) — augment system prompt on retries so the
-    # model sees both the behavioural nudge ("you're on attempt N")
-    # and the prior failure context.
+    # Augment the system prompt on retries so the model sees both the
+    # behavioural nudge ("you're on attempt N") and the prior failure
+    # context.
     system_prompt = f"Tessellum step: {step.section_id}"
     if retry_attempt > 1 and retry_last_error:
         sanitised = _sanitise_error_for_prompt(retry_last_error)
@@ -204,10 +214,10 @@ def execute_step(
             f"{sanitised}]\n{system_prompt}"
         )
 
-    # Phase B.3 (v0.0.60) — runtime hard cap on rendered prompt size.
-    # The compiler should have caught oversized prompts at compile
-    # time, but actual upstream outputs may exceed their declared
-    # max_chars; this is the runtime safety net.
+    # Runtime hard cap on rendered prompt size. The compiler should
+    # have caught oversized prompts at compile time, but actual
+    # upstream outputs may exceed their declared max_chars; this is
+    # the runtime safety net.
     from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS
 
     effective_max_prompt_chars = (
@@ -242,9 +252,10 @@ def execute_step(
         user_prompt=prompt,
     )
 
-    # Phase B.1 (v0.0.60) — watchdog. Wrap backend.call in a thread
-    # with a timeout. Per R-6: if the timeout fires, we return a
-    # stalled StepResult but don't try to cancel the in-flight call.
+    # Watchdog. Wrap backend.call in a thread with a timeout. If the
+    # timeout fires, we return a stalled StepResult but don't try to
+    # cancel the in-flight call — it continues in the background and
+    # its eventual result is discarded.
     effective_timeout = (
         timeout_seconds
         if timeout_seconds is not None
@@ -323,8 +334,8 @@ def _resolve_placeholders(
     retry_attempt: int = 1,
     retry_last_error: str | None = None,
 ) -> str:
-    """Substitute ``{{leaf.X}}``, ``{{upstream.Y}}``, and (Phase A.2
-    v0.0.60) ``{{retry.X}}`` placeholders.
+    """Substitute ``{{leaf.X}}``, ``{{upstream.Y}}``, and
+    ``{{retry.X}}`` placeholders.
 
     Missing leaf/upstream keys leave a clearly-marked sentinel rather
     than silently inserting empty string — easier to debug a malformed
@@ -426,17 +437,15 @@ def execute_step_with_retry(
     max_logic_retries: int = MAX_LOGIC_RETRIES,
     max_crash_recoveries: int = MAX_CRASH_RECOVERIES,
 ) -> StepResult:
-    """Retry-budgeted wrapper around :func:`execute_step` (Phase A.1, v0.0.60).
-
-    Retries follow plan_composer_dks_robustness §A.1:
+    """Retry-budgeted wrapper around :func:`execute_step`.
 
     - **Logic failures** (schema-validation, materializer, contract):
       counted against ``max_logic_retries``.
     - **Crash failures** (backend ``call`` raised any Exception):
       counted against ``max_crash_recoveries``, independent budget.
-    - **Same-error loop detection** (R-7): 3 consecutive failures
-      sharing the same error-message hash → short-circuit before
-      exhausting the budget.
+    - **Same-error loop detection**: 3 consecutive failures sharing
+      the same error-message hash → short-circuit before exhausting
+      the budget.
 
     Each retry injects ``retry_attempt`` (1-indexed) and the previous
     attempt's normalised error message into the step's prompt + system
@@ -531,9 +540,9 @@ def execute_step_with_retry(
                 retry_kind_history=tuple(kind_history),
             )
 
-        # Phase B.1 (v0.0.60): stall results are crash-class failures
-        # (infrastructure-level), not logic failures. Detect by
-        # error-prefix marker that execute_step uses.
+        # Stall results are crash-class failures (infrastructure-level),
+        # not logic failures. Detect by the error-prefix marker that
+        # execute_step uses.
         is_stall = result.error.startswith("stalled after")
         if is_stall:
             crash_recoveries += 1
@@ -615,14 +624,13 @@ def _same_error_loop_fires(history: list[str]) -> bool:
 def _call_backend_with_timeout(
     backend: LLMBackend, request: LLMRequest, timeout_seconds: float
 ) -> LLMResponse | None:
-    """Phase B.1 (v0.0.60) — run ``backend.call(request)`` with a timeout.
+    """Run ``backend.call(request)`` with a timeout.
 
-    Returns the :class:`LLMResponse` on success, or ``None`` if the call
-    exceeded ``timeout_seconds``.
-
-    Per R-6, the thread is not killed on timeout — it runs to
-    completion in the background, but its eventual result is discarded.
-    The ThreadPoolExecutor's daemon threads exit with the process.
+    Returns the :class:`LLMResponse` on success, or ``None`` if the
+    call exceeded ``timeout_seconds``. The thread is not killed on
+    timeout — it runs to completion in the background, but its
+    eventual result is discarded. The ThreadPoolExecutor's daemon
+    threads exit with the process.
     """
     # max_workers=1 because we want this call to be serial per
     # invocation; the scheduler handles parallelism at the leaf level.

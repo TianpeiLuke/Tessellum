@@ -1,12 +1,11 @@
 """DKS P-side retrieval client — the productive half of R-Cross.
 
 R-Cross (one of the three R-rules from FZ 1a1b) says **System P calls
-System D; System D never calls System P**. Phase 1-3 held R-Cross only
-defensively (DKS doesn't import any retrieval-mutating code, and there
-isn't any to import). Phase 4 lands the *productive* half: a typed
-client that lets DKS read through retrieval, with no path back.
+System D; System D never calls System P**. This module operationalises
+the *productive* half: a typed client that lets DKS read through
+retrieval, with no path back.
 
-This client is intentionally a thin adapter — it wraps
+The client is intentionally a thin adapter — it wraps
 :func:`tessellum.retrieval.hybrid_search` and re-exposes the fields a
 DKS step actually needs (note id, name, score, BM25/dense ranks). The
 typing is independent of the underlying retrieval module so the boundary
@@ -84,9 +83,10 @@ class RetrievalClient:
     ) -> list[RetrievalHit]:
         """Hybrid (BM25 + dense) retrieval, ranked by RRF.
 
-        Thin adapter over :func:`tessellum.retrieval.hybrid_search`. The
-        default ``k=20`` matches the plan's specification at FZ 1a1b1 /
-        plans/plan_dks_implementation.md Phase 4.
+        Thin adapter over :func:`tessellum.retrieval.hybrid_search`.
+        The default ``k=20`` is the canonical fan-out for warrant
+        grounding — large enough for evidence diversity, small enough
+        to keep the warrant prompt within the LLM context budget.
 
         Args:
             query: Free-form text. Passed verbatim to both rankers.
@@ -98,8 +98,8 @@ class RetrievalClient:
         """
         # Import lazily so this module stays importable in environments
         # without dense-embedding dependencies until search() actually
-        # runs. Retrieval is the consumer's optional dependency — DKS
-        # core (Phase 1) works without it.
+        # runs. Retrieval is an optional dependency of DKS; the core
+        # cycle works without it.
         from tessellum.retrieval import hybrid_search
 
         raw_hits = hybrid_search(self.db_path, query, k=k)

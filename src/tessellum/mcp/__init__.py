@@ -1,9 +1,8 @@
 """Tessellum MCP server — expose runtime APIs as MCP tools.
 
-Phase V of ``plans/plan_v01_completion_roadmap.md`` (v0.0.59). The
-server lets MCP-compatible agents (Claude Desktop, IDEs, etc.) invoke
+Lets MCP-compatible agents (Claude Desktop, IDEs, etc.) invoke
 Tessellum's deterministic runtime APIs as tools, and fetch any of the
-13 skill canonicals as prompts to execute themselves.
+shipped skill canonicals as prompts to execute themselves.
 
 Two classes of tool:
 

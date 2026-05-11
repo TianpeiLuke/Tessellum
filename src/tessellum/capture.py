@@ -364,8 +364,9 @@ def _set_bb_schema_version(text: str) -> str:
     ``building_block:`` line (frozen-at-creation per D8).
 
     Reads ``BB_SCHEMA_VERSION`` from :mod:`tessellum.bb.types` at call
-    time (live value, not the package alias — per the v0.0.52
-    import-aliasing quirk).
+    time (live value, not the package alias — tests monkeypatch the
+    live module, and the package-level re-export is a fixed snapshot
+    taken at import time).
 
     No-op when the template already declares ``bb_schema_version:``
     (back-compat for templates that may include it explicitly) or

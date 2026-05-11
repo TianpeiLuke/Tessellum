@@ -2,33 +2,29 @@
 
 Composer is the bridge between System P (capture) and System D (retrieval) —
 a planner-centric orchestrator that compiles skill canonicals + pipeline.yaml
-sidecars into typed DAGs of LLM calls. See ``plans/plan_composer_port.md`` in
-the source repo for the full architecture.
+sidecars into typed DAGs of LLM calls.
 
 The pairing is **two files per skill**:
 
-- ``vault/resources/skills/skill_<name>.md``         — canonical procedure (markdown)
+- ``vault/resources/skills/skill_<name>.md``           — canonical procedure (markdown)
 - ``vault/resources/skills/skill_<name>.pipeline.yaml`` — typed contract (YAML)
 
 linked via ``<!-- :: section_id = X :: -->`` anchor comments and the
 canonical's frontmatter ``pipeline_metadata:`` field.
 
-**v0.0.9 — Wave 1 (Foundation, this release)**:
+Public API surface:
 
-Pure data + library. No CLI, no LLM dispatch, no compiler. The library lets
-you load and validate sidecars in Python:
+  - :func:`load_pipeline`, :class:`Pipeline`, :class:`ContractViolation` — loader + types
+  - :func:`compile_skill`, :class:`CompiledPipeline`, :class:`CompilerError` — compiler
+  - :func:`execute_step`, :func:`execute_step_with_retry`, :class:`StepResult` — executor
+  - :func:`run_pipeline`, :class:`RunResult` — scheduler
+  - :class:`LLMBackend`, :class:`MockBackend`, :class:`AnthropicBackend` — backends
 
-    from tessellum.composer import load_pipeline, Pipeline, ContractViolation
-    pipeline = load_pipeline(Path("vault/resources/skills/skill_foo.md"))
+Example::
 
-**Future waves**:
-
-- v0.0.10 — Wave 1 user-facing surface: ``tessellum composer validate`` CLI,
-  starter sidecar template, ``tessellum capture skill`` paired-sidecar emission.
-- Wave 2 — Compiler (DAG build, contract validation, zero LLM calls).
-- Wave 3 — Executor (placeholder resolution, materializer dispatch, runtime).
-- Wave 4 — LLM bridge (Anthropic SDK + optional MCP dispatcher).
-- Wave 5+ — Scale (batch runner, eval framework).
+    from tessellum.composer import compile_skill, run_pipeline, MockBackend
+    pipeline = compile_skill(Path("vault/resources/skills/skill_foo.md"))
+    result = run_pipeline(pipeline, leaves=[...], backend=MockBackend(), vault_root=...)
 """
 
 from tessellum.composer.compiler import (
@@ -136,24 +132,23 @@ __all__ = [
     "load_skill_section",
     "load_pipeline_metadata",
     "SkillExtractionError",
-    # Compiler (Wave 2)
+    # Compiler
     "compile_skill",
     "CompiledPipeline",
     "CompiledStep",
     "CompilerError",
     "to_dag_json",
-    # LLM backend (Wave 3)
+    # LLM backends
     "LLMBackend",
     "LLMRequest",
     "LLMResponse",
     "MockBackend",
-    # LLM backend (Wave 4 — requires [agent] extras)
-    "AnthropicBackend",
-    # Materializers (Wave 3)
+    "AnthropicBackend",  # requires the ``[agent]`` extras
+    # Materializers
     "materialize",
     "MaterializedOutput",
     "MaterializerError",
-    # Executor + scheduler (Wave 3)
+    # Executor + scheduler
     "execute_step",
     "execute_step_with_retry",
     "MAX_LOGIC_RETRIES",
@@ -162,12 +157,12 @@ __all__ = [
     "ExecutorError",
     "run_pipeline",
     "RunResult",
-    # Batch runner (Wave 5a)
+    # Batch runner
     "BatchJob",
     "BatchJobResult",
     "BatchResult",
     "run_batch",
-    # Eval framework (Wave 5b)
+    # Eval framework
     "DEFAULT_RUBRIC_DIMENSIONS",
     "Assertion",
     "AssertionResult",
@@ -187,9 +182,7 @@ __all__ = [
     "read_recent_messages",
     "resolve_transcript_path",
     "search_transcript",
-    # NOTE: DKS — Dialectic Knowledge System runtime — moved to
-    # ``tessellum.dks`` in v0.0.43. Import from ``tessellum.dks`` directly:
-    #     from tessellum.dks import DKSCycle, DKSRunner, DKSObservation, ...
-    # DKS uses Composer's LLMBackend abstractions but is a peer module,
-    # not a Composer feature.
+    # NOTE: the DKS (Dialectic Knowledge System) runtime is a peer
+    # module — import from :mod:`tessellum.dks` directly. DKS uses
+    # Composer's LLMBackend abstractions but is not part of Composer.
 ]

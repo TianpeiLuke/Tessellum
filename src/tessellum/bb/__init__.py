@@ -97,7 +97,7 @@ __all__ = [
     "BBNode",
     "BBEdge",
     "BBGraph",
-    # Per-BBType BBNode subclasses (D1, Phase 8)
+    # Per-BBType BBNode subclasses
     "EmpiricalObservationNode",
     "ConceptNode",
     "ModelNode",

@@ -1,10 +1,10 @@
-"""Meta-DKS — schema-mutation runtime (Phase 9 of plan_dks_expansion).
+"""Meta-DKS — schema-mutation runtime.
 
 The recursive top: a *second* DKS walker whose substrate is the
 schema itself. When cycle-level DKS keeps hitting the same Toulmin
 failure on the same warrant shape, meta-DKS proposes a schema edit
 (add edge, retract edge, refine label). The edit is itself
-dialectical — authored as a SchemaEditProposal, attacked by
+dialectical — authored as a :class:`SchemaEditProposal`, attacked by
 counter-proposals, possibly retracted.
 
 Recursion stops one level up: the **meta-meta-schema**
@@ -13,7 +13,7 @@ human-authored and PR-gated per D4. Meta-DKS edits ``BB_SCHEMA`` via
 :class:`tessellum.bb.types.SchemaEditEvent`; nothing edits
 ``META_SCHEMA`` automatically.
 
-Architecture per FZ 2c1 (design synthesis):
+Architecture (FZ 2c1 design synthesis):
 
   - :class:`MetaObservation` — reads cycle-level telemetry (top-K
     attacked warrants, Toulmin failure distribution, unrealised
@@ -22,17 +22,21 @@ Architecture per FZ 2c1 (design synthesis):
   - :class:`SchemaEditProposal` — the meta-cycle's argument shape: a
     typed proposal to add / retract / refine a schema edge, with
     motivating evidence + predicted impact.
-  - :class:`MetaCycle` — drives the meta-FSM dialectic. v0.0.52 ships
-    the *mechanism* with a minimum-viable proposal generator;
-    learned proposal generation lands in Phase 11+.
+  - :class:`MetaCounterArgument` — typed attack against a proposal,
+    naming one of five closed-vocabulary attack kinds.
+  - :class:`MetaCycle` — drives the meta-FSM dialectic with
+    configurable :class:`Proposer` (heuristic or LLM-driven) and
+    :class:`Attacker` (no-op or LLM-driven) strategies + a
+    configurable survival threshold (strict / majority / permissive).
   - :data:`META_SCHEMA` — the human-authored meta-meta-schema. PR
     review is the only path to amend it.
 
-Per D8: schema edits don't retroactively invalidate corpus notes.
-Every note carries a ``bb_schema_version`` field (defaulted to 1 for
-v0.0.47-era notes); TESS-005 validates against that recorded version.
-``tessellum bb migrate --target-version current`` is the opt-in tool
-for retroactive validation reports.
+Schema edits don't retroactively invalidate corpus notes (D8 —
+frozen-at-creation discipline). Every note carries a
+``bb_schema_version`` field; TESS-005 validates against that recorded
+version. :data:`tessellum.bb.BB_SCHEMA_AT_VERSION` reconstructs the
+schema at any past version; ``tessellum bb migrate --target-version
+current`` is the opt-in tool for retroactive validation reports.
 """
 
 from tessellum.dks.meta.types import (
@@ -67,7 +71,7 @@ __all__ = [
     "MetaObservation",
     "SchemaEditProposal",
     "SCHEMA_EDIT_PROPOSAL_KIND",
-    # v0.0.53 Phase B.3 attack types
+    # Attack types (the meta-cycle's counter-argument vocabulary)
     "MetaCounterArgument",
     "META_ATTACK_KIND",
     "SURVIVE_THRESHOLD",

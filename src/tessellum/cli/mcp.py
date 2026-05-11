@@ -1,7 +1,6 @@
 """``tessellum mcp serve`` — run the Tessellum MCP server (stdio transport).
 
-Phase V of ``plans/plan_v01_completion_roadmap.md`` (v0.0.59). Exposes
-Tessellum's runtime APIs as MCP tools so MCP-compatible agents
+Exposes Tessellum's runtime APIs as MCP tools so MCP-compatible agents
 (Claude Desktop, IDEs, etc.) can invoke them.
 
 The server is built lazily — the ``mcp`` SDK is only imported when
@@ -10,7 +9,7 @@ load the CLI without errors.
 
 Exit codes:
     0   server ran cleanly (client closed the connection)
-    2   missing [mcp] extras, invocation error
+    2   missing ``[mcp]`` extras, invocation error
 """
 
 from __future__ import annotations

@@ -14,11 +14,11 @@ the structured fields populated from each note's YAML frontmatter:
   building_block     building_block
   folgezettel        folgezettel + folgezettel_parent
 
-This is the search you reach for when you know *what kind* of note you
-want, not *what content*. "Show me all concept notes about CQRS that
-are still in draft" is metadata, not content. Composer's
-``applies_to_files_query`` (Wave 2) will likely route through this layer
-for several of its query kinds.
+This is the search you reach for when you know *what kind* of note
+you want, not *what content*. "Show me all concept notes about CQRS
+that are still in draft" is metadata, not content. Composer's
+``applies_to_files_query`` resolution routes through this layer for
+several of its query kinds.
 
 JSON-array fields are matched via SQLite's built-in JSON1 ``json_each``
 to avoid LIKE false-positives. SQLite ships JSON1 enabled by default

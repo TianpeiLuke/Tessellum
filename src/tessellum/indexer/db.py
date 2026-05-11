@@ -1,12 +1,10 @@
 """Read-oriented Database wrapper around the SQLite index.
 
-Typed query helpers for the most common access patterns. Held deliberately
-lean for v0.0.12 — six methods covering the substrate-level queries the
-retrieval layer (Wave 6) and Composer's ``applies_to_files_query``
-resolution (Composer Wave 2+) will need first.
-
-Specialized queries (folgezettel trail traversal, orphan detection, graph
-PPR) layer in v0.0.13+ once the schema gains the supporting tables.
+Typed query helpers for the most common substrate-level access
+patterns: lookup by ``note_id``, list by category / BB / FZ, list
+links from or to a given note. Held deliberately lean — specialized
+queries (folgezettel trail traversal, orphan detection) live in
+dedicated modules so the substrate stays a thin SQL adapter.
 """
 
 from __future__ import annotations
@@ -125,10 +123,9 @@ class Database:
     def notes_by_folgezettel_root(self, root_fz: str) -> list[NoteRow]:
         """All notes whose ``folgezettel`` starts with ``root_fz`` (trail subset).
 
-        E.g. ``notes_by_folgezettel_root("7")`` returns every note in trail 7
-        (root 7 plus 7a, 7a1, 7a1a, ...). Match is by string-prefix; the
-        compiler's full topological sort lives in v0.0.13+ as a dedicated
-        ``folgezettel_trails`` table.
+        E.g. ``notes_by_folgezettel_root("7")`` returns every note in
+        trail 7 (root 7 plus 7a, 7a1, 7a1a, ...). Match is by
+        string-prefix.
         """
         rows = self._conn.execute(
             "SELECT * FROM notes WHERE folgezettel LIKE ? ORDER BY folgezettel",

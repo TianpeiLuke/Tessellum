@@ -94,7 +94,7 @@ def classify_query(query: str) -> RouterDecision:
             "multi-word / question-shaped: hybrid wins on real answer-quality",
         )
 
-    # 4. Otherwise → hybrid (the default — Wave 3's +12pp winner).
+    # 4. Otherwise → hybrid (the default — +12pp Hit@5 over single rankers).
     return RouterDecision("hybrid", "default: hybrid covers most cases")
 
 

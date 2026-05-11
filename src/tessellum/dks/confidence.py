@@ -1,13 +1,11 @@
 """DKS confidence gating — decide when to run the full 7-component cycle.
 
-Phase 5 of ``plans/plan_dks_implementation.md`` (v0.0.45). The plan
-specifies a minimal interface: a callable
+The interface is a callable
 ``(observation, warrants) -> float in [0, 1]``. Above the threshold the
 cycle short-circuits to *observation + one argument*; at or below, the
 full closed loop runs.
 
-The rationale is dialectical adequacy + cost. From the MAD literature
-(per FZ 2a):
+Rationale (dialectical adequacy + cost):
 
   - When the observation matches a high-confidence existing warrant,
     running A vs B is wasted compute — they'll agree.
@@ -18,11 +16,12 @@ The gate lets DKS run cheap on the easy cases and rich on the
 contested ones, with telemetry on the gating decision so the threshold
 itself becomes tunable from data.
 
-This module ships only the *minimal* interface: a Protocol, two
-trivial implementations (constant gate + constant-confidence model),
-and a default threshold. The plan defers anything more sophisticated
-(learned confidence, calibration, multi-model ensembles) beyond
-v0.0.45.
+Two implementations ship:
+
+  - :class:`ConstantConfidence` — fixed score; the simplest gate.
+  - :class:`CalibratedConfidence` — reads
+    ``runs/dks/warrant_history.jsonl`` and scores observations against
+    historical warrant-attack rates.
 """
 
 from __future__ import annotations
@@ -56,11 +55,15 @@ class DKSConfidenceModel(Protocol):
     by the existing warrants — i.e. that running the full cycle would
     return the same conclusion.
 
-    The plan's open questions defer learned/calibrated confidence to
-    v0.2+. v0.0.45 ships a trivial ``ConstantConfidence`` (always
-    returns the same score, useful for tests + for deliberately
-    forcing every cycle through one path) so the gating *mechanism*
-    is in place even when the *signal* is not.
+    Two built-in implementations:
+
+    - :class:`ConstantConfidence` — fixed score; useful for tests and
+      for deliberately forcing every cycle through one path.
+    - :class:`CalibratedConfidence` — reads :class:`WarrantHistory`
+      for a recency-weighted attack-rate signal.
+
+    The gating *mechanism* lives in :func:`decide_escalation`; this
+    protocol supplies the *signal*.
     """
 
     def __call__(
@@ -78,8 +81,8 @@ class ConstantConfidence:
     Useful for tests (force gated vs. force full) and for callers who
     want to disable gating entirely (``ConstantConfidence(0.0)`` →
     every cycle runs the full loop; ``ConstantConfidence(1.0)`` →
-    every cycle short-circuits). Both extremes are valid v0.0.45
-    deployments while a real signal is being calibrated.
+    every cycle short-circuits). Both extremes are valid deployments
+    while a real signal is being calibrated.
     """
 
     score: float = 0.0
@@ -106,16 +109,16 @@ def decide_escalation(
     return "gated" if confidence > threshold else "full"
 
 
-# ── CalibratedConfidence (Phase 7, v0.0.49) ──────────────────────────────
+# ── CalibratedConfidence ─────────────────────────────────────────────────
 
 
 DEFAULT_TARGET_FALSE_GATE_RATE: float = 0.10
-"""Default tolerance for the calibration loop (Phase 7).
+"""Default tolerance for the calibration loop.
 
 A "false gate" = a cycle the model would have gated where the full
 cycle would have closed-looped (i.e. a contradiction *would* have been
-found). 10% is the Pareto-balanced default per D2 in
-``plan_dks_expansion``. Configurable via constructor + CLI.
+found). 10% is the Pareto-balanced default. Configurable via
+constructor + CLI.
 """
 
 
@@ -159,8 +162,8 @@ class CalibrationResult:
 class CalibratedConfidence:
     """Confidence model that reads ``WarrantHistory`` for an attack-rate signal.
 
-    The Phase 5 ``ConstantConfidence`` shipped the gating *mechanism*
-    without a *signal*. This class ships the minimal useful signal:
+    Where :class:`ConstantConfidence` supplies the gating mechanism
+    without a signal, this class supplies the minimal useful signal:
     the recency-weighted fraction of historical revisions that
     superseded a prior warrant (i.e. "attacked" it).
 
@@ -168,9 +171,9 @@ class CalibratedConfidence:
     surviving → cycle runs the full loop. Empty history → neutral 0.5
     (no signal available; defer to the threshold).
 
-    Future extension: combine with retrieval-similarity (FZ 2a2's
-    Level 2 learning) — observations similar to past closed-loop
-    observations get lower confidence. Deferred to keep v0.0.49 small.
+    Future extension: combine with retrieval-similarity — observations
+    similar to past closed-loop observations get lower confidence.
+    Out of scope for the current confidence model.
 
     Args:
         warrant_history: WarrantHistory to read past events from. Empty

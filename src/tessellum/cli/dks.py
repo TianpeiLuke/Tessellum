@@ -1,10 +1,8 @@
 """``tessellum dks`` — Dialectic Knowledge System multi-cycle CLI.
 
-Phase 3 of ``plans/plan_dks_implementation.md``. Lifted to a top-level
-subcommand in v0.0.43 to reflect DKS's status as a peer runtime to
-``tessellum composer`` (the contract-pipeline executor), not a feature
-inside it. DKS uses Composer's LLMBackend abstractions but is otherwise
-independent.
+DKS is a peer runtime to :mod:`tessellum.composer` (the contract-
+pipeline executor), not a feature inside it. The CLI uses Composer's
+LLMBackend abstractions but is otherwise independent.
 
 ```bash
 tessellum dks <observations.jsonl>
@@ -64,8 +62,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     dks.add_argument(
         "--report",
         action="store_true",
-        help="Inter-cycle telemetry mode (Phase 5): aggregate stats across "
-        "every *_aggregate.json under --runs-dir and exit 0. Skips the "
+        help="Inter-cycle telemetry mode: aggregate stats across every "
+        "*_aggregate.json under --runs-dir and exit 0. Skips the "
         "observation run.",
     )
     dks.add_argument(
@@ -89,25 +87,25 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=Path("data") / "tessellum.db",
         help="With --report --include-bb-graph: index DB to load the "
         "corpus BBGraph from. Default: ./data/tessellum.db. Ignored "
-        "without --include-bb-graph. v0.0.53: also consumed by "
-        "--meta when present and readable, to populate "
+        "without --include-bb-graph. Also consumed by --meta when "
+        "present and readable, to populate "
         "MetaObservation.unrealised_schema_edges from BBGraph.",
     )
-    # Phase 7 — learned confidence + retrieval-grounded warrants
+    # Learned confidence + retrieval-grounded warrants
     dks.add_argument(
         "--confidence-model",
         choices=["constant", "calibrated"],
         default="constant",
-        help="Confidence model for the gate (Phase 5 + Phase 7). "
-        "`constant` uses ConstantConfidence(--gate-confidence). "
-        "`calibrated` uses CalibratedConfidence reading "
-        "warrant_history.jsonl under --runs-dir for an attack-rate signal.",
+        help="Confidence model for the gate. `constant` uses "
+        "ConstantConfidence(--gate-confidence). `calibrated` uses "
+        "CalibratedConfidence reading warrant_history.jsonl under "
+        "--runs-dir for an attack-rate signal.",
     )
     dks.add_argument(
         "--calibrate",
         action="store_true",
-        help="Calibration mode (Phase 7): scan past per-cycle traces "
-        "under --runs-dir, report the achieved false-gate rate at "
+        help="Calibration mode: scan past per-cycle traces under "
+        "--runs-dir, report the achieved false-gate rate at "
         "--gate-threshold, and suggest a threshold that hits "
         "--target-false-gate-rate. Skips the observations run.",
     )
@@ -116,7 +114,6 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=float,
         default=None,
         help="With --calibrate: target false-gate rate (default 0.10). "
-        "Per D2 in plan_dks_expansion: configurable + observable. "
         "Ignored without --calibrate.",
     )
     dks.add_argument(
@@ -132,10 +129,11 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--perspectives",
         type=str,
         default="conservative,exploratory",
-        help="Phase 10: comma-separated list of perspectives the cycle "
-        "should generate arguments from. Default 'conservative,exploratory' "
-        "preserves the v0.0.40-era A/B behaviour. N>2 activates pairwise "
-        "contradicts + Dung grounded labelling. Perspectives must be unique.",
+        help="Comma-separated list of perspectives the cycle should "
+        "generate arguments from. Default 'conservative,exploratory' "
+        "matches the canonical 2-argument cycle. N>2 activates "
+        "pairwise contradicts + Dung grounded labelling. Perspectives "
+        "must be unique.",
     )
     dks.add_argument(
         "--semantic-disagreement",
@@ -144,12 +142,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "substantively disagree, instead of string-compare. Falls back "
         "to string-compare on parse failure. Off by default.",
     )
-    # Phase 9 — meta-DKS (schema-mutation runtime)
+    # Meta-DKS (schema-mutation runtime)
     dks.add_argument(
         "--meta",
         action="store_true",
-        help="Meta-DKS mode (Phase 9): scan past per-cycle traces "
-        "under --runs-dir, build a MetaObservation (top-K attacked "
+        help="Meta-DKS mode: scan past per-cycle traces under "
+        "--runs-dir, build a MetaObservation (top-K attacked "
         "warrants + Toulmin failure distribution + unrealised schema "
         "edges), run MetaCycle, propose 0-N schema edits. Default "
         "--dry-run; pass --apply to actually write the edits.",
@@ -180,18 +178,18 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         choices=["heuristic", "llm"],
         default="heuristic",
         help="With --meta: proposal strategy. 'heuristic' (default) "
-        "uses the v0.0.52 lookup-table-driven HeuristicProposer; "
-        "'llm' uses the Phase B.2 LLMProposer backed by --backend. "
-        "llm requires --backend anthropic (or mock for testing).",
+        "uses the lookup-table-driven HeuristicProposer; 'llm' uses "
+        "the LLMProposer backed by --backend. llm requires --backend "
+        "anthropic (or mock for testing).",
     )
     dks.add_argument(
         "--attacker",
         choices=["none", "llm"],
         default="none",
-        help="With --meta: attack stage. 'none' (default) preserves "
-        "v0.0.52 survive=pass-through behaviour. 'llm' enables the "
-        "Phase B.3 LLMAttacker (dialectical attack on each proposal). "
-        "llm requires --backend anthropic (or mock for testing).",
+        help="With --meta: attack stage. 'none' (default) emits no "
+        "attacks (pass-through survival). 'llm' enables the "
+        "LLMAttacker (dialectical attack on each proposal). llm "
+        "requires --backend anthropic (or mock for testing).",
     )
     dks.add_argument(
         "--survive-threshold",
@@ -206,7 +204,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--gate-confidence",
         type=float,
         default=None,
-        help="Phase 5 confidence gate: force a constant confidence score "
+        help="Confidence gate: force a constant confidence score "
         "(0.0-1.0) for every observation. When > --gate-threshold the "
         "cycle short-circuits to observation + argument A only. Useful "
         "for testing gating end-to-end without a learned model.",
@@ -267,15 +265,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def run_dks_cli(args: argparse.Namespace) -> int:
-    # Phase 5 — --report short-circuits to inter-cycle telemetry.
+    # --report short-circuits to inter-cycle telemetry.
     if args.report:
         return _run_dks_report(args)
 
-    # Phase 7 — --calibrate short-circuits to calibration replay.
+    # --calibrate short-circuits to calibration replay.
     if args.calibrate:
         return _run_dks_calibrate(args)
 
-    # Phase 9 — --meta short-circuits to schema-mutation runtime.
+    # --meta short-circuits to the schema-mutation runtime.
     if args.meta:
         return _run_dks_meta(args)
 
@@ -460,9 +458,9 @@ def run_dks_cli(args: argparse.Namespace) -> int:
                 return 2
         backend = MockBackend(responses=responses)
 
-    # Phase 5 — confidence gating (opt-in via --gate-confidence
-    # ConstantConfidence). Phase 7 adds --confidence-model=calibrated
-    # to use CalibratedConfidence (reads warrant_history.jsonl under
+    # Confidence gating. --gate-confidence wires in a
+    # ConstantConfidence; --confidence-model=calibrated wires in
+    # CalibratedConfidence (reads warrant_history.jsonl under
     # --runs-dir for an attack-rate signal).
     confidence_model = None
     if args.confidence_model == "calibrated":
@@ -489,7 +487,7 @@ def run_dks_cli(args: argparse.Namespace) -> int:
             return 2
         confidence_model = ConstantConfidence(args.gate_confidence)
 
-    # Phase 7 — retrieval-grounded warrants (opt-in via --retrieval-db).
+    # Retrieval-grounded warrants (opt-in via --retrieval-db).
     retrieval_client = None
     if args.retrieval_db is not None:
         from tessellum.dks import RetrievalClient
@@ -561,7 +559,7 @@ def run_dks_cli(args: argparse.Namespace) -> int:
             encoding="utf-8",
         )
 
-        # Phase 5 — append warrant revisions to the persistent history log.
+        # Append warrant revisions to the persistent history log.
         if result.warrant_changes:
             history_path = runs_dir / "warrant_history.jsonl"
             WarrantHistory(history_path).record_changes(result.warrant_changes)
@@ -635,9 +633,9 @@ def _serialize_cycle(cycle) -> dict:
             "folgezettel": a.folgezettel,
             "warrant": _w(a.warrant),
             "evidence": a.evidence,
-            # Phase I.3 (v0.0.55) — perspective string per argument.
-            # Empty string when the field was not populated by older
-            # DKSArgument constructions.
+            # Perspective string per argument. Empty string when the
+            # field was not populated by older DKSArgument
+            # constructions.
             "argument_perspective": getattr(a, "perspective", ""),
         }
 
@@ -697,9 +695,9 @@ def _serialize_cycle(cycle) -> dict:
                 "supersedes": cycle.rule_revision.supersedes,
             }
         ),
-        # Phase I.1 (v0.0.55) — multi-revision tuple. For N=2 + N>2
-        # single-survivor cycles this is `(rule_revision,)`; for N>2
-        # multi-survivor cycles, one entry per Dung-IN survivor.
+        # Multi-revision tuple. For N=2 + N>2 single-survivor cycles
+        # this is ``(rule_revision,)``; for N>2 multi-survivor
+        # cycles, one entry per Dung-IN survivor.
         "rule_revisions": [
             {
                 "folgezettel": r.folgezettel,
@@ -708,9 +706,9 @@ def _serialize_cycle(cycle) -> dict:
             }
             for r in cycle.rule_revisions
         ],
-        # Phase 10 — multi-perspective fields. Always serialised, even
-        # in N=2 cycles, so downstream tools (meta-DKS observation
-        # builder, audit) can read them uniformly.
+        # Multi-perspective fields. Always serialised, even in N=2
+        # cycles, so downstream tools (meta-DKS observation builder,
+        # audit) can read them uniformly.
         "arguments": [_arg(a) for a in cycle.arguments],
         "contradicts_edges": [
             {
@@ -721,7 +719,7 @@ def _serialize_cycle(cycle) -> dict:
             for e in cycle.contradicts_edges
         ],
         "grounded_labelling": dict(cycle.grounded_labelling),
-        # Phase C (v0.0.60) — silent-failure telemetry
+        # Silent-failure telemetry
         "silent_failures": list(cycle.silent_failures),
         "surviving_argument_fzs": list(cycle.surviving_argument_fzs),
     }
@@ -779,7 +777,7 @@ def _serialize_run(
     }
 
 
-# ── --report mode (Phase 5) ─────────────────────────────────────────────────
+# ── --report mode ───────────────────────────────────────────────────────────
 
 
 def _run_dks_report(args: argparse.Namespace) -> int:
@@ -840,7 +838,7 @@ def _run_dks_report(args: argparse.Namespace) -> int:
         revised = int(summary.get("revised", 0))
         superseded = int(summary.get("superseded", 0))
 
-        # Phase 5 fields (only present for v0.0.45+ runs). Tolerant
+        # Gating fields (only present once the gate landed). Tolerant
         # of older trace files that don't have `gated_count` set.
         gated = 0
         for cycle_trace_path in agg.get("cycle_traces", []) or []:
@@ -955,7 +953,7 @@ def _run_dks_report(args: argparse.Namespace) -> int:
     return 0
 
 
-# ── --meta mode (Phase 9) ──────────────────────────────────────────────────
+# ── --meta mode ────────────────────────────────────────────────────────────
 
 
 def _run_dks_meta(args: argparse.Namespace) -> int:
@@ -1016,10 +1014,10 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
 
         # Toulmin failure distribution: read per-cycle traces' counter.broken_component
         toulmin: Counter[str] = Counter()
-        # Phase I.3 (v0.0.55) — per-perspective stratification. Build a
-        # {perspective: {broken_component: count}} map for each cycle's
-        # ATTACKED argument's perspective (the counter targets that
-        # argument's warrant; attributing the failure to its
+        # Per-perspective stratification: build a
+        # {perspective: {broken_component: count}} map keyed on each
+        # cycle's ATTACKED argument perspective (the counter targets
+        # that argument's warrant; attributing the failure to its
         # perspective gives the right stratification).
         per_perspective: dict[str, Counter] = {}
         for ct in cycle_traces:
@@ -1031,8 +1029,8 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
                 continue
             toulmin[comp] += 1
             # Resolve attacked argument's perspective via the
-            # arguments + counter.attacked_fz join. v0.0.54 traces
-            # carry arguments[]; older traces may not.
+            # arguments + counter.attacked_fz join. Newer traces
+            # carry ``arguments``; older traces may not.
             attacked_fz = counter.get("attacked_fz")
             arguments_list = ct.get("arguments") or []
             attacked_persp: str | None = None
@@ -1047,12 +1045,11 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
                 per_perspective.setdefault(attacked_persp, Counter())[comp] += 1
 
         # Unrealised schema edges: BB_SCHEMA entries with 0 corpus
-        # instances. v0.0.53 (Phase B.6) — when --bb-db points at a
-        # readable index DB, query BBGraph.from_db and call
-        # ``unrealised_schema_edges()`` to populate the field. Activates
-        # Heuristic-2 (retract-unused-edge) in HeuristicProposer.
-        # When the DB is absent or unreadable, fall back to empty tuple
-        # (v0.0.52 behaviour).
+        # instances. When --bb-db points at a readable index DB,
+        # query BBGraph.from_db and call ``unrealised_schema_edges()``
+        # to populate the field — that activates Heuristic-2
+        # (retract-unused-edge) in HeuristicProposer. When the DB is
+        # absent or unreadable, fall back to an empty tuple.
         unrealised: tuple = ()
         bb_db_path: Path | None = getattr(args, "bb_db", None)
         if bb_db_path is not None:
@@ -1066,9 +1063,8 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
                 except Exception:  # noqa: BLE001 — defensive
                     unrealised = ()
 
-        # Phase C (v0.0.60) — aggregate silent_failure_count across
-        # cycle traces. Pre-v0.0.60 traces won't have the field;
-        # treat as zero.
+        # Aggregate silent_failure_count across cycle traces. Older
+        # traces won't have the field; treat as zero.
         silent_failure_count = 0
         for ct in cycle_traces:
             sf = ct.get("silent_failures")
@@ -1266,7 +1262,7 @@ def _write_migration_note(meta_dir: Path, events) -> Path:
     return note_path
 
 
-# ── --calibrate mode (Phase 7) ─────────────────────────────────────────────
+# ── --calibrate mode ───────────────────────────────────────────────────────
 
 
 def _run_dks_calibrate(args: argparse.Namespace) -> int:
@@ -1349,7 +1345,7 @@ def _run_dks_calibrate(args: argparse.Namespace) -> int:
 
 
 def _build_bb_graph_section(db_path: Path) -> dict:
-    """Phase 6 — corpus-graph telemetry joined into `dks --report`.
+    """Corpus-graph telemetry joined into ``dks --report``.
 
     Loads ``BBGraph.from_db()`` and returns a JSON-safe summary:
     node counts by BB type, edge counts by schema label, untyped-edge
