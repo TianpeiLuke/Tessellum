@@ -138,6 +138,17 @@ class Database:
 
     # ── Link queries ─────────────────────────────────────────────────────
 
+    def all_links(self) -> list[LinkRow]:
+        """Every link in the index, ordered by source then target.
+
+        Useful for full-corpus graph builders (e.g.
+        :meth:`tessellum.bb.BBGraph.from_db`).
+        """
+        rows = self._conn.execute(
+            "SELECT * FROM note_links ORDER BY source_note_id, target_note_id"
+        )
+        return [_row_to_link(r) for r in rows]
+
     def links_from(self, note_id: str) -> list[LinkRow]:
         """Outbound links from a note (note_id -> targets)."""
         rows = self._conn.execute(
