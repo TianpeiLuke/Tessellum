@@ -16,6 +16,62 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.37] — 2026-05-10
+
+### Added — Architecture trail (FZ 1) branches into the R-Cross sub-branch
+
+Two new thought notes append to Trail 1 (Architecture), formalising the three CQRS discipline rules and then auditing Tessellum's current codebase against them.
+
+#### Trail 1 structure update
+
+```
+1       Building Block Ontology Relationships  (substrate)
+└── 1a  How the CQRS Architecture Evolved      (four-step narrative)
+    └── 1a1   Two-Systems CQRS Value Proposition  (★ pivot)
+        ├── 1a1a   The Essence of CQRS for Tessellum  (user-facing distillation)
+        └── 1a1b   The R-Cross Rules  ★ NEW — architect-facing formal rules
+            └── 1a1b1   Gap Audit Through the R-Cross Lens  ★ NEW — codebase audit
+```
+
+Trail 1 grows from 4 nodes (linear) to 6 nodes (branching at 1a1). The branching makes the user-facing essence and the architect-facing rules siblings of the same synthesis — both descend from FZ 1a1, neither descends from the other.
+
+#### `thought_cqrs_r_cross_rules.md` (FZ 1a1b)
+
+Formalises the three CQRS discipline rules sourced from AbuseSlipBox's FZ 7g1a1a1a1a1 synthesis:
+
+| Rule | Polices | Statement |
+|------|---------|-----------|
+| **R-P** | Internal cohesion of System P | Schema (Ontology) and Runtime (DKS) must co-evolve. Sub-kinds live in System D's facets, not System P's schema. |
+| **R-D** | Internal cohesion of System D | Candidate generation is computational (BM25 + dense). System P artifacts (BB types, FZ positions, link proximities) enter at re-rank (Stage 3) and context assembly (Stage 4), never at candidate generation (Stage 1). |
+| **R-Cross** | Boundary between P and D | System P writes; System D reads. P may call D (to check existing knowledge). D may NOT call P. The query path never crosses into System P. |
+
+Plus the recognition checklist (walk the three rules in order when evaluating any proposed change) and the rationale for "three rules, not one" (the naïve "split read and write" framing underdetermines the architecture; the three rules answer *where* to split, *what* counts as a read, and *which way* the call direction goes).
+
+#### `thought_cqrs_r_cross_gap_audit.md` (FZ 1a1b1)
+
+Applies the three rules to Tessellum v0.0.36's codebase. Headline finding: **the codebase holds the defensive half of each rule (what's forbidden) but defers the productive half (what's enabled).**
+
+| Rule | Defensive half | Productive half |
+|------|----------------|-----------------|
+| R-P | Schema closed at 8 types ✓ | Runtime co-evolution ✗ (DKS not shipped) |
+| R-D | Candidate gen type-blind ✓ | BB-aware re-rank ✗ (Stage 3-4 not built) |
+| R-Cross | D doesn't call P ✓ (import-graph verified) | P calls D ✗ (no executor-side retrieval client) |
+
+Closes with a priority-ordered list of 6 gaps to close, foundational ones first (DKS runtime, P-side retrieval client) so the higher-layer ones (re-rank, context assembler, epistemic-congruence eval dimension, TESS-004 validator rule) have somewhere to live.
+
+#### Updates
+
+- `entry_architecture_trail.md` — ASCII tree updated to show the branching; FZ table extended with the two new rows; status line bumped to "6 nodes, branching at 1a1".
+- `entry_folgezettel_trails.md` (master) — Trail 1 row updated: 4 → 6 nodes; total trails-and-nodes count: "3 trails, 10 nodes total".
+- `_seed_manifest.py` — 2 new entries (`thought_cqrs_r_cross_rules.md`, `thought_cqrs_r_cross_gap_audit.md`).
+
+#### Verification
+
+- Both new files pass `tessellum format check` with 0 errors and 0 warnings.
+- Updated entry points (`entry_architecture_trail.md`, `entry_folgezettel_trails.md`) also pass 0/0.
+- Editable + wheel mode both produce **56 markdown files** (was 54 in v0.0.36; +2 new).
+- Full suite: 488 passed, 1 skipped.
+
 ## [0.0.36] — 2026-05-10
 
 ### Added — session-mcp (Tessellum's first built-in MCP)
