@@ -283,10 +283,14 @@ def test_filter_against_real_tessellum_vault():
         # Concept BB filter should match all term_*.md notes (50+)
         concepts = metadata_search(db_path, building_block="concept", k=200)
         assert len(concepts) >= 30
-        # FZ-trail notes should be a small subset
+        # FZ-trail notes are a strict subset of the vault (most notes have
+        # no folgezettel; only argumentative trail nodes do). Property: ≥1
+        # (trails are shipped), and a tight upper bound versus concepts.
+        # We don't hard-code the exact count — the trail set grows by design
+        # as new arguments descend into existing trails.
         trail = metadata_search(db_path, has_folgezettel=True, k=200)
-        # Only 2 real FZ notes in the current vault (others have empty-string FZ)
-        assert 1 <= len(trail) <= 10
+        assert len(trail) >= 1
+        assert len(trail) < len(concepts)
     finally:
         if db_path.is_file():
             db_path.unlink()

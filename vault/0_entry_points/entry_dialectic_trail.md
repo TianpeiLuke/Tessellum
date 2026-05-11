@@ -38,9 +38,10 @@ The trail is short by design — two notes. The first narrates the six-step desc
 ```
 2     How DKS Was Reasoned Into Shape  (six-step descent)
 └── 2a  ★ DKS Design Synthesis  (7-component pattern + 3 formal foundations + 2 timescales)
+    └── 2a1   DKS × Folgezettel — One Mechanism, Two Axes
 ```
 
-Linear, two nodes. Trail roots at FZ 2 with no parent (`folgezettel_parent: ""`); 2a descends from 2.
+Three nodes, linear. Trail roots at FZ 2 with no parent (`folgezettel_parent: ""`); 2a descends from 2; 2a1 sharpens the synthesis by exposing DKS and FZ as the same mechanism viewed from different axes.
 
 ## FZ Table
 
@@ -48,6 +49,7 @@ Linear, two nodes. Trail roots at FZ 2 with no parent (`folgezettel_parent: ""`)
 |-------|------|----|------|
 | **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | argument | **Narrative** — six-step descent: practical question → three-layer framing (intermediate) → empirical anchor (domain instance with closed loop) → formal foundations (Dung + Toulmin + IBIS) → substrate-protocol separation counter → six completing innovations. |
 | **2a** | [`thought_dks_design_synthesis`](../resources/analysis_thoughts/thought_dks_design_synthesis.md) | argument | **★ Synthesis** — the 7-component pattern (one per BB-to-BB epistemic edge), three formal foundations (Dung AF + Toulmin warrant + IBIS deliberation), four design commitments (queryable + mutable substrate, warrant-level learning, dialectical adequacy termination, confidence-gated escalation), two timescales (intra-record minutes + inter-cycle weeks). |
+| **2a1** | [`thought_dks_fz_integration`](../resources/analysis_thoughts/thought_dks_fz_integration.md) | argument | **Sharpening** — DKS and Folgezettel are the same mechanism viewed from two axes (spatial = FZ, temporal = DKS). Every cycle deposits a 5-node FZ subtree; multi-cycle runs choose between *start fresh / extend leaf / branch interior*. TESS-004 becomes structurally enforceable through `folgezettel_parent`. The integration turns FZ from a hand-authored convention into a machine-produced invariant. |
 
 ## Summary of dialectic progress
 
@@ -122,4 +124,4 @@ This trail is the architectural commitment that constrains how the runtime gets 
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Dialectic trail (FZ 2) — 2 nodes, depth 2 (linear)
+**Status**: Active — Dialectic trail (FZ 2) — 3 nodes, depth 3 (linear)

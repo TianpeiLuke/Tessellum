@@ -76,6 +76,7 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     # ── FZ trail nodes (Trail 2: Dialectic / DKS — 2 thoughts) ───────────
     "resources/analysis_thoughts/thought_dks_evolution.md",            # FZ 2
     "resources/analysis_thoughts/thought_dks_design_synthesis.md",     # FZ 2a
+    "resources/analysis_thoughts/thought_dks_fz_integration.md",       # FZ 2a1
 
     # ── FZ trail nodes (Trail 3: Retrieval / System D — 2 thoughts) ──────
     "resources/analysis_thoughts/thought_retrieval_evolution.md",      # FZ 3
