@@ -74,19 +74,21 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
 
-    # ── FZ trail nodes (Trail 1: Architecture / CQRS — 4 thoughts) ───────
+    # ── FZ trail nodes (Trail 1: Architecture / CQRS — 7 thoughts) ───────
     "resources/analysis_thoughts/thought_building_block_ontology_relationships.md",        # FZ 1
     "resources/analysis_thoughts/thought_cqrs_design_evolution.md",                        # FZ 1a
     "resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md", # FZ 1a1
     "resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md",                   # FZ 1a1a
     "resources/analysis_thoughts/thought_cqrs_r_cross_rules.md",                           # FZ 1a1b
     "resources/analysis_thoughts/thought_cqrs_r_cross_gap_audit.md",                       # FZ 1a1b1
+    "resources/analysis_thoughts/thought_bb_ontology_as_typed_graph.md",                   # FZ 1b — BB-graph formalisation (co-companion of FZ 2a2)
 
-    # ── FZ trail nodes (Trail 2: Dialectic / DKS — 4 thoughts) ───────────
+    # ── FZ trail nodes (Trail 2: Dialectic / DKS — 5 thoughts) ───────────
     "resources/analysis_thoughts/thought_dks_evolution.md",            # FZ 2
     "resources/analysis_thoughts/thought_dks_design_synthesis.md",     # FZ 2a
-    "resources/analysis_thoughts/thought_dks_fz_integration.md",       # FZ 2a1
-    "resources/analysis_thoughts/thought_dks_runtime_integration.md",  # FZ 2b — runtime integration (Phase 4)
+    "resources/analysis_thoughts/thought_dks_fz_integration.md",       # FZ 2a1 — spatial sharpening (FZ duality)
+    "resources/analysis_thoughts/thought_dks_as_fsm_on_bb_graph.md",   # FZ 2a2 — formal sharpening (FSM on BB graph)
+    "resources/analysis_thoughts/thought_dks_runtime_integration.md",  # FZ 2b  — runtime integration (Phase 4)
 
     # ── FZ trail nodes (Trail 3: Retrieval / System D — 2 thoughts) ──────
     "resources/analysis_thoughts/thought_retrieval_evolution.md",      # FZ 3

@@ -38,11 +38,12 @@ The trail is short by design — two notes. The first narrates the six-step desc
 ```
 2     How DKS Was Reasoned Into Shape  (six-step descent)
 ├── 2a  ★ DKS Design Synthesis  (7-component pattern + 3 formal foundations + 2 timescales)
-│   └── 2a1   DKS × Folgezettel — One Mechanism, Two Axes
+│   ├── 2a1   DKS × Folgezettel — One Mechanism, Two Axes
+│   └── 2a2   DKS as a Finite-State Machine on the BB Ontology Graph
 └── 2b   DKS Runtime Integration — How the Closed Loop Wires Into the Rest of Tessellum
 ```
 
-Four nodes, two-branch fork at FZ 2. 2a + 2a1 are the design synthesis branch (*what is DKS?*); 2b is the runtime-integration branch (*what does the live runtime touch?*), landing after Phase 4 wired DKS through Composer / Retrieval / Format / Eval.
+Five nodes, two-branch fork at FZ 2 with a sub-fork at 2a. 2a + (2a1, 2a2) are the design synthesis branch — 2a names DKS, 2a1 sharpens it spatially (FZ duality), 2a2 sharpens it formally (FSM on BB graph from FZ 1b). 2b is the runtime-integration branch — what the live runtime touches.
 
 ## FZ Table
 
@@ -50,7 +51,8 @@ Four nodes, two-branch fork at FZ 2. 2a + 2a1 are the design synthesis branch (*
 |-------|------|----|------|
 | **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | argument | **Narrative** — six-step descent: practical question → three-layer framing (intermediate) → empirical anchor (domain instance with closed loop) → formal foundations (Dung + Toulmin + IBIS) → substrate-protocol separation counter → six completing innovations. |
 | **2a** | [`thought_dks_design_synthesis`](../resources/analysis_thoughts/thought_dks_design_synthesis.md) | argument | **★ Synthesis** — the 7-component pattern (one per BB-to-BB epistemic edge), three formal foundations (Dung AF + Toulmin warrant + IBIS deliberation), four design commitments (queryable + mutable substrate, warrant-level learning, dialectical adequacy termination, confidence-gated escalation), two timescales (intra-record minutes + inter-cycle weeks). |
-| **2a1** | [`thought_dks_fz_integration`](../resources/analysis_thoughts/thought_dks_fz_integration.md) | argument | **Sharpening** — DKS and Folgezettel are the same mechanism viewed from two axes (spatial = FZ, temporal = DKS). Every cycle deposits a 6-node FZ subtree; multi-cycle runs choose between *start fresh / extend leaf / branch interior*. TESS-004 becomes structurally enforceable through `folgezettel_parent`. The integration turns FZ from a hand-authored convention into a machine-produced invariant. |
+| **2a1** | [`thought_dks_fz_integration`](../resources/analysis_thoughts/thought_dks_fz_integration.md) | argument | **Spatial sharpening** — DKS and Folgezettel are the same mechanism viewed from two axes (spatial = FZ, temporal = DKS). Every cycle deposits a 6-node FZ subtree; multi-cycle runs choose between *start fresh / extend leaf / branch interior*. TESS-004 becomes structurally enforceable through `folgezettel_parent`. The integration turns FZ from a hand-authored convention into a machine-produced invariant. |
+| **2a2** | [`thought_dks_as_fsm_on_bb_graph`](../resources/analysis_thoughts/thought_dks_as_fsm_on_bb_graph.md) | argument | **Formal sharpening** — DKS is a finite-state machine ⟨Q,Σ,δ,q₀,F⟩ over the BB ontology graph (states = 8 BB types, δ = 10-edge schema, q₀ = OBS, F = {PRO, CON, ARG-gated}). The 7 components are 7 transitions; the three terminal paths (closed loop / short-circuit / gated) are the FSM's accepting walks. Surfaces three learning levels: instance (every cycle), edge-weight (inter-cycle), schema (meta-DKS; R-P productive half at its strongest). Co-companion of FZ 1b (graph) — sibling of 2a1 (spatial). |
 | **2b** | [`thought_dks_runtime_integration`](../resources/analysis_thoughts/thought_dks_runtime_integration.md) | argument | **Runtime Integration** — what the live runtime touches: Composer (dispatcher), Retrieval (P-side RetrievalClient — R-Cross productive half), Format (TESS-004 enforces counter→argument link), Eval (`epistemic_congruence` 6th rubric dim), Capture (no new flavor), Indexer (read-only via D). R-Cross both halves now enforced; R-P moves from "held by absence" to "actively enforced". |
 
 ## Summary of dialectic progress
@@ -128,4 +130,4 @@ This trail is the architectural commitment that constrains how the runtime gets 
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Dialectic trail (FZ 2) — 4 nodes, depth 3 (two-branch fork at FZ 2 after Phase 4 lands FZ 2b)
+**Status**: Active — Dialectic trail (FZ 2) — 5 nodes, depth 3 (two-branch fork at FZ 2; sub-fork at 2a with siblings 2a1 spatial + 2a2 formal)
