@@ -16,6 +16,50 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.38] — 2026-05-10
+
+### Added — DKS × Folgezettel unification (FZ 2a1) + plan revision
+
+A new thought note appends to the Dialectic trail (FZ 2 → 2a → **2a1**) establishing that DKS and Folgezettel are *one mechanism viewed from two axes*, not two systems that integrate.
+
+#### `thought_dks_fz_integration.md` (FZ 2a1, parent 2a)
+
+The load-bearing claim:
+
+| Axis | Lens | Question it answers |
+|------|------|---------------------|
+| **Spatial** (FZ) | Topology of the substrate | *How does this note descend from that one?* |
+| **Temporal** (DKS) | Mechanism of production | *Which cycle produced this note, and what step within the cycle?* |
+
+The note formalises:
+
+- **The 7-component → 5-node mapping** — each DKS cycle deposits a 5-node FZ subtree (observation root → 2 sibling arguments → counter-argument → pattern → revised warrant). The 4th component (disagreement detection) produces an edge, not a node.
+- **Three multi-cycle modes** — *start fresh* (new top-level FZ root for an unconnected observation), *extend* (new cycle descends from a prior cycle's leaf when the new observation refutes/extends a prior warrant), or *branch* (new cycle inserts a sibling counter at the attacked argument's FZ position).
+- **TESS-004 becomes structurally enforceable** — the rule "`counter_argument` must link to the `argument` it attacks" upgrades from body-text scanning to a YAML-field check: `folgezettel_parent` must resolve to a note whose `building_block` is `argument`. R-P enforcement is now provable, not aspirational.
+- **What FZ becomes when DKS authors it** — Luhmann's FZ was a personal-discipline convention. Tessellum's FZ becomes a runtime-enforced invariant for machine-produced notes (and a machine-validated convention for hand-authored notes).
+
+### Updated — DKS implementation plan
+
+`plans/plan_dks_implementation.md` is revised to make FZ integration a **load-bearing design principle**, not an afterthought:
+
+- A new "Why we need it" reason 4: *Folgezettel becomes machine-produced*.
+- A new "DKS and Folgezettel are the same mechanism" section spelling out the two-axis duality + the 7→5 mapping + the three multi-cycle modes + the five consequences for implementation.
+- Each phase in the plan now calls out its FZ touchpoint (Phase 1: FZ fields populated by the runtime; Phase 2: skill sidecar's materializers include FZ fields; Phase 3: FZ allocation policy in the multi-cycle runner; Phase 4: TESS-004 leverages `folgezettel_parent`; Phase 5: telemetry queries the FZ graph).
+
+### Updates
+
+- `entry_dialectic_trail.md` — ASCII tree updated to show the 3-node chain; FZ table extended with FZ 2a1; status line "3 nodes, depth 3".
+- `entry_folgezettel_trails.md` (master) — Trail 2 row 2 → 3 nodes; total "3 trails, 11 nodes".
+- `_seed_manifest.py` — 1 new entry (`thought_dks_fz_integration.md`).
+- `tests/smoke/test_retrieval_metadata.py` — the brittle `1 <= len(trail) <= 10` assertion (predicated on "only 2 FZ notes" — long stale) is replaced with property-based assertions (`len(trail) >= 1` and `< len(concepts)`) that don't drift as the trail set grows.
+
+### Verification
+
+- New file passes `tessellum format check` with 0 errors / 0 warnings.
+- Updated entry points + plan also pass 0/0.
+- Editable + wheel mode both produce **57 markdown files** (was 56 in v0.0.37).
+- Full suite: 488 passed, 1 skipped (the metadata-test fix lands here).
+
 ## [0.0.37] — 2026-05-10
 
 ### Added — Architecture trail (FZ 1) branches into the R-Cross sub-branch

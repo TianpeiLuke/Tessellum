@@ -53,11 +53,59 @@ The loop **closes** when step 7's revised warrant feeds back into the next cycle
 
 ## Why we need it
 
-Three reasons DKS is the highest-leverage v0.2 work:
+Four reasons DKS is the highest-leverage v0.2 work:
 
 1. **R-P becomes enforceable.** Without DKS, the BB schema is unchallenged — there's no runtime to test it against. With DKS, every new BB-edge addition has to be justified by a runtime phase that produces it, and vice versa. The schema becomes provably load-bearing.
 2. **The substrate becomes a learning system.** Today Tessellum is an accumulating typed-knowledge library. Each note added makes the vault bigger but doesn't *update* anything that came before. DKS closes the loop: counter-arguments revise the warrants of future arguments. The vault gets smarter over time without a new training corpus.
 3. **The COE skill becomes the first instance of a general pattern.** `skill_tessellum_write_coe` is a *one-shot* DKS cycle (5 Whys → counter-argument-as-root-cause → action items as revised procedures). DKS generalises it: same loop, run continuously over observations rather than once per incident.
+4. **Folgezettel becomes machine-produced.** FZ trails today are hand-authored — Trail 1 (Architecture), Trail 2 (Dialectic), Trail 3 (Retrieval) were each composed by a human reasoning step-by-step. DKS makes that argumentative descent **automatic**: every cycle leaves an FZ trail behind it as a side-effect of running. The dialectic and the trail are two views of the same thing.
+
+## DKS and Folgezettel are the same mechanism
+
+This is the load-bearing design observation. Spelled out below because it shapes every phase of the implementation.
+
+**Folgezettel** ([`term_folgezettel`](../vault/resources/term_dictionary/term_folgezettel.md)) is the *spatial* encoding of argumentative descent — `1 → 1a → 1a1 → 1a1a` says "this note descends from that one in the order thinking developed." Luhmann used FZ to record how one slip led to the next.
+
+**DKS** ([`term_dialectic_knowledge_system`](../vault/resources/term_dictionary/term_dialectic_knowledge_system.md)) is the *temporal* mechanism that produces argumentative descent — observation → argument → counter → pattern → revised warrant.
+
+They are not two systems that *integrate*; they are **one system viewed from two axes**:
+
+| Axis | View |
+|------|------|
+| **Spatial** (FZ) | The relationship between any two nodes is `descends-from` — visible by reading their `folgezettel:` IDs |
+| **Temporal** (DKS) | The relationship between any two nodes is `produced-by` — visible by tracing the cycle that emitted them |
+
+Every DKS cycle **must produce a Folgezettel trail** as its substrate output. The 7 components map onto a 4-or-5-node trail descent:
+
+```
+DKS component               →    FZ position
+─────────────────────────────────────────────────
+Step 1: Observation         →    cycle root (FZ N)
+Step 2: Argument A          →    FZ N.a
+Step 3: Argument B          →    FZ N.b (sibling — different perspective)
+Step 4: Disagreement edge   →    (not a node — a contradicts link from N.b to N.a or vice versa)
+Step 5: Counter-argument    →    FZ N.a.a if attacking A; FZ N.b.a if attacking B
+Step 6: Pattern             →    FZ N.a.a.a (descends from the counter that revealed it)
+Step 7: Rule revision       →    FZ N.a.a.a.a (leaf — the cycle's deposited warrant change)
+```
+
+Each cycle therefore deposits a **5-node FZ trail** into the vault. Multi-cycle runs either:
+
+- **Start a fresh trail** when the observation has no prior connection — `cycle_id = N+1`, root at FZ (N+1).
+- **Extend an existing trail** when the new observation refutes / extends a prior cycle's leaf — the new cycle descends from the prior cycle's leaf FZ ID.
+- **Branch an existing trail** when the new cycle attacks a *previous* argument (not the leaf) — sibling branching at the attacked argument's FZ position.
+
+The choice is part of DKS's step 1 (observation capture): the runtime decides where in the FZ graph this cycle lives based on whether the observation refers to existing warrants.
+
+### Consequences for the implementation
+
+1. **Every DKS-produced note has `folgezettel:` + `folgezettel_parent:` fields set** by the runtime — not optional, not deferrable. The seed manifest's `_SEED_VAULT_MANIFEST` already includes notes with these fields; DKS does the same automatically.
+2. **The validator's TESS-004 rule becomes stronger** than the simple "counter_argument must link to argument" version. It can require that `counter_argument`'s `folgezettel_parent` resolves to a `building_block: argument` note. The link discipline is enforced through the FZ field, not through fragile string-matching in the body.
+3. **`entry_folgezettel_trails.md` gains a new trail family**: hand-authored trails (the existing Trails 1, 2, 3) and DKS-produced trails. Both shapes use the same FZ machinery; the distinction is *origin*, not *structure*. The trail map records this provenance.
+4. **The eval framework gains a new dimension via FZ alignment**: epistemic congruence (the 6th LLMJudge dim) can use FZ-graph traversal to check whether a cycle's response honoured the trail's argumentative descent.
+5. **`tessellum composer dks --report` (Phase 5) can surface FZ-graph metrics**: which trail branches most active, which warrants most attacked, where the dialectic is alive vs dormant.
+
+The implementation is therefore not "DKS *plus* an FZ writer." It's "DKS *as* the FZ writer the system was waiting for."
 
 ## Design principles
 

@@ -34,10 +34,10 @@ For the *what* of Folgezettel as a mechanism, see [`term_folgezettel`](../resour
 | Trail # | Root note | Per-trail entry point | Nodes | Subject |
 |--:|---|---|--:|---|
 | **1** | [`thought_building_block_ontology_relationships`](../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) | [Architecture Trail](entry_architecture_trail.md) | 6 | From the typed BB graph to the two-system CQRS commitment + R-Cross rules + gap audit |
-| **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | [Dialectic Trail](entry_dialectic_trail.md) | 2 | How DKS was reasoned into shape: 7-component closed loop on a typed substrate |
+| **2** | [`thought_dks_evolution`](../resources/analysis_thoughts/thought_dks_evolution.md) | [Dialectic Trail](entry_dialectic_trail.md) | 3 | How DKS was reasoned into shape: 7-component closed loop + DKS × FZ unification |
 | **3** | [`thought_retrieval_evolution`](../resources/analysis_thoughts/thought_retrieval_evolution.md) | [Retrieval Trail](entry_retrieval_trail.md) | 2 | How retrieval was tested into shape: 14-strategy bake-off → unified engine + hybrid RRF + best-first BFS |
 
-**3 trails, 10 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
+**3 trails, 11 nodes total.** Each trail's per-trail entry point is the place to start when reading the trail; this master page exists only to tell you which trails exist and where to find them.
 
 ## Why per-trail entry points
 
@@ -118,4 +118,4 @@ When you grow your first trail, copy the shape: linear or branching descent, a r
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — 3 trails shipped (Architecture, Dialectic, Retrieval), 10 nodes total
+**Status**: Active — 3 trails shipped (Architecture, Dialectic, Retrieval), 11 nodes total
