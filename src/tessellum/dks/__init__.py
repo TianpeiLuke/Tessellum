@@ -85,6 +85,13 @@ from tessellum.dks.fsm import (
     DKSStateMachine,
     TransitionHandler,
 )
+from tessellum.dks.dung import (
+    # Phase 10 — Dung abstract argumentation framework + grounded semantics
+    DungAF,
+    DungLabel,
+    grounded_extension,
+    grounded_labelling,
+)
 from tessellum.dks.meta import (
     # Phase 9 — meta-DKS (schema-mutation runtime)
     Attacker,
@@ -141,6 +148,11 @@ __all__ = [
     "BBPathStep",
     "DKSStateMachine",
     "TransitionHandler",
+    # Dung AF (Phase 10)
+    "DungAF",
+    "DungLabel",
+    "grounded_extension",
+    "grounded_labelling",
     # Confidence gating (Phase 5)
     "DEFAULT_CONFIDENCE_THRESHOLD",
     "DKSConfidenceModel",

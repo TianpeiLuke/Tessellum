@@ -242,6 +242,25 @@ class DKSCycleResult:
     backend_id: str = ""
     escalation_decision: str = "full"
     confidence_score: float | None = None
+    # ── Phase 10 — multi-perspective debate (v0.0.54) ─────────────────────
+    arguments: tuple[DKSArgument, ...] = ()
+    """All arguments produced by this cycle, in perspective order.
+    For N=2 (default): ``(argument_a, argument_b)`` or ``(argument_a,)``
+    when gated. For N>2: one entry per ``DKSCycle.perspectives`` value.
+    Empty tuple for cycles constructed before v0.0.54 if not provided."""
+
+    contradicts_edges: tuple[DKSContradicts, ...] = ()
+    """All pairwise contradicts edges between arguments. For N=2:
+    either ``(contradicts,)`` when arguments disagree, or ``()`` when
+    they agree. For N>2: every (i, j) pair where ``i < j`` and claims
+    differ. Empty for gated cycles."""
+
+    grounded_labelling: dict[str, str] = field(default_factory=dict)
+    """Dung grounded labelling over ``arguments``. Maps each
+    argument's FZ to ``"in"`` / ``"out"`` / ``"undec"``. Empty for
+    N=2 cycles (the existing single-edge logic still applies). For
+    N>2, this is the basis of survival selection — surviving
+    arguments are those labelled ``"in"``."""
 
     @property
     def folgezettel_nodes(self) -> tuple[str, ...]:
@@ -264,6 +283,39 @@ class DKSCycleResult:
     def closed_loop(self) -> bool:
         """True iff step 7 fired (a revised warrant was produced)."""
         return self.rule_revision is not None
+
+    @property
+    def surviving_argument_fzs(self) -> tuple[str, ...]:
+        """Folgezettel IDs of arguments labelled ``"in"`` under Dung
+        grounded semantics (Phase 10).
+
+        For N=2 cycles, this collapses to:
+
+        - ``(argument_a.folgezettel, argument_b.folgezettel)`` when A
+          and B agree (no contradicts edge); both arguments survive.
+        - ``(argument_b.folgezettel,)`` when B attacks A (today's
+          single-edge attack outcome).
+        - Empty tuple when ``argument_b`` is ``None`` (gated path).
+
+        For N>2 cycles, derived directly from
+        :attr:`grounded_labelling`. Lex-sorted for stable iteration.
+
+        Callers (e.g. ``DKSRunner`` warrant threading) use this to
+        decide which warrants to carry forward when multiple
+        arguments survive the dialectic — the multi-survivor case
+        introduced by Phase 10's pairwise contradicts graph.
+        """
+        if self.grounded_labelling:
+            return tuple(
+                sorted(fz for fz, lbl in self.grounded_labelling.items() if lbl == "in")
+            )
+        # Pre-Phase-10 fallback for cycles constructed without the
+        # additive fields. Mirrors the N=2 logic above.
+        if self.argument_b is None:
+            return ()
+        if self.contradicts is None:
+            return (self.argument_a.folgezettel, self.argument_b.folgezettel)
+        return (self.argument_b.folgezettel,)
 
     @property
     def gated(self) -> bool:
@@ -409,6 +461,7 @@ class DKSCycle:
         confidence_threshold: float | None = None,
         retrieval_client: object | None = None,
         semantic_disagreement: bool = False,
+        perspectives: tuple[str, ...] = ("conservative", "exploratory"),
     ) -> None:
         self.observation = observation
         self.warrants = warrants
@@ -426,6 +479,18 @@ class DKSCycle:
         # Phase 7 — optional LLM-based disagreement detection at step 4.
         # Off by default preserves Phase 1's local-only behaviour.
         self.semantic_disagreement = semantic_disagreement
+        # Phase 10 — multi-perspective debate. Default ("conservative",
+        # "exploratory") preserves v0.0.40-era A/B behaviour. N>2
+        # activates pairwise contradicts + Dung grounded labelling.
+        if len(perspectives) < 2:
+            raise ValueError(
+                f"perspectives must have at least 2 entries; got {perspectives!r}"
+            )
+        if len(set(perspectives)) != len(perspectives):
+            raise ValueError(
+                f"perspectives must be unique; got {perspectives!r}"
+            )
+        self.perspectives: tuple[str, ...] = perspectives
         # FZ allocator state — children of the cycle root
         self._cycle_fz_existing: list[str] = [observation.folgezettel]
 
@@ -457,7 +522,9 @@ class DKSCycle:
 
         # Step 2: argument A (always runs — every cycle deposits at
         # least observation + A, whether gated or full).
-        arg_a = self._step_argument(perspective="conservative", suffix_hint="a")
+        arg_a = self._step_argument(
+            perspective=self.perspectives[0], suffix_hint="a"
+        )
 
         if gated:
             # Skip steps 3-7. Cycle deposits 2 FZ nodes (observation + A).
@@ -475,10 +542,29 @@ class DKSCycle:
                 backend_id=backend_id,
                 escalation_decision="gated",
                 confidence_score=confidence_score,
+                arguments=(arg_a,),
+                contradicts_edges=(),
+                grounded_labelling={},
             )
 
         # Step 3: argument B from a different angle.
-        arg_b = self._step_argument(perspective="exploratory", suffix_hint="b")
+        arg_b = self._step_argument(
+            perspective=self.perspectives[1], suffix_hint="b"
+        )
+
+        # Phase 10 — N>2 dispatch. When the cycle was constructed with
+        # >2 perspectives, generate the additional arguments + compute
+        # pairwise contradicts + grounded labelling + identify the
+        # attacked argument(s). For N=2 the existing path runs.
+        if len(self.perspectives) > 2:
+            return self._run_n_perspective(
+                cycle_id=cycle_id,
+                start=start,
+                backend_id=backend_id,
+                confidence_score=confidence_score,
+                arg_a=arg_a,
+                arg_b=arg_b,
+            )
 
         # Step 4: disagreement detection (local, not an LLM call)
         contradicts = self._step_disagreement(arg_a, arg_b)
@@ -499,6 +585,9 @@ class DKSCycle:
                 backend_id=backend_id,
                 escalation_decision="full",
                 confidence_score=confidence_score,
+                arguments=(arg_a, arg_b),
+                contradicts_edges=(),
+                grounded_labelling={},
             )
 
         # Step 5: counter-argument naming the broken Toulmin component
@@ -522,6 +611,136 @@ class DKSCycle:
             backend_id=backend_id,
             escalation_decision="full",
             confidence_score=confidence_score,
+            arguments=(arg_a, arg_b),
+            contradicts_edges=(contradicts,),
+            grounded_labelling={
+                arg_a.folgezettel: "out",
+                arg_b.folgezettel: "in",
+            },
+        )
+
+    # ── Phase 10 — N>2 perspective dispatch ─────────────────────────────
+
+    _SUFFIX_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
+
+    def _run_n_perspective(
+        self,
+        *,
+        cycle_id: str,
+        start: float,
+        backend_id: str,
+        confidence_score: float | None,
+        arg_a: DKSArgument,
+        arg_b: DKSArgument,
+    ) -> DKSCycleResult:
+        """N>2 path: generate remaining arguments, compute pairwise
+        contradicts edges, derive Dung grounded labelling, then route
+        steps 5-7 through the attacked argument (if any survives the
+        grounded labelling as ``out``).
+        """
+        from tessellum.dks.dung import DungAF, grounded_labelling
+
+        arguments: list[DKSArgument] = [arg_a, arg_b]
+        for i, persp in enumerate(self.perspectives[2:], start=2):
+            if i >= len(self._SUFFIX_ALPHABET):
+                # Defensive — alphabet runs out at 26 perspectives. Bail.
+                break
+            arg = self._step_argument(
+                perspective=persp, suffix_hint=self._SUFFIX_ALPHABET[i]
+            )
+            arguments.append(arg)
+
+        # Pairwise step 4: emit a contradicts edge for every (i, j)
+        # pair with i < j where claims differ. B attacks A by
+        # convention (the later perspective is the "attacker").
+        contradicts_edges: list[DKSContradicts] = []
+        for i in range(len(arguments)):
+            for j in range(i + 1, len(arguments)):
+                a_i = arguments[i]
+                a_j = arguments[j]
+                if a_i.warrant.claim.strip() == a_j.warrant.claim.strip():
+                    continue
+                contradicts_edges.append(
+                    DKSContradicts(
+                        attacker_fz=a_j.folgezettel,
+                        attacked_fz=a_i.folgezettel,
+                        reason=(
+                            f"Claim mismatch: {a_i.folgezettel} asserts "
+                            f"{a_i.warrant.claim!r}; "
+                            f"{a_j.folgezettel} asserts {a_j.warrant.claim!r}"
+                        ),
+                    )
+                )
+
+        # Build Dung AF + compute grounded labelling.
+        af = DungAF(
+            arguments=tuple(a.folgezettel for a in arguments),
+            attacks=tuple(
+                (e.attacker_fz, e.attacked_fz) for e in contradicts_edges
+            ),
+        )
+        labels = grounded_labelling(af)
+
+        # Find the attacked argument: the (lex-smallest) one labelled "out".
+        # When no labels are "out" (all agree or all undec), short-circuit
+        # without steps 5-7.
+        out_fzs = sorted(fz for fz, lbl in labels.items() if lbl == "out")
+        if not out_fzs:
+            return DKSCycleResult(
+                cycle_id=cycle_id,
+                mode="fresh",
+                observation=self.observation,
+                argument_a=arg_a,
+                argument_b=arg_b,
+                contradicts=None,
+                counter=None,
+                pattern=None,
+                rule_revision=None,
+                elapsed_ms=(time.monotonic() - start) * 1000.0,
+                backend_id=backend_id,
+                escalation_decision="full",
+                confidence_score=confidence_score,
+                arguments=tuple(arguments),
+                contradicts_edges=tuple(contradicts_edges),
+                grounded_labelling=dict(labels),
+            )
+
+        attacked_fz = out_fzs[0]
+        attacked = next(a for a in arguments if a.folgezettel == attacked_fz)
+        # Pick the (lex-smallest) attacker on that proposal.
+        attacker_fz = sorted(
+            e.attacker_fz
+            for e in contradicts_edges
+            if e.attacked_fz == attacked_fz
+        )[0]
+        attacker = next(a for a in arguments if a.folgezettel == attacker_fz)
+        primary_contradicts = next(
+            e
+            for e in contradicts_edges
+            if e.attacked_fz == attacked_fz and e.attacker_fz == attacker_fz
+        )
+
+        counter = self._step_counter(primary_contradicts, attacked, attacker)
+        pattern = self._step_pattern(counter)
+        revision = self._step_rule_revision(pattern)
+
+        return DKSCycleResult(
+            cycle_id=cycle_id,
+            mode="fresh",
+            observation=self.observation,
+            argument_a=arg_a,
+            argument_b=arg_b,
+            contradicts=primary_contradicts,
+            counter=counter,
+            pattern=pattern,
+            rule_revision=revision,
+            elapsed_ms=(time.monotonic() - start) * 1000.0,
+            backend_id=backend_id,
+            escalation_decision="full",
+            confidence_score=confidence_score,
+            arguments=tuple(arguments),
+            contradicts_edges=tuple(contradicts_edges),
+            grounded_labelling=dict(labels),
         )
 
     # ── Per-step methods ──────────────────────────────────────────────────
@@ -886,6 +1105,7 @@ class DKSRunner:
         confidence_threshold: float | None = None,
         retrieval_client: object | None = None,
         semantic_disagreement: bool = False,
+        perspectives: tuple[str, ...] = ("conservative", "exploratory"),
     ) -> None:
         self.observations = observations
         self.backend = backend
@@ -895,6 +1115,8 @@ class DKSRunner:
         # Phase 7 forward-through to each cycle.
         self.retrieval_client = retrieval_client
         self.semantic_disagreement = semantic_disagreement
+        # Phase 10 — multi-perspective debate forward-through.
+        self.perspectives = perspectives
 
     def run(self) -> DKSRunResult:
         start = time.monotonic()
@@ -911,6 +1133,7 @@ class DKSRunner:
                 confidence_threshold=self.confidence_threshold,
                 retrieval_client=self.retrieval_client,
                 semantic_disagreement=self.semantic_disagreement,
+                perspectives=self.perspectives,
             ).run()
             cycles.append(cycle)
             if cycle.rule_revision is None:

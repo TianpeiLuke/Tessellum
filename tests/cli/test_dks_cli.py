@@ -372,3 +372,114 @@ def test_banner_lists_dks(capsys):
     assert code == 0
     out = capsys.readouterr().out
     assert "tessellum dks" in out
+
+
+# ── --perspectives flag (Phase 10) ─────────────────────────────────────────
+
+
+def test_cli_perspectives_default_is_2(obs_jsonl, mock_responses_full, tmp_path):
+    """Default perspectives produces N=2 cycles — arguments tuple has 2 entries."""
+    code = main(
+        [
+            "dks", str(obs_jsonl),
+            "--mock-responses", str(mock_responses_full),
+            "--runs-dir", str(tmp_path / "runs"),
+        ]
+    )
+    assert code == 0
+    # Read first cycle trace
+    cycle_files = sorted((tmp_path / "runs").glob("*_cycle_*.json"))
+    assert len(cycle_files) > 0
+    trace = json.loads(cycle_files[0].read_text())
+    assert len(trace["arguments"]) == 2
+    assert "grounded_labelling" in trace
+    assert "surviving_argument_fzs" in trace
+
+
+def test_cli_perspectives_three_produces_three_args(tmp_path, capsys):
+    """--perspectives p1,p2,p3 → 3-arg cycle, 3 arguments serialised."""
+    obs_path = tmp_path / "obs.jsonl"
+    obs_path.write_text(json.dumps({"summary": "single obs", "mode": "fresh"}) + "\n")
+    responses = {
+        "(p1)": _arg_response("A1"),
+        "(p2)": _arg_response("A2"),
+        "(p3)": _arg_response("A3"),
+        "counter-argument": json.dumps(
+            {
+                "broken_component": "warrant",
+                "counter_claim": "c",
+                "reason": "r",
+                "strength": "moderate",
+            }
+        ),
+        "pattern discovery": json.dumps({"description": "p", "observed": ["t"]}),
+        "rule revision": json.dumps(
+            {"claim": "R", "data": "D", "warrant": "Rw", "supersedes": ""}
+        ),
+    }
+    resp_path = tmp_path / "responses.json"
+    resp_path.write_text(json.dumps(responses))
+
+    code = main(
+        [
+            "dks", str(obs_path),
+            "--mock-responses", str(resp_path),
+            "--perspectives", "p1,p2,p3",
+            "--runs-dir", str(tmp_path / "runs"),
+        ]
+    )
+    assert code == 0
+    cycle_files = sorted((tmp_path / "runs").glob("*_cycle_*.json"))
+    trace = json.loads(cycle_files[0].read_text())
+    assert len(trace["arguments"]) == 3
+    # Pairwise contradicts: (p2,p1), (p3,p1), (p3,p2) = 3 edges since claims differ
+    assert len(trace["contradicts_edges"]) == 3
+    # Grounded labelling has 3 entries
+    assert len(trace["grounded_labelling"]) == 3
+
+
+def test_cli_perspectives_single_perspective_returns_2(tmp_path, mock_responses_full, capsys):
+    obs_path = tmp_path / "obs.jsonl"
+    obs_path.write_text(json.dumps({"summary": "x"}) + "\n")
+    code = main(
+        [
+            "dks", str(obs_path),
+            "--mock-responses", str(mock_responses_full),
+            "--perspectives", "onlyone",
+            "--no-trace",
+        ]
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "at least 2 unique" in err
+
+
+def test_cli_perspectives_duplicates_returns_2(tmp_path, mock_responses_full, capsys):
+    obs_path = tmp_path / "obs.jsonl"
+    obs_path.write_text(json.dumps({"summary": "x"}) + "\n")
+    code = main(
+        [
+            "dks", str(obs_path),
+            "--mock-responses", str(mock_responses_full),
+            "--perspectives", "a,b,a",
+            "--no-trace",
+        ]
+    )
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "unique" in err
+
+
+def test_cli_perspectives_whitespace_stripped(tmp_path, mock_responses_full):
+    obs_path = tmp_path / "obs.jsonl"
+    obs_path.write_text(json.dumps({"summary": "x"}) + "\n")
+    # Spaces around commas — must be stripped + still parsed as 2 unique
+    code = main(
+        [
+            "dks", str(obs_path),
+            "--mock-responses", str(mock_responses_full),
+            "--perspectives", " conservative , exploratory ",
+            "--no-trace",
+        ]
+    )
+    assert code == 0

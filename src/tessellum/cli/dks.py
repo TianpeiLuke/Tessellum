@@ -129,6 +129,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "hybrid-search hits against the observation summary. Off by default.",
     )
     dks.add_argument(
+        "--perspectives",
+        type=str,
+        default="conservative,exploratory",
+        help="Phase 10: comma-separated list of perspectives the cycle "
+        "should generate arguments from. Default 'conservative,exploratory' "
+        "preserves the v0.0.40-era A/B behaviour. N>2 activates pairwise "
+        "contradicts + Dung grounded labelling. Perspectives must be unique.",
+    )
+    dks.add_argument(
         "--semantic-disagreement",
         action="store_true",
         help="Use one LLM call at step 4 to check whether claims "
@@ -496,6 +505,24 @@ def run_dks_cli(args: argparse.Namespace) -> int:
             )
             return 2
 
+    perspectives_tuple: tuple[str, ...] = tuple(
+        p.strip() for p in args.perspectives.split(",") if p.strip()
+    )
+    if len(perspectives_tuple) < 2:
+        print(
+            f"tessellum dks: --perspectives must list at least 2 unique "
+            f"perspectives; got {args.perspectives!r}",
+            file=sys.stderr,
+        )
+        return 2
+    if len(set(perspectives_tuple)) != len(perspectives_tuple):
+        print(
+            f"tessellum dks: --perspectives entries must be unique; "
+            f"got {args.perspectives!r}",
+            file=sys.stderr,
+        )
+        return 2
+
     runner = DKSRunner(
         observations=tuple(observations),
         backend=backend,
@@ -504,6 +531,7 @@ def run_dks_cli(args: argparse.Namespace) -> int:
         confidence_threshold=args.gate_threshold,
         retrieval_client=retrieval_client,
         semantic_disagreement=args.semantic_disagreement,
+        perspectives=perspectives_tuple,
     )
     result = runner.run()
 
@@ -665,6 +693,20 @@ def _serialize_cycle(cycle) -> dict:
                 "supersedes": cycle.rule_revision.supersedes,
             }
         ),
+        # Phase 10 — multi-perspective fields. Always serialised, even
+        # in N=2 cycles, so downstream tools (meta-DKS observation
+        # builder, audit) can read them uniformly.
+        "arguments": [_arg(a) for a in cycle.arguments],
+        "contradicts_edges": [
+            {
+                "attacker_fz": e.attacker_fz,
+                "attacked_fz": e.attacked_fz,
+                "reason": e.reason,
+            }
+            for e in cycle.contradicts_edges
+        ],
+        "grounded_labelling": dict(cycle.grounded_labelling),
+        "surviving_argument_fzs": list(cycle.surviving_argument_fzs),
     }
 
 

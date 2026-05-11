@@ -16,6 +16,116 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.54] — 2026-05-11
+
+### Added — Phase 10 of plan_dks_expansion: multi-perspective DKS + Dung grounded labelling
+
+The "debate club" deferral from the original DKS plan §6+. DKS's
+FSM admits N arguments naturally; today's A/B was just N=2. Phase 10
+ships the N>2 cycle path + Dung's grounded semantics + the
+multi-survivor surface for `DKSRunner` warrant threading.
+
+**`tessellum.dks.dung`** — new module with `DungAF` frozen dataclass +
+`grounded_labelling()` + `grounded_extension()`. Implements Dung
+1995's grounded semantics via fixpoint iteration: every unattacked
+argument is `in`; every argument attacked by an `in` becomes `out`;
+mutually-attacking cycles without external defenders stay `undec`.
+Always returns a unique labelling — the right semantics for DKS
+adequacy termination ("warrant survives iff grounded label is
+`in`"). 16 smoke tests cover canonical Dung shapes (single attack,
+mutual attack, defender chain, 3-cycle) + DKS-shaped N=3 scenarios.
+
+**`DKSCycle.perspectives` kwarg** — `tuple[str, ...]` with default
+`("conservative", "exploratory")`. N>2 dispatches to a new
+`_run_n_perspective()` helper that:
+
+- Generates one argument per perspective (FZ suffixes `a`, `b`, `c`,
+  ...; alphabet caps at 26).
+- Pairwise step 4: for every `(i, j)` with `i < j` and differing
+  claims, emit a `DKSContradicts` edge (later perspective is
+  attacker).
+- Builds a `DungAF` from the arguments + edges; computes grounded
+  labelling.
+- Targets the lex-smallest `out`-labelled argument for the counter
+  (step 5); short-circuits if no `out` exists (all agree or
+  mutual-undec cycle).
+- Routes steps 5/6/7 through the surviving `attacked` / `attacker`
+  pair exactly as today.
+
+**`DKSCycleResult` additive fields**:
+
+- `arguments: tuple[DKSArgument, ...]` — full list of generated
+  arguments. For N=2: `(argument_a, argument_b)` or `(argument_a,)`
+  when gated. For N>2: one entry per perspective.
+- `contradicts_edges: tuple[DKSContradicts, ...]` — pairwise
+  graph. N=2: `(contradicts,)` or `()`. N>2: the full pairwise set.
+- `grounded_labelling: dict[str, str]` — Dung labelling over
+  `arguments` (`{fz: "in"|"out"|"undec"}`). For N=2 with
+  disagreement: `{arg_a.fz: "out", arg_b.fz: "in"}`. For agreement:
+  `{both: "in"}`. For gated: `{}`.
+- `surviving_argument_fzs` property — sorted tuple of FZs labelled
+  `"in"`. The multi-survivor surface for `DKSRunner` warrant
+  threading. For N=2 mirrors today's single-survivor behaviour.
+
+**`DKSRunner.perspectives` kwarg + CLI `--perspectives`** — comma-
+separated list passes through to every cycle. Validation: ≥ 2 unique
+entries; whitespace stripped. Exit 2 on invalid input.
+
+**Trace serialisation** — `_serialize_cycle` exposes the new fields
+to every cycle trace file under `--runs-dir`. Downstream tools
+(meta-DKS observation builder, `tessellum bb audit`) can read them
+uniformly without conditional logic.
+
+### Back-compat
+
+End-to-end preserved. Existing N=2 callers see identical output;
+the new fields are populated additively. The grounded labelling for
+N=2 with disagreement (`{A: out, B: in}`) is exactly what today's
+`contradicts.attacked_fz == A` semantics implies — Phase 10's Dung
+integration makes that implicit semantics explicit + extends it
+cleanly to N>2.
+
+### Tests
+
+- `tests/smoke/test_dks_dung.py` (16 new) — canonical AF shapes,
+  DKS-shaped N=3 scenarios, helper methods, sorted extension,
+  silently-ignored unknown attacks.
+- `tests/smoke/test_dks_n_perspective.py` (12 new) — default
+  back-compat, 3-perspective happy path, all-agree short-circuit,
+  partial-dissent, gated path with N>2, validation errors
+  (single/duplicate/empty), FZ alphabet, immutability, attacker-is-
+  later-perspective invariant.
+- `tests/cli/test_dks_cli.py` (5 new) — `--perspectives` default,
+  3-arg trace shape, single-perspective error, duplicate error,
+  whitespace tolerance.
+
+Full suite: **844 passed**.
+
+### What this version doesn't do
+
+- **Multi-survivor revision authoring** — when `surviving_argument_fzs`
+  has more than one FZ, the revision step still emits *one*
+  revision (targeted at the `out`-labelled attacked argument). The
+  multi-revision-per-cycle expansion described in the plan stays as
+  v0.0.55+ scope; for v0.0.54 we surface the survivors via the
+  property and let callers decide how to thread.
+- **Learned perspective selection** — perspectives are fixed at
+  cycle construction. Reinforcement-learning over the perspective
+  set is v0.3+ research.
+- **`argument_perspective:` YAML field on argument notes** —
+  proposed in plan D5; ships when the composer skill canonical
+  emits N-arg files (v0.0.55+). The runtime API already carries
+  perspective strings through `DKSCycle.perspectives`.
+
+### Sequencing
+
+`plan_dks_expansion.md` Phases 6-10 are now all shipped. Future DKS
+work (multi-revision, learned proposers, BB_SCHEMA migration
+tooling) lives in `plan_meta_dks_validation_and_polish.md` Phase B
+follow-ups + a new plan for v0.1.0 public-beta scope.
+
+---
+
 ## [0.0.53] — 2026-05-10
 
 ### Added — Phase V + Phase B of plan_meta_dks_validation_and_polish
