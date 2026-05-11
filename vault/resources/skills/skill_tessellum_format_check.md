@@ -92,7 +92,7 @@ Each finding carries a stable `rule_id` and a `severity` (ERROR / WARNING / INFO
 | LINK-001 | WARNING | Internal link target is missing the `.md` extension |
 | LINK-002 | WARNING | Internal link uses an absolute path; prefer relative |
 | LINK-003 | WARNING | Internal link target does not exist on disk |
-| LINK-006 | WARNING | Note has no internal markdown links to other notes (orphan) |
+| LINK-006 | WARNING | Note has no internal markdown links to other notes (orphan). Skipped when `status: template` (templates are orphans by design). |
 
 ### Skipped during link checks <!-- :: section_id = skipped_link_targets :: -->
 
