@@ -16,6 +16,89 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.46] — 2026-05-10
+
+### Added — seed vault: FZ 1b + FZ 2a2 (graph + FSM design lens)
+
+Documentation-only release. Two paired thought notes ship in the seed
+vault to anchor the next DKS refactor cycle around an explicit
+graph-theoretic foundation.
+
+#### `vault/resources/analysis_thoughts/thought_bb_ontology_as_typed_graph.md` (FZ 1b)
+
+Sharpens FZ 1's "ontology" claim by splitting it into:
+
+- **Schema graph** — closed at 8 BB types + 10 epistemic edges; lives
+  in code.
+- **Corpus graph** — open, growing; concrete notes + their realised
+  edges; lives in `vault/**/*.md` + the unified index.
+
+Names the schema's load-bearing properties (cycle, no source/sink,
+navigation-as-meta-node, MOD→PRO short-circuit, labelled edges).
+Proposes the data structure (`BBType` enum, `EpistemicEdgeType`,
+`BB_SCHEMA` tuple, `BBNode`, `BBEdge`, `BBGraph`) that the next
+refactor cycle should center on. Flags one schema gap the current
+runtime exposes: **`CTR → MOD`** (pattern-of-failure) — DKS step 6
+walks it but FZ 1's 10-edge schema doesn't declare it.
+
+Trail 1 grows 6 → 7 nodes; two-branch fork at FZ 1 (1a* CQRS chain +
+1b graph formalisation co-companion of FZ 2a2).
+
+#### `vault/resources/analysis_thoughts/thought_dks_as_fsm_on_bb_graph.md` (FZ 2a2)
+
+Formalises DKS as `⟨Q, Σ, δ, q₀, F⟩` over the BB graph:
+
+- `Q` = 8 BB types
+- `Σ` = step-triggering events
+- `δ` = the 10-edge BB schema (+ one Phase-4-class extension for `CTR → MOD`)
+- `q₀` = `empirical_observation`
+- `F` = `{procedure, concept, argument-when-gated}`
+
+The 7 DKS components are 7 transitions; the three terminal paths
+(closed loop / short-circuit / gated) are the FSM's accepting walks.
+
+Names **three learning levels** the FSM lens makes separable:
+
+1. **Instance** (every cycle): the corpus grows
+2. **Edge-weight** (inter-cycle): warrant-attack rankings bias
+   transition preferences; Phase 5's `--report` is the read surface
+3. **Schema** (meta-DKS, the v0.2+ delta): δ itself mutates when
+   sustained Toulmin failures show the schema is wrong. R-P's
+   productive half at its strongest.
+
+Explicit "what changes in the implementation" section proposes a
+`DKSStateMachine.walk()` that replaces the 7 hand-coded step methods,
+with per-component dataclasses surviving as typed views over `BBNode`.
+Three deferral reasons + two refactor triggers named. Five carve-outs
++ five open questions (OQ-FSM-1..5).
+
+Trail 2 grows 4 → 5 nodes; sub-fork at 2a with siblings 2a1 (spatial,
+FZ duality) + 2a2 (formal, FSM on BB graph).
+
+### Changed
+
+- `entry_architecture_trail.md` — 6 → 7 nodes; tree gains the 1b
+  branch; FZ table gains the 1b row.
+- `entry_dialectic_trail.md` — 4 → 5 nodes; tree gains the 2a2 leaf
+  under 2a; FZ table gains the 2a2 row; 2a1 description tweaked to
+  clarify "spatial" sharpening.
+- `entry_folgezettel_trails.md` — master totals 3 trails / 12 nodes →
+  3 trails / 14 nodes.
+- `SEED_VAULT_MANIFEST` adds both new notes; `tessellum init` copies
+  them into every new vault.
+- `__about__.py` + `pyproject.toml` bumped to `0.0.46`.
+
+### Why this is its own version, not bundled with v0.0.45
+
+Both notes constrain *future* implementation work (the FSM refactor).
+Shipping them as a distinct version means a user installing
+`tessellum==0.0.46` sees a vault whose design history already includes
+the FSM lens — they don't have to wait for v0.0.47's code change to
+read the design notes that motivate it. Documents + manifest only; no
+runtime changes; no test impact (627 passed, 1 skipped — unchanged).
+
+---
+
 ## [0.0.45] — 2026-05-10
 
 ### Added — DKS Phase 5: production polish (confidence gating + warrant persistence + telemetry)
