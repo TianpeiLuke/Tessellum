@@ -67,6 +67,10 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/skills/skill_tessellum_manage_folgezettel.md",          # list / next-FZ / integrity audit
     "resources/skills/skill_tessellum_append_to_trail.md",             # full append-new-node procedure
 
+    # ── DKS Phase 2 (composer skill) — the agent-invocable surface ──────
+    "resources/skills/skill_tessellum_dks_cycle.md",                   # 7-component closed-loop canonical
+    "resources/skills/skill_tessellum_dks_cycle.pipeline.yaml",        # sidecar (Composer-compatible)
+
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
 
