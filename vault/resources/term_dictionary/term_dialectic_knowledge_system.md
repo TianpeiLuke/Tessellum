@@ -125,14 +125,14 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 - **[Contestability](term_contestability.md)**: Property the DKS architecture aspires to — every classification should be contestable by humans editing individual warrants and observing the verdict update
 
 **Agentic AI**:
-- **Agentic Memory**: Agent memory systems; DKS is a specific memory architecture where the dialectic cycle drives memory improvement
+- **[Agentic Memory](term_agentic_memory.md)**: Agent memory systems; DKS is a specific memory architecture where the dialectic cycle drives memory improvement
 - **[Multi-Agent Collaboration](term_multi_agent_collaboration.md)**: DKS can be implemented as multi-agent dialectic (Argument Agent, Counter Agent, Synthesis Agent)
-- **Context Engineering**: Optimizing LLM context; DKS's typed knowledge provides structured context for classification agents
-- **Compound AI System**: Systems combining multiple AI components; DKS is a compound system with deterministic routing + LLM reasoning + human review
+- **[Context Engineering](term_context_engineering.md)**: Optimizing LLM context; DKS's typed knowledge provides structured context for classification agents
+- **[Compound AI System](term_compound_ai_system.md)**: Systems combining multiple AI components; DKS is a compound system with deterministic routing + LLM reasoning + human review
 
 **Applied Systems**:
-- **static descriptive systems**: a domain workflow governance knowledge graph — accumulation without dialectic; DKS's non-dialectic baseline
-- **an LLM rule optimizer**: Prompt optimization engine; implements the rule improvement stage (component 7) of the DKS cycle
+- **[static descriptive systems](term_mo_slipbox.md)**: a domain workflow governance knowledge graph — accumulation without dialectic; DKS's non-dialectic baseline
+- **[an LLM rule optimizer](term_spot_x.md)**: Prompt optimization engine; implements the rule improvement stage (component 7) of the DKS cycle
 
 **Optimization Frameworks**:
 - **[DSPy](term_dspy.md)**: Composable module optimization; DKS rules are analogous to DSPy signatures compiled from execution traces
@@ -149,7 +149,7 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 - DKS Design Note — Sub-project note documenting the full DKS design
 - [Building Block Ontology ](../../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) — The 10 ontology edges that form the DKS cycle
 
-- Three-Layer Intelligence System  — a knowledge graph × a behavior-pattern memory system × a typed-slipbox architecture
+- [Three-Layer Intelligence System ](../../resources/analysis_thoughts/thought_three_layer_intelligence_system.md) — a knowledge graph × a behavior-pattern memory system × a typed-slipbox architecture
 
 ### External Sources
 - [Hegel, G.W.F. (1807). *Phenomenology of Spirit*](https://en.wikipedia.org/wiki/Phenomenology_of_Spirit) — Original thesis → antithesis → synthesis dialectic

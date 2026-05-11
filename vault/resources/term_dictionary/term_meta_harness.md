@@ -55,19 +55,19 @@ The key insight: prior text optimizers (DSPy, TextGrad, OPRO) compress feedback 
 
 ## Related Terms
 
-- **LLM**: The model being harnessed; Meta-Harness optimizes the code wrapping it
-- **RAG**: RAG is one type of harness pattern; Meta-Harness discovers better retrieval strategies
+- **[LLM](term_llm.md)**: The model being harnessed; Meta-Harness optimizes the code wrapping it
+- **[RAG](term_rag.md)**: RAG is one type of harness pattern; Meta-Harness discovers better retrieval strategies
 - **[Information Retrieval](term_information_retrieval.md)**: Retrieval strategy is a key harness component optimized by Meta-Harness
-- **ANN Search**: ANN indices power the retrieval component that Meta-Harness can optimize
-- **Phi**: Efficient LLMs that benefit from harness optimization (compact models + good harness = frontier performance)
-- **Foundation Model**: Meta-Harness treats the LLM as a frozen foundation and optimizes the wrapping code
+- **[ANN Search](term_ann_search.md)**: ANN indices power the retrieval component that Meta-Harness can optimize
+- **[Phi](term_phi.md)**: Efficient LLMs that benefit from harness optimization (compact models + good harness = frontier performance)
+- **[Foundation Model](term_foundation_model.md)**: Meta-Harness treats the LLM as a frozen foundation and optimizes the wrapping code
 
 ## References
 
 ### Vault Sources
 
-- Meta-Harness Literature Note — Full paper digest with section notes
-- Meta-Harness Review — OpenReview-style evaluation (Overall 8/10)
+- [Meta-Harness Literature Note](../papers/lit_lee2026metaharness.md) — Full paper digest with section notes
+- [Meta-Harness Review](../papers/review_lee2026metaharness.md) — OpenReview-style evaluation (Overall 8/10)
 
 ### External Sources
 

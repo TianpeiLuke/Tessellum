@@ -110,8 +110,8 @@ This blog post addresses a fundamental design question for any knowledge system 
 - **[Hub Notes](../term_dictionary/term_hub_notes.md)**: Hub notes are the structural embodiment of Christian's argument — they pre-curate the most important links so the user doesn't need to search. Hub notes answer "what matters here?" before the question is asked.
 - **[Index Notes](../term_dictionary/term_index_notes.md)**: Index notes occupy the middle tier (tags/keywords) of the connection hierarchy — they enable browsing within a domain, complementing but not replacing explicit links.
 - **[Folgezettel](../term_dictionary/term_folgezettel.md)**: Folgezettel is the physical linking mechanism — the numbered sequence that embeds links as spatial adjacency. Christian's argument for manual links is an argument for folgezettel over flat search.
-- **Cognitive Load**: The "cognitive load of search results" failure mode is a direct application — reviewing many search hits imposes extraneous load that explicit links eliminate.
-- **Serendipity**: Spontaneous associations during linking are the mechanism for serendipitous discovery in a Zettelkasten — links create collision opportunities that deterministic search cannot.
+- **[Cognitive Load](../term_dictionary/term_cognitive_load.md)**: The "cognitive load of search results" failure mode is a direct application — reviewing many search hits imposes extraneous load that explicit links eliminate.
+- **[Serendipity](../term_dictionary/term_serendipity.md)**: Spontaneous associations during linking are the mechanism for serendipitous discovery in a Zettelkasten — links create collision opportunities that deterministic search cannot.
 - **[Liquid Network](../term_dictionary/term_liquid_network.md)**: Christian's "hand-picked references" create the liquid network structure that Johnson describes — dense, diverse connections that enable idea collisions.
 - **[Trusted System](../term_dictionary/term_trusted_system.md)**: The "false reliability" failure mode directly threatens system trust — if search requires biological memory to interpret results, the system is not fully trusted.
 - **[Commonplace Book](../term_dictionary/term_commonplace_book.md)**: Commonplace books relied on indexing (keywords/tags) without linking — Christian's argument explains why Zettelkasten's linking layer adds a qualitatively different kind of value.
@@ -158,9 +158,9 @@ This blog post addresses a fundamental design question for any knowledge system 
 - [Hub Notes](../term_dictionary/term_hub_notes.md) — structural embodiment of curated links over search
 - [Index Notes](../term_dictionary/term_index_notes.md) — the keyword/tag tier of the connection hierarchy
 - [Folgezettel](../term_dictionary/term_folgezettel.md) — the physical linking mechanism that Christian's argument supports
-- Cognitive Load — the failure mode of search result scanning at scale
-- Serendipity — spontaneous associations during linking as serendipity mechanism
+- [Cognitive Load](../term_dictionary/term_cognitive_load.md) — the failure mode of search result scanning at scale
+- [Serendipity](../term_dictionary/term_serendipity.md) — spontaneous associations during linking as serendipity mechanism
 - [Liquid Network](../term_dictionary/term_liquid_network.md) — hand-picked references create Johnson's liquid network
 - [Trusted System](../term_dictionary/term_trusted_system.md) — false reliability of search threatens system trust
-- Digest: The Principle of Atomicity — Christian's other foundational post; linking (this post) and atomicity (that post) are complementary — links connect notes, atomicity defines what a note should contain
-- Digest: Atomicity — Principle vs. Implementation — Sascha extends both Christian posts; the beetle-in-a-box problem applies equally to "linking" as to "atomicity" — community terms need explicit definitions
+- [Digest: The Principle of Atomicity](digest_atomicity_zettelkasten_christian.md) — Christian's other foundational post; linking (this post) and atomicity (that post) are complementary — links connect notes, atomicity defines what a note should contain
+- [Digest: Atomicity — Principle vs. Implementation](digest_atomicity_principle_implementation_sascha.md) — Sascha extends both Christian posts; the beetle-in-a-box problem applies equally to "linking" as to "atomicity" — community terms need explicit definitions

@@ -172,7 +172,7 @@ The vault's sparse entry-point design (96 curated entry points for 4,200+ notes)
 - [Literature Notes](term_literature_notes.md) — source summaries that feed permanent notes; stored separately from the index
 - [Commonplace Book](term_commonplace_book.md) — historical predecessor; John Locke's 1706 "New Method of a Common-Place-Book" introduced alphabetical indexing, a precursor to the keyword register
 - [Trusted System](term_trusted_system.md) — the index contributes to system trust by ensuring findability; without reliable entry points, the system loses its value
-- Serendipity — sparse indexing forces navigation through connections, manufacturing serendipitous encounters with forgotten notes
+- [Serendipity](term_serendipity.md) — sparse indexing forces navigation through connections, manufacturing serendipitous encounters with forgotten notes
 - [Systems Thinking](term_systems_thinking.md) — the index is the input interface of the Zettelkasten system; its deliberate sparsity creates the feedback loop that produces emergent knowledge
 
 ## References

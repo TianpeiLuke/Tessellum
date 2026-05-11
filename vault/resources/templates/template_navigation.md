@@ -59,14 +59,14 @@ link), and the link itself.>
 
 | Note | What it covers |
 |---|---|
-| Title | <one-line description> |
-| Title | <one-line description> |
+| [Title](path/to/note.md) | <one-line description> |
+| [Title](path/to/note.md) | <one-line description> |
 
 ### <Section B>
 
 | Note | What it covers |
 |---|---|
-| Title | <one-line description> |
+| [Title](path/to/note.md) | <one-line description> |
 
 ## Recently Added
 
@@ -75,7 +75,7 @@ readers know what's new since they last visited.>
 
 | Date | Note |
 |---|---|
-| YYYY-MM-DD | Title |
+| YYYY-MM-DD | [Title](path/to/note.md) |
 
 ## How to Use
 
@@ -83,8 +83,8 @@ readers know what's new since they last visited.>
 workflow: do they read top-to-bottom? Pick by use case? Follow links by some
 ordering? This converts a flat index into a guided tour.>
 
-- **If you want to <use case A>**: start with Note X
-- **If you want to <use case B>**: read Note Y first, then Note Z
+- **If you want to <use case A>**: start with [Note X](path.md)
+- **If you want to <use case B>**: read [Note Y](path.md) first, then [Note Z](path.md)
 - **For an audit**: run `<command or skill>` to surface integrity issues
 
 ## Related Entry Points
@@ -92,9 +92,9 @@ ordering? This converts a flat index into a guided tour.>
 <Sibling navigation notes. Helps readers who are in the wrong entry point find
 the right one without going back to the Master TOC.>
 
-- Master TOC — top-level vault navigation
-- Related Entry A — <how it relates>
-- Related Entry B — <how it relates>
+- [Master TOC](entry_master_toc.md) — top-level vault navigation
+- [Related Entry A](entry_related_a.md) — <how it relates>
+- [Related Entry B](entry_related_b.md) — <how it relates>
 
 ---
 

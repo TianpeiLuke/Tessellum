@@ -175,19 +175,19 @@ The Phase 3 trail (FZ 5–5l1) was authored *before* this CQRS framing existed. 
 
 | Phase 3 Synthesis | Domain-Specific Claim | Same as in CQRS Terms |
 |---|---|---|
-| **FZ 5e2: Dense Retrieval Refutes BB Strategy Routing** | Dense retrieval Pareto-dominates; BB-routed strategies underperform | System P artifacts (BB labels) cannot drive System D's candidate generation |
-| **FZ 5e2a: BB Structural Value Redirected to Evaluation** | BB structure adds value for *evaluation* and *context assembly*, not strategy routing | System P artifacts are System D stage-3/4 signals only |
-| **FZ 5h1: Uniform Retrieval Supersedes BB Pre-Routing** | BB demand classifiable but routing target collapsed to a single strategy | The query path must not cross the System P → System D boundary |
-| **FZ 5h1a: BB Demand Redirected to Re-Ranking** | BB demand classification adds value for *re-ranking* and *assembly*, not routing | System P signals enter System D at stage 3, never stage 1 |
-| **FZ 5i1a: Term Hub Value for Re-Ranking** | Term hubs are valuable for re-ranking and context assembly, not BFS retrieval | Same pattern — System P's structural artifacts are stage-3/4 signals |
-| **FZ 5j: Hub Dilution Bridges Topology and Retrieval** | Strong graph topology (System P artifact) causes weak naive retrieval (System D failure) | The boundary exists because System P optimizations and System D performance can be in tension |
-| **FZ 5g3a: Epistemic Congruence Metric** | Proposes a BB-aware evaluation metric for the QA system answers | A System D *evaluation* signal that uses System P typing — exactly the right place for ontology to enter D |
-| **FZ 5l1a1b2: Multi-BB Is Graph Traversal, Not Congruence** | The QA review system was confusing two distinct things; multi-BB demand needs traversal, not a congruence score | Same dialectical move as this trail — separating two problems that share vocabulary |
-| **FZ 5l1a1c: Four Purposes of QA Review** | QA review serves multiple distinct purposes that should not be conflated | The same anti-conflation discipline applied to System D's evaluation layer |
-| **FZ 5e1c1c: Hybrid Retrieval (Dense + Graph)** | Recipe for combining dense candidate generation with graph re-ranking | The internal architecture of System D, ratified |
-| **FZ 5c: PlugMem Lens** | Typed knowledge enables questions that flat memory cannot answer | The System P value half — typing is the differentiator |
-| **FZ 5d: Meta-Harness Lens** | Skills are model harnesses; execution traces > summaries | Skills are System P's runtime; traces are evidence System D could use |
-| **FZ 5f: Folgezettel Trails as Fifth Retrieval Modality** | FZ trails are a distinct retrieval modality with dialectic structure | A System P artifact (authored sequence) consumed by System D at stage 4 |
+| **[FZ 5e2: Dense Retrieval Refutes BB Strategy Routing](counter_dense_retrieval_refutes_bb_strategy_routing.md)** | Dense retrieval Pareto-dominates; BB-routed strategies underperform | System P artifacts (BB labels) cannot drive System D's candidate generation |
+| **[FZ 5e2a: BB Structural Value Redirected to Evaluation](thought_bb_structural_value_redirected_to_evaluation.md)** | BB structure adds value for *evaluation* and *context assembly*, not strategy routing | System P artifacts are System D stage-3/4 signals only |
+| **[FZ 5h1: Uniform Retrieval Supersedes BB Pre-Routing](counter_uniform_retrieval_supersedes_bb_prerouting.md)** | BB demand classifiable but routing target collapsed to a single strategy | The query path must not cross the System P → System D boundary |
+| **[FZ 5h1a: BB Demand Redirected to Re-Ranking](thought_bb_demand_redirected_to_reranking.md)** | BB demand classification adds value for *re-ranking* and *assembly*, not routing | System P signals enter System D at stage 3, never stage 1 |
+| **[FZ 5i1a: Term Hub Value for Re-Ranking](thought_term_hub_value_for_reranking_context.md)** | Term hubs are valuable for re-ranking and context assembly, not BFS retrieval | Same pattern — System P's structural artifacts are stage-3/4 signals |
+| **[FZ 5j: Hub Dilution Bridges Topology and Retrieval](thought_hub_dilution_bridges_topology_and_retrieval.md)** | Strong graph topology (System P artifact) causes weak naive retrieval (System D failure) | The boundary exists because System P optimizations and System D performance can be in tension |
+| **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** | Proposes a BB-aware evaluation metric for the QA system answers | A System D *evaluation* signal that uses System P typing — exactly the right place for ontology to enter D |
+| **[FZ 5l1a1b2: Multi-BB Is Graph Traversal, Not Congruence](thought_multi_bb_is_graph_traversal_not_congruence.md)** | The QA review system was confusing two distinct things; multi-BB demand needs traversal, not a congruence score | Same dialectical move as this trail — separating two problems that share vocabulary |
+| **[FZ 5l1a1c: Four Purposes of QA Review](thought_synthesis_four_purposes_of_qa_review.md)** | QA review serves multiple distinct purposes that should not be conflated | The same anti-conflation discipline applied to System D's evaluation layer |
+| **[FZ 5e1c1c: Hybrid Retrieval (Dense + Graph)](thought_hybrid_retrieval_dense_plus_graph.md)** | Recipe for combining dense candidate generation with graph re-ranking | The internal architecture of System D, ratified |
+| **[FZ 5c: PlugMem Lens](analysis_plugmem_lens_on_abuse_slipbox.md)** | Typed knowledge enables questions that flat memory cannot answer | The System P value half — typing is the differentiator |
+| **[FZ 5d: Meta-Harness Lens](analysis_metaharness_lens_on_abuse_slipbox.md)** | Skills are model harnesses; execution traces > summaries | Skills are System P's runtime; traces are evidence System D could use |
+| **[FZ 5f: Folgezettel Trails as Fifth Retrieval Modality](thought_folgezettel_trails_as_retrieval_modality.md)** | FZ trails are a distinct retrieval modality with dialectic structure | A System P artifact (authored sequence) consumed by System D at stage 4 |
 
 **The pattern across all 13 notes**: **System P artifacts (types, edges, hubs, trails, demand classifications) are valuable to System D at stages 3–4, never at stage 1.** This is exactly what the CQRS view *predicts* — the boundary at the query path is sacred, but there is no boundary at the re-rank/assembly path. The Phase 3 trail discovered this architecture by exhaustive negative example; this synthesis names it.
 
@@ -248,9 +248,9 @@ If a proposed change violates any of R-P, R-D, R-Cross, it is by construction wr
 -  — the original Ontology, now System P's schema.
 
 ### Phase 3 (Unification) Convergence Evidence
-- FZ 5: Meta-Question — Value of Typed Knowledge — the question this synthesis finally answers (split value across two systems).
-- FZ 5c: PlugMem Lens — typed knowledge differentiator; System P value half evidence.
-- FZ 5d: Meta-Harness Lens — skills as harnesses; System P runtime evidence.
+- [FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md) — the question this synthesis finally answers (split value across two systems).
+- [FZ 5c: PlugMem Lens](analysis_plugmem_lens_on_abuse_slipbox.md) — typed knowledge differentiator; System P value half evidence.
+- [FZ 5d: Meta-Harness Lens](analysis_metaharness_lens_on_abuse_slipbox.md) — skills as harnesses; System P runtime evidence.
 -  — Pareto dominance; R-Cross evidence.
 -  — BB value redirected to evaluation; R-D evidence.
 -  — hybrid recipe; System D internal architecture ratified.
@@ -264,19 +264,19 @@ If a proposed change violates any of R-P, R-D, R-Cross, it is by construction wr
 
 ### DKS Notes (System P Runtime)
 - FZ 8c5c1a: DKS Design — System P's runtime documented.
-- FZ 8c5c1a3: DKS Novelty Assessment — System P literature contribution.
-- FZ 8c5c1a9: DKS Literature Review — sharpened to "closed-loop dialectic for warrant precision."
-- FZ 8c5c1a10: DKS as Thinking Protocol on Slipbox KG — two-entity model upgraded here to two-system model.
+- [FZ 8c5c1a3: DKS Novelty Assessment](analysis_dks_novelty_assessment.md) — System P literature contribution.
+- [FZ 8c5c1a9: DKS Literature Review](thought_dks_literature_review_and_contribution.md) — sharpened to "closed-loop dialectic for warrant precision."
+- [FZ 8c5c1a10: DKS as Thinking Protocol on Slipbox KG](thought_dks_is_thinking_protocol_on_slipbox_kg.md) — two-entity model upgraded here to two-system model.
 
 ### Source Lenses
-- Digest: PARA Method (Forte) — Areas of Responsibility = sub-kind drift = System D facet evidence.
-- Digest: 7 Habits (Covey) — Circle of Control = bounded sub-kind authority.
-- Digest: Atomicity Guide (Sascha) — Focus principle = the boundary discipline this synthesis instantiates.
+- [Digest: PARA Method (Forte)](../digest/digest_para_method_forte.md) — Areas of Responsibility = sub-kind drift = System D facet evidence.
+- [Digest: 7 Habits (Covey)](../digest/digest_7_habits_covey.md) — Circle of Control = bounded sub-kind authority.
+- [Digest: Atomicity Guide (Sascha)](../digest/digest_atomicity_guide_sascha.md) — Focus principle = the boundary discipline this synthesis instantiates.
 - [Term: Building a Second Brain](../term_dictionary/term_basb.md) — CODE pipeline = System P's input ingestion.
 - **CQRS pattern** (Command Query Responsibility Segregation, Greg Young, ~2010) — the software-architecture pattern this synthesis recognizes the vault as instantiating. Worth a future term note.
 
 ### Entry Points
-- Entry: Argument Trail — this note is FZ 7g1a1a1a1a1 (★).
+- [Entry: Argument Trail](../../0_entry_points/entry_abuse_slipbox_argument_trail.md) — this note is FZ 7g1a1a1a1a1 (★).
 
 ---
 

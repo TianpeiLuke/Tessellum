@@ -171,8 +171,8 @@ for edge in downstream(BuildingBlock.HYPOTHESIS):
 - [Term: Dialectic Knowledge System](term_dialectic_knowledge_system.md)
 - [Term: CQRS](term_cqrs.md)
 - [Term: Epistemic Function](term_epistemic_function.md)
-- docs/bb-ontology.md — public-facing ontology page with diagrams
-- docs/note-format.md — YAML frontmatter spec + required sections per BB type
+- [docs/bb-ontology.md](../../../docs/bb-ontology.md) — public-facing ontology page with diagrams
+- [docs/note-format.md](../../../docs/note-format.md) — YAML frontmatter spec + required sections per BB type
 - `src/tessellum/format/building_blocks.py` — typed Python registry
 - Sascha Fast — [Knowledge Building Blocks: A Universal Method for Note-Taking](https://zettelkasten.de/posts/atomic-note-types/)
 - Niklas Luhmann — [Communicating with Slip Boxes](https://luhmann.surge.sh/communicating-with-slip-boxes) (English translation)

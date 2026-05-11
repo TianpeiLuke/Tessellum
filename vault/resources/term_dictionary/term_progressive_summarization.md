@@ -94,10 +94,10 @@ The paper digestion pipeline mirrors Progressive Summarization: the literature n
 - [Desirable Difficulties](term_desirable_difficulties.md) — writing Layer 4 summaries in your own words creates desirable difficulty that deepens encoding
 - [Compound Effect](term_compound_effect.md) — each added layer of summarization increases the note's future value; layers compound over time
 - [Elaborative Interrogation](term_elaborative_interrogation.md) — asking "why is this important?" at each layer forces deeper processing
-- WYSIATI — Progressive Summarization counteracts WYSIATI by making the most important information the most visible
-- Divergence and Convergence — Progressive Summarization is a convergent activity: narrowing from abundance to essence
+- [WYSIATI](term_wysiati.md) — Progressive Summarization counteracts WYSIATI by making the most important information the most visible
+- [Divergence and Convergence](term_divergence_and_convergence.md) — Progressive Summarization is a convergent activity: narrowing from abundance to essence
 - [BASB](term_basb.md) — Building a Second Brain; Progressive Summarization is the primary technique for the Distill phase
-- Inspectional Reading — Adler's inspectional reading parallels Layer 1 of progressive summarization; both extract structure before depth
+- [Inspectional Reading](term_inspectional_reading.md) — Adler's inspectional reading parallels Layer 1 of progressive summarization; both extract structure before depth
 
 ## References
 

@@ -69,7 +69,7 @@ to refute the target without overreaching.>
 <Explicit reference to the argument being refuted. Without this, a counter
 note is unmoored.>
 
-This counter refutes: <Argument Title>
+This counter refutes: [<Argument Title>](thought_target.md)
 
 The target's load-bearing claim was:
 
@@ -107,6 +107,6 @@ in the dialectic — usually a synthesis or a sharpened argument.>
 
 ## References
 
-- Target Argument — what this counters
-- Related Counter — sibling counter, if any
-- Evidence cited
+- [Target Argument](thought_target.md) — what this counters
+- [Related Counter](counter_related.md) — sibling counter, if any
+- [Evidence cited](evidence_or_observation.md)

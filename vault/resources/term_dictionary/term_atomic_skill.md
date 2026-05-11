@@ -139,12 +139,12 @@ The mapping is not exact — 5 coding skills ≠ 8 knowledge block types — but
 
 - [Term: Building Blocks](term_knowledge_building_blocks.md) — The Tessellum's equivalent of atomic skills; 8 types spanning the knowledge management domain
 - [Term: DSPy](term_dspy.md) — Composable LLM modules with typed signatures; DSPy's modules are the closest prior analog to atomic skills in the LLM pipeline context
-- Term: LATM — Tool creation and functional caching; tools are reusable skills in a code execution context
+- [Term: LATM](term_latm.md) — Tool creation and functional caching; tools are reusable skills in a code execution context
 - [Term: Meta-Harness](term_meta_harness.md) — Harness-level optimization that builds on atomic skill foundations
-- Term: Voyager — Skill library for embodied agents; GPT-4-generated executable skills in Minecraft; the SE analog is coding atomic skills
+- [Term: Voyager](term_voyager.md) — Skill library for embodied agents; GPT-4-generated executable skills in Minecraft; the SE analog is coding atomic skills
 
 ## References
 
-- Ma et al. (2026). "Scaling Coding Agents via Atomic Skills." arXiv:2604.05013. → Literature Note
-- Cai et al. (2023). "Large Language Models as Tool Makers." ICLR 2024. → Literature Note
-- Khattab et al. (2023). "DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines." → Literature Note
+- Ma et al. (2026). "Scaling Coding Agents via Atomic Skills." arXiv:2604.05013. → [Literature Note](../papers/lit_ma2026atomic.md)
+- Cai et al. (2023). "Large Language Models as Tool Makers." ICLR 2024. → [Literature Note](../papers/lit_cai2023latm.md)
+- Khattab et al. (2023). "DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines." → [Literature Note](../papers/lit_khattab2023dspy.md)

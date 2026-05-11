@@ -89,13 +89,13 @@ The vault directly implements several BASB concepts:
 - [CODE Method](term_code_method.md) — the book's central four-phase lifecycle framework (Capture → Organize → Distill → Express)
 - [Progressive Summarization](term_progressive_summarization.md) — the primary technique for the Distill phase; four layers of compression
 - [Intermediate Packets](term_intermediate_packets.md) — the primary output mechanism for the Express phase; modular, reusable knowledge units
-- Divergence and Convergence — creative execution model: Capture + Organize are divergent, Distill + Express are convergent
+- [Divergence and Convergence](term_divergence_and_convergence.md) — creative execution model: Capture + Organize are divergent, Distill + Express are convergent
 - [Trusted System](term_trusted_system.md) — the Second Brain IS a trusted system; Forte builds on Allen's concept
 - [Open Loops](term_open_loops.md) — Forte extends Allen's insight: unprocessed *information* (not just tasks) creates cognitive load
 - [Zettelkasten](term_zettelkasten.md) — complementary methodology; BASB organizes by actionability, Zettelkasten organizes by connection
 - [SlipBox](term_slipbox.md) — the vault implements a PARA-Zettelkasten hybrid informed by BASB's CODE framework
-- Natural Planning Model — Allen's five-phase planning model complements CODE: NPM plans projects, CODE processes knowledge
-- Habit Loop — BASB's maintenance habits (weekly review, project checklists) form habit loops that sustain the system
+- [Natural Planning Model](term_natural_planning_model.md) — Allen's five-phase planning model complements CODE: NPM plans projects, CODE processes knowledge
+- [Habit Loop](term_habit_loop.md) — BASB's maintenance habits (weekly review, project checklists) form habit loops that sustain the system
 - [Compound Effect](term_compound_effect.md) — the Second Brain compounds: each note adds marginal value through connections
 - [Commonplace Book](term_commonplace_book.md) — historical predecessor; BASB modernizes the commonplace tradition for digital tools
 - [Adjacent Possible](term_adjacent_possible.md) — each captured note expands the adjacent possible of the knowledge system
@@ -107,8 +107,8 @@ The vault directly implements several BASB concepts:
 - Source: [Digest: Building a Second Brain](../digest/digest_building_second_brain_forte.md)
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — Ahrens' Zettelkasten compared with BASB; complementary approaches to PKM
 - Source: [Digest: A System for Writing](../digest/digest_system_for_writing_doto.md) — Doto's practical Zettelkasten approach compared with Forte's BASB
-- Source: Digest: Atomic Habits — BASB compared with Atomic Habits in the knowledge management trilogy
-- Source: Digest: Getting Things Done — Allen's GTD as the foundational "open loops" insight that BASB extends to knowledge management
+- Source: [Digest: Atomic Habits](../digest/digest_atomic_habits_clear.md) — BASB compared with Atomic Habits in the knowledge management trilogy
+- Source: [Digest: Getting Things Done](../digest/digest_getting_things_done_allen.md) — Allen's GTD as the foundational "open loops" insight that BASB extends to knowledge management
 - Source: [Digest: The Zettelkasten Iceberg](../digest/digest_zettelkasten_iceberg_sascha.md) — Sascha positions BASB/CODE as Level 1 (surface PKM); useful for project management but insufficient for durable knowledge creation
 
 ---
