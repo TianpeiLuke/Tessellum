@@ -1,0 +1,84 @@
+{
+  "cycle_id": "25",
+  "mode": "fresh",
+  "closed_loop": true,
+  "escalation_decision": "full",
+  "confidence_score": null,
+  "gated": false,
+  "elapsed_ms": 65742.34004097525,
+  "backend_id": "anthropic",
+  "folgezettel_nodes": [
+    "25",
+    "25a",
+    "25b",
+    "25aa",
+    "25aaa",
+    "25aaaa"
+  ],
+  "observation": {
+    "folgezettel": "25",
+    "summary": "The unified SQLite engine (FTS5 + sqlite-vec + metadata in one file) was chosen for atomicity and zero-coordination properties, but the build-time cost (full rebuild on schema changes) is acceptable only for small vaults; whether incremental schema migration becomes necessary at >100K notes, and when unified-engine portability breaks, is an unsolved scaling question.",
+    "timestamp": null
+  },
+  "argument_a": {
+    "folgezettel": "25a",
+    "warrant": {
+      "claim": "The unified SQLite engine should not be scaled beyond its demonstrated stable range until incremental schema migration and portability boundary conditions are explicitly specified as named, testable thresholds rather than left as unresolved engineering assumptions.",
+      "data": "The unified SQLite engine (FTS5 + sqlite-vec + metadata in one file) was chosen for atomicity and zero-coordination properties, but full rebuild on schema changes is acceptable only for small vaults; the scaling boundary at >100K notes and the portability break-point remain unspecified and untested.",
+      "warrant": "A policy whose operational design structurally limits harm detection cannot legitimately cite 'no evidence of harm' as confirmatory support for its continuation or expansion. The current architecture, by deferring schema migration complexity to an unspecified future threshold, forecloses the evidentiary pathway that would reveal scaling failures before they become catastrophic; the null finding ('no problems observed so far') is endogenous to the design's limited operating range and carries no confirmatory weight about behavior above that range. Defenders of the unified-engine approach must first demonstrate that the detection environment\u2014testing infrastructure, vault-size benchmarks, portability probes\u2014is sufficiently open before appealing to absence-of-observed-harm as a reason to continue without migration tooling.",
+      "backing": "Epistemic systems cannot self-certify the independence of their own boundary conditions without external or structurally heterogeneous anchoring. The SQLite engine's current success is measured entirely within the regime for which it was designed (small vaults, controlled schema), making the benchmark co-constituted with the design's success conditions. Per the burden-of-proof warrant, this co-constitution means discriminant validity\u2014the ability of current testing to detect genuine scaling pathology\u2014has not been established; the instrument (observed performance) cannot distinguish 'genuinely safe to scale' from 'safe only within the design envelope tested.' Additionally, a warrant imposing boundary conditions must be paired with explicit procedural mechanisms: named revision triggers, threshold conditions jointly sufficient to initiate review, and criteria by which a migration strategy is accepted\u2014not merely announced as a future concern.",
+      "qualifier": "This conservative constraint applies specifically to production deployment decisions and architectural lock-in; exploratory prototyping above 100K notes remains appropriate precisely to generate the heterogeneous evidence needed to establish real boundary conditions. The argument does not assert that the unified engine will fail at scale, only that current evidence is structurally insufficient to license confident continuation without explicit, pre-declared migration thresholds.",
+      "rebuttal": ""
+    },
+    "evidence": "The observation itself documents that (1) full rebuild cost is acknowledged as acceptable only for small vaults\u2014a tacit admission of a known boundary\u2014and (2) incremental schema migration necessity and portability break-points are explicitly flagged as 'unsolved.' These two admissions together constitute the suppression-mechanism evidence required to shift the burden: the design team recognizes the boundary exists but has not instrumented the system to detect when it is crossed, satisfying the condition that the detection pathway is plausibly foreclosed by the operational design."
+  },
+  "argument_b": {
+    "folgezettel": "25b",
+    "warrant": {
+      "claim": "The unified SQLite engine's build-time rebuild cost is not merely an operational inconvenience but a latent schema-boundary artifact that will become a first-class diagnostic signal requiring structural revision once vault size crosses a critical threshold, and the system's current design actively suppresses detection of that threshold.",
+      "data": "The unified SQLite engine combines FTS5, sqlite-vec, and metadata in a single file, with full rebuild required on schema changes. This is acknowledged as acceptable for small vaults but unsolved at >100K notes. Critically, the same engine that would detect performance degradation is the one undergoing full rebuild\u2014meaning the measurement environment is co-constituted with the design choice being evaluated.",
+      "warrant": "Classification schemas applied to complex relational domains must treat liminal instances as first-class diagnostic signals rather than assignment failures, and must incorporate an explicit meta-category for schema-boundary artifacts that triggers structural revision rather than forced classification. Furthermore, policies whose operational design structurally limits harm detection cannot legitimately cite 'no evidence of harm' as confirmatory support for their continuation: where the policy itself narrows the detection pathway, the null finding is endogenous to the design and carries no confirmatory weight.",
+      "backing": "The rebuild-on-schema-change requirement means that at the precise moment the system is most stressed (schema evolution at scale), the engine is offline or degraded, foreclosing the detection of the very performance signals that would justify migration to incremental schema migration. This is structurally analogous to a measurement instrument whose autonomy from the generative design collapses at the boundary condition it is meant to detect. The 'no observed harm at current scale' inference therefore fails the epistemic openness requirement: harm, if present at >100K notes, has no realistic pathway to detection independent of the engine's own operational state. The burden of proof inverts\u2014proponents of the unified engine must first demonstrate that the detection environment remains epistemically open at scale before citing absence of observed degradation as confirmatory evidence.",
+      "qualifier": "This argument holds with high confidence for vault sizes approaching the >100K note threshold, but remains provisional at smaller scales where the rebuild cost is genuinely acceptable and the detection environment has not yet been foreclosed; the precise threshold at which the endogeneity problem becomes acute is itself underdetermined by current evidence, which is itself a symptom of the suppression mechanism identified.",
+      "rebuttal": ""
+    },
+    "evidence": "The observation explicitly names full rebuild on schema changes as acceptable 'only for small vaults' and flags incremental schema migration as an unsolved scaling question\u2014confirming that the system's designers have already intuited the liminal boundary but have not yet instantiated the procedural mechanisms (named revision triggers, threshold conditions, discriminant validity tests) that would make the boundary epistemically operative rather than merely rhetorical. The unresolved portability question compounds this: if unified-engine portability breaks at scale, the detection instruments migrate along with the design, preserving the co-constitution problem across environments."
+  },
+  "contradicts": {
+    "attacker_fz": "25b",
+    "attacked_fz": "25a",
+    "reason": "Claim mismatch: A asserts 'The unified SQLite engine should not be scaled beyond its demonstrated stable range until incremental schema migration and portability boundary conditions are explicitly specified as named, testable thresholds rather than left as unresolved engineering assumptions.'; B asserts \"The unified SQLite engine's build-time rebuild cost is not merely an operational inconvenience but a latent schema-boundary artifact that will become a first-class diagnostic signal requiring structural revision once vault size crosses a critical threshold, and the system's current design actively suppresses detection of that threshold.\""
+  },
+  "counter": {
+    "folgezettel": "25aa",
+    "attacked_fz": "25a",
+    "broken_component": "warrant",
+    "counter_claim": "The inference from 'harm detection is architecturally limited' to 'null findings carry no confirmatory weight' is itself unsupported, because absence-of-evidence arguments can be epistemically valid even under imperfect detection conditions provided the detection sensitivity is quantified and the operating range is explicitly bounded\u2014neither of which the attacker demonstrates is absent here.",
+    "reason": "The warrant assumes a binary: either the detection environment is 'sufficiently open' (fully sensitive across all future operating ranges) or the null finding is entirely weightless. This is a false dichotomy. Bayesian and frequentist frameworks alike allow null findings to carry partial confirmatory weight proportional to the known sensitivity of the detection regime. The attacker never establishes that the SQLite engine's current testing infrastructure has *zero* sensitivity to scaling failures, only that it has *bounded* sensitivity. A null finding under bounded detection is not epistemically inert\u2014it updates probability downward for failures within the tested range, which is non-trivial evidence even if it does not extrapolate beyond that range. The warrant therefore breaks because it over-generalizes from 'detection is incomplete' to 'no confirmatory weight whatsoever,' skipping the quantitative step that would actually establish evidential weightlessness.",
+    "strength": "strong"
+  },
+  "pattern": {
+    "folgezettel": "25aaa",
+    "description": "The contradiction reveals a structural regularity in which attackers illegitimately collapse a conditional epistemic claim into an unconditional one by omitting the quantification step. A valid absence-of-evidence inference requires (1) known detection sensitivity, (2) explicit operating bounds, and (3) a calibrated baseline\u2014when these are present, null findings do carry confirmatory weight proportional to sensitivity. The attacker's warrant fails not because absence-of-evidence is inherently weak, but because it silently assumes that sensitivity and bounds are unquantified without demonstrating that assumption. This reveals a recurring pattern: warrants are broken by asserting the negation of a precondition without establishing that the precondition fails\u2014a form of phantom-gap insertion where a logical bridge is severed by presupposition rather than by argument.",
+    "observed": [
+      "conditional-to-unconditional collapse",
+      "phantom-gap insertion",
+      "undemonstrated precondition negation",
+      "sensitivity-elision fallacy",
+      "implicit-baseline omission",
+      "warrant severance by presupposition"
+    ]
+  },
+  "rule_revision": {
+    "folgezettel": "25aaaa",
+    "revised_warrant": {
+      "claim": "Absence-of-evidence inferences carry confirmatory weight proportional to detection sensitivity when epistemic preconditions are explicitly met.",
+      "data": "A null finding (no observed evidence for X) has been recorded under a defined investigative procedure.",
+      "warrant": "A null finding supports the conclusion that X is absent only when three preconditions are explicitly established and quantified: (1) the detection procedure has a known and sufficient sensitivity for the relevant effect size, (2) the operating bounds of the search space are explicitly delimited, and (3) a calibrated baseline rate exists against which the null result is interpretable. When all three preconditions are met, the inference 'absence of evidence is evidence of absence' is valid and its confirmatory strength scales with measured sensitivity. An argument that attacks this inference must demonstrate\u2014by argument, not presupposition\u2014that at least one precondition fails; merely asserting that sensitivity or bounds are 'unquantified' without evidence of that failure constitutes phantom-gap insertion and does not rebut the inference. Conversely, a proponent who invokes absence-of-evidence without establishing all three preconditions has not yet warranted the inference and bears the burden of supplying the missing quantification before the claim can stand.",
+      "backing": "Bayesian likelihood-ratio analysis: a null result updates the posterior toward absence proportionally to P(null | X absent) / P(null | X present), which requires knowing the false-negative rate (sensitivity) and the prior over the bounded search space. Neyman-Pearson hypothesis testing formalizes operating bounds and Type II error rates. Signal-detection theory grounds calibrated baselines. Philosophy-of-science literature on 'arguments from ignorance' distinguishes illegitimate ignorance appeals from legitimate diagnostic null findings (e.g., Mayo 1996 on severe testing). The phantom-gap fallacy is documented as a subspecies of question-begging in which a premise's negation is silently assumed rather than argued.",
+      "qualifier": "This warrant applies within investigative or inferential contexts where a formal or semi-formal detection procedure has been executed. It does not license absence-of-evidence inferences in open-ended, unbounded domains where operating conditions cannot in principle be specified. The burden of establishing preconditions (1)\u2013(3) rests with the proponent of the null-finding inference; the burden of demonstrating precondition failure rests with the challenger. Neither party may discharge their burden by presupposition alone.",
+      "rebuttal": ""
+    },
+    "supersedes": null
+  }
+}

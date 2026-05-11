@@ -92,6 +92,7 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/analysis_thoughts/thought_dks_runtime_integration.md",        # FZ 2b  — runtime integration (Phase 4)
     "resources/analysis_thoughts/thought_dks_transition_model_adaptation.md",# FZ 2c  — transition-model adaptation (companion to FZ 1c)
     "resources/analysis_thoughts/thought_meta_dks_design.md",                # FZ 2c1 — meta-DKS design synthesis (v0.0.52 runtime)
+    "resources/analysis_thoughts/thought_meta_dks_validation_v053.md",       # FZ 2c1a — Phase V validation evidence (v0.0.53)
 
     # ── FZ trail nodes (Trail 3: Retrieval / System D — 2 thoughts) ──────
     "resources/analysis_thoughts/thought_retrieval_evolution.md",      # FZ 3
