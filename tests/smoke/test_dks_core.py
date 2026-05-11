@@ -15,13 +15,13 @@ import json
 
 import pytest
 
-from tessellum.composer import (
+from tessellum.composer import MockBackend
+from tessellum.dks import (
     DKSArgument,
     DKSCycle,
     DKSCycleResult,
     DKSObservation,
     DKSWarrant,
-    MockBackend,
     allocate_cycle_fz,
 )
 

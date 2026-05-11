@@ -1,4 +1,10 @@
-"""Dialectic Knowledge System (DKS) — core runtime.
+"""Dialectic Knowledge System (DKS) — core runtime implementation.
+
+This module IS the implementation. Public-API consumers should import
+from the package root: ``from tessellum.dks import DKSCycle, DKSRunner, ...``.
+This file is re-exported by :mod:`tessellum.dks`'s ``__init__`` and is
+not part of the documented public surface; lifting members here in a
+patch release is allowed only via the ``__init__`` re-export list.
 
 Phase 1 of ``plans/plan_dks_implementation.md`` (v0.0.40). Ships:
 

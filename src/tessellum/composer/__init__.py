@@ -104,26 +104,6 @@ from tessellum.composer.session_mcp import (
     resolve_transcript_path,
     search_transcript,
 )
-from tessellum.composer.dks import (
-    CounterStrength,
-    CycleMode,
-    DKSArgument,
-    DKSContradicts,
-    DKSCounterArgument,
-    DKSCycle,
-    DKSCycleResult,
-    DKSObservation,
-    DKSPattern,
-    DKSRuleRevision,
-    DKSRunner,
-    DKSRunResult,
-    DKSWarrant,
-    ToulminComponent,
-    WarrantChange,
-    WarrantChangeKind,
-    aggregate_warrant_changes,
-    allocate_cycle_fz,
-)
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
     load_pipeline_metadata,
@@ -201,23 +181,9 @@ __all__ = [
     "read_recent_messages",
     "resolve_transcript_path",
     "search_transcript",
-    # DKS — Dialectic Knowledge System runtime (Phase 1 + Phase 3)
-    "ToulminComponent",
-    "CycleMode",
-    "CounterStrength",
-    "WarrantChangeKind",
-    "DKSObservation",
-    "DKSWarrant",
-    "DKSArgument",
-    "DKSContradicts",
-    "DKSCounterArgument",
-    "DKSPattern",
-    "DKSRuleRevision",
-    "DKSCycleResult",
-    "DKSCycle",
-    "WarrantChange",
-    "DKSRunResult",
-    "DKSRunner",
-    "allocate_cycle_fz",
-    "aggregate_warrant_changes",
+    # NOTE: DKS — Dialectic Knowledge System runtime — moved to
+    # ``tessellum.dks`` in v0.0.43. Import from ``tessellum.dks`` directly:
+    #     from tessellum.dks import DKSCycle, DKSRunner, DKSObservation, ...
+    # DKS uses Composer's LLMBackend abstractions but is a peer module,
+    # not a Composer feature.
 ]

@@ -1,10 +1,11 @@
 """Integration tests for the ``skill_tessellum_dks_cycle`` skill canonical
 and its Composer-pipeline sidecar.
 
-DKS Phase 1 (v0.0.40) ships the pure-Python API at
-``tessellum.composer.dks``. Phase 2 (this version) wraps the same 7-component
-closed loop into a Composer skill — canonical body + ``.pipeline.yaml``
-sidecar that share section_id anchors. These tests confirm:
+DKS Phase 1 (v0.0.40) shipped the pure-Python API; v0.0.43 lifted it to
+``tessellum.dks`` (its own top-level module, peer to ``tessellum.composer``).
+Phase 2 (v0.0.42) wraps the same 7-component closed loop into a Composer
+skill — canonical body + ``.pipeline.yaml`` sidecar that share section_id
+anchors. These tests confirm:
 
 1. The canonical's frontmatter, body, and link discipline pass
    ``tessellum format check``.

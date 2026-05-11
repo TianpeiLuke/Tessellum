@@ -18,6 +18,33 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [0.0.43] — 2026-05-10
 
+### Changed — DKS lifted to its own top-level module
+
+Moved from ``tessellum.composer.dks`` to ``tessellum.dks`` (new
+package: ``src/tessellum/dks/__init__.py`` + ``src/tessellum/dks/core.py``).
+Reasoning: Composer is the generic contract-pipeline executor; DKS is
+one *application* of it — peer module to ``tessellum.composer``,
+``tessellum.retrieval``, and ``tessellum.indexer``, not a Composer feature.
+DKS uses Composer's LLMBackend abstractions but is otherwise
+independent.
+
+Public-API impact (none of the prior intermediate versions were used by
+external consumers — Tessellum is at alpha, pre-v0.1):
+
+  Old:  from tessellum.composer import DKSCycle, DKSRunner, ...
+  New:  from tessellum.dks      import DKSCycle, DKSRunner, ...
+
+CLI surface — the multi-cycle command is now a top-level peer of
+``tessellum fz``:
+
+  Old:  tessellum composer dks <observations.jsonl>
+  New:  tessellum dks          <observations.jsonl>
+
+``tessellum --help`` banner gains the ``tessellum dks`` line.
+``tessellum composer --help`` no longer lists ``dks``.
+``tessellum.composer.__init__`` no longer re-exports DKS symbols (a
+NOTE comment in the module points readers at ``tessellum.dks``).
+
 ### Added — DKS Phase 3: multi-cycle orchestration + CLI
 
 Ships the third phase of `plans/plan_dks_implementation.md`. Phase 1

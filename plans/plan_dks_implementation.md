@@ -103,7 +103,7 @@ The choice is part of DKS's step 1 (observation capture): the runtime decides wh
 2. **The validator's TESS-004 rule becomes stronger** than the simple "counter_argument must link to argument" version. It can require that `counter_argument`'s `folgezettel_parent` resolves to a `building_block: argument` note. The link discipline is enforced through the FZ field, not through fragile string-matching in the body.
 3. **`entry_folgezettel_trails.md` gains a new trail family**: hand-authored trails (the existing Trails 1, 2, 3) and DKS-produced trails. Both shapes use the same FZ machinery; the distinction is *origin*, not *structure*. The trail map records this provenance.
 4. **The eval framework gains a new dimension via FZ alignment**: epistemic congruence (the 6th LLMJudge dim) can use FZ-graph traversal to check whether a cycle's response honoured the trail's argumentative descent.
-5. **`tessellum composer dks --report` (Phase 5) can surface FZ-graph metrics**: which trail branches most active, which warrants most attacked, where the dialectic is alive vs dormant.
+5. **`tessellum dks --report` (Phase 5) can surface FZ-graph metrics**: which trail branches most active, which warrants most attacked, where the dialectic is alive vs dormant.
 
 The implementation is therefore not "DKS *plus* an FZ writer." It's "DKS *as* the FZ writer the system was waiting for."
 
@@ -111,7 +111,7 @@ The implementation is therefore not "DKS *plus* an FZ writer." It's "DKS *as* th
 
 1. **DKS is a System P runtime, not a third system.** Per the two-systems synthesis at FZ 1a1, DKS is the *dynamic facet* of System P (the typed substrate is the static facet). DKS reads through System D (R-Cross's "P calls D" productive half) but never *is* System D.
 2. **Each of the 7 components produces a typed atomic note in the vault.** No new persistence layer. The vault IS the runtime state. A DKS cycle leaves a typed trail through the substrate.
-3. **DKS is invokable as a composer skill.** The runtime ships as `skill_tessellum_dks_cycle.md` + sidecar. Users (or agent orchestrators) call `tessellum composer run skill_tessellum_dks_cycle.md --leaves <observations>` to run one cycle, or `tessellum composer dks <observations>` (new CLI subcommand) for the multi-cycle case.
+3. **DKS is invokable as a composer skill AND as its own CLI.** The runtime ships as `skill_tessellum_dks_cycle.md` + sidecar — users (or agent orchestrators) call `tessellum composer run skill_tessellum_dks_cycle.md --leaves <observations>` to run one cycle. For the multi-cycle case the dedicated top-level subcommand is `tessellum dks <observations.jsonl>` (peer of `tessellum fz`; the multi-cycle CLI does not flow through composer — DKS reads composer's LLM-backend abstraction directly).
 4. **Cycle traces land in `runs/dks/`** — outside `vault/` and `data/`, in the same shape as `runs/composer/` traces. Traces include the cycle's component-by-component output (each step's prompt, each step's response, each step's typed-note-produced).
 5. **Confidence-gated escalation is a v0.2 ship-then-tune knob, not a v0.2 launch blocker.** First version: every observation runs the full 7-component cycle. Once we have telemetry on intra-record vs inter-cycle outputs, add the confidence gate.
 6. **Termination is by dialectical adequacy, not vote.** Implemented by tracking the surviving-attack set per cycle; when it stabilises (the same warrant survives N cycles), the warrant is "adequate" and high-confidence agents can skip the full cycle.
@@ -119,21 +119,41 @@ The implementation is therefore not "DKS *plus* an FZ writer." It's "DKS *as* th
 
 ## Proposed approach — five phases
 
-| Phase | Scope | Versions | LOC est. |
-|-------|-------|----------|----------|
-| **Phase 1** | DKS core data shapes + single-cycle dispatcher (Python API) | v0.0.40 | ~400 |
-| **Phase 2** | DKS as a composer skill (canonical + sidecar with 7 steps) | v0.0.41 | ~200 LOC + ~600 YAML |
-| **Phase 3** | Multi-cycle orchestration + `tessellum composer dks` CLI | v0.0.42 | ~300 |
-| **Phase 4** | Integration: P-side retrieval client + TESS-004 validator + eval dim 6 | v0.0.43 | ~250 |
-| **Phase 5** | Production polish: confidence gating + persistence + cross-cycle aggregation | v0.0.44 | ~350 |
+| Phase | Scope | Versions | LOC est. | Status |
+|-------|-------|----------|----------|--------|
+| **Phase 1** | DKS core data shapes + single-cycle dispatcher (Python API) | v0.0.40 | ~400 | ✅ shipped |
+| **Phase 2** | DKS as a composer skill (canonical + sidecar with 7 steps) | v0.0.42 | ~200 LOC + ~600 YAML | ✅ shipped |
+| **Phase 3** | Multi-cycle orchestration + `tessellum dks` CLI | v0.0.43 | ~300 | ✅ shipped |
+| **Phase 4** | Integration: P-side retrieval client + TESS-004 validator + eval dim 6 | v0.0.44 | ~250 | planned |
+| **Phase 5** | Production polish: confidence gating + persistence + cross-cycle aggregation | v0.0.45 | ~350 | planned |
 
 Total: ~1,500 LOC + 600 YAML across 5 versions. Roughly 1-2 weeks at current cadence.
 
-### Phase 1 — DKS core (~v0.0.40)
+Note on version mapping: the plan originally projected Phase 2 at v0.0.41 and Phase 3 at v0.0.42, but v0.0.41 shipped as the FZ-trail tooling port (independent work), pushing every subsequent DKS phase by one patch version.
+
+### Package layout (since v0.0.43)
+
+DKS lives at **`src/tessellum/dks/`** as its own top-level package — a peer to `tessellum.composer`, `tessellum.retrieval`, and `tessellum.indexer`, NOT a sub-module of composer. The structure:
+
+```
+src/tessellum/
+  dks/
+    __init__.py       # public API: DKSCycle, DKSRunner, DKSObservation, ...
+    core.py           # implementation (was composer/dks.py)
+  cli/
+    dks.py            # `tessellum dks <obs.jsonl>` CLI subcommand
+    composer.py       # no longer hosts the dks subcommand
+```
+
+Rationale: Composer is the generic contract-pipeline executor; DKS is one *application* built on top, on the same conceptual level as future runtimes (e.g., a hypothetical `tessellum.code_review_loop` that also runs N-cycle dialectical reviews). Phase 4+ additions (retrieval client, confidence gating) belong to DKS, not Composer, and live under `tessellum.dks/`.
+
+Public-API impact: `from tessellum.dks import DKSCycle, DKSRunner, ...` (the prior intermediate path `from tessellum.composer import DKSCycle, ...` was only ever live in v0.0.40–v0.0.42; Tessellum is pre-v0.1 alpha so no shim was needed).
+
+### Phase 1 — DKS core (~v0.0.40) ✅ shipped
 
 Deliverables:
 
-- **`src/tessellum/composer/dks.py`** (~400 LOC) — the Python API:
+- **`src/tessellum/dks/core.py`** (~400 LOC, originally landed at `src/tessellum/composer/dks.py` and lifted to its own package in v0.0.43) — the Python API:
   - Seven typed dataclasses, one per component output: `DKSObservation`, `DKSWarrant` (Toulmin-typed with `claim`/`data`/`warrant`/`backing`/`qualifier`/`rebuttal`), `DKSArgument`, `DKSContradicts` (edge — no FZ), `DKSCounterArgument` (with `broken_component: Literal["premise","warrant","counter-example","undercutting"]`), `DKSPattern`, `DKSRuleRevision`.
   - `DKSCycleResult` — aggregates all seven; properties `folgezettel_nodes` (the 5 FZ positions deposited) and `closed_loop` (whether step 7 fired).
   - `allocate_cycle_fz(existing_trails, mode, parent_fz)` — the FZ ID allocator implementing the three multi-cycle modes from FZ 2a1 (`fresh` / `extend` / `branch`). Pure function, deterministic given the input set.
@@ -147,7 +167,7 @@ Deliverables:
 
 Phase 1 deliberately does not touch the composer skill machinery. It's a pure Python API testable with `MockBackend` (no `[agent]` extras required). Tests demonstrate the loop closes and the FZ subtree is correctly shaped.
 
-### Phase 2 — DKS as a composer skill (~v0.0.41)
+### Phase 2 — DKS as a composer skill (~v0.0.42) ✅ shipped
 
 Deliverables:
 
@@ -173,33 +193,39 @@ Deliverables:
 
 The skill IS DKS at the user-invocable level. Phase 1's Python API is what the skill's executor invokes under the hood; Phase 2's skill is what users actually run.
 
-### Phase 3 — Multi-cycle orchestration + CLI (~v0.0.42)
+### Phase 3 — Multi-cycle orchestration + CLI (~v0.0.43) ✅ shipped
 
-Deliverables:
+Deliverables (all landed as of v0.0.43):
 
-- **`src/tessellum/composer/dks.py` extended** (~300 LOC) — multi-cycle support:
-  - `DKSRunner` — runs N cycles in sequence, threading the surviving warrants from cycle N into cycle N+1's "existing rules" input
-  - `DKSRunResult` — aggregates per-cycle results + the trail of warrant revisions
-  - `_aggregate_warrant_changes()` — diffs the warrant set across cycles; tags revisions as `added`, `revised`, `superseded`
-- **`tessellum composer dks <skill> --observations <jsonl>`** — new CLI subcommand:
-  - Loads N observations from a JSONL file (one per line)
+- **`src/tessellum/dks/core.py` extended** (~150 LOC actual) — multi-cycle support:
+  - `DKSRunner` — runs N cycles in sequence, threading the surviving warrants from cycle N into cycle N+1's input warrant set
+  - `DKSRunResult` — aggregates per-cycle results + the chronological list of warrant revisions
+  - `WarrantChange` / `WarrantChangeKind` — typed diff entries; each `DKSRuleRevision` with `supersedes` set emits a `revised` + `superseded` pair, otherwise an `added`
+  - `aggregate_warrant_changes(changes) -> dict[kind, count]` — count helper
+- **`tessellum dks <observations.jsonl>`** — new top-level CLI subcommand (lifted out of `tessellum composer` in v0.0.43; lives at `src/tessellum/cli/dks.py`):
+  - Loads N observations from a JSONL file (one per non-blank line)
+  - Allocates a fresh FZ root per observation via `allocate_cycle_fz` (honors explicit `mode` / `parent_fz` overrides)
+  - Loads optional `--initial-warrants <warrants.json>`
   - Runs the DKS cycle once per observation, threading the warrant set
-  - Writes `runs/dks/<timestamp>_<cycle_id>.json` per cycle
-  - Writes `runs/dks/<timestamp>_aggregate.json` summarising warrant changes across all cycles
-- **`tests/cli/test_dks_cli.py`** — 8-10 CLI smoke tests:
-  - `dks` subcommand exists and parses args correctly
-  - Empty observation file → exit 0, no traces
-  - 3-observation file → 3 cycle traces + 1 aggregate trace in `runs/dks/`
-  - Invalid skill path → exit 2
+  - Writes `runs/dks/<UTC-ts>_cycle_<FZ>.json` per cycle
+  - Writes `runs/dks/<UTC-ts>_aggregate.json` summarising warrant changes
+- **`tests/smoke/test_dks_multi_cycle.py`** (16 tests) — Python API
+- **`tests/cli/test_dks_cli.py`** (12 tests) — CLI surface, including:
+  - missing observations file → exit 2
+  - invalid JSONL / missing summary / invalid mode → exit 2
+  - empty JSONL → exit 0 "nothing to run"
+  - 3 observations → 3 cycle traces + 1 aggregate
+  - `--no-trace` skips runs_dir creation
+  - `--initial-warrants` threads into `final_warrants`
 
-### Phase 4 — Integration with existing systems (~v0.0.43)
+### Phase 4 — Integration with existing systems (~v0.0.44)
 
 This is where the R-Cross productive half lands.
 
 Deliverables:
 
-- **P-side retrieval client** (`src/tessellum/composer/retrieval_client.py` ~100 LOC):
-  - `RetrievalClient.search(query, k=20) -> list[RetrievalHit]` — thin adapter that calls into `tessellum.retrieval.hybrid_search()` from a composer step
+- **P-side retrieval client** (`src/tessellum/dks/retrieval_client.py` ~100 LOC — lives under `tessellum.dks/` since DKS is the consumer; the read-only client is a DKS concern, not a composer concern):
+  - `RetrievalClient.search(query, k=20) -> list[RetrievalHit]` — thin adapter that calls into `tessellum.retrieval.hybrid_search()` from inside a DKS cycle
   - Read-only by construction (no writes; can't import retrieval-mutating code because retrieval doesn't have any)
   - The DKS step 1 and step 6 use this client to check whether observations / patterns already exist in the vault
   - This is the **productive half of R-Cross**: P calls D, formally, with a typed contract
@@ -211,23 +237,23 @@ Deliverables:
   - Adds to `DEFAULT_RUBRIC_DIMENSIONS`: "Does the response honour the BB-type expectations the question implies?"
   - DKS cycles produce typed notes; the eval framework can now score whether they're typed correctly
 - **Update `term_dialectic_knowledge_system.md`** — points at the live runtime, not just at the deferred concept
-- **Update `entry_dialectic_trail.md`** — adds a row noting the runtime ships at v0.0.43
+- **Update `entry_dialectic_trail.md`** — adds a row noting the runtime ships at v0.0.44
 - **`thought_dks_runtime_integration.md`** (NEW thought note, FZ 2b in the Dialectic trail) — synthesis of how the runtime integrates with composer + retrieval + format + capture; the closing leaf of Trail 2
 
-### Phase 5 — Production polish (~v0.0.44)
+### Phase 5 — Production polish (~v0.0.45)
 
 Deliverables:
 
-- **Confidence gating** (`src/tessellum/composer/dks.py` +100 LOC):
+- **Confidence gating** (`src/tessellum/dks/core.py` +100 LOC):
   - `DKSConfidenceModel` — minimal: a function `(observation, warrants) -> float in [0, 1]`
   - If confidence > threshold: skip steps 2-7, just produce one argument and trust it
   - If confidence ≤ threshold: run the full 7-component cycle
   - Telemetry: each cycle records `escalation_decision: {gated, full}` so an analyst can tune the threshold from data
-- **Warrant persistence + cross-cycle aggregation** (`src/tessellum/composer/dks.py` +150 LOC):
+- **Warrant persistence + cross-cycle aggregation** (`src/tessellum/dks/core.py` +150 LOC; may split into `src/tessellum/dks/persistence.py` if it grows):
   - `WarrantRegistry` — typed wrapper over the substrate's `procedure` and `concept` notes that DKS treats as the current warrant set
   - `WarrantHistory` — append-only log of warrant revisions; lives under `runs/dks/warrant_history.jsonl`
   - DKS reads the current registry at the start of each cycle, writes new revisions at the end
-- **Inter-cycle telemetry** — `tessellum composer dks --report` shows:
+- **Inter-cycle telemetry** — `tessellum dks --report` shows:
   - How many cycles in the last N runs hit dialectical adequacy
   - How many warrants were revised vs superseded
   - Top-K most frequently-attacked warrants (signals where the substrate is weakest)
@@ -239,18 +265,19 @@ The plan touches every existing subsystem; here's how each one accommodates the 
 
 | Subsystem | DKS integration | R-rule status |
 |-----------|------------------|---------------|
-| **`composer/`** | DKS lives at `composer/dks.py` (Phase 1); invokes Composer's executor + materializers + LLM backend (Phase 2-3) | All Composer Wave 1-5b infrastructure unchanged; DKS is an *application* of the contract pipeline |
-| **`retrieval/`** | DKS reads through `composer/retrieval_client.py` (Phase 4 — the P-side client). DKS never imports retrieval directly | R-Cross productive half ✓ |
+| **`tessellum.dks/`** (NEW package since v0.0.43) | DKS lives here as its own top-level module: `core.py` (Phase 1+3), `retrieval_client.py` (Phase 4), persistence (Phase 5) | The runtime that exercises every other subsystem |
+| **`composer/`** | DKS uses Composer's `LLMBackend` (Mock + Anthropic) and the Composer-skill execution pipeline (Phase 2). DKS does NOT live inside composer | All Composer Wave 1-5b infrastructure unchanged; DKS is an *application* of the contract pipeline |
+| **`retrieval/`** | DKS reads through `tessellum.dks.retrieval_client` (Phase 4 — the P-side client). DKS never imports retrieval-mutating code | R-Cross productive half ✓ |
 | **`indexer/`** | DKS reads only the index (System D output); never writes to `data/` | R-Cross defensive half ✓ (no change) |
 | **`format/`** | TESS-004 lands here (Phase 4); the validator gains one new rule | R-P promoted from "held by absence" to "enforced" |
 | **`capture.py`** | DKS produces typed notes via materializers, not via capture flavors. No new flavor needed; `counter_argument` and friends already in REGISTRY | No change |
 | **`init.py`** | Seed manifest gains `runs/dks/.gitkeep` (Phase 3); DKS-related how-to gets added in Phase 4 | No change |
-| **`cli/`** | New subcommand `tessellum composer dks` (Phase 3) | Standard Composer extension |
+| **`cli/`** | New top-level subcommand `tessellum dks` (Phase 3, lifted out of `tessellum composer` in v0.0.43); CLI module at `src/tessellum/cli/dks.py` | Peer subcommand to `tessellum fz` |
 | **MCP** | DKS step 1 uses `session-mcp` (shipped v0.0.36) to extract observations from the active transcript | MCPContract registry already accommodates |
 
 ## What this plan does NOT do
 
-Five things deliberately deferred beyond v0.0.44 ("Phase 6+"):
+Five things deliberately deferred beyond v0.0.45 ("Phase 6+"):
 
 - **Multi-agent debate beyond two arguments.** Phase 1-5 ship the two-argument (A vs B) version. Three+ arguments (the AB literature called this "debate club") wait until usage shows the binary version is insufficient.
 - **External-data observation sources.** Observations come from the active session (via session-mcp) or from user-supplied JSONL. No web scraping, no API ingestion, no `inbox/` watcher.
@@ -264,7 +291,7 @@ These are recorded so the next plan author can find them.
 
 Execute as one focused commit (Phase 1 only; subsequent phases get their own plan iteration or commit batch):
 
-1. **Author `src/tessellum/composer/dks.py`** with the 5 dataclasses + `DKSCycle.run()` + `MockBackend`-driven test runner.
+1. **Author the DKS core module** (originally `src/tessellum/composer/dks.py` at v0.0.40; relocated to `src/tessellum/dks/core.py` at v0.0.43) with the 7 dataclasses + `DKSCycle.run()` + `MockBackend`-driven test runner.
 2. **Add `tests/smoke/test_dks_core.py`** (15-20 tests covering the cycle, termination, BB-typing, degraded cases).
 3. **Export from `composer/__init__.py`**: `DKSCycle`, `DKSCycleResult`, `DKSObservation`, `DKSWarrant`, `DKSArgument`, `DKSCounterArgument`.
 4. **Update `composer/__init__.py`'s `__all__`** to include the new names.
@@ -295,5 +322,5 @@ Phases 2-5 follow the same pattern: focused commits, one major piece per version
 
 ---
 
-**Last Updated**: 2026-05-10
-**Status**: Active — draft pending user approval, then ships across 5 versions as v0.0.40 → v0.0.44.
+**Last Updated**: 2026-05-10 (v0.0.43 amendment — Phases 1-3 shipped; DKS lifted to its own top-level module `tessellum.dks`; version mapping shifted by one patch (v0.0.41 was used by FZ-tooling))
+**Status**: Active — Phases 1-3 (v0.0.40, v0.0.42, v0.0.43) shipped; Phase 4 (v0.0.44) + Phase 5 (v0.0.45) pending.
