@@ -1,0 +1,86 @@
+{
+  "cycle_id": "6",
+  "mode": "fresh",
+  "closed_loop": true,
+  "escalation_decision": "full",
+  "confidence_score": null,
+  "gated": false,
+  "elapsed_ms": 63114.80325006414,
+  "backend_id": "anthropic",
+  "folgezettel_nodes": [
+    "6",
+    "6a",
+    "6b",
+    "6aa",
+    "6aaa",
+    "6aaaa"
+  ],
+  "observation": {
+    "folgezettel": "6",
+    "summary": "TESS-004 (counter-argument notes must link to attacked argument notes) was proposed as a rule to promote the BB-edge relationship from declarative data to invariant, but depends on whether folgezettel_parent is the right home for that edge (making it structural) or whether the link should live in prose (See Also), which is fragile.",
+    "timestamp": null
+  },
+  "argument_a": {
+    "folgezettel": "6a",
+    "warrant": {
+      "claim": "TESS-004 should be implemented by encoding counter-argument links in a dedicated structured field rather than in prose 'See Also' sections, because only a machine-enforceable structural location can elevate the BB-edge from fragile declarative data to a genuine invariant.",
+      "data": "The proposal to make counter-argument notes link to attacked argument notes (TESS-004) hinges entirely on where that edge lives in the data model. If the link resides in prose or a loosely interpreted 'See Also' field, it cannot be automatically validated; any 'rule' governing it collapses to a social norm subject to silent violation. If instead the link lives in a typed, schema-enforced field\u2014whether folgezettel_parent or a purpose-built attacked_argument field\u2014the constraint becomes structurally invariant: the system itself refuses to accept a counter-argument note that omits the target. The conservative position is that rule-making precedes edge-promotion: first fix the structural home, then declare the invariant.",
+      "warrant": "A meta-level principle possesses sufficient adjudicative authority to resolve domain-internal disputes when its foundational criteria are domain-neutral and temporally prior to the dispute. Applied here: the general software-engineering principle that data integrity constraints belong in schema enforcement rather than in documentation or convention is domain-neutral and predates the TESS-004 debate. That principle adjudicates the structural-vs.-prose question without circularity, because its authority derives from cross-domain standards (schema theory, relational integrity, formal ontology design) whose acceptance does not depend on how any particular zettelkasten chooses to model edges.",
+      "backing": "Relational database theory establishes that referential integrity is only guaranteed when foreign-key constraints are enforced by the storage engine, not by application-layer convention. Formal ontology engineering (OWL, RDF SHACL) distinguishes 'closed-world' structural axioms from 'open-world' annotations precisely because only the former can be machine-checked. Zettelkasten practice itself distinguishes folgezettel (structural sequence, mechanically navigable) from hyperlinks in prose (author-maintained, prone to drift). These three converging precedents\u2014each established prior to and independent of TESS-004\u2014ground the conservative requirement: the BB-edge must have a typed structural home before the invariant claim is warranted.",
+      "qualifier": "This argument holds provided that the chosen structural field is expressive enough to capture the semantics of 'attacks' without collapsing it into mere sequence (folgezettel_parent) or generic cross-reference. If folgezettel_parent cannot encode the adversarial relationship distinctly, a new dedicated field is required rather than a repurposing of an existing one; the conservative commitment is to structural rigor, not to any particular field name.",
+      "rebuttal": ""
+    },
+    "evidence": "Systems that attempted to enforce citation or link norms through prose convention alone\u2014early wiki 'backlink' practices, informal 'see also' sections in academic hypertexts\u2014consistently showed link rot and norm erosion within two to three years of adoption, while systems that encoded link types in structured metadata (e.g., Roam's block-reference model, Obsidian's typed dataview fields, SKOS's skos:related vs. skos:broader) maintained link integrity across schema migrations. This empirical record supports the structural-enforcement requirement that TESS-004 must satisfy before the BB-edge can be called invariant."
+  },
+  "argument_b": {
+    "folgezettel": "6b",
+    "warrant": {
+      "claim": "The structural home of the BB-edge (folgezettel_parent versus prose See-Also) should be decided by which placement makes the counter-argument linkage rule TESS-004 tractable as an invariant rather than by which placement is ontologically 'correct', because tractability under reflexive evaluation is the second-order adequacy criterion that outranks first-order ontological fit.",
+      "data": "TESS-004 proposes promoting BB-edges (counter-argument notes linking to the notes they attack) from declarative data to invariants. Two candidate placements exist: (a) folgezettel_parent, which is a structural slot and enforces the link mechanically, and (b) prose See-Also references, which are semantically rich but fragile and uncheckable by structural validators. The choice of placement determines whether TESS-004 can be enforced programmatically or only by convention.",
+      "warrant": "An ontology whose domain of application is isomorphic to the processes used to evaluate it cannot be warranted by either prescriptive validity or descriptive frequency alone, and requires a meta-level evaluative frame that is structurally distinct from both the object ontology and the evaluative processes it models. That frame evaluates the ontology by its capacity to make reflexive relationships tractable\u2014second-order tractability\u2014rather than by first-order correspondence to usage or normative coherence.",
+      "backing": "If the BB-edge lives in folgezettel_parent, the parent slot carries dual semantic load: it encodes both 'this note develops from its parent in sequence' and 'this note attacks its parent as a counter-argument'. These are not isomorphic relations; conflating them in one structural slot introduces ambiguity that makes the slot's invariant semantics underdetermined. Conversely, if the BB-edge lives solely in prose, TESS-004 cannot be enforced as a structural invariant at all\u2014it degrades to a style recommendation. The tractability criterion cuts through this: whichever representation allows the counter-argument relationship to be (i) unambiguously identified by a mechanical process, (ii) distinguished from non-counter-argument parent links, and (iii) validated without human interpretation of prose, is the representation that satisfies second-order tractability. This points toward a dedicated edge type\u2014neither folgezettel_parent nor prose\u2014possibly a typed link slot (e.g., attacks_note_id) as the tractability-maximizing solution, even if it requires extending the schema beyond the two options currently on the table.",
+      "qualifier": "This conclusion holds only if the system's evaluative processes are themselves partially constituted by the ontology being designed (i.e., the reflexive isomorphism condition is genuinely met); if the evaluation is purely external, first-order ontological fit may suffice and a new schema slot may be unnecessary overhead.",
+      "rebuttal": ""
+    },
+    "evidence": "The observation that placing BB-edges in folgezettel_parent makes them 'structural' while placing them in See-Also makes them 'fragile' already implicitly invokes tractability as the operative criterion\u2014fragility is an epistemic-process concern, not an ontological-fit concern. This reveals that the practical debate has already shifted to second-order grounds without naming them, which is precisely the condition under which making the meta-level frame explicit would resolve rather than reopen the dispute."
+  },
+  "contradicts": {
+    "attacker_fz": "6b",
+    "attacked_fz": "6a",
+    "reason": "Claim mismatch: A asserts \"TESS-004 should be implemented by encoding counter-argument links in a dedicated structured field rather than in prose 'See Also' sections, because only a machine-enforceable structural location can elevate the BB-edge from fragile declarative data to a genuine invariant.\"; B asserts \"The structural home of the BB-edge (folgezettel_parent versus prose See-Also) should be decided by which placement makes the counter-argument linkage rule TESS-004 tractable as an invariant rather than by which placement is ontologically 'correct', because tractability under reflexive evaluation is the second-order adequacy criterion that outranks first-order ontological fit.\""
+  },
+  "counter": {
+    "folgezettel": "6aa",
+    "attacked_fz": "6a",
+    "broken_component": "warrant",
+    "counter_claim": "The general software-engineering principle that data integrity constraints belong in schema enforcement is not domain-neutral in the relevant sense, because its application to zettelkasten edge-placement presupposes that the zettelkasten graph is the kind of system where schema-enforceability is the governing adequacy criterion\u2014a presupposition that is itself contested by TESS-004 and that cannot be settled by appealing to cross-domain schema theory without begging the question.",
+    "reason": "The attacked warrant claims adjudicative authority for the schema-enforcement principle on the grounds that it is domain-neutral and temporally prior, and therefore non-circular. The attacker's counter-argument breaks this warrant by introducing a second-order adequacy criterion (tractability under reflexive self-evaluation) that the warrant's own cross-domain pedigree cannot override. Domain-neutrality and temporal priority establish that the principle is *applicable* across domains, but they do not establish that it *outranks* competing second-order criteria when those criteria are themselves domain-general (reflexive tractability is no more domain-specific than schema integrity). The warrant's authority-derivation story thus underdetermines the ranking contest: two domain-neutral, temporally-antecedent principles conflict, and the warrant provides no meta-meta-level rule for breaking that tie. Consequently the claim that the schema-enforcement principle 'adjudicates without circularity' fails\u2014it simply relocates the circularity to a higher level where the choice between competing domain-neutral principles remains unresolved.",
+    "strength": "strong"
+  },
+  "pattern": {
+    "folgezettel": "6aaa",
+    "description": "A recurring structural regularity in which a cross-domain warrant is deployed to settle a domain-internal dispute about which adequacy criterion governs, while the very question of which criterion governs is precisely what is under contest. The contradiction exposes a circularity: the warrant imports a governing criterion (schema-enforceability) as if it were domain-neutral, but its neutrality can only be established by first resolving the domain-internal dispute it was invoked to resolve. This pattern appears whenever a general engineering or formal principle is used to adjudicate a boundary-condition debate in a specialized domain, and the domain's boundary conditions are themselves what is being negotiated.",
+    "observed": [
+      "criterion-presupposition circularity",
+      "domain-neutrality overclaim",
+      "adequacy-criterion contestation",
+      "warrant-as-petitio-principii",
+      "cross-domain principle misapplication",
+      "governing-criterion underdetermination",
+      "schema-enforceability assumption",
+      "boundary-condition dispute masking"
+    ]
+  },
+  "rule_revision": {
+    "folgezettel": "6aaaa",
+    "revised_warrant": {
+      "claim": "Cross-domain warrants may inform but not settle domain-internal disputes about governing adequacy criteria when those criteria are themselves under contest.",
+      "data": "A structural circularity arises whenever a cross-domain principle (e.g., schema-enforceability) is imported to adjudicate which criterion governs a specialized domain, because the neutrality of that principle presupposes resolution of the very dispute it is invoked to resolve; the warrant thus begs the question it was meant to answer.",
+      "warrant": "A cross-domain warrant is epistemically admissible as evidence in a domain-internal boundary dispute only after an independent, domain-internal meta-criterion has been established that (1) is not itself derived from the cross-domain principle under consideration, and (2) explicitly licenses the import of that principle for adjudicative purposes; absent such prior establishment, the cross-domain warrant may serve only a heuristic or illustrative role and carries no adjudicative authority over the contested adequacy criterion.",
+      "backing": "Epistemic circularity is avoided by requiring a non-question-begging foundation: the logical principle that a justification cannot derive its authority from the very conclusion it is meant to establish (Aristotle's prohibition on circular demonstration, Posterior Analytics I.3); coherentist and foundationalist accounts of justification both require that at least one node in an inferential chain be independently secured before it can transmit warrant to other nodes; in formal systems, meta-level rules governing object-level rule selection must be stated at a strictly higher level than the object-level rules they govern (Tarski's hierarchy), preventing the governed level from self-certifying its own governing criterion.",
+      "qualifier": "This constraint applies specifically to boundary-condition disputes in specialized domains where the governing adequacy criterion is the locus of contestation; it does not prohibit cross-domain analogies, heuristics, or provisional framings, nor does it apply when domain consensus on the meta-criterion already exists and the cross-domain principle is merely being checked for consistency with that consensus.",
+      "rebuttal": ""
+    },
+    "supersedes": null
+  }
+}

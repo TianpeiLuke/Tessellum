@@ -1,0 +1,85 @@
+{
+  "cycle_id": "17",
+  "mode": "fresh",
+  "closed_loop": true,
+  "escalation_decision": "full",
+  "confidence_score": null,
+  "gated": false,
+  "elapsed_ms": 65723.37483405136,
+  "backend_id": "anthropic",
+  "folgezettel_nodes": [
+    "17",
+    "17a",
+    "17b",
+    "17aa",
+    "17aaa",
+    "17aaaa"
+  ],
+  "observation": {
+    "folgezettel": "17",
+    "summary": "Meta-DKS in v0.0.52 ships with rule-based heuristics for proposal generation (Toulmin-dominance triggers hand-authored edge candidates), but the evidence bar for retraction (50+ cycles, stricter than addition's 20 cycles) is unvalidated \u2014 whether retracts should require higher evidence, and by how much, depends on production evidence that does not yet exist.",
+    "timestamp": null
+  },
+  "argument_a": {
+    "folgezettel": "17a",
+    "warrant": {
+      "claim": "The asymmetric evidence thresholds in Meta-DKS v0.0.52\u2014requiring 50+ cycles for retraction versus 20 for addition\u2014should be preserved as the default until production evidence specifically justifies revision, because premature symmetric relaxation risks ontological instability that is harder to recover from than delayed retraction.",
+      "data": "Meta-DKS v0.0.52 encodes an asymmetric evidence bar: addition of edge candidates triggers at 20 cycles, retraction requires 50+ cycles. The observation correctly notes that the higher retraction threshold is unvalidated by production evidence. However, the system is currently live and operational, and no production evidence of harm from the asymmetry has been adduced\u2014only the absence of validating evidence for the threshold ratio itself.",
+      "warrant": "Uncertainty-management strategies must remain epistemically transparent and structurally revisable, never hardening provisional gap-classifications into constitutive ontological categories\u2014but this cuts symmetrically: the absence of validation for the current threshold is not positive evidence that the threshold is wrong. A gap classification (here, 'threshold ratio is unvalidated') is warranted only when its basis is explicitly distinguished from any stronger claim about the nature of that absence. No evidence yet shows the 50-cycle bar causes harmful retention of false edges; the revisability condition for the current policy has not been triggered.",
+      "backing": "Asymmetric conservatism in knowledge-base revision is a well-established heuristic in belief-revision theory (Alchourr\u00f3n-G\u00e4rdenfors-Makinson contraction constraints) and in production ML systems: the cost of erroneously retracting a true edge is typically higher than the cost of delaying retraction of a false one, because downstream inference chains built on retained beliefs must be reconstructed upon retraction, whereas delayed addition merely defers extension. The Toulmin-dominance heuristic underlying addition is itself rule-based and unvalidated in the same sense; parity of epistemic status between addition and retraction does not imply parity of risk. Furthermore, the warrant requiring explicit procedural mechanisms for self-limiting conditions applies here: no concrete revision trigger (a named class of production evidence, a threshold condition jointly sufficient to initiate review) has yet been specified for replacing the 50-cycle bar, so revision cannot be procedurally grounded and should not proceed on purely theoretical symmetry arguments.",
+      "qualifier": "Presumptively and defeasibly: the asymmetric threshold should be maintained as operational default unless and until production monitoring yields positive evidence (e.g., measured edge-retention error rates attributable to the 50-cycle bar, or formal cost-asymmetry analysis showing retraction errors are no costlier than addition errors in this domain) that satisfies a jointly specified revision trigger agreed upon before the evidence is collected, so as to prevent post-hoc threshold-tuning.",
+      "rebuttal": ""
+    },
+    "evidence": "No production evidence of harm from the 50-cycle retraction threshold exists in v0.0.52 at time of observation. Belief-revision literature (AGM framework) provides theoretical backing for asymmetric contraction costs. The observation itself concedes the threshold is 'unvalidated' rather than 'shown to be incorrect,' which is an epistemic gap, not a refutation. The procedural-mechanism warrant further requires that any revision be grounded in pre-specified triggers, none of which have been articulated in the current system documentation."
+  },
+  "argument_b": {
+    "folgezettel": "17b",
+    "warrant": {
+      "claim": "The asymmetric evidence thresholds in Meta-DKS v0.0.52 (50 cycles for retraction vs. 20 for addition) function as an unacknowledged ontological posit rather than an empirically grounded policy, and must be explicitly re-classified as a provisional pragmatic regress-stopper subject to structured revision triggers before the asymmetry can be epistemically justified.",
+      "data": "Meta-DKS v0.0.52 encodes a 2.5\u00d7 higher evidence requirement for retraction than for addition. This asymmetry is unvalidated\u2014no production evidence establishes whether retraction genuinely warrants greater epistemic friction, nor by what factor. The policy is operationally active and shapes ontology evolution, yet its justificatory basis is absent. It is, in effect, a hardened gap-classification: the system treats 'we lack evidence to the contrary' as a positive warrant for conservatism, without distinguishing that epistemic absence from a substantive claim about the domain.",
+      "warrant": "A gap classification is warranted only so long as its basis\u2014mere absence of data\u2014is explicitly distinguished from any stronger claim about the nature of that absence. This requires that every liminal or uncertainty category carry a live revisability condition: a specified class of evidence or instrumentation whose arrival would trigger reclassification. If no such condition can be articulated, the classification has already crossed from epistemic management into ontological assertion and must be flagged as such. (Drawn from the warrant backing the claim: 'Uncertainty-management strategies must remain epistemically transparent and structurally revisable, never hardening provisional gap-classifications into constitutive ontological categories.')",
+      "backing": "The asymmetric threshold implicitly asserts that retraction-errors are costlier than addition-errors\u2014a substantive domain claim. Because no production evidence grounds this, the system is self-certifying a boundary condition (retraction risk > addition risk) from within its own operational topology, violating the requirement that layered-separation claims be validated by a metatheoretic frame external to the system's own axioms. Additionally, epistemic humility expressed at design time acquires operational force only when paired with named revision triggers and threshold conditions jointly sufficient to initiate review; the current policy has neither, making its conservatism rhetorical rather than procedurally grounded.",
+      "qualifier": "Probably\u2014this re-classification is strongly indicated given the structural analysis, but the possibility remains that the asymmetry reflects tacit domain knowledge held by designers that has not yet been surfaced as explicit warrant; exploratory investigation should first attempt to elicit and evaluate that tacit rationale before treating the posit as entirely ungrounded.",
+      "rebuttal": ""
+    },
+    "evidence": "The observation itself constitutes direct evidence: the 50-cycle retraction threshold and 20-cycle addition threshold are live operational parameters in v0.0.52, and the system documentation records no empirical calibration study, no named revision trigger, and no explicit acknowledgment that the ratio is a provisional pragmatic choice rather than a derived necessity. The absence of any specified falsifying evidence class for the asymmetry is the diagnostic signal that the gap-classification has hardened into an ontological assertion."
+  },
+  "contradicts": {
+    "attacker_fz": "17b",
+    "attacked_fz": "17a",
+    "reason": "Claim mismatch: A asserts 'The asymmetric evidence thresholds in Meta-DKS v0.0.52\u2014requiring 50+ cycles for retraction versus 20 for addition\u2014should be preserved as the default until production evidence specifically justifies revision, because premature symmetric relaxation risks ontological instability that is harder to recover from than delayed retraction.'; B asserts 'The asymmetric evidence thresholds in Meta-DKS v0.0.52 (50 cycles for retraction vs. 20 for addition) function as an unacknowledged ontological posit rather than an empirically grounded policy, and must be explicitly re-classified as a provisional pragmatic regress-stopper subject to structured revision triggers before the asymmetry can be epistemically justified.'"
+  },
+  "counter": {
+    "folgezettel": "17aa",
+    "attacked_fz": "17a",
+    "broken_component": "warrant",
+    "counter_claim": "The absence of evidence that the 50-cycle bar causes harmful retention of false edges is not epistemically neutral: given the asymmetric burden the policy itself imposes, the absence of validation for the asymmetry shifts the epistemic burden onto the policy's defenders, not its critics. A policy that structurally resists falsification by requiring 50 cycles before retraction thereby suppresses the very evidence that would reveal its harms, making 'no evidence of harm' a predictable artifact of the policy's own design rather than independent support for it.",
+    "reason": "The warrant conflates two distinct epistemic situations: (1) absence of evidence where a fair evidential process has been operating, and (2) absence of evidence where the policy's own structure systematically delays or suppresses the generation of disconfirming evidence. The 50-cycle retraction threshold creates exactly condition (2)\u2014false edges are retained longer precisely because of the asymmetry, meaning the harm signal is deferred. Invoking 'no evidence of harm yet' to justify the threshold that suppresses harm evidence is circular. The warrant's symmetry claim ('absence of validation is not positive evidence of wrongness') holds only when the evidential process is itself unbiased; when the threshold itself shapes the evidence base, the symmetry breaks down and the warrant loses its force.",
+    "strength": "strong"
+  },
+  "pattern": {
+    "folgezettel": "17aaa",
+    "description": "A self-sealing epistemic structure in which the mechanism used to justify a policy simultaneously suppresses the evidence that would falsify it, converting the absence of disconfirming evidence into apparent support rather than genuine neutrality. The regularity is: whenever a policy's operational design makes its own harms invisible or hard to detect, citing 'no evidence of harm' as a warrant for the policy conflates an artifact of suppression with independent confirmation, and the burden of proof is asymmetrically misplaced onto critics rather than defenders.",
+    "observed": [
+      "self-sealing policy design",
+      "suppressed falsifiability",
+      "absence-as-artifact fallacy",
+      "asymmetric burden misplacement",
+      "evidence occlusion by procedure",
+      "circular warrant structure",
+      "operational design masking harm signals"
+    ]
+  },
+  "rule_revision": {
+    "folgezettel": "17aaaa",
+    "revised_warrant": {
+      "claim": "Policies whose operational design structurally limits harm detection cannot legitimately cite 'no evidence of harm' as confirmatory support for their continuation or expansion.",
+      "data": "When the mechanisms of a policy systematically render its negative consequences invisible\u2014through restricted access, suppressed reporting channels, diffuse victim populations, or incentive structures that discourage disclosure\u2014the absence of recorded harm is an artifact of the suppression architecture rather than an independent evidentiary finding. Historical cases include closed institutional review systems, stop-and-frisk audit voids, pharmaceutical post-market silence, and solitary confinement oversight gaps, all of which produced 'no evidence of harm' citations while harms accrued undetected.",
+      "warrant": "A valid 'no evidence of harm' inference requires that the evidentiary environment be epistemically open: harm, if present, must have a realistic pathway to detection and recording independent of the policy's own operational control. Where the policy itself narrows or forecloses that pathway, the null finding is endogenous to the design and carries no confirmatory weight. In such cases the burden of proof inverts: defenders of the policy must first demonstrate that the detection environment is sufficiently open before appealing to absence-of-evidence, and critics need only establish the plausible suppression mechanism rather than produce the suppressed evidence directly.",
+      "backing": "Bayesian epistemology distinguishes evidence of absence (a genuine negative result after adequate search) from absence of evidence (a null record that could reflect either absence or failed detection). Karl Popper's falsifiability criterion implies that a claim is not empirically supported when the system that would generate disconfirming data is structurally disabled. Philosophy of science literature on 'manufactured ignorance' (Proctor & Schiebinger, Agnotology, 2008) and legal due-process doctrine on access to exculpatory evidence both converge on the principle that evidentiary standards must account for asymmetric information control. Hempel's Ravens paradox further illustrates that confirming instances only strengthen a hypothesis when the sampling process is not biased toward confirming observations.",
+      "qualifier": "This rule applies specifically when there is positive reason to believe the detection environment is constrained by the policy's own design or incentive structure. It does not automatically invalidate all null findings; policies with independent, adversarially robust, and publicly auditable monitoring mechanisms may still legitimately appeal to absence of detected harm, provided the monitoring's independence and sensitivity are themselves documented and contestable.",
+      "rebuttal": ""
+    },
+    "supersedes": null
+  }
+}
