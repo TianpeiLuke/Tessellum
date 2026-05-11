@@ -1,22 +1,17 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.49"
+__version__ = "0.0.50"
 
 __status__ = (
-    "alpha — Phase 7 of plan_dks_expansion lands: learned confidence + "
-    "retrieval-grounded warrants. CalibratedConfidence reads "
-    "WarrantHistory for a recency-weighted attack-rate signal "
-    "(replaces ConstantConfidence placeholder). `tessellum dks "
-    "--calibrate` mode replays past per-cycle traces, reports the "
-    "achieved false-gate rate at the current threshold, and suggests a "
-    "threshold that hits --target-false-gate-rate (default 10% per "
-    "D2). DKSCycle gains retrieval_client + semantic_disagreement "
-    "kwargs: argument prompts get a 'Related material from the "
-    "substrate' block when a RetrievalClient is wired; step 4 can use "
-    "one LLM call for semantic disagreement detection (off by default; "
-    "falls back to string-compare on parse failure). CLI flags: "
-    "--confidence-model {constant,calibrated}, --calibrate, "
-    "--target-false-gate-rate, --retrieval-db, --semantic-disagreement. "
-    "Operationalises FZ 2a2's Level 2 learning."
+    "alpha — vault cleanup release. LINK-006 status=template exemption "
+    "lands in the format validator + skill canonical + tests (parallel "
+    "to TESS-004's authoring-state exemption — templates are orphans "
+    "by design). Dogfood vault gains 553 ported notes from the parent "
+    "AB project to resolve every broken-link target from the original "
+    "Tessellum seed (the SEED_VAULT_MANIFEST stays unchanged at ~50 "
+    "entries; the ports are dogfood-only). 5 AB-vault format quirks "
+    "fixed at port time (DKS→dks tags, folgezettel-pair completion, "
+    "paper-review reclassification). v0.0.49's Phase 7 behaviour "
+    "unchanged."
 )
