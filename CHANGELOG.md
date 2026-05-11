@@ -16,6 +16,53 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.41] — 2026-05-10
+
+### Added — FZ trail tooling
+
+Brings the Folgezettel-trail explorer from the parent AB project across to Tessellum, adapted for the simpler `notes`-only schema (no materialised `folgezettel_trails` view — topology is derived from `notes.folgezettel` + `notes.folgezettel_parent` in memory).
+
+#### `src/tessellum/cli/fz.py` — new CLI module
+
+`tessellum fz` ships as a sub-subcommand group with six operations:
+
+| Operation | Purpose |
+|---|---|
+| `tessellum fz list` | All trails with node counts + max depth + BB diversity |
+| `tessellum fz show <FZ>` | Subtree rooted at the resolved FZ (indented by depth) |
+| `tessellum fz ancestors <FZ>` | Root → node chain, with `*` marking the target |
+| `tessellum fz descendants <FZ>` | All descendants below `<FZ>` (excluding the root) |
+| `tessellum fz path <FZ>` | Full chain + same-parent siblings + trail metadata |
+| `tessellum fz all` | Every FZ node, grouped by trail, in numeric-aware order |
+
+Each operation takes `--db <path>` (default `./data/tessellum.db`). The `query` arg accepts either an exact FZ string (`"1a1b"`) or an exact `note_name` file stem.
+
+Two pure helpers are exposed for the rest of the toolkit:
+
+- `fz_sort_key(fz)` — numeric-aware FZ sort (`1b2` < `1b10`)
+- `fz_trail_root(fz)` — leading numeric token (`"1a1b"` → `"1"`)
+
+#### `vault/resources/skills/` — three new skill canonicals
+
+| Skill | Purpose |
+|---|---|
+| `skill_tessellum_traverse_folgezettel.md` | Explore a trail before/after a note (read-only) |
+| `skill_tessellum_manage_folgezettel.md` | Audit FZ health, suggest next number, find duplicates |
+| `skill_tessellum_append_to_trail.md` | Full 7-step procedure to add a new node to any trail |
+
+All three ship via `SEED_VAULT_MANIFEST` so `tessellum init` copies them into every new vault.
+
+#### Tests
+
+`tests/cli/test_fz_cli.py` — 17 smoke tests covering every operation, the sort/trail-root helpers, note-name resolution, unknown-FZ handling, missing-DB exit code, and the banner.
+
+### Changed
+
+- `tessellum --help` banner gains a `tessellum fz {list|show|...}` line.
+- Single source of version: `__about__.py` and `pyproject.toml` bumped to `0.0.41`.
+
+---
+
 ## [0.0.40] — 2026-05-10
 
 ### Added — DKS Phase 1: core runtime (Python API)
