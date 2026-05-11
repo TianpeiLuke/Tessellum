@@ -70,6 +70,8 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     # ── DKS Phase 2 (composer skill) — the agent-invocable surface ──────
     "resources/skills/skill_tessellum_dks_cycle.md",                   # 7-component closed-loop canonical
     "resources/skills/skill_tessellum_dks_cycle.pipeline.yaml",        # sidecar (Composer-compatible)
+    "resources/skills/skill_tessellum_meta_dks_cycle.md",              # 4-step meta-cycle canonical (v0.0.53)
+    "resources/skills/skill_tessellum_meta_dks_cycle.pipeline.yaml",   # meta-cycle sidecar
 
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",

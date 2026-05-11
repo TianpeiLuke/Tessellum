@@ -36,16 +36,25 @@ for retroactive validation reports.
 """
 
 from tessellum.dks.meta.types import (
+    META_ATTACK_KIND,
     META_SCHEMA,
+    MetaCounterArgument,
     MetaEdgeType,
     MetaObservation,
     SchemaEditProposal,
     SCHEMA_EDIT_PROPOSAL_KIND,
+    SURVIVE_THRESHOLD,
 )
 from tessellum.dks.meta.runtime import (
+    Attacker,
     DEFAULT_MIN_CYCLES,
+    HeuristicProposer,
+    LLMAttacker,
+    LLMProposer,
     MetaCycle,
     MetaCycleResult,
+    NoOpAttacker,
+    Proposer,
     load_event_log,
     write_event_log,
 )
@@ -58,10 +67,20 @@ __all__ = [
     "MetaObservation",
     "SchemaEditProposal",
     "SCHEMA_EDIT_PROPOSAL_KIND",
+    # v0.0.53 Phase B.3 attack types
+    "MetaCounterArgument",
+    "META_ATTACK_KIND",
+    "SURVIVE_THRESHOLD",
     # Runtime
     "DEFAULT_MIN_CYCLES",
     "MetaCycle",
     "MetaCycleResult",
+    "Proposer",
+    "HeuristicProposer",
+    "LLMProposer",
+    "Attacker",
+    "NoOpAttacker",
+    "LLMAttacker",
     "load_event_log",
     "write_event_log",
 ]

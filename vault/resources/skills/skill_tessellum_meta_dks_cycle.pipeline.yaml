@@ -1,0 +1,218 @@
+# tessellum-meta-dks-cycle — Composer pipeline sidecar
+#
+# 4-step pipeline that drives one complete meta-DKS cycle from a
+# MetaObservation (telemetry aggregate) to zero or more landed
+# SchemaEditEvents. Maps directly onto the 4 transitions documented in
+# META_SCHEMA (tessellum.dks.meta.types) and thought_meta_dks_design
+# (FZ 2c1). Informed by Phase V validation findings (FZ 2c1a).
+#
+# Input: a single leaf — the MetaObservation built by the CLI from
+# cycle-level telemetry under --runs-dir. The MetaObservation includes
+# Toulmin failure counts (per-strength when available), top attacked
+# warrants, unrealised schema edges, and sample counter-argument quotes
+# per Toulmin component.
+#
+# Steps 1 and 2 are LLM-driven; steps 3 and 4 are deterministic
+# materialisation (computed without LLM calls). The skill produces no
+# vault notes — outputs are dataclass JSON that flows through
+# MetaCycle.run() and ultimately lands in
+# runs/dks/meta/schema_events.jsonl + a migration note.
+#
+# Backend: works with MockBackend (offline testing — replays against
+# tests/fixtures/dks_meta/validation_v053/) and AnthropicBackend.
+
+version: "1.0"
+
+pipeline:
+  # ── Step 1: Propose — meta_observation → meta_argument ──────────────────
+  - section_id: step_1_propose
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    output_key: proposals
+    materializer: json_to_dataclass
+    expected_output_schema:
+      type: object
+      required: [proposals]
+      properties:
+        proposals:
+          type: array
+          items:
+            type: object
+            required: [kind, edge, motivating_observation, expected_impact, input_bias_risk]
+            properties:
+              kind:
+                type: string
+                enum: ["add", "retract", "refine"]
+              edge:
+                type: object
+                required: [source, target, label]
+                properties:
+                  source:
+                    type: string
+                    enum: ["empirical_observation", "concept", "model", "hypothesis", "argument", "counter_argument", "procedure", "navigation"]
+                  target:
+                    type: string
+                    enum: ["empirical_observation", "concept", "model", "hypothesis", "argument", "counter_argument", "procedure", "navigation"]
+                  label:
+                    type: string
+              motivating_observation:
+                type: string
+              expected_impact:
+                type: string
+              input_bias_risk:
+                type: string
+                enum: ["low", "medium", "high"]
+              supersedes:
+                type: ["object", "null"]
+                properties:
+                  source: {type: string}
+                  target: {type: string}
+                  label: {type: string}
+    prompt_template: |
+      You are running step 1 of the meta-DKS cycle: Propose.
+
+      META-OBSERVATION (aggregated cycle-level telemetry)
+      cycles_examined: {{leaf.cycles_examined}}
+      toulmin_failure_counts: {{leaf.toulmin_failure_counts_json}}
+      counter_strength_breakdown: {{leaf.counter_strength_breakdown_json}}
+      top_attacked_warrants: {{leaf.top_attacked_warrants_json}}
+      unrealised_schema_edges: {{leaf.unrealised_schema_edges_json}}
+      sample_counter_quotes: {{leaf.sample_counter_quotes_json}}
+      observation_source_metadata: {{leaf.observation_source_metadata_json}}
+
+      ACTIVE BB_SCHEMA (do not propose edges already present)
+      {{leaf.active_schema_json}}
+
+      Apply the procedure in section "step_1_propose" of
+      skill_tessellum_meta_dks_cycle.
+
+      Authoring rules:
+        - All four Toulmin components are first-class — do not privilege
+          warrant over premise, counter-example, or undercutting.
+          (Phase V constraint C2.)
+        - Counter strengths weight the signal; one `strong` counter
+          outweighs two `weak`. (C3.)
+        - Quote sample counters when justifying proposals; aggregates
+          alone are not sufficient. (C1.)
+        - Self-report `input_bias_risk` on every proposal — if the
+          observation source has structural skew (e.g., open-architectural
+          questions mechanically invite warrant attacks), set "high"
+          and qualify motivating_observation accordingly. (C4.)
+        - Return an empty `proposals` array if no actionable schema gap
+          is surfaced. Better than fabricating proposals.
+
+      Return ONLY the JSON object specified by expected_output_schema;
+      no prose, no code fences.
+
+  # ── Step 2: Attack — meta_argument → meta_counter ───────────────────────
+  - section_id: step_2_attack
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_1_propose]
+    output_key: attacks
+    materializer: json_to_dataclass
+    expected_output_schema:
+      type: object
+      required: [attacks]
+      properties:
+        attacks:
+          type: array
+          items:
+            type: object
+            required: [attacked_proposal_index, attack_kind, reason, strength]
+            properties:
+              attacked_proposal_index:
+                type: integer
+                minimum: 0
+              attack_kind:
+                type: string
+                enum: ["insufficient_evidence", "input_bias", "overgeneralisation", "collides_with_existing", "weak_signal"]
+              reason:
+                type: string
+              strength:
+                type: string
+                enum: ["weak", "moderate", "strong"]
+    prompt_template: |
+      You are running step 2 of the meta-DKS cycle: Attack.
+
+      PROPOSALS (from step 1)
+      {{upstream.proposals}}
+
+      META-OBSERVATION (same as step 1)
+      cycles_examined: {{leaf.cycles_examined}}
+      toulmin_failure_counts: {{leaf.toulmin_failure_counts_json}}
+      counter_strength_breakdown: {{leaf.counter_strength_breakdown_json}}
+      sample_counter_quotes: {{leaf.sample_counter_quotes_json}}
+      observation_source_metadata: {{leaf.observation_source_metadata_json}}
+
+      Apply the procedure in section "step_2_attack" of
+      skill_tessellum_meta_dks_cycle.
+
+      Authoring rules:
+        - For each proposal, decide whether one or more attack_kind
+          values apply. Multiple attacks against the same proposal are
+          allowed if and only if each names a distinct attack_kind.
+        - Attack the proposal's logic, not the proposer's competence.
+          Cite specific telemetry counts or sample quotes.
+        - If a proposal flagged `input_bias_risk` "medium" or "high",
+          you SHOULD fire an `input_bias` counter to make the risk
+          explicit. (Phase V constraint C5.)
+        - Empty `attacks` array is valid — if no proposal has a
+          defensible attack, return [].
+
+      Return ONLY the JSON object specified by expected_output_schema;
+      no prose, no code fences.
+
+  # ── Step 3: Aggregate — meta_counter → meta_pattern (deterministic) ─────
+  - section_id: step_3_aggregate
+    role: CORE
+    aggregation: per_leaf
+    batchable: true
+    depends_on: [step_2_attack]
+    output_key: survival_decisions
+    materializer: deterministic_no_llm
+    # No prompt — the orchestrator computes survival from step 2's output.
+    # Default rule: a proposal survives iff
+    #   len(strong_attacks) <= 1 and len(moderate_attacks) <= 2.
+    # Configurable via --survive-threshold {strict|majority|permissive}.
+    expected_output_schema:
+      type: object
+      required: [decisions]
+      properties:
+        decisions:
+          type: array
+          items:
+            type: object
+            required: [proposal_index, survives, surviving_reason]
+            properties:
+              proposal_index:
+                type: integer
+              survives:
+                type: boolean
+              surviving_reason:
+                type: string
+
+  # ── Step 4: Land — meta_pattern → meta_revision (deterministic) ─────────
+  - section_id: step_4_land
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_3_aggregate]
+    output_key: landed_events
+    materializer: deterministic_no_llm
+    # No prompt — the orchestrator materialises surviving proposals as
+    # SchemaEditEvents, appends to runs/dks/meta/schema_events.jsonl,
+    # and authors runs/dks/meta/migration_<UTC-ts>.md from a fixed template.
+    expected_output_schema:
+      type: object
+      required: [events_landed_count, events_path, migration_note_path]
+      properties:
+        events_landed_count:
+          type: integer
+        events_path:
+          type: ["string", "null"]
+        migration_note_path:
+          type: ["string", "null"]

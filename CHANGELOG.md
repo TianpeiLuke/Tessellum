@@ -16,6 +16,151 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.53] — 2026-05-10
+
+### Added — Phase V + Phase B of plan_meta_dks_validation_and_polish
+
+v0.0.52 shipped meta-DKS as a *mechanism*. v0.0.53 makes it a
+*deployable runtime*. The two phases shipped here come from
+`plans/plan_meta_dks_validation_and_polish.md`:
+
+- **Phase V (validation)** — a 25-cycle Anthropic-backed dogfood
+  ($0.85, 26 min) against vault-sourced observations. Emergent
+  Toulmin distribution: 92% warrant + 8% undercutting (0 premise, 0
+  counter-example). The v0.0.52 heuristic fired correctly on the
+  dominant signal — *one* schema proposal landed (`add model →
+  procedure (warrant_codification)`). Phase V also surfaced four
+  structural blind spots: BS-1 no representativeness check; BS-2 no
+  mapping for `undercutting`; BS-3 counter strength dropped from the
+  failure-count metric; BS-4 fresh-mode runs don't exercise the
+  warrant-attack-rate signal.
+
+- **Phase B (backfill)** — operationalises the five Phase
+  V-crystallised prompt-design constraints (C1-C5) and lands the
+  Phase 9 deferrals.
+
+**Composer skill canonical (B.1)** —
+`vault/resources/skills/skill_tessellum_meta_dks_cycle.md` + sidecar
+ship as the agent-invocable surface of the meta-cycle. 4 transitions
+(proposing → attacking → aggregating → landing) map to 4 steps; the
+sidecar JSON schema specifies the wire format for LLM-driven
+proposer + attacker.
+
+**LLMProposer strategy (B.2)** — new `Proposer` Protocol in
+`tessellum.dks.meta.runtime`; `HeuristicProposer` (v0.0.52
+lookup-table behaviour, default) and `LLMProposer` (Phase V-driven
+LLM-backed proposer, replays against the validation fixture).
+`MetaCycle` accepts a `proposer` kwarg. CLI gains
+`tessellum dks --meta --proposer {heuristic,llm}`. `MetaObservation`
+grows three v0.0.53 fields per Phase V constraints — C1 sample
+counter quotes, C3 counter strength breakdown, C4 observation source
+metadata. The LLM proposer prompt explicitly handles all four
+Toulmin components symmetrically (C2) and emits
+`input_bias_risk` per proposal (C4).
+
+**MetaAttacker + dialectical survive stage (B.3)** — new
+`MetaCounterArgument` frozen dataclass with 5 typed attack kinds
+(`insufficient_evidence`, `input_bias`, `overgeneralisation`,
+`collides_with_existing`, `weak_signal`); `input_bias` is the C5
+Phase V addition. New `Attacker` Protocol + `NoOpAttacker` (default,
+preserves v0.0.52 survive=pass-through) + `LLMAttacker`. New
+aggregation stage in `MetaCycle._aggregate_survival` with three
+configurable thresholds: `strict` (zero attacks), `majority`
+(default: ≤1 strong AND ≤2 moderate), `permissive` (no strong).
+CLI gains `--attacker {none,llm}` + `--survive-threshold
+{strict,majority,permissive}` flags. `MetaCycleResult` exposes the
+emitted attacks and the threshold applied.
+
+**`bb_schema_version` auto-population (B.4)** — `tessellum capture`
+now writes `bb_schema_version: <BB_SCHEMA_VERSION>` into YAML
+frontmatter at note creation, immediately after the
+`building_block:` line. Reads the version live from
+`tessellum.bb.types.BB_SCHEMA_VERSION` (per the import-aliasing
+quirk documented in v0.0.52). Idempotent — templates that already
+declare an explicit version are left alone. D8 frozen-at-creation
+discipline now enforced on capture; the *consuming* validator
+behaviour is the v0.0.54+ deliverable.
+
+**`tessellum bb migrate` (B.5)** — new CLI subcommand under
+`tessellum bb` for retroactive `bb_schema_version` validation.
+Scans `--vault` (default `./vault/`) for `.md` files, compares each
+note's recorded version to `--target-version` (default `"current"`
+which resolves to `BB_SCHEMA_VERSION`), runs TESS-005 against the
+current schema, classifies as would-pass / would-fail. `--apply`
+bumps versions on would-pass notes via in-place YAML rewrite
+(idempotent). Notes that would-fail under the target are reported
+but never auto-rewritten — manual review required (per plan OQ-B-e).
+JSON + human output formats.
+
+**BBGraph integration into MetaObservation (B.6)** — new
+`BBGraph.unrealised_schema_edges()` method returns the tuple of
+`EpistemicEdgeType`s in `BB_SCHEMA` whose BB-pair has zero realised
+instances in the corpus. `tessellum dks --meta` now consumes
+`--bb-db` (already used by `--report`) to populate
+`MetaObservation.unrealised_schema_edges` from the live corpus
+graph. Activates `HeuristicProposer`'s Heuristic-2 (retract-unused-
+edge, ≥50-cycle gate retained). v0.0.52's empty-tuple fallback
+preserved when the DB is absent or unreadable.
+
+**FZ 2c1a validation note** —
+`vault/resources/analysis_thoughts/thought_meta_dks_validation_v053.md`
+ships as a child of FZ 2c1. Documents the 25-observation set + its
+provenance, the emergent Toulmin distribution, the proposal that
+fired, the four blind spots, the five Phase B prompt-design
+constraints, and five OQ-2c1a-a..e open questions. Added to the
+seed manifest + dialectic trail entry point + master FZ trail index
+(8 dialectic nodes, 18 total).
+
+### Tests
+
+- `tests/smoke/test_dks_meta_proposer.py` (17 new) — Proposer
+  protocol, HeuristicProposer regression, LLMProposer parsing +
+  malformed-JSON + unknown-BBType handling, prompt content covers
+  C1/C3/C4 enrichment fields, MetaCycle accepts proposer kwarg,
+  replay against the validation_v053 fixture produces 1 proposal.
+- `tests/smoke/test_dks_meta_attacker.py` (19 new) —
+  MetaCounterArgument shape, NoOpAttacker pass-through, LLMAttacker
+  parsing + dedup + filter, survive thresholds (strict / majority /
+  permissive), MetaCycle attacker integration, dialectical-path
+  propagates to landed events.
+- `tests/cli/test_dks_meta_cli.py` (5 new) — `--proposer llm` end-
+  to-end with MockBackend, `--attacker llm` kills proposal at
+  strict, `--attacker none` preserves v0.0.52, `--bb-db` integration.
+- `tests/cli/test_bb_migrate_cli.py` (13 new) — migrate error paths,
+  empty vault, behind-target detection, `--apply` bumps, missing-
+  field default to v=1, non-integer skipped, idempotent re-runs.
+- `tests/smoke/test_bb_graph.py` (3 new) —
+  `unrealised_schema_edges()` returns valid tuple, excludes realised
+  pairs, total = unrealised + realised.
+- `tests/smoke/test_capture.py` (4 new) — `bb_schema_version` written
+  after `building_block:`, all flavors record it, explicit-version
+  templates not overwritten.
+
+Full suite: **811 passed**.
+
+### Deferred
+
+- **Version-aware validation** in TESS-005 (the *consuming* side of
+  D8) — v0.0.53 records `bb_schema_version` on capture and reports
+  via `tessellum bb migrate`, but the validator itself still
+  validates against the live BB_SCHEMA. A future
+  `BB_SCHEMA_AT_VERSION(n)` lookup would let TESS-005 honour the
+  recorded version. Phase 11+.
+- **Manual-review-driven link rewriting** in `bb migrate
+  --rewrite-links` — would-fail notes are reported but never
+  auto-rewritten. Phase 11+.
+
+### Sequencing for Phase 10
+
+Phase 10 (multi-perspective DKS + Dung labelling) retains its slot
+in `plan_dks_expansion.md` as v0.0.54. The interaction point is
+**OQ-2c1-c** from the FZ 2c1 design synthesis: MetaObservation will
+grow a per-perspective stratification on
+`counter_strength_breakdown` once Phase 10 ships; LLM proposer's
+prompt amends to surface stratified failure modes.
+
+---
+
 ## [0.0.52] — 2026-05-10
 
 ### Added — Phase 9 of plan_dks_expansion: meta-DKS (the schema-mutation runtime)

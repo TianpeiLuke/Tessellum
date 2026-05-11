@@ -223,3 +223,74 @@ def test_capture_skill_refuses_overwrite_when_sidecar_exists(vault_root):
     capture("skill", "my_skill", vault_root=vault_root)
     with pytest.raises(FileExistsError, match="already exists"):
         capture("skill", "my_skill", vault_root=vault_root)
+
+
+# ── bb_schema_version auto-population (Phase B.4) ──────────────────────────
+
+
+def test_capture_writes_bb_schema_version_frontmatter(vault_root):
+    """New captures must record `bb_schema_version` per D8 frozen-at-creation."""
+    from tessellum.bb.types import BB_SCHEMA_VERSION
+
+    result = capture("argument", "my_argument", vault_root=vault_root)
+    text = result.path.read_text(encoding="utf-8")
+    assert f"bb_schema_version: {BB_SCHEMA_VERSION}" in text
+
+
+def test_capture_bb_schema_version_appears_after_building_block(vault_root):
+    """Field is placed right after `building_block:` for visual grouping."""
+    result = capture("concept", "my_concept", vault_root=vault_root)
+    text = result.path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    # Find indices
+    bb_idx = next(i for i, ln in enumerate(lines) if ln.startswith("building_block:"))
+    ver_idx = next(i for i, ln in enumerate(lines) if ln.startswith("bb_schema_version:"))
+    assert ver_idx == bb_idx + 1
+
+
+def test_capture_bb_schema_version_across_all_flavors(vault_root):
+    """Every flavor records bb_schema_version (sanity over all templates)."""
+    from tessellum.bb.types import BB_SCHEMA_VERSION
+
+    flavors_with_bb = [
+        f for f in list_flavors() if get_spec(f).bb_type
+    ]
+    for flavor in flavors_with_bb:
+        result = capture(flavor, f"check_{flavor}", vault_root=vault_root)
+        text = result.path.read_text(encoding="utf-8")
+        assert (
+            f"bb_schema_version: {BB_SCHEMA_VERSION}" in text
+        ), f"{flavor} did not record bb_schema_version"
+
+
+def test_capture_does_not_overwrite_explicit_bb_schema_version(vault_root, tmp_path, monkeypatch):
+    """If the template already declares bb_schema_version, capture leaves it alone."""
+    # Build a fake template with an explicit version.
+    fake_templates = tmp_path / "fake_templates"
+    fake_templates.mkdir()
+    canonical = (vault_root.parent.parent / "vault" / "resources" / "templates" / "template_argument.md")
+    # Use the real argument template as a base but inject bb_schema_version explicitly
+    from tessellum.data import templates_dir
+
+    base_text = (templates_dir() / "template_argument.md").read_text(encoding="utf-8")
+    base_text_with_pinned = base_text.replace(
+        "building_block: argument",
+        "building_block: argument\nbb_schema_version: 999",
+    )
+    (fake_templates / "template_argument.md").write_text(base_text_with_pinned)
+
+    # Monkey-patch templates_dir to point at our fake dir
+    import tessellum.capture as capture_mod
+
+    monkeypatch.setattr(capture_mod, "templates_dir", lambda: fake_templates)
+
+    result = capture("argument", "pinned_arg", vault_root=vault_root)
+    text = result.path.read_text(encoding="utf-8")
+    assert "bb_schema_version: 999" in text
+    # The current BB_SCHEMA_VERSION should NOT appear (since the template
+    # already had one, we did not inject)
+    from tessellum.bb.types import BB_SCHEMA_VERSION
+
+    if BB_SCHEMA_VERSION != 999:
+        # Count occurrences — there should be exactly 1 (the pinned one)
+        assert text.count("bb_schema_version:") == 1
