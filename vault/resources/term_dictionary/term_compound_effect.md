@@ -105,14 +105,14 @@ Three cognitive biases explain why humans systematically undervalue compounding:
 
 ## Related Terms
 
-- [Planning Fallacy](term_planning_fallacy.md) — systematically overestimates short-term and underestimates long-term outcomes; explains why the compound effect surprises us
-- [Habit Loop](term_habit_loop.md) — the mechanism through which behavioral compounding occurs; each loop iteration strengthens the association
-- [Deliberate Practice](term_deliberate_practice.md) — skill compounding through structured practice; 10,000 hours of deliberate practice compounds expertise
-- [Feedback Loop](term_feedback_loop.md) — compounding is a reinforcing feedback loop; the compound effect is what reinforcing loops look like over time
+- Planning Fallacy — systematically overestimates short-term and underestimates long-term outcomes; explains why the compound effect surprises us
+- Habit Loop — the mechanism through which behavioral compounding occurs; each loop iteration strengthens the association
+- Deliberate Practice — skill compounding through structured practice; 10,000 hours of deliberate practice compounds expertise
+- Feedback Loop — compounding is a reinforcing feedback loop; the compound effect is what reinforcing loops look like over time
 - [Systems Thinking](term_systems_thinking.md) — compounding as a reinforcing feedback loop; exponential growth in systems dynamics
 - [Desirable Difficulties](term_desirable_difficulties.md) — short-term difficulty (Valley of Disappointment) producing long-term compounding gains
-- [Self-Evolving Agent](term_self_evolving_agent.md) — agents whose performance compounds through iterative learning (ACE, AgentRxiv)
-- [Cognitive Bias](term_cognitive_bias.md) — exponential growth bias, present bias, and planning fallacy as barriers to appreciating compounding
+- Self-Evolving Agent — agents whose performance compounds through iterative learning (ACE, AgentRxiv)
+- Cognitive Bias — exponential growth bias, present bias, and planning fallacy as barriers to appreciating compounding
 - [Open Loops](term_open_loops.md) — unresolved open loops compound: each new uncommitted task adds marginal cognitive load, producing accelerating mental fatigue
 - [Permanent Notes](term_permanent_notes.md) — each permanent note adds marginal value to the knowledge network; the Zettelkasten compounds through connection
 - [Folgezettel](term_folgezettel.md) — each folgezettel connection adds to the compound growth of the system
@@ -120,14 +120,14 @@ Three cognitive biases explain why humans systematically undervalue compounding:
 - [Progressive Summarization](term_progressive_summarization.md) — each added layer of summarization increases the note's future value; layers compound over time
 - [Intermediate Packets](term_intermediate_packets.md) — IPs compound: the more you create, the more raw material is available for future projects
 - [CODE Method](term_code_method.md) — each cycle through CODE adds value to the system; consistent practice compounds
-- [Groupthink](term_groupthink.md) — small instances of self-censorship compound over time into organizational blindness
+- Groupthink — small instances of self-censorship compound over time into organizational blindness
 
 ## References
 
 - Hardy, D. (2010). *The Compound Effect*. Vanguard Press.
-- [Atomic Habits](../digest/digest_atomic_habits_clear.md) — 1% improvement compounding; Plateau of Latent Potential; Valley of Disappointment
-- [Where Good Ideas Come From](../digest/digest_good_ideas_johnson.md) — adjacent possible as the mechanism of idea compounding
-- [Make It Stick](../digest/digest_make_it_stick_brown.md) — desirable difficulty and the Valley of Disappointment as complementary framings
-- [The 5 Elements of Effective Thinking](../digest/digest_effective_thinking_burger.md) — "flow of ideas" (Water element) as knowledge compounding through progressive connection
+- Atomic Habits — 1% improvement compounding; Plateau of Latent Potential; Valley of Disappointment
+- Where Good Ideas Come From — adjacent possible as the mechanism of idea compounding
+- Make It Stick — desirable difficulty and the Valley of Disappointment as complementary framings
+- The 5 Elements of Effective Thinking — "flow of ideas" (Water element) as knowledge compounding through progressive connection
 - [How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — knowledge compounds through linking; the slip-box grows more valuable with each new permanent note
 - [A System for Writing](../digest/digest_system_for_writing_doto.md) — trains of thought compound through sequential folgezettel connections

@@ -106,11 +106,11 @@ the experiment runs.>
 distinguishes a *principled* prediction (reasoning + prior evidence) from a
 hunch (reasoning only).>
 
-- [Related Observation](thought_observation.md) — <how it informs>
+- Related Observation — <how it informs>
 
 ## References
 
-- [Related Model](../term_dictionary/term_model.md) — <the model this
+- Related Model — <the model this
   hypothesis derives from>
-- [Related Argument](thought_argument.md) — <prior argument that motivated this
+- Related Argument — <prior argument that motivated this
   hypothesis>

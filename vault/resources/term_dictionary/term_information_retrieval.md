@@ -85,25 +85,25 @@ Modern IR encompasses both **lexical methods** (BM25, TF-IDF via inverted indice
 
 ## Related Terms
 
-- **[Dense Retrieval](term_dense_retrieval.md)**: The IR family that ranks by vector similarity in learned embedding space rather than lexical overlap
-- **[Cosine Similarity](term_cosine_similarity.md)**: The dominant scoring function for dense retrieval and contrastive embedding training
-- **[PageRank](term_pagerank.md)**: Graph-based importance algorithm that ranks IR results by link structure (the original web-search application)
-- **[PPR](term_ppr.md)**: Personalized PageRank — query-relative graph importance for retrieval
-- **[RAG](term_rag.md)**: Retrieval-Augmented Generation — IR provides the retrieval component for LLM grounding
-- **[DPR](term_dpr.md)**: Dense Passage Retrieval — neural IR using dual-encoder BERT embeddings
-- **[ANN Search](term_ann_search.md)**: ANN indices (FAISS, HNSW) power dense retrieval at scale
-- **[IVF](term_ivf.md)**: Inverted File Index for vector search; borrows the "inverted index" concept from text IR
-- **[FTS5](term_fts5.md)**: SQLite's embedded full-text search; concrete realization of sparse-IR primitives (inverted index + BM25) inside a SQL engine
-- **[Product Quantization](term_product_quantization.md)**: PQ enables memory-efficient dense retrieval via compressed vectors
-- **[LSH](term_lsh.md)**: Hash-based ANN for approximate retrieval
-- **[Vector Database](term_vector_database.md)**: Modern IR systems use vector databases for dense retrieval
-- **[FAISS](term_faiss.md)**: ANN library powering dense retrieval at scale
-- **[GraphRAG](term_graphrag.md)**: Graph-enhanced retrieval combining knowledge graphs with IR
-- **[HippoRAG](term_hipporag.md)**: RAG system combining PPR graph traversal with dense retrieval
-- **[Embedding](term_embedding.md)**: Dense retrieval relies on learned embeddings for semantic matching
-- **[LLM](term_llm.md)**: LLMs consume IR results in RAG pipelines and can serve as re-rankers
-- **[BERT](term_bert.md)**: Foundation for modern neural IR (DPR, ColBERT, cross-encoder re-ranking)
-- **[Question Type Classification](term_question_type_classification.md)**: 10-category question taxonomy for evaluating IR performance per information need type
+- **Dense Retrieval**: The IR family that ranks by vector similarity in learned embedding space rather than lexical overlap
+- **Cosine Similarity**: The dominant scoring function for dense retrieval and contrastive embedding training
+- **PageRank**: Graph-based importance algorithm that ranks IR results by link structure (the original web-search application)
+- **PPR**: Personalized PageRank — query-relative graph importance for retrieval
+- **RAG**: Retrieval-Augmented Generation — IR provides the retrieval component for LLM grounding
+- **DPR**: Dense Passage Retrieval — neural IR using dual-encoder BERT embeddings
+- **ANN Search**: ANN indices (FAISS, HNSW) power dense retrieval at scale
+- **IVF**: Inverted File Index for vector search; borrows the "inverted index" concept from text IR
+- **FTS5**: SQLite's embedded full-text search; concrete realization of sparse-IR primitives (inverted index + BM25) inside a SQL engine
+- **Product Quantization**: PQ enables memory-efficient dense retrieval via compressed vectors
+- **LSH**: Hash-based ANN for approximate retrieval
+- **Vector Database**: Modern IR systems use vector databases for dense retrieval
+- **FAISS**: ANN library powering dense retrieval at scale
+- **GraphRAG**: Graph-enhanced retrieval combining knowledge graphs with IR
+- **HippoRAG**: RAG system combining PPR graph traversal with dense retrieval
+- **Embedding**: Dense retrieval relies on learned embeddings for semantic matching
+- **LLM**: LLMs consume IR results in RAG pipelines and can serve as re-rankers
+- **BERT**: Foundation for modern neural IR (DPR, ColBERT, cross-encoder re-ranking)
+- **Question Type Classification**: 10-category question taxonomy for evaluating IR performance per information need type
 
 ## References
 
@@ -112,3 +112,9 @@ Modern IR encompasses both **lexical methods** (BM25, TF-IDF via inverted indice
 - [Manning, C.D., Raghavan, P., & Schütze, H. (2008). *Introduction to Information Retrieval*. Cambridge University Press](https://nlp.stanford.edu/IR-book/) — Standard textbook
 - [Robertson, S. & Zaragoza, H. (2009). "The Probabilistic Relevance Framework: BM25 and Beyond." Foundations and Trends in IR](https://doi.org/10.1561/1500000019) — BM25 survey
 - [Wikipedia: Information Retrieval](https://en.wikipedia.org/wiki/Information_retrieval)
+
+## Related Terms
+
+- [`term_building_block`](term_building_block.md) — Tessellum's 8-type ontology; retrieval is the read-side surface over BB-typed notes
+- [`term_cqrs`](term_cqrs.md) — IR is System D's primary discipline in the CQRS split
+- [`term_slipbox`](term_slipbox.md) — the typed substrate IR queries

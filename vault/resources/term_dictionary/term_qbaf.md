@@ -63,15 +63,15 @@ QBAFs are the central data structure of **quantitative computational argumentati
 - **[Dialectical Adequacy](term_dialectical_adequacy.md)**: the epistemic standard that QBAF-based reasoning approaches by exposing every counter-argument as an explicit, weighted attacker
 - **[DF-QuAD](term_df_quad.md)**: the discontinuity-free gradual semantics most commonly applied to QBAFs and used in ArgLLMs
 - **[Contestability](term_contestability.md)**: the formal property — provable for DF-QuAD over QBAFs — that a user's edit of base scores or relations measurably moves the verdict
-- **[Knowledge Building Blocks Argument](term_knowledge_building_blocks_argument.md)**: vault building-block representation of an argument; QBAF arguments are its formal-graph counterpart
-- **[Knowledge Building Blocks Counter-Argument](term_knowledge_building_blocks_counter_argument.md)**: vault building-block representation of an attacker in a QBAF
-- **[Multi-Agent Debate](term_multi_agent_debate.md)**: an LLM-debate paradigm whose unstructured exchanges QBAFs replace with a formal, deterministically aggregated argument graph
-- **[Chain of Thought](term_chain_of_thought.md)**: contrasted approach that produces post-hoc reasoning traces; QBAFs are positioned as a faithful, deterministic alternative
-- **[Neuro-Symbolic](term_neuro_symbolic.md)**: ArgLLMs are a neuro-symbolic system in which the LLM is the neural perception layer and the QBAF + gradual semantics is the symbolic reasoner
-- **[Hallucination](term_hallucination.md)**: QBAFs do not eliminate LLM hallucinations but expose them as visible, contestable arguments inside the framework
-- **[LLM as a Judge](term_llm_as_a_judge.md)**: in QBAF-based pipelines the LLM is also the judge — assigning intrinsic strengths $\tau(\alpha)$ to LLM-generated arguments
-- **[Research Argument](term_research_argument.md)**: Booth's claim/reasons/evidence/warrant model is the natural-language analogue of a QBAF's argument / supporter / base-score machinery
-- **[Logical Fallacies](term_logical_fallacies.md)**: a fallacious argument inside a QBAF appears as a regular node, which is precisely what makes the framework contestable — a human can lower its $\tau$
+- **Knowledge Building Blocks Argument**: vault building-block representation of an argument; QBAF arguments are its formal-graph counterpart
+- **Knowledge Building Blocks Counter-Argument**: vault building-block representation of an attacker in a QBAF
+- **Multi-Agent Debate**: an LLM-debate paradigm whose unstructured exchanges QBAFs replace with a formal, deterministically aggregated argument graph
+- **Chain of Thought**: contrasted approach that produces post-hoc reasoning traces; QBAFs are positioned as a faithful, deterministic alternative
+- **Neuro-Symbolic**: ArgLLMs are a neuro-symbolic system in which the LLM is the neural perception layer and the QBAF + gradual semantics is the symbolic reasoner
+- **Hallucination**: QBAFs do not eliminate LLM hallucinations but expose them as visible, contestable arguments inside the framework
+- **LLM as a Judge**: in QBAF-based pipelines the LLM is also the judge — assigning intrinsic strengths $\tau(\alpha)$ to LLM-generated arguments
+- **Research Argument**: Booth's claim/reasons/evidence/warrant model is the natural-language analogue of a QBAF's argument / supporter / base-score machinery
+- **Logical Fallacies**: a fallacious argument inside a QBAF appears as a regular node, which is precisely what makes the framework contestable — a human can lower its $\tau$
 - **[Critical Thinking](term_critical_thinking.md)**: QBAFs operationalise the critical-thinking principle that beliefs should be supported by weighed reasons and survive counter-arguments
 
 ## References

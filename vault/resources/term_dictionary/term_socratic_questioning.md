@@ -168,20 +168,20 @@ Paul and Elder also distinguish three modes in which Socratic questioning is dep
 ## Related Terms
 
 - [Term: Elaborative Interrogation](term_elaborative_interrogation.md) -- asking "Why is this true?" as a learning technique; cognitive science validation of Socratic questioning
-- [Term: Design Thinking](term_design_thinking.md) -- human-centered methodology where questioning drives the Empathize and Define stages
-- [Term: Question Storming](term_question_storming.md) -- brainstorming variant generating only questions; extends Socratic inquiry to group settings
-- [Term: Cognitive Bias](term_cognitive_bias.md) -- biases that Socratic questioning aims to surface and counteract
-- [Term: Framing Effect](term_framing_effect.md) -- how question framing shapes the answers received
+- Term: Design Thinking -- human-centered methodology where questioning drives the Empathize and Define stages
+- Term: Question Storming -- brainstorming variant generating only questions; extends Socratic inquiry to group settings
+- Term: Cognitive Bias -- biases that Socratic questioning aims to surface and counteract
+- Term: Framing Effect -- how question framing shapes the answers received
 - [Term: Systems Thinking](term_systems_thinking.md) -- holistic perspective needed for probing implications and consequences (Type 5)
 - [Term: MECE](term_mece.md) -- the six question types aim for collectively exhaustive coverage of a claim's logical structure
 - [Term: Retrieval Practice](term_retrieval_practice.md) -- active recall aligned with questioning as a learning strategy
 - [Term: Zettelkasten](term_zettelkasten.md) -- note-linking methodology; Socratic questioning applied to one's own notes surfaces gaps and connections
 - [Term: SlipBox](term_slipbox.md) -- the vault's Socratic Stress Test operationalizes these questioning techniques
-- [Natural Planning Model](term_natural_planning_model.md) -- Phase 1 (Purpose and Principles) is Socratic: "Why are we doing this?" probes assumptions before committing to action
-- [Divergence and Convergence](term_divergence_and_convergence.md) — Socratic questioning can be divergent (exploratory mode) or convergent (focused mode)
-- [Logical Fallacies](term_logical_fallacies.md) — Socratic questioning is the primary tool for exposing logical fallacies; the method was designed to reveal unjustified assumptions
-- [Five Whys](term_five_whys.md) — the Five Whys is Socratic questioning applied to causal analysis; each "Why?" challenges the current explanation
-- [Analytical Reading](term_analytical_reading.md) — Adler's critical stage (Rules 9-15) mirrors Socratic method; both demand understanding before evaluation
+- Natural Planning Model -- Phase 1 (Purpose and Principles) is Socratic: "Why are we doing this?" probes assumptions before committing to action
+- Divergence and Convergence — Socratic questioning can be divergent (exploratory mode) or convergent (focused mode)
+- Logical Fallacies — Socratic questioning is the primary tool for exposing logical fallacies; the method was designed to reveal unjustified assumptions
+- Five Whys — the Five Whys is Socratic questioning applied to causal analysis; each "Why?" challenges the current explanation
+- Analytical Reading — Adler's critical stage (Rules 9-15) mirrors Socratic method; both demand understanding before evaluation
 - [Critical Thinking](term_critical_thinking.md) — Socratic questioning is the foundational pedagogical method of critical thinking, tracing from Socrates through Dewey to modern frameworks
 
 ## References
@@ -191,10 +191,10 @@ Paul and Elder also distinguish three modes in which Socratic questioning is dep
 
 - [University of Michigan: Six Types of Socratic Questions](https://websites.umich.edu/~elements/probsolv/strategy/cthinking.htm) -- concise reference with examples
 - [ERIC: Critical Thinking: The Art of Socratic Questioning, Part III (Paul & Elder, 2008)](https://eric.ed.gov/?id=EJ832681) -- journal article in *Journal of Developmental Education*
-- Source: [Digest: A More Beautiful Question](../digest/digest_beautiful_question_berger.md) -- Berger's Why/What If/How framework positions Socratic questioning as the engine of the "Why" stage
-- Source: [Digest: The 5 Elements of Effective Thinking](../digest/digest_effective_thinking_burger.md) -- Burger and Starbird's "Air" element: "Be Your Own Socrates"
-- Source: [Digest: The Art of Asking](../digest/digest_art_of_asking_fadem.md) -- Fadem's process-focused questions align with the Socratic method's emphasis on the act of questioning itself
-- Source: [Digest: Critical Thinking Think Smarter](../digest/digest_critical_thinking_hartley.md) — Hartley's critical thinking definition is rooted in Socratic questioning principles
+- Source: Digest: A More Beautiful Question -- Berger's Why/What If/How framework positions Socratic questioning as the engine of the "Why" stage
+- Source: Digest: The 5 Elements of Effective Thinking -- Burger and Starbird's "Air" element: "Be Your Own Socrates"
+- Source: Digest: The Art of Asking -- Fadem's process-focused questions align with the Socratic method's emphasis on the act of questioning itself
+- Source: Digest: Critical Thinking Think Smarter — Hartley's critical thinking definition is rooted in Socratic questioning principles
 
 ---
 

@@ -97,7 +97,7 @@ In the vault, fleeting notes map to:
 - [BASB](term_basb.md) — Forte's Capture phase is a broader version of fleeting note capture
 - [Hub Notes](term_hub_notes.md) — hub notes are at the opposite end of the pipeline from fleeting notes; fleeting notes are captured, hub notes help retrieve
 - [Index Notes](term_index_notes.md) — index entries help locate the permanent notes that originated as fleeting captures
-- [Zeigarnik Effect](term_zeigarnik_effect.md) — capturing a fleeting note discharges the Zeigarnik tension for an intellectual open loop
+- Zeigarnik Effect — capturing a fleeting note discharges the Zeigarnik tension for an intellectual open loop
 
 ## References
 

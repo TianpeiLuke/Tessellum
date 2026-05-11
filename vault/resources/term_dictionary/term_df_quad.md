@@ -63,14 +63,14 @@ DF-QuAD is the default gradual semantics in many practical argumentation systems
 - **[Contestability](term_contestability.md)**: DF-QuAD is the canonical semantics shown to satisfy the formal contestability properties of Freedman et al. (2025)
 - **[Dialectic Knowledge System](term_dialectic_knowledge_system.md)**: DKS-style claim adjudication maps onto a QBAF + DF-QuAD pipeline where corroborating and conflicting evidence become weighted supporters and attackers
 - **[Dialectical Adequacy](term_dialectical_adequacy.md)**: DF-QuAD provides the deterministic update rule by which a knowledge system's verdict can be repeatedly stress-tested against new counter-arguments
-- **[Multi-Agent Debate](term_multi_agent_debate.md)**: contrasted aggregation approach — MAD resolves disputes through iterative natural-language exchanges, while DF-QuAD resolves them in one closed-form pass over a QBAF
-- **[Chain of Thought](term_chain_of_thought.md)**: contrasted reasoning paradigm — CoT produces a post-hoc trace, while DF-QuAD computes the verdict deterministically from the structured QBAF
-- **[LLM as a Judge](term_llm_as_a_judge.md)**: in ArgLLMs, the LLM-as-judge step assigns the base scores $\tau(\alpha)$ that DF-QuAD then aggregates
-- **[Hallucination](term_hallucination.md)**: DF-QuAD propagates whatever base scores it is given — hallucinated supporters or attackers become visible weighted nodes that humans can override
-- **[Neuro-Symbolic](term_neuro_symbolic.md)**: DF-QuAD is the symbolic deterministic reasoner that complements the LLM neural component in neuro-symbolic claim-verification systems
-- **[Bayesian Reasoning](term_bayesian_reasoning.md)**: contrast — DF-QuAD aggregates dialectical strengths, not posterior probabilities; the noisy-OR form mimics probabilistic combination but is rule-based, not normalised over a sample space
-- **[Counterfactual Reasoning](term_counterfactual_reasoning.md)**: DF-QuAD's determinism is what makes "what if I changed this argument's strength?" counterfactuals computationally meaningful
-- **[Logical Fallacies](term_logical_fallacies.md)**: a fallacious argument is treated by DF-QuAD as any other node; its damage is bounded by whatever base score the judge assigns it, which a human reviewer can lower
+- **Multi-Agent Debate**: contrasted aggregation approach — MAD resolves disputes through iterative natural-language exchanges, while DF-QuAD resolves them in one closed-form pass over a QBAF
+- **Chain of Thought**: contrasted reasoning paradigm — CoT produces a post-hoc trace, while DF-QuAD computes the verdict deterministically from the structured QBAF
+- **LLM as a Judge**: in ArgLLMs, the LLM-as-judge step assigns the base scores $\tau(\alpha)$ that DF-QuAD then aggregates
+- **Hallucination**: DF-QuAD propagates whatever base scores it is given — hallucinated supporters or attackers become visible weighted nodes that humans can override
+- **Neuro-Symbolic**: DF-QuAD is the symbolic deterministic reasoner that complements the LLM neural component in neuro-symbolic claim-verification systems
+- **Bayesian Reasoning**: contrast — DF-QuAD aggregates dialectical strengths, not posterior probabilities; the noisy-OR form mimics probabilistic combination but is rule-based, not normalised over a sample space
+- **Counterfactual Reasoning**: DF-QuAD's determinism is what makes "what if I changed this argument's strength?" counterfactuals computationally meaningful
+- **Logical Fallacies**: a fallacious argument is treated by DF-QuAD as any other node; its damage is bounded by whatever base score the judge assigns it, which a human reviewer can lower
 - **[Critical Thinking](term_critical_thinking.md)**: DF-QuAD instantiates the critical-thinking principle of weighing competing reasons explicitly rather than collapsing them into a black-box judgement
 
 ## References

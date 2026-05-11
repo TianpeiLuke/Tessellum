@@ -70,12 +70,12 @@ Neural/Generative   │ LLM-orchestrated      │ AutoGen, CrewAI,
 
 ## Related Terms
 
-- [Conceptual Retrofitting](term_conceptual_retrofitting.md) — the problem this framework is designed to solve
-- [Neuro-Symbolic AI](term_neuro_symbolic.md) — the hybrid approach the framework identifies as the future
+- Conceptual Retrofitting — the problem this framework is designed to solve
+- Neuro-Symbolic AI — the hybrid approach the framework identifies as the future
 - [Multi-Agent Collaboration](term_multi_agent_collaboration.md) — one axis of the framework
 
 ## References
 
-- [Agentic AI Survey (Abou Ali & Dornaika, 2025)](../papers/lit_abouali2025agentic.md) — source paper
-- [Rise of Agentic AI (Bandi et al., 2025)](../papers/lit_bandi2025rise.md) — alternative taxonomy for comparison
-- [Self-Evolving Agents Survey (Gao et al., 2025)](../papers/lit_gao2025survey.md) — complementary taxonomy
+- Agentic AI Survey (Abou Ali & Dornaika, 2025) — source paper
+- Rise of Agentic AI (Bandi et al., 2025) — alternative taxonomy for comparison
+- Self-Evolving Agents Survey (Gao et al., 2025) — complementary taxonomy

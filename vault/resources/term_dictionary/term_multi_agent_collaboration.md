@@ -57,18 +57,18 @@ Multi-agent collaboration introduces trade-offs:
 - **Key finding from AgentRxiv**: Parallel labs reached 76.2% accuracy in 7 papers vs. 23 papers sequentially, but at 203.9% higher total cost
 
 ## Related Terms
-- **[A2A (Agent2Agent)](term_a2a.md)**: Open protocol enabling cross-vendor agent collaboration
+- **A2A (Agent2Agent)**: Open protocol enabling cross-vendor agent collaboration
 
-- [AgentSpace](term_agentspace.md) -- Multi-agent coordination framework
-- [Self-Evolving Agent](term_self_evolving_agent.md) -- Agents that improve through multi-agent interaction (social learning)
-- [Agentic Memory](term_agentic_memory.md) -- Shared memory as a collaboration mechanism
-- [Compound AI System](term_compound_ai_system.md) -- Multi-agent systems as compound AI architectures
-- [Agent as a Judge](term_agent_as_a_judge.md) -- Evaluation paradigm where agents assess each other's outputs
+- AgentSpace -- Multi-agent coordination framework
+- Self-Evolving Agent -- Agents that improve through multi-agent interaction (social learning)
+- Agentic Memory -- Shared memory as a collaboration mechanism
+- Compound AI System -- Multi-agent systems as compound AI architectures
+- Agent as a Judge -- Evaluation paradigm where agents assess each other's outputs
 
 ## References
 
-- Source: [lit_schmidgall2025agentrxiv](../papers/lit_schmidgall2025agentrxiv.md) -- Publication-based multi-agent collaboration through shared preprint server
-- Source: [lit_you2026agent](../papers/lit_you2026agent.md) -- Survey covering multi-agent collaboration architectures
+- Source: lit_schmidgall2025agentrxiv -- Publication-based multi-agent collaboration through shared preprint server
+- Source: lit_you2026agent -- Survey covering multi-agent collaboration architectures
 - Wu et al. (2023). "AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation" -- General-purpose multi-agent conversation framework
 
 ---
@@ -76,3 +76,9 @@ Multi-agent collaboration introduces trade-offs:
 **Last Updated**: March 11, 2026
 **Status**: Active
 **Domain**: Agentic AI, Multi-Agent Systems
+
+## Related Terms
+
+- [`term_dialectic_knowledge_system`](term_dialectic_knowledge_system.md) — DKS is the persistent-substrate counterpart to MAD; multi-agent collaboration *without* substrate persistence is the contrast case
+- [`term_building_block`](term_building_block.md) — Tessellum's 8-type substrate gives multi-agent collaboration a shared typed corpus to coordinate over
+- [`term_basb`](term_basb.md) — Forte's "second brain" is the single-agent precursor; multi-agent collaboration extends the idea across multiple reasoners

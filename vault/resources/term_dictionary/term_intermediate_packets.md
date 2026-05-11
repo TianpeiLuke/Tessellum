@@ -91,8 +91,8 @@ When writing a paper review, the reviewer doesn't start from scratch — they as
 - [Compound Effect](term_compound_effect.md) — Intermediate Packets compound: the more you create, the more raw material is available for future projects
 - [Trusted System](term_trusted_system.md) — Intermediate Packets must be stored in a trusted system to be reliably retrievable
 - [Open Loops](term_open_loops.md) — work-in-process IPs are open loops until completed or archived; the Hemingway Bridge technique closes this loop
-- [Divergence and Convergence](term_divergence_and_convergence.md) — during convergence, Intermediate Packets are assembled into final deliverables via the Archipelago of Ideas technique
-- [Natural Planning Model](term_natural_planning_model.md) — NPM Phase 4 (Organize) and Phase 5 (Next Actions) map to assembling IPs into project plans
+- Divergence and Convergence — during convergence, Intermediate Packets are assembled into final deliverables via the Archipelago of Ideas technique
+- Natural Planning Model — NPM Phase 4 (Organize) and Phase 5 (Next Actions) map to assembling IPs into project plans
 - [Slow Hunch](term_slow_hunch.md) — outtakes and work-in-process IPs may incubate as slow hunches, connecting with future ideas
 - [Permanent Notes](term_permanent_notes.md) — atomic notes are the Zettelkasten's equivalent of Intermediate Packets; both emphasize modularity and reusability
 - [Liquid Network](term_liquid_network.md) — the vault's link graph creates a liquid network where diverse IPs can collide and recombine
@@ -104,7 +104,7 @@ When writing a paper review, the reviewer doesn't start from scratch — they as
 - Johnson, S. (2010). *Where Good Ideas Come From*. Riverhead Books. — Exaptation as the mechanism underlying IP reuse
 - Source: [Digest: Building a Second Brain](../digest/digest_building_second_brain_forte.md)
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — Ahrens' permanent notes are the Zettelkasten equivalent of Intermediate Packets
-- Source: [Digest: Where Good Ideas Come From](../digest/digest_good_ideas_johnson.md) — exaptation as the mechanism underlying IP reuse and recombination
+- Source: Digest: Where Good Ideas Come From — exaptation as the mechanism underlying IP reuse and recombination
 
 ---
 

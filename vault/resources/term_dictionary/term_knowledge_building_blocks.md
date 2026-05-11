@@ -37,7 +37,7 @@ author: lukexie
 
 **Knowledge Building Blocks** are the six discrete types of knowledge atoms that constitute the structural units of a knowledge system. Developed by Sascha Fast in 2011 and published as part of his atomicity framework on zettelkasten.de, the inventory identifies: **premises**, **logical form**, **conclusions**, **definitions**, **distinctions**, and **heuristics**. These six types provide an objective, structural answer to the question "what is an atomic note?" -- replacing the vague heuristic "one idea per note" with concrete, verifiable criteria.
 
-The fundamental knowledge atom is the **argument**, which is the composite of three building blocks: premises + logical form + conclusion. An argument has exactly three structural elements, giving practitioners a concrete test: "Does my note contain one complete argument?" This structural criterion eliminates the subjectivity that plagued earlier formulations of atomicity (what Sascha diagnosed as the "[beetle-in-a-box](term_beetle_in_a_box.md) problem" -- everyone uses the word "atomic" but privately defines it differently).
+The fundamental knowledge atom is the **argument**, which is the composite of three building blocks: premises + logical form + conclusion. An argument has exactly three structural elements, giving practitioners a concrete test: "Does my note contain one complete argument?" This structural criterion eliminates the subjectivity that plagued earlier formulations of atomicity (what Sascha diagnosed as the "beetle-in-a-box problem" -- everyone uses the word "atomic" but privately defines it differently).
 
 ## Historical Context
 
@@ -93,7 +93,7 @@ An **argument** = premises + logical form + conclusion. This is the fundamental 
 | **Note splitting** | A note with two arguments should be split into two notes; a note with only premises but no conclusion is incomplete |
 | **Quality assessment** | Notes can be evaluated by structural completeness: are premises explicit? Is the logical form visible? Is the conclusion stated? |
 | **Teaching atomicity** | Provides concrete vocabulary and structural tests instead of vague advice ("one idea per note") |
-| **Mastery progression** | Maps to Sascha's [Shuhari](term_shuhari.md) model: SHU-level uses heuristics ("easy to name"), HA-level identifies building block types, RI-level creates freely |
+| **Mastery progression** | Maps to Sascha's Shuhari model: SHU-level uses heuristics ("easy to name"), HA-level identifies building block types, RI-level creates freely |
 | **Vault architecture** | Term notes implement the definition/distinction blocks; digest notes implement argument-atoms; analysis notes synthesize multiple arguments |
 
 ## Challenges and Limitations
@@ -111,16 +111,16 @@ Each building block has a dedicated term note with definition, philosophical ori
 
 | Building Block | Note | Origin |
 |---|---|---|
-| **Concept** | [Concept](term_knowledge_building_blocks_concept.md) | Aristotle, Kant, Rosch, Wittgenstein |
-| **Argument** | [Argument](term_knowledge_building_blocks_argument.md) | Aristotle, Toulmin, Walton |
-| **Counter-argument** | [Counter-argument](term_knowledge_building_blocks_counter_argument.md) | Hegel, Popper, Lakatos |
-| **Model** | [Model](term_knowledge_building_blocks_model.md) | Luhmann, Stachowiak, Giere |
-| **Hypothesis** | [Hypothesis](term_knowledge_building_blocks_hypothesis.md) | Popper, Kuhn, Lakatos |
-| **Empirical Observation** | [Empirical Observation](term_knowledge_building_blocks_empirical_observation.md) | Locke, Hume, Quine |
-| **Procedure** | [Procedure](term_knowledge_building_blocks_procedure.md) | Ryle, Anderson (vault extension) |
-| **Navigation** | [Navigation](term_knowledge_building_blocks_navigation.md) | Bush, Nelson, Luhmann (vault extension) |
+| **Concept** | Concept | Aristotle, Kant, Rosch, Wittgenstein |
+| **Argument** | Argument | Aristotle, Toulmin, Walton |
+| **Counter-argument** | Counter-argument | Hegel, Popper, Lakatos |
+| **Model** | Model | Luhmann, Stachowiak, Giere |
+| **Hypothesis** | Hypothesis | Popper, Kuhn, Lakatos |
+| **Empirical Observation** | Empirical Observation | Locke, Hume, Quine |
+| **Procedure** | Procedure | Ryle, Anderson (vault extension) |
+| **Navigation** | Navigation | Bush, Nelson, Luhmann (vault extension) |
 
-For the scholarly lineage of the complete taxonomy, see [Digest: Intellectual Roots of Knowledge Building Blocks](../digest/digest_intellectual_roots_knowledge_building_blocks.md).
+For the scholarly lineage of the complete taxonomy, see Digest: Intellectual Roots of Knowledge Building Blocks.
 
 ## Related Terms
 
@@ -128,8 +128,8 @@ For the scholarly lineage of the complete taxonomy, see [Digest: Intellectual Ro
 - **[Permanent Notes](term_permanent_notes.md)**: The note type that building blocks define the internal structure of -- each permanent note should contain one knowledge atom
 - **[Critical Thinking](term_critical_thinking.md)**: Building blocks are epistemological categories drawn from critical thinking and argumentation theory
 - **[Argumentation](term_argumentation.md)**: The argument (premises + logical form + conclusion) is the fundamental knowledge atom
-- **[Research Argument](term_research_argument.md)**: A specialized form of the argument-atom applied to academic research claims
-- **[Heuristic](term_heuristic.md)**: One of the six building block types; also the mode of reasoning that building blocks aim to replace with structural criteria
+- **Research Argument**: A specialized form of the argument-atom applied to academic research claims
+- **Heuristic**: One of the six building block types; also the mode of reasoning that building blocks aim to replace with structural criteria
 - **[Elaborative Interrogation](term_elaborative_interrogation.md)**: Asking "why?" and "how?" when writing notes surfaces the premises and logical form within an argument-atom
 - **[Desirable Difficulties](term_desirable_difficulties.md)**: Identifying building block types is effortful but produces deeper understanding -- a desirable difficulty
 - **[Hub Notes](term_hub_notes.md)**: Navigational notes that organize collections of argument-atoms into trains of thought
@@ -139,10 +139,10 @@ For the scholarly lineage of the complete taxonomy, see [Digest: Intellectual Ro
 
 ### Vault Sources
 
-- [Digest: The Principle of Atomicity -- Principle vs. Implementation](../digest/digest_atomicity_principle_implementation_sascha.md) -- primary source digest; contains the Six Building Blocks table, beetle-in-a-box diagnosis, Shuhari mastery model, and Capable Writers vs. Knowledge Builders distinction
-- [Digest: Atomicity (Christian Tietze)](../digest/digest_atomicity_zettelkasten_christian.md) -- the original 2013 atomicity post that Sascha's building blocks respond to and deepen
+- Digest: The Principle of Atomicity -- Principle vs. Implementation -- primary source digest; contains the Six Building Blocks table, beetle-in-a-box diagnosis, Shuhari mastery model, and Capable Writers vs. Knowledge Builders distinction
+- Digest: Atomicity (Christian Tietze) -- the original 2013 atomicity post that Sascha's building blocks respond to and deepen
 - [Digest: The Zettelkasten Iceberg](../digest/digest_zettelkasten_iceberg_sascha.md) -- Sascha's four-level depth model; building blocks operate at Level 3 (method) and Level 4 (thinking)
-- [Zettelkasten Knowledge Management Principles](../analysis_thoughts/thought_zettelkasten_knowledge_management_principles.md) -- analysis connecting atomicity to other vault principles
+- Zettelkasten Knowledge Management Principles -- analysis connecting atomicity to other vault principles
 
 ### External Sources
 

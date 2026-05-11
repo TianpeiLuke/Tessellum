@@ -145,25 +145,25 @@ DSPy is directly relevant to the domain multi-step scoring pipelines:
 
 ## Related Terms
 
-- [Prompt Optimization](term_prompt_optimization.md) — DSPy is one of the primary prompt optimization frameworks; see also APE, OPRO, TextGrad, SPO
-- [Prompt Engineering](term_prompt_engineering.md) — The manual practice that DSPy's compilation aims to replace
+- Prompt Optimization — DSPy is one of the primary prompt optimization frameworks; see also APE, OPRO, TextGrad, SPO
+- Prompt Engineering — The manual practice that DSPy's compilation aims to replace
 - [Meta-Harness](term_meta_harness.md) — The next level of abstraction above DSPy: optimizes harness structure (which modules exist, how they compose) rather than prompt content
-- [LLM](term_llm.md) — The compilation target in DSPy
-- [RAG](term_rag.md) — Retrieval-Augmented Generation; DSPy's Retrieve module and ReAct loop implement RAG patterns
-- [Chain-of-Thought](term_prompt_engineering.md) — Reasoning strategy implemented by DSPy's ChainOfThought module
+- LLM — The compilation target in DSPy
+- RAG — Retrieval-Augmented Generation; DSPy's Retrieve module and ReAct loop implement RAG patterns
+- Chain-of-Thought — Reasoning strategy implemented by DSPy's ChainOfThought module
 
 ## References
 
 ### Vault (Literature & Reviews)
 
-- [lit_khattab2023dspy](../papers/lit_khattab2023dspy.md) — Primary literature note: Khattab et al. (2023/2024), arXiv:2310.03714, ICLR 2024, 634 citations
-- [review_khattab2023dspy](../papers/review_khattab2023dspy.md) — Full OpenReview-style critical evaluation; Soundness 3/4, Overall 8/10
-- [lit_lee2026metaharness](../papers/lit_lee2026metaharness.md) — Meta-Harness paper by Lee et al. (2026); Khattab is co-author; extends DSPy compilation metaphor to harness structure optimization
-- [paper_khattab2023dspy_intro](../papers/paper_khattab2023dspy_intro.md) — Problem statement and motivation
-- [paper_khattab2023dspy_contrib](../papers/paper_khattab2023dspy_contrib.md) — Three contributions: Signatures, Modules, Optimizers
-- [paper_khattab2023dspy_algo](../papers/paper_khattab2023dspy_algo.md) — Architecture, Signature format, Module types, Optimizer algorithms
-- [paper_khattab2023dspy_exp_design](../papers/paper_khattab2023dspy_exp_design.md) — Benchmarks (GSM8K, HotPotQA), models, baselines
-- [paper_khattab2023dspy_exp_result](../papers/paper_khattab2023dspy_exp_result.md) — +25-65% gains, small model competitiveness, comparison table
+- lit_khattab2023dspy — Primary literature note: Khattab et al. (2023/2024), arXiv:2310.03714, ICLR 2024, 634 citations
+- review_khattab2023dspy — Full OpenReview-style critical evaluation; Soundness 3/4, Overall 8/10
+- lit_lee2026metaharness — Meta-Harness paper by Lee et al. (2026); Khattab is co-author; extends DSPy compilation metaphor to harness structure optimization
+- paper_khattab2023dspy_intro — Problem statement and motivation
+- paper_khattab2023dspy_contrib — Three contributions: Signatures, Modules, Optimizers
+- paper_khattab2023dspy_algo — Architecture, Signature format, Module types, Optimizer algorithms
+- paper_khattab2023dspy_exp_design — Benchmarks (GSM8K, HotPotQA), models, baselines
+- paper_khattab2023dspy_exp_result — +25-65% gains, small model competitiveness, comparison table
 
 ### External
 

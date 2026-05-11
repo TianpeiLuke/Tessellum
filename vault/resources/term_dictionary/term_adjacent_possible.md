@@ -119,11 +119,11 @@ The adjacent possible is fundamentally a **combinatorial** concept: new possibil
 
 - [Term: Liquid Network](term_liquid_network.md) -- the optimal environmental state for exploring the adjacent possible; dense enough for collisions, fluid enough for recombination
 - [Term: Slow Hunch](term_slow_hunch.md) -- ideas that gestate until the thinker's personal adjacent possible expands enough to complete them
-- [Term: Exaptation](term_exaptation.md) -- repurposing existing innovations for unexpected functions, a specific mechanism for exploring the adjacent possible
-- [Term: Serendipity](term_serendipity.md) -- unexpected connections that arise when exploring the boundaries of the adjacent possible
+- Term: Exaptation -- repurposing existing innovations for unexpected functions, a specific mechanism for exploring the adjacent possible
+- Term: Serendipity -- unexpected connections that arise when exploring the boundaries of the adjacent possible
 - [Term: Commonplace Book](term_commonplace_book.md) -- a historical tool for expanding one's personal intellectual adjacent possible through recorded recombination
 - [Term: Systems Thinking](term_systems_thinking.md) -- understanding how innovation components interact within the system that defines the adjacent possible
-- [Term: Design Thinking](term_design_thinking.md) -- iterative prototyping explores the adjacent possible of solutions through rapid experimentation
+- Term: Design Thinking -- iterative prototyping explores the adjacent possible of solutions through rapid experimentation
 - [Term: Zettelkasten](term_zettelkasten.md) -- atomic note-taking expands the adjacent possible by making existing knowledge available for recombination
 - [Term: SlipBox](term_slipbox.md) -- the vault's graph structure mirrors the expanding adjacent possible, where each new note opens new connection possibilities
 - [Term: Desirable Difficulties](term_desirable_difficulties.md) -- effortful processing that expands the learner's adjacent possible by deepening encoding
@@ -132,7 +132,7 @@ The adjacent possible is fundamentally a **combinatorial** concept: new possibil
 
 ## References
 
-- Source: [Digest: Where Good Ideas Come From](../digest/digest_good_ideas_johnson.md) -- Johnson's application of the adjacent possible to innovation history
+- Source: Digest: Where Good Ideas Come From -- Johnson's application of the adjacent possible to innovation history
 - [Wikipedia: Adjacent Possible](https://en.wikipedia.org/wiki/Adjacent_possible) -- overview of Kauffman's concept and its applications
 - [Stuart Kauffman: Investigations (2000)](<internal-link-removed>) -- Kauffman's most accessible treatment of the adjacent possible in the context of autonomous agents
 - [Stuart Kauffman: The Origins of Order (1993)](<internal-link-removed>) -- the original theoretical foundation

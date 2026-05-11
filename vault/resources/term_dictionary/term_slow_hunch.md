@@ -142,8 +142,8 @@ Modern neuroscience supports the incubation concept: the brain's **default mode 
 
 - [Term: Adjacent Possible](term_adjacent_possible.md) -- slow hunches wait until the thinker's adjacent possible expands enough to complete them
 - [Term: Liquid Network](term_liquid_network.md) -- the environment that keeps slow hunches circulating and increases collision probability
-- [Term: Serendipity](term_serendipity.md) -- the moment when a slow hunch collides with an unexpected complementary idea
-- [Term: Exaptation](term_exaptation.md) -- slow hunches sometimes complete through unexpected repurposing of ideas from unrelated domains
+- Term: Serendipity -- the moment when a slow hunch collides with an unexpected complementary idea
+- Term: Exaptation -- slow hunches sometimes complete through unexpected repurposing of ideas from unrelated domains
 - [Term: Commonplace Book](term_commonplace_book.md) -- the historical technology for recording and preserving slow hunches
 - [Term: Zettelkasten](term_zettelkasten.md) -- modern note-taking methodology optimized for keeping slow hunches alive through atomic linking
 - [Term: SlipBox](term_slipbox.md) -- the vault's graph structure supports slow-hunch cultivation by preserving and connecting partial ideas
@@ -152,14 +152,14 @@ Modern neuroscience supports the incubation concept: the brain's **default mode 
 - [Term: Desirable Difficulties](term_desirable_difficulties.md) -- the effort of maintaining and revisiting slow hunches produces deeper understanding
 - [Term: Socratic Questioning](term_socratic_questioning.md) -- systematic questioning can surface slow hunches by probing assumptions and implications
 - [Intermediate Packets](term_intermediate_packets.md) — outtakes and work-in-process IPs may incubate as slow hunches, connecting with future ideas
-- [Divergence and Convergence](term_divergence_and_convergence.md) — slow hunches require extended divergence; premature convergence kills incubation
+- Divergence and Convergence — slow hunches require extended divergence; premature convergence kills incubation
 - [Permanent Notes](term_permanent_notes.md) — permanent notes incubate over time, connecting with future notes to complete slow hunches
 - [Folgezettel](term_folgezettel.md) — trains of thought develop through folgezettel sequences, the structural mechanism for slow hunch incubation
 - [Hub Notes](term_hub_notes.md) — hub notes help surface slow hunches by making forgotten trains of thought findable again
 
 ## References
 
-- Source: [Digest: Where Good Ideas Come From](../digest/digest_good_ideas_johnson.md) -- Johnson's formalization of the slow hunch concept
+- Source: Digest: Where Good Ideas Come From -- Johnson's formalization of the slow hunch concept
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — the slip-box as a slow hunch incubator; ideas connect with future notes through link traversal
 - [Wikipedia: Eureka Effect](https://en.wikipedia.org/wiki/Eureka_effect) -- overview of insight research, including evidence for and against sudden insight
 - [Steven Johnson: Where Good Ideas Come From (2010)](<internal-link-removed>) -- the source text

@@ -145,22 +145,22 @@ Elaborative interrogation maps directly onto core Zettelkasten practices:
 - [Term: Retrieval Practice](term_retrieval_practice.md) -- elaborative interrogation during retrieval combines two powerful learning strategies
 - [Term: Desirable Difficulties](term_desirable_difficulties.md) -- generating "why" explanations is effortful, making elaborative interrogation a form of desirable difficulty
 - [Term: Spaced Repetition](term_spaced_repetition.md) -- elaborating during spaced review sessions strengthens both the elaboration and the spacing effects
-- [Term: Interleaving](term_interleaving.md) -- asking "why is this different from the previous concept?" during interleaved practice enhances discrimination
+- Term: Interleaving -- asking "why is this different from the previous concept?" during interleaved practice enhances discrimination
 - [Term: Socratic Questioning](term_socratic_questioning.md) -- the teacher-guided version of elaborative interrogation; Socratic method systematizes the "why" inquiry
-- [Term: Question Storming](term_question_storming.md) -- generating multiple "why" questions before seeking answers aligns with elaborative interrogation
-- [Term: Design Thinking](term_design_thinking.md) -- the "empathize" phase uses "why" questioning similar to elaborative interrogation
-- [Term: Cognitive Bias](term_cognitive_bias.md) -- elaborative interrogation can counteract confirmation bias by forcing examination of *why* a belief is held
-- [Term: System 1 and System 2](term_system_1_and_system_2.md) -- elaboration forces System 2 analytical processing rather than System 1 intuitive acceptance
+- Term: Question Storming -- generating multiple "why" questions before seeking answers aligns with elaborative interrogation
+- Term: Design Thinking -- the "empathize" phase uses "why" questioning similar to elaborative interrogation
+- Term: Cognitive Bias -- elaborative interrogation can counteract confirmation bias by forcing examination of *why* a belief is held
+- Term: System 1 and System 2 -- elaboration forces System 2 analytical processing rather than System 1 intuitive acceptance
 - [Term: Zettelkasten](term_zettelkasten.md) -- note-linking embodies elaborative interrogation through forced connection-making
 - [Term: SlipBox](term_slipbox.md) -- progressive note enrichment in a SlipBox is repeated elaborative interrogation
 - [Progressive Summarization](term_progressive_summarization.md) — asking "why is this important?" at each layer forces deeper processing
 - [Literature Notes](term_literature_notes.md) — asking "why?" and "how?" when creating literature notes is elaborative interrogation applied to reading
 - [Permanent Notes](term_permanent_notes.md) — connecting permanent notes to existing knowledge IS the elaborative interrogation mechanism
-- [Analytical Reading](term_analytical_reading.md) — Adler's 15 rules operationalize elaborative interrogation; Rules 6-7 (grasp propositions, know arguments) are systematic "why" questioning
+- Analytical Reading — Adler's 15 rules operationalize elaborative interrogation; Rules 6-7 (grasp propositions, know arguments) are systematic "why" questioning
 
 ## References
 
-- Source: [Digest: Make It Stick](../digest/digest_make_it_stick_brown.md)
+- Source: Digest: Make It Stick
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — elaboration as the cognitive mechanism behind permanent note creation
 - [Pressley et al. (1988) -- Elaborative Interrogation Facilitates Acquisition of Confusing Facts](https://psycnet.apa.org/record/1989-00355-001) -- foundational study demonstrating the elaborative interrogation effect
 - [Duke University Academic Resource Center -- Elaborative Interrogation](https://arc.duke.edu/elaborative-interrogation/) -- practical methodology guide for students

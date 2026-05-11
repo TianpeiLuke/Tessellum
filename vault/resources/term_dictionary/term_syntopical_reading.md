@@ -45,7 +45,7 @@ Also known as:
 - **Synoptic reading** (variant spelling; less common)
 
 Related but distinct:
-- [Analytical Reading](term_analytical_reading.md) — Level 3; deep reading of a single text; syntopical reading builds on analytical reading skills
+- Analytical Reading — Level 3; deep reading of a single text; syntopical reading builds on analytical reading skills
 - **Literature review** (academic) — surveys existing work but typically categorizes rather than dialectically synthesizes
 - **Meta-analysis** (statistics) — quantitative synthesis across studies; syntopical reading is the qualitative analog
 
@@ -58,7 +58,7 @@ Two preparatory steps establish the reading list, then five core steps perform t
 | Step | Action | Purpose |
 |------|--------|---------|
 | P1 | **Create a tentative bibliography** | Identify works potentially relevant to your subject |
-| P2 | **Inspect all candidates** | Use [inspectional reading](term_inspectional_reading.md) to filter; eliminate irrelevant works; refine the subject |
+| P2 | **Inspect all candidates** | Use inspectional reading to filter; eliminate irrelevant works; refine the subject |
 
 ### Core Steps
 
@@ -89,9 +89,9 @@ The vault's graph structure automates Step 1 (finding relevant passages across s
 
 ## Related Terms
 
-- [Analytical Reading](term_analytical_reading.md) — Level 3; single-text deep reading that syntopical reading extends across multiple sources
-- [Inspectional Reading](term_inspectional_reading.md) — Level 2; used in the preparatory stage to filter and refine the bibliography
-- [Active Reading](term_active_reading.md) — foundational principle underlying all four levels
+- Analytical Reading — Level 3; single-text deep reading that syntopical reading extends across multiple sources
+- Inspectional Reading — Level 2; used in the preparatory stage to filter and refine the bibliography
+- Active Reading — foundational principle underlying all four levels
 - [Literature Notes](term_literature_notes.md) — Zettelkasten output of analytical reading; raw material for syntopical synthesis
 - [Permanent Notes](term_permanent_notes.md) — Zettelkasten notes that synthesize across sources; the output of syntopical thinking
 - [Progressive Summarization](term_progressive_summarization.md) — Forte's four compression layers parallel the progressive deepening from inspectional to syntopical
@@ -104,5 +104,5 @@ The vault's graph structure automates Step 1 (finding relevant passages across s
 
 - Adler, M.J. & Van Doren, C. (1972). *How to Read a Book: The Classic Guide to Intelligent Reading* (Revised ed.). Touchstone / Simon & Schuster. Chapter 20.
 - Adler, M.J. (Ed.). (1952). *The Syntopicon: An Index to The Great Ideas*. Encyclopaedia Britannica. — The practical product of syntopical reading methodology.
-- [Digest: How to Read a Book](../digest/digest_how_to_read_a_book_adler.md) — full book digest with all frameworks
+- Digest: How to Read a Book — full book digest with all frameworks
 - Ahrens, S. (2022). *How to Take Smart Notes* — Zettelkasten as the permanent implementation of syntopical reading

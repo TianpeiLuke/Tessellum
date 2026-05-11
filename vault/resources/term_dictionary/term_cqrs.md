@@ -83,7 +83,7 @@ Three vault-specific design rules anchored to this CQRS framing ([FZ 7g1a1a1a1a1
 - **[Information Retrieval](term_information_retrieval.md)**: the discipline System D instantiates — schema-free, computational, optimized for ranking
 - **[Microservices Architecture](term_microservices_architecture.md)**: a sibling architectural style; CQRS is often used inside microservices boundaries to decouple read/write services
 - **[Event-Driven Architecture](term_event_driven_architecture.md)**: the natural pairing for CQRS — events from commands feed read-side projections
-- **[Data Engineering Lifecycle](term_data_engineering_lifecycle.md)**: parallel split between data production (write-side ETL) and consumption (read-side analytics)
+- **Data Engineering Lifecycle**: parallel split between data production (write-side ETL) and consumption (read-side analytics)
 - **[Dual Paradigm Framework](term_dual_paradigm_framework.md)**: another two-system framing in the vault — declarative vs computational disciplines applied to a different problem
 - **[Dialectical Adequacy](term_dialectical_adequacy.md)**: the quality criterion DKS optimizes — purely a System P metric, not a System D ranking metric
 - **[Circle of Influence](term_circle_of_influence.md)**: the lens that exposed why sub-kinds drift and why System D must remain schema-free (the parent project research trail)
@@ -98,4 +98,4 @@ Three vault-specific design rules anchored to this CQRS framing ([FZ 7g1a1a1a1a1
 
 ### In-Vault Source That Adopted This Term
 - [FZ 7g1a1a1a1a1: ★ Synthesis — The Vault Is a CQRS Knowledge System](../analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md) — names the vault as a CQRS instance, with a sharpened system diagram and split value proposition
-- [FZ 7g1a1a1a1a: Counter — Two Systems, Not Three](../analysis_thoughts/counter_two_systems_not_three_ontology_and_dks_are_one.md) — the counter that introduced the CQRS framing as the architectural reading of "Ontology + DKS as one Prescriptive system"
+- FZ 7g1a1a1a1a: Counter — Two Systems, Not Three — the counter that introduced the CQRS framing as the architectural reading of "Ontology + DKS as one Prescriptive system"

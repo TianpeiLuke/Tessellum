@@ -85,11 +85,11 @@ Each skill is tagged with a `code-stage` metadata field in both Claude and Kiro 
 - [Intermediate Packets](term_intermediate_packets.md) — the primary output mechanism for the Express phase; modular, reusable knowledge units
 - [Trusted System](term_trusted_system.md) — the CODE method requires a trusted system as its substrate; without reliable capture and retrieval, the cycle breaks
 - [Open Loops](term_open_loops.md) — captured but unprocessed information creates open loops; the Organize and Distill phases close them
-- [Natural Planning Model](term_natural_planning_model.md) — Allen's five-phase planning model complements CODE: NPM plans projects, CODE processes knowledge
+- Natural Planning Model — Allen's five-phase planning model complements CODE: NPM plans projects, CODE processes knowledge
 - [Zettelkasten](term_zettelkasten.md) — the vault's primary methodology; CODE provides the lifecycle framework, Zettelkasten provides the note-linking architecture
-- [Design Thinking](term_design_thinking.md) — parallel lifecycle structure (Empathize → Define → Ideate → Prototype → Test) with similar diverge-then-converge dynamics
-- [Habit Loop](term_habit_loop.md) — each CODE phase can become a habitual practice; the cycle's regularity builds the knowledge management habit
-- [Divergence and Convergence](term_divergence_and_convergence.md) — Capture + Organize are divergent; Distill + Express are convergent; mixing modes causes friction
+- Design Thinking — parallel lifecycle structure (Empathize → Define → Ideate → Prototype → Test) with similar diverge-then-converge dynamics
+- Habit Loop — each CODE phase can become a habitual practice; the cycle's regularity builds the knowledge management habit
+- Divergence and Convergence — Capture + Organize are divergent; Distill + Express are convergent; mixing modes causes friction
 - [Compound Effect](term_compound_effect.md) — each cycle through CODE adds value to the system; the compound effect of consistent practice builds an increasingly powerful knowledge base
 - [SlipBox](term_slipbox.md) — the vault implements CODE as its operational framework; the `code-stage` metadata on skills derives from this
 - [BASB](term_basb.md) — Building a Second Brain; the book that introduced the CODE method as its primary framework
@@ -100,7 +100,7 @@ Each skill is tagged with a `code-stage` metadata field in both Claude and Kiro 
 - Allen, D. (2015). *Getting Things Done: The Art of Stress-Free Productivity* (Revised Edition). Penguin Books. — The five-step workflow that CODE simplifies
 - Source: [Digest: Building a Second Brain](../digest/digest_building_second_brain_forte.md)
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — Ahrens' three-stage pipeline (fleeting → literature → permanent) parallels CODE's four stages
-- Source: [Digest: Getting Things Done](../digest/digest_getting_things_done_allen.md) — Allen's five-step workflow that CODE simplifies for knowledge management
+- Source: Digest: Getting Things Done — Allen's five-step workflow that CODE simplifies for knowledge management
 
 ---
 

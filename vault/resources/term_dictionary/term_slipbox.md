@@ -62,9 +62,9 @@ Also known as:
 ## Related Terms
 
 - **[Zettelkasten](term_zettelkasten.md)** - Main entry (German term, same methodology)
-- [RAG](term_rag.md) - Retrieval Augmented Generation
-- [LLM](term_llm.md) - Large Language Models
-- [Knowledge Graph](term_knowledge_graph.md) - Graph-based knowledge representation
+- RAG - Retrieval Augmented Generation
+- LLM - Large Language Models
+- Knowledge Graph - Graph-based knowledge representation
 - [Trusted System](term_trusted_system.md) - The vault is a trusted system implementation: complete capture (notes), regular review (database updates, link audits), reliable retrieval (graph traversal, search)
 - [Open Loops](term_open_loops.md) - The vault closes intellectual open loops: uncaptured ideas consume cognitive resources until externalized into the slip-box
 - [CODE Method](term_code_method.md) — the vault implements CODE as its operational framework; the `code-stage` metadata on skills derives from this

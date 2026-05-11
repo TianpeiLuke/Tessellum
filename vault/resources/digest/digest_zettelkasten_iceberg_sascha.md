@@ -152,8 +152,8 @@ This blog post directly addresses the architecture and philosophy of our vault, 
 - **[Fleeting Notes](../term_dictionary/term_fleeting_notes.md)**: The Evernote Effect describes what happens when fleeting notes are never processed into permanent notes — the system degrades.
 - **[Folgezettel](../term_dictionary/term_folgezettel.md)**: The Level 2 → Level 3 transition maps to the difference between mechanical sequencing (Folgezettel as numbering) and principled sequencing (Folgezettel as idea development).
 - **[Hub Notes](../term_dictionary/term_hub_notes.md)**: Hub notes are a Level 2/3 construct — they organize the system structurally but their quality depends on Level 4 thinking about what connections matter.
-- **[Leverage Point](../term_dictionary/term_leverage_point.md)**: Sascha's argument that thinking tools are the highest-leverage intervention mirrors Meadows' hierarchy — the deepest interventions (paradigms, goals) are the most powerful.
-- **[Deep Modules](../term_dictionary/term_deep_modules.md)**: Ousterhout's deep vs. shallow module concept parallels Sascha's deep vs. shallow note-taking — deep modules hide complexity behind simple interfaces, just as deep notes compress complex thinking into atomic insights.
+- **Leverage Point**: Sascha's argument that thinking tools are the highest-leverage intervention mirrors Meadows' hierarchy — the deepest interventions (paradigms, goals) are the most powerful.
+- **Deep Modules**: Ousterhout's deep vs. shallow module concept parallels Sascha's deep vs. shallow note-taking — deep modules hide complexity behind simple interfaces, just as deep notes compress complex thinking into atomic insights.
 
 ## Questions
 
@@ -176,7 +176,7 @@ This blog post directly addresses the architecture and philosophy of our vault, 
 
 ### Synthesis (Lateral — "Who Else?")
 
-4. [Thinking in Systems](digest_thinking_in_systems_meadows.md) ranks interventions from shallow (tweak parameters) to deep (change paradigms). [Effective Thinking](digest_effective_thinking_burger.md) moves from surface understanding (Earth) to meta-cognition (Quintessence). What new insight emerges from mapping all three depth hierarchies — Sascha's iceberg, Meadows' leverage points, and Burger's elements — onto each other? Do the "deepest levels" point to the same underlying concept?
+4. Thinking in Systems ranks interventions from shallow (tweak parameters) to deep (change paradigms). Effective Thinking moves from surface understanding (Earth) to meta-cognition (Quintessence). What new insight emerges from mapping all three depth hierarchies — Sascha's iceberg, Meadows' leverage points, and Burger's elements — onto each other? Do the "deepest levels" point to the same underlying concept?
    - **Tests**: Whether "depth" is a universal structural property of knowledge frameworks or whether each hierarchy measures a different dimension of depth (Liquid Network lens — bridging three unconnected digests)
    - **If they converge**: There may be a general theory of "depth of intervention" that applies across knowledge management, systems thinking, and cognitive science → follow-up: [[term_depth_hierarchy]]
    - **If they diverge**: Each hierarchy captures a different facet of "going deeper" — Sascha = thinking quality, Meadows = systemic impact, Burger = cognitive skill level
@@ -186,7 +186,7 @@ This blog post directly addresses the architecture and philosophy of our vault, 
    - **If yes**: Audit vault skills by iceberg level — `/slipbox-capture-term-note` (Level 2 — workflow) vs. `/slipbox-review-paper` with Seven Review Lenses (Level 4 — thinking tools embedded in the skill)
    - **If no**: AI skills may require a different depth model since the "thinking" happens in the LLM, not the practitioner
 
-6. Sascha defines "thinking tools" only by example (modeling, formal argument) but never provides a taxonomy or formal definition. The vault has [term_zettelkasten](../term_dictionary/term_zettelkasten.md), [term_permanent_notes](../term_dictionary/term_permanent_notes.md), and [term_code_method](../term_dictionary/term_code_method.md) — but no term note for "thinking tools" as a concept. What would a definition of [[term_thinking_tools]] contain, and how would it relate to existing vault concepts like [critical thinking](../term_dictionary/term_critical_thinking.md) and [cognitive load](../term_dictionary/term_cognitive_load.md)?
+6. Sascha defines "thinking tools" only by example (modeling, formal argument) but never provides a taxonomy or formal definition. The vault has [term_zettelkasten](../term_dictionary/term_zettelkasten.md), [term_permanent_notes](../term_dictionary/term_permanent_notes.md), and [term_code_method](../term_dictionary/term_code_method.md) — but no term note for "thinking tools" as a concept. What would a definition of [[term_thinking_tools]] contain, and how would it relate to existing vault concepts like [critical thinking](../term_dictionary/term_critical_thinking.md) and cognitive load?
    - **Tests**: Whether "thinking tools" is a distinct concept worthy of its own term note or whether it's adequately covered by existing terms (Slow Hunch lens — identifying the vault's unfinished thoughts)
    - **If distinct**: Create `term_thinking_tools.md` with a taxonomy (modeling, formalization, heuristics, frameworks) and link it as the Level 4 output concept
    - **If redundant**: Map "thinking tools" to existing terms and add the iceberg context as a "see also" in those notes
@@ -203,16 +203,16 @@ This blog post directly addresses the architecture and philosophy of our vault, 
 - [Digest: How to Take Smart Notes](digest_smart_notes_ahrens.md) — Ahrens' book is the foundational text for Levels 2-3 of the iceberg; Sascha's post extends Ahrens by adding Level 4 (thinking tools) and critiquing Level 1 PKM
 - [Digest: Building a Second Brain](digest_building_second_brain_forte.md) — Forte's BASB is Sascha's primary example of Level 1 (surface) knowledge management; the CODE workflow operates at the linked note-taking layer
 - [Digest: A System for Writing](digest_system_for_writing_doto.md) — Doto's practical Zettelkasten guide bridges Level 2 (workflow) and Level 3 (method), complementing Sascha's depth model
-- [Digest: Writing with Zettelkasten (Part 3 Focus)](digest_writing_with_zettelkasten_doto.md) — Doto's Part 3 writing process operates at Levels 2-3 of the iceberg; the common mistakes taxonomy diagnoses Level 1 failures
+- Digest: Writing with Zettelkasten (Part 3 Focus) — Doto's Part 3 writing process operates at Levels 2-3 of the iceberg; the common mistakes taxonomy diagnoses Level 1 failures
 - [Digest: Search Alone Is Not Enough](digest_search_not_enough_christian.md) — Christian's co-creator post; "relying on search alone" corresponds to operating at Level 1 (surface PKM) of the iceberg
-- [Digest: Thinking in Systems](digest_thinking_in_systems_meadows.md) — Meadows' leverage points hierarchy maps directly to Sascha's iceberg levels; both argue that the deepest interventions are the most powerful
-- [Digest: Effective Thinking](digest_effective_thinking_burger.md) — Burger's thinking strategies (understand deeply, make mistakes, raise questions) are Level 4 thinking tools in Sascha's framework
-- [Digest: Where Research Begins](digest_where_research_begins_mullaney.md) — Mullaney's distinction between Topic (surface) and Problem (deep) mirrors the Level 1/Level 3 divide; both argue that depth of engagement determines quality of output
+- Digest: Thinking in Systems — Meadows' leverage points hierarchy maps directly to Sascha's iceberg levels; both argue that the deepest interventions are the most powerful
+- Digest: Effective Thinking — Burger's thinking strategies (understand deeply, make mistakes, raise questions) are Level 4 thinking tools in Sascha's framework
+- Digest: Where Research Begins — Mullaney's distinction between Topic (surface) and Problem (deep) mirrors the Level 1/Level 3 divide; both argue that depth of engagement determines quality of output
 - [Zettelkasten](../term_dictionary/term_zettelkasten.md) — parent method term
 - [Permanent Notes](../term_dictionary/term_permanent_notes.md) — Level 3 output: notes that benefit the system
 - [CODE Method](../term_dictionary/term_code_method.md) — Forte's framework, positioned at Level 1 by Sascha
-- [Leverage Point](../term_dictionary/term_leverage_point.md) — Meadows' concept that parallels thinking tools as highest-leverage intervention
-- [Digest: The Principle of Atomicity](digest_atomicity_zettelkasten_christian.md) — Christian's 2013 atomicity principle operates at Level 3 (Knowledge Building); Sascha's 2025 follow-up explicitly connects atomicity to the iceberg, proposing Six [Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md) as the structural definition of an atom
-- [Digest: Atomicity — Principle vs. Implementation](digest_atomicity_principle_implementation_sascha.md) — Sascha's standalone 2025 article; the [Shuhari](../term_dictionary/term_shuhari.md) mastery model (SHU→HA→RI) parallels the iceberg's depth progression, and the Input Quality vs. Desired Outcome distinction maps to surface vs. deep engagement
-- [Digest: BASB and Zettelkasten](digest_basb_vs_zettelkasten_sascha.md) — Sascha's integration piece; positions BASB as resource management (Level 1) complementing ZKM's knowledge processing (Levels 2-4); the Iceberg Principle reinterprets PARA as urgency-surfacing
-- [Digest: The Complete Guide to Atomic Note-Taking](digest_atomicity_guide_sascha.md) — Sascha's comprehensive practical guide; directly integrates the iceberg's four levels into the four-step atomicity process (Step 1 = any level, Step 2 = Level 2, Step 3 = Level 3, Step 4 = Level 4)
+- Leverage Point — Meadows' concept that parallels thinking tools as highest-leverage intervention
+- Digest: The Principle of Atomicity — Christian's 2013 atomicity principle operates at Level 3 (Knowledge Building); Sascha's 2025 follow-up explicitly connects atomicity to the iceberg, proposing Six [Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md) as the structural definition of an atom
+- Digest: Atomicity — Principle vs. Implementation — Sascha's standalone 2025 article; the Shuhari mastery model (SHU→HA→RI) parallels the iceberg's depth progression, and the Input Quality vs. Desired Outcome distinction maps to surface vs. deep engagement
+- Digest: BASB and Zettelkasten — Sascha's integration piece; positions BASB as resource management (Level 1) complementing ZKM's knowledge processing (Levels 2-4); the Iceberg Principle reinterprets PARA as urgency-surfacing
+- Digest: The Complete Guide to Atomic Note-Taking — Sascha's comprehensive practical guide; directly integrates the iceberg's four levels into the four-step atomicity process (Step 1 = any level, Step 2 = Level 2, Step 3 = Level 3, Step 4 = Level 4)

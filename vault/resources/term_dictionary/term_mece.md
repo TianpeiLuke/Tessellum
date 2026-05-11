@@ -137,22 +137,22 @@ The MECE decomposition at step 2 ensures that the hypothesis space is complete -
 ## Related Terms
 
 - [Term: Systems Thinking](term_systems_thinking.md) -- examines emergent properties and feedback loops that MECE decomposition may miss
-- [Term: Planning Fallacy](term_planning_fallacy.md) -- MECE decomposition of project components can expose underestimated effort
-- [Term: Design Thinking](term_design_thinking.md) -- generates creative solutions that MECE then structures and evaluates
+- Term: Planning Fallacy -- MECE decomposition of project components can expose underestimated effort
+- Term: Design Thinking -- generates creative solutions that MECE then structures and evaluates
 - [Term: Socratic Questioning](term_socratic_questioning.md) -- probing questions test whether a decomposition is truly ME and CE
-- [Term: Question Storming](term_question_storming.md) -- generates diverse questions that can reveal gaps in a MECE structure
-- [Term: Cognitive Bias](term_cognitive_bias.md) -- MECE guards against availability bias and anchoring by requiring exhaustive enumeration
-- [Term: Framing Effect](term_framing_effect.md) -- the choice of MECE decomposition is itself a framing decision that shapes analysis
-- [Term: Anchoring](term_anchoring.md) -- first-proposed MECE structures can anchor subsequent analysis
-- [Term: WYSIATI](term_wysiati.md) -- "What You See Is All There Is" -- the CE requirement counteracts this bias
+- Term: Question Storming -- generates diverse questions that can reveal gaps in a MECE structure
+- Term: Cognitive Bias -- MECE guards against availability bias and anchoring by requiring exhaustive enumeration
+- Term: Framing Effect -- the choice of MECE decomposition is itself a framing decision that shapes analysis
+- Term: Anchoring -- first-proposed MECE structures can anchor subsequent analysis
+- Term: WYSIATI -- "What You See Is All There Is" -- the CE requirement counteracts this bias
 - [Term: Zettelkasten](term_zettelkasten.md) -- atomic notes embody ME (one concept per note); the full vault aims for CE coverage
 - [Term: SlipBox](term_slipbox.md) -- MECE decomposition into atomic notes is the structural embodiment of the Decompose step
-- [Natural Planning Model](term_natural_planning_model.md) -- MECE is the decomposition discipline applied in NPM Phase 4 (Organize) to ensure the plan has no gaps and no overlaps
-- [Divergence and Convergence](term_divergence_and_convergence.md) — MECE decomposition is a convergent structuring technique applied after divergent ideation
-- [Five Whys](term_five_whys.md) — MECE decomposes the problem space, Five Whys drills into each branch for root causes; complementary techniques
-- [Logical Fallacies](term_logical_fallacies.md) — MECE decomposition is a structural defense against false dilemma (ensuring all options are considered)
-- [Groupthink](term_groupthink.md) — MECE counteracts groupthink's tendency to narrow options prematurely by requiring collectively exhaustive enumeration
-- [Analytical Reading](term_analytical_reading.md) — Adler's Rule 3 (enumerate major parts in order and relation) requires MECE decomposition of a text's structure
+- Natural Planning Model -- MECE is the decomposition discipline applied in NPM Phase 4 (Organize) to ensure the plan has no gaps and no overlaps
+- Divergence and Convergence — MECE decomposition is a convergent structuring technique applied after divergent ideation
+- Five Whys — MECE decomposes the problem space, Five Whys drills into each branch for root causes; complementary techniques
+- Logical Fallacies — MECE decomposition is a structural defense against false dilemma (ensuring all options are considered)
+- Groupthink — MECE counteracts groupthink's tendency to narrow options prematurely by requiring collectively exhaustive enumeration
+- Analytical Reading — Adler's Rule 3 (enumerate major parts in order and relation) requires MECE decomposition of a text's structure
 - [Critical Thinking](term_critical_thinking.md) — MECE operationalizes the critical thinking principle of comprehensive, systematic analysis — ensuring no relevant category is missed
 
 ## References
@@ -162,8 +162,8 @@ The MECE decomposition at step 2 ensures that the hypothesis space is complete -
 - [StrategyU: What Is the MECE Principle?](https://strategyu.co/wtf-is-mece-mutually-exclusive-collectively-exhaustive/) -- accessible explanation with examples
 - [Career in Consulting: The MECE Principle](https://careerinconsulting.com/mece-principle/) -- practitioner guide with worked examples
 - [Umbrex: MECE Principle Explained](https://umbrex.com/resources/frameworks/strategy-frameworks/mece-principle/) -- consulting framework reference
-- Source: [Digest: Strategic Problem Solving](../digest/digest_strategic_problem_solving_hartley.md) -- Hartley positions MECE as the core decomposition principle in Step 2 of his seven-step framework
-- Source: [Digest: Critical Thinking Think Smarter](../digest/digest_critical_thinking_hartley.md) — Hartley references MECE-style structured analysis in his problem-solving frameworks
+- Source: Digest: Strategic Problem Solving -- Hartley positions MECE as the core decomposition principle in Step 2 of his seven-step framework
+- Source: Digest: Critical Thinking Think Smarter — Hartley references MECE-style structured analysis in his problem-solving frameworks
 
 ---
 
