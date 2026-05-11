@@ -94,6 +94,6 @@ alternatives were considered and why did this win?>
 
 ## References
 
-- Related Concept
-- Related Procedure
+- [Related Concept](../term_dictionary/term_related.md)
+- [Related Procedure](../how_to/howto_related.md)
 - <External source if applicable>

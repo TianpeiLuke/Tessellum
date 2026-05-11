@@ -83,53 +83,53 @@ building_block: concept
 
 ## Related Terms
 
-- **Service-Based Architecture** — coarser-grained alternative with shared database; pragmatic default before microservices
+- **[Service-Based Architecture](term_service_based_architecture.md)** — coarser-grained alternative with shared database; pragmatic default before microservices
 - **[Event-Driven Architecture](term_event_driven_architecture.md)** — often combined with microservices for asynchronous inter-service communication
-- **Architectural Quantum** — each microservice is its own quantum with independent characteristics
-- **Architecture Characteristics** — microservices maximize deployability, scalability, and fault tolerance at the cost of data consistency and operational simplicity
-- **Connascence** — microservices minimize cross-service connascence; strong connascence between services is a boundary smell
-- **Kafka** — common event backbone for inter-service communication in microservices architectures
-- **Layered Architecture** — monolithic alternative; microservices replace technical layering with domain-based decomposition
+- **[Architectural Quantum](term_architectural_quantum.md)** — each microservice is its own quantum with independent characteristics
+- **[Architecture Characteristics](term_architecture_characteristics.md)** — microservices maximize deployability, scalability, and fault tolerance at the cost of data consistency and operational simplicity
+- **[Connascence](term_connascence.md)** — microservices minimize cross-service connascence; strong connascence between services is a boundary smell
+- **[Kafka](term_kafka.md)** — common event backbone for inter-service communication in microservices architectures
+- **[Layered Architecture](term_layered_architecture.md)** — monolithic alternative; microservices replace technical layering with domain-based decomposition
 
-- **CAP Theorem**: Each service boundary is a potential partition point requiring C-vs-A trade-offs
-- **Partition Tolerance**: Inter-service communication failures are network partitions
-- **FLP Impossibility**: Distributed coordination between microservices faces FLP constraints
-- **Amdahl's Law**: Slowest synchronous call in a chain limits overall throughput
-- **Availability**: Each microservice must make its own availability trade-offs
-- **PACELC**: Each microservice boundary introduces PACELC trade-offs — inter-service calls face latency-consistency choices even without partitions
-- **Health Check**: Health checks are essential in microservices for service discovery, load balancer routing, and automated failover of independently deployed service instances
-- **HAProxy**: HAProxy commonly serves as the ingress load balancer or API gateway layer in microservices deployments, distributing traffic across service instances
-- **NGINX**: NGINX commonly serves as the API gateway and load balancer in microservices deployments, routing requests to independently deployed services
-- **Reverse Proxy**: Reverse proxies serve as the unified entry point (ingress) for routing traffic to independently deployed microservices
-- **Round Robin**: Round Robin is the default load balancing algorithm for distributing requests across instances of a microservice behind a Layer 7 load balancer
-- **Session Persistence**: Microservices architectures favor stateless services with externalized state, reducing the need for session persistence at the load balancer
-- **SSL Termination**: SSL termination at an API gateway or ingress controller is a standard pattern in microservices deployments, centralizing TLS handling for many small services
-- **API Gateway**: The API Gateway serves as the single entry point for all client requests in a microservices architecture, providing routing, authentication, rate limiting, and response aggregation
-- **CDN (Content Delivery Network)**: CDNs sit in front of microservices-based backends, caching API responses and serving static assets to reduce load on individual services
-- **Circuit Breaker**: Circuit breakers are critical in microservices to prevent cascading failures when one service-to-service call fails repeatedly
-- **EKS**: Managed Kubernetes for microservices requiring pod-level isolation and service mesh
-- **Consistent Hashing**: Consistent hashing is used for request routing and session affinity across microservice instances
-- **Load Balancer**: Microservices rely heavily on load balancers (both external and internal/service mesh) for inter-service communication and scaling
-- **Message Queue**: Message queues enable asynchronous, loosely coupled communication between independently deployable microservices
-- **Rate Limiting**: Rate limiting is essential in microservices to prevent cascading failures when one service overwhelms another
-- **Redis**: Shared state infrastructure in microservices architectures — serves as distributed cache, session store, pub/sub message bus, rate limiter, and distributed lock manager across service boundaries
-- **GraphQL**: GraphQL often serves as the unified API gateway aggregating data from multiple microservices into a single client-facing endpoint
-- **gRPC**: gRPC is the primary high-performance communication protocol for synchronous inter-service calls in microservices architectures
-- **Pub/Sub**: Pub/Sub enables asynchronous, decoupled inter-service communication in microservices via topic-based message routing
-- **REST**: REST is the most common inter-service and external-facing API protocol in microservices architectures
-- **Scalability**: Microservices enable fine-grained horizontal scaling -- each service scales independently based on its own load profile
-- **WebSocket**: WebSocket gateways in microservices require special handling for connection routing, sticky sessions, and service discovery
-- **Two-Phase Commit**: 2PC coordinates distributed transactions across microservices, but its blocking nature makes it a poor fit for high-availability microservice architectures
-- **Saga Pattern**: Sagas are the preferred pattern for distributed transactions across microservices, using a sequence of local transactions with compensating actions instead of global locks
-- **Latency**: Microservices add inter-service network latency (0.5ms per hop); fan-out patterns cause tail latency amplification
-- **Throughput**: Microservices enable independent scaling — each service can be scaled for its specific throughput requirements
+- **[CAP Theorem](term_cap_theorem.md)**: Each service boundary is a potential partition point requiring C-vs-A trade-offs
+- **[Partition Tolerance](term_partition_tolerance.md)**: Inter-service communication failures are network partitions
+- **[FLP Impossibility](term_flp_impossibility.md)**: Distributed coordination between microservices faces FLP constraints
+- **[Amdahl's Law](term_amdahls_law.md)**: Slowest synchronous call in a chain limits overall throughput
+- **[Availability](term_availability.md)**: Each microservice must make its own availability trade-offs
+- **[PACELC](term_pacelc.md)**: Each microservice boundary introduces PACELC trade-offs — inter-service calls face latency-consistency choices even without partitions
+- **[Health Check](term_health_check.md)**: Health checks are essential in microservices for service discovery, load balancer routing, and automated failover of independently deployed service instances
+- **[HAProxy](term_haproxy.md)**: HAProxy commonly serves as the ingress load balancer or API gateway layer in microservices deployments, distributing traffic across service instances
+- **[NGINX](term_nginx.md)**: NGINX commonly serves as the API gateway and load balancer in microservices deployments, routing requests to independently deployed services
+- **[Reverse Proxy](term_reverse_proxy.md)**: Reverse proxies serve as the unified entry point (ingress) for routing traffic to independently deployed microservices
+- **[Round Robin](term_round_robin.md)**: Round Robin is the default load balancing algorithm for distributing requests across instances of a microservice behind a Layer 7 load balancer
+- **[Session Persistence](term_session_persistence.md)**: Microservices architectures favor stateless services with externalized state, reducing the need for session persistence at the load balancer
+- **[SSL Termination](term_ssl_termination.md)**: SSL termination at an API gateway or ingress controller is a standard pattern in microservices deployments, centralizing TLS handling for many small services
+- **[API Gateway](term_api_gateway.md)**: The API Gateway serves as the single entry point for all client requests in a microservices architecture, providing routing, authentication, rate limiting, and response aggregation
+- **[CDN (Content Delivery Network)](term_cdn.md)**: CDNs sit in front of microservices-based backends, caching API responses and serving static assets to reduce load on individual services
+- **[Circuit Breaker](term_circuit_breaker.md)**: Circuit breakers are critical in microservices to prevent cascading failures when one service-to-service call fails repeatedly
+- **[EKS](term_eks.md)**: Managed Kubernetes for microservices requiring pod-level isolation and service mesh
+- **[Consistent Hashing](term_consistent_hashing.md)**: Consistent hashing is used for request routing and session affinity across microservice instances
+- **[Load Balancer](term_load_balancer.md)**: Microservices rely heavily on load balancers (both external and internal/service mesh) for inter-service communication and scaling
+- **[Message Queue](term_message_queue.md)**: Message queues enable asynchronous, loosely coupled communication between independently deployable microservices
+- **[Rate Limiting](term_rate_limiting.md)**: Rate limiting is essential in microservices to prevent cascading failures when one service overwhelms another
+- **[Redis](term_redis.md)**: Shared state infrastructure in microservices architectures — serves as distributed cache, session store, pub/sub message bus, rate limiter, and distributed lock manager across service boundaries
+- **[GraphQL](term_graphql.md)**: GraphQL often serves as the unified API gateway aggregating data from multiple microservices into a single client-facing endpoint
+- **[gRPC](term_grpc.md)**: gRPC is the primary high-performance communication protocol for synchronous inter-service calls in microservices architectures
+- **[Pub/Sub](term_pub_sub.md)**: Pub/Sub enables asynchronous, decoupled inter-service communication in microservices via topic-based message routing
+- **[REST](term_rest.md)**: REST is the most common inter-service and external-facing API protocol in microservices architectures
+- **[Scalability](term_scalability.md)**: Microservices enable fine-grained horizontal scaling -- each service scales independently based on its own load profile
+- **[WebSocket](term_websocket.md)**: WebSocket gateways in microservices require special handling for connection routing, sticky sessions, and service discovery
+- **[Two-Phase Commit](term_two_phase_commit.md)**: 2PC coordinates distributed transactions across microservices, but its blocking nature makes it a poor fit for high-availability microservice architectures
+- **[Saga Pattern](term_saga_pattern.md)**: Sagas are the preferred pattern for distributed transactions across microservices, using a sequence of local transactions with compensating actions instead of global locks
+- **[Latency](term_latency.md)**: Microservices add inter-service network latency (0.5ms per hop); fan-out patterns cause tail latency amplification
+- **[Throughput](term_throughput.md)**: Microservices enable independent scaling — each service can be scaled for its specific throughput requirements
 - **[CQRS](term_cqrs.md)**: Command Query Responsibility Segregation is often used inside microservices boundaries — read-side and write-side become separate services with their own scaling profiles
 
 ## References
 
 ### Vault Sources
-- Digest: Fundamentals of Software Architecture (Richards & Ford) — microservices as maximum-quantum distributed style
-- Digest: AI Engineering (Huyen) — microservices patterns applied to ML system architecture
+- [Digest: Fundamentals of Software Architecture (Richards & Ford)](../digest/digest_fundamentals_software_architecture_richards.md) — microservices as maximum-quantum distributed style
+- [Digest: AI Engineering (Huyen)](../digest/digest_ai_engineering_huyen.md) — microservices patterns applied to ML system architecture
 
 ### External Sources
 - Richards, M. & Ford, N. (2020). *Fundamentals of Software Architecture*. O'Reilly Media. Chapter 17.

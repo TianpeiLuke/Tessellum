@@ -90,21 +90,21 @@ where $G_j^{\text{survived}}$ = gap reports addressed by rule updates, $G_j^{\te
 
 **Argumentation Theory (In-Domain)**:
 - **[Argumentation](term_argumentation.md)**: The broader field encompassing Toulmin, Dung, pragma-dialectics — dialectical adequacy is a quality criterion within this field
-- **Research Argument**: Booth's 5-component model (claim, reasons, evidence, warrants, acknowledgments) — dialectical adequacy applies to the warrant component
-- **Knowledge Building Blocks — Argument**: The fundamental knowledge atom; dialectical adequacy measures the quality of argument atoms
-- **Knowledge Building Blocks — Counter-Argument**: The "immune system" of knowledge; counter-arguments are the tests that establish adequacy
+- **[Research Argument](term_research_argument.md)**: Booth's 5-component model (claim, reasons, evidence, warrants, acknowledgments) — dialectical adequacy applies to the warrant component
+- **[Knowledge Building Blocks — Argument](term_knowledge_building_blocks_argument.md)**: The fundamental knowledge atom; dialectical adequacy measures the quality of argument atoms
+- **[Knowledge Building Blocks — Counter-Argument](term_knowledge_building_blocks_counter_argument.md)**: The "immune system" of knowledge; counter-arguments are the tests that establish adequacy
 - **[Critical Thinking](term_critical_thinking.md)**: Disciplined analysis of claims; dialectical adequacy is the outcome of rigorous critical thinking applied to warrants
 - **[Socratic Questioning](term_socratic_questioning.md)**: Systematic questioning to test claims; the Socratic method is one technique for probing dialectical adequacy
 
 **DKS and Knowledge Systems**:
 - **[Dialectic Knowledge System](term_dialectic_knowledge_system.md)**: The architecture where dialectical adequacy is the convergence target — the closed loop drives warrants toward this property
 - **[Knowledge Building Blocks](term_knowledge_building_blocks.md)**: The 8-type taxonomy that enables measuring adequacy per building block type
-- **an LLM rule optimizer**: The optimization engine that repairs warrants toward dialectical adequacy via A/B-tested condition/exception updates
+- **[an LLM rule optimizer](term_spot_x.md)**: The optimization engine that repairs warrants toward dialectical adequacy via A/B-tested condition/exception updates
 
 **Epistemological Foundations**:
-- **Bayesian Reasoning**: Bayesian updating is the probabilistic analog — dialectical adequacy is the logical/argumentative analog of posterior convergence after evidence accumulation
-- **Overconfidence Effect**: Cognitive bias where accuracy is overestimated; dialectical adequacy structurally counters overconfidence by requiring explicit counter-argument survival
-- **F1 Score**: The accuracy metric that improves as a consequence of dialectical adequacy — but F1 measures outcome, not the dialectical process that produces it
+- **[Bayesian Reasoning](term_bayesian_reasoning.md)**: Bayesian updating is the probabilistic analog — dialectical adequacy is the logical/argumentative analog of posterior convergence after evidence accumulation
+- **[Overconfidence Effect](term_overconfidence_effect.md)**: Cognitive bias where accuracy is overestimated; dialectical adequacy structurally counters overconfidence by requiring explicit counter-argument survival
+- **[F1 Score](term_f1_score.md)**: The accuracy metric that improves as a consequence of dialectical adequacy — but F1 measures outcome, not the dialectical process that produces it
 
 **Computational Argumentation**:
 - **[QBAF](term_qbaf.md)**: Quantitative Bipolar Argumentation Framework — the formal structure inside which dialectical adequacy can be computed, with weighted attackers explicitly listed

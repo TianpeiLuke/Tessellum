@@ -145,20 +145,20 @@ Spaced repetition aligns naturally with SlipBox / Zettelkasten practices:
 
 - [Term: Retrieval Practice](term_retrieval_practice.md) -- spaced repetition is most effective when combined with retrieval practice at each review session
 - [Term: Desirable Difficulties](term_desirable_difficulties.md) -- spacing is a canonical desirable difficulty; the forgetting between sessions is the productive struggle
-- Term: Interleaving -- interleaving naturally introduces spacing between repetitions of a given topic
+- [Term: Interleaving](term_interleaving.md) -- interleaving naturally introduces spacing between repetitions of a given topic
 - [Term: Elaborative Interrogation](term_elaborative_interrogation.md) -- asking "why" during spaced review sessions deepens encoding at each repetition
-- Term: Cognitive Bias -- the fluency of massed practice creates a bias toward believing cramming works better
-- Term: System 1 and System 2 -- spaced repetition forces System 2 effortful retrieval rather than System 1 familiarity
-- Term: Availability Heuristic -- recently crammed material is highly "available" (easy to recall) but not durably stored
+- [Term: Cognitive Bias](term_cognitive_bias.md) -- the fluency of massed practice creates a bias toward believing cramming works better
+- [Term: System 1 and System 2](term_system_1_and_system_2.md) -- spaced repetition forces System 2 effortful retrieval rather than System 1 familiarity
+- [Term: Availability Heuristic](term_availability_heuristic.md) -- recently crammed material is highly "available" (easy to recall) but not durably stored
 - [Term: Zettelkasten](term_zettelkasten.md) -- periodic note review in a Zettelkasten embodies spaced repetition
 - [Term: SlipBox](term_slipbox.md) -- SlipBox note lifecycle (stub to active) naturally implements spaced review
 - [Compound Effect](term_compound_effect.md) -- spaced repetition is compounding applied to memory; each review session builds on prior sessions exponentially
-- Deliberate Practice -- spaced scheduling is a deliberate practice technique that structures practice across time for optimal retention
+- [Deliberate Practice](term_deliberate_practice.md) -- spaced scheduling is a deliberate practice technique that structures practice across time for optimal retention
 - [Progressive Summarization](term_progressive_summarization.md) — each revisit-and-layer cycle creates natural spaced repetition for the note's content
 
 ## References
 
-- Source: Digest: Make It Stick
+- Source: [Digest: Make It Stick](../digest/digest_make_it_stick_brown.md)
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — periodic review of slip-box notes creates natural spaced repetition
 - [Wikipedia: Spaced Repetition](https://en.wikipedia.org/wiki/Spaced_repetition) -- comprehensive overview of history, research, and software implementations
 - [Wikipedia: Forgetting Curve](https://en.wikipedia.org/wiki/Forgetting_curve) -- Ebbinghaus's foundational discovery

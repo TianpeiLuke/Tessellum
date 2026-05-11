@@ -60,7 +60,7 @@ Feedback loops are the most fundamental structural element in systems thinking. 
 
 **Key insight**: Most real systems contain both reinforcing and balancing loops. The dominant loop at any given time determines the system's behavior -- but dominance can shift, producing surprising regime changes.
 
-### Stocks, Flows, and Delays
+### [Stocks, Flows](term_stocks_and_flows.md), and Delays
 
 - **Stocks**: Accumulations within a system (e.g., inventory, knowledge, trust, population)
 - **Flows**: Rates of change into or out of stocks (e.g., production rate, learning rate, hiring rate)
@@ -72,9 +72,9 @@ Feedback loops are the most fundamental structural element in systems thinking. 
 
 **Emergent properties** are characteristics of a system that arise from the interactions of its parts but are not present in any individual part. Consciousness emerges from neural interactions; traffic jams emerge from individual driving decisions; organizational culture emerges from individual behaviors and incentives. Systems thinking trains practitioners to look for emergence rather than assuming that understanding parts guarantees understanding of the whole.
 
-### Leverage Points
+### [Leverage Points](term_leverage_points.md)
 
-Donella Meadows' 1999 paper "Leverage Points: Places to Intervene in a System" identified **12 types of leverage points**, ranked from least to most effective:
+Donella Meadows' 1999 paper "Leverage Points: Places to Intervene in a System" identified **12 types of [leverage points](term_leverage_points.md)**, ranked from least to most effective:
 
 | Rank | Leverage Point | Power |
 |------|---------------|-------|
@@ -93,9 +93,9 @@ Donella Meadows' 1999 paper "Leverage Points: Places to Intervene in a System" i
 
 **Key insight**: Most interventions target low-leverage points (adjusting parameters like tax rates or quotas). The highest-leverage interventions change the goals, rules, or paradigms of the system itself. This hierarchy explains why many well-intentioned reforms produce minimal results -- they operate at leverage points 10-12 when transformative change requires points 1-5.
 
-### System Archetypes
+### [System Archetypes](term_system_archetypes.md)
 
-Peter Senge and colleagues identified recurring structural patterns -- **system archetypes** -- that produce predictable problematic behaviors:
+Peter Senge and colleagues identified recurring structural patterns -- **[system archetypes](term_system_archetypes.md)** -- that produce predictable problematic behaviors:
 
 | Archetype | Pattern | Example |
 |-----------|---------|---------|
@@ -115,7 +115,7 @@ Peter Senge and colleagues identified recurring structural patterns -- **system 
 - **Norbert Wiener (1894-1964)**: MIT mathematician. Founded cybernetics -- the study of control and communication in animal and machine systems. Published *Cybernetics* (1948).
 - **Jay Forrester (1918-2016)**: MIT engineer. Founded system dynamics -- the quantitative modeling of complex feedback systems. Published *Industrial Dynamics* (1961) and *Urban Dynamics* (1969).
 - **Donella Meadows (1941-2001)**: Environmental scientist and systems analyst. Lead author of *The Limits to Growth* (1972), which used system dynamics to model global resource constraints. Published *Thinking in Systems: A Primer* (posthumously, 2008) -- the most accessible introduction to systems thinking. Authored "Leverage Points: Places to Intervene in a System" (1999).
-- **Peter Senge (b. 1947)**: MIT Sloan senior lecturer. Published *The Fifth Discipline: The Art and Practice of the Learning Organization* (1990), which positioned systems thinking as the "fifth discipline" that integrates personal mastery, mental models, shared vision, and team learning. Sold over two million copies.
+- **Peter Senge (b. 1947)**: MIT Sloan senior lecturer. Published *The Fifth Discipline: The Art and Practice of the Learning Organization* (1990), which positioned systems thinking as the "fifth discipline" that integrates personal mastery, [mental models](term_mental_model.md), shared vision, and team learning. Sold over two million copies.
 
 ### Key Publications
 
@@ -156,26 +156,26 @@ Peter Senge and colleagues identified recurring structural patterns -- **system 
 
 ## Related Terms
 
-- System Archetypes -- recurring structural patterns of feedback loops that produce predictable problematic behaviors; a core diagnostic tool of systems thinking
-- Feedback Loop -- reinforcing (positive) and balancing (negative) feedback loops are the fundamental structural elements of systems thinking
+- [System Archetypes](term_system_archetypes.md) -- recurring structural patterns of feedback loops that produce predictable problematic behaviors; a core diagnostic tool of systems thinking
+- [Feedback Loop](term_feedback_loop.md) -- reinforcing (positive) and balancing (negative) feedback loops are the fundamental structural elements of systems thinking
 - [Term: MECE](term_mece.md) -- decomposition principle that assumes separability; complements and sometimes conflicts with systems thinking
-- Term: Design Thinking -- human-centered methodology that systems thinking extends with structural analysis
-- Term: Cognitive Bias -- biases (especially WYSIATI and anchoring) that systems thinking counteracts by expanding the analytical frame
+- [Term: Design Thinking](term_design_thinking.md) -- human-centered methodology that systems thinking extends with structural analysis
+- [Term: Cognitive Bias](term_cognitive_bias.md) -- biases (especially WYSIATI and anchoring) that systems thinking counteracts by expanding the analytical frame
 - [Term: Socratic Questioning](term_socratic_questioning.md) -- probing implications and consequences (Type 5 Socratic questions) operationalizes systems thinking
-- Term: Question Storming -- generating diverse questions reveals system connections that focused analysis misses
-- Term: Planning Fallacy -- inside-view bias that systems thinking's emphasis on feedback delays helps correct
-- Term: Framing Effect -- system boundary selection is a framing decision that shapes the analysis
-- Term: WYSIATI -- systems thinking explicitly counteracts "What You See Is All There Is" by requiring consideration of feedback, delays, and emergence
-- Term: Loss Aversion -- explains why organizations resist systemic changes that require short-term losses for long-term system improvement
+- [Term: Question Storming](term_question_storming.md) -- generating diverse questions reveals system connections that focused analysis misses
+- [Term: Planning Fallacy](term_planning_fallacy.md) -- inside-view bias that systems thinking's emphasis on feedback delays helps correct
+- [Term: Framing Effect](term_framing_effect.md) -- system boundary selection is a framing decision that shapes the analysis
+- [Term: WYSIATI](term_wysiati.md) -- systems thinking explicitly counteracts "What You See Is All There Is" by requiring consideration of feedback, delays, and emergence
+- [Term: Loss Aversion](term_loss_aversion.md) -- explains why organizations resist systemic changes that require short-term losses for long-term system improvement
 - [Term: Zettelkasten](term_zettelkasten.md) -- the vault's graph architecture operationalizes systems thinking by making idea interconnections explicit
 - [Term: SlipBox](term_slipbox.md) -- changes to one note propagate through the link structure, mirroring how changes in one system component affect the whole
-- Habit Loop -- the habit loop is a reinforcing feedback loop (R-loop); balancing loops (accountability, environment change) can interrupt unwanted reinforcing cycles
+- [Habit Loop](term_habit_loop.md) -- the habit loop is a reinforcing feedback loop (R-loop); balancing loops (accountability, environment change) can interrupt unwanted reinforcing cycles
 - [Compound Effect](term_compound_effect.md) -- compounding is exponential growth in a reinforcing feedback loop; systems thinking explains why small changes produce nonlinear results
-- Divergence and Convergence — systems thinking enriches the divergent phase by surfacing feedback loops and interconnections
+- [Divergence and Convergence](term_divergence_and_convergence.md) — systems thinking enriches the divergent phase by surfacing feedback loops and interconnections
 - [Hub Notes](term_hub_notes.md) — hub notes create a reinforcing feedback loop: better navigation → more retrieval → more connections
 - [Index Notes](term_index_notes.md) — the index is the input interface of the Zettelkasten system
-- Five Whys — Five Whys traces linear causal chains; systems thinking reveals feedback loops and non-linear interactions that Five Whys may miss
-- Groupthink — groupthink is a system-level failure; the group's feedback loops (conformity → consensus → more conformity) are a reinforcing loop
+- [Five Whys](term_five_whys.md) — Five Whys traces linear causal chains; systems thinking reveals feedback loops and non-linear interactions that Five Whys may miss
+- [Groupthink](term_groupthink.md) — groupthink is a system-level failure; the group's feedback loops (conformity → consensus → more conformity) are a reinforcing loop
 - [Critical Thinking](term_critical_thinking.md) — systems thinking complements critical thinking by providing tools for analyzing interconnected wholes rather than isolated claims
 
 ## References
@@ -186,11 +186,11 @@ Peter Senge and colleagues identified recurring structural patterns -- **system 
 - [Peter Senge: The Fifth Discipline (1990)](<internal-link-removed>) -- systems thinking in organizational learning
 - [QUT: A Brief History of Systems Thinking](https://qut.pressbooks.pub/systemcraft-systems-thinking/chapter/a-brief-history-of-systems-thinking/) -- accessible historical overview
 - [ResearchGate: Systems Thinking -- Bertalanffy, Senge, and Meadows](https://www.researchgate.net/publication/344269278_Systems_Thinking-Ludwig_Von_Bertalanffy_Peter_Senge_and_Donella_Meadows) -- academic comparison of foundational thinkers
-- Source: Digest: Strategic Problem Solving -- Hartley positions systems thinking as a cross-cutting principle that prevents local optimization across all seven steps
+- Source: [Digest: Strategic Problem Solving](../digest/digest_strategic_problem_solving_hartley.md) -- Hartley positions systems thinking as a cross-cutting principle that prevents local optimization across all seven steps
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — the slip-box as a system with reinforcing feedback loops
 - Source: [Digest: A System for Writing](../digest/digest_system_for_writing_doto.md) — Doto's systematic approach to note-making as a writing system
-- Source: Digest: The 5 Elements of Effective Thinking — Burger's "flow of ideas" (Water element) as systems thinking applied to knowledge
-- Source: Digest: Critical Thinking Think Smarter — Hartley positions systems thinking as essential for preventing solutions incomplete due to limited perspective
+- Source: [Digest: The 5 Elements of Effective Thinking](../digest/digest_effective_thinking_burger.md) — Burger's "flow of ideas" (Water element) as systems thinking applied to knowledge
+- Source: [Digest: Critical Thinking Think Smarter](../digest/digest_critical_thinking_hartley.md) — Hartley positions systems thinking as essential for preventing solutions incomplete due to limited perspective
 
 ---
 

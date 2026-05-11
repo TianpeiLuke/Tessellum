@@ -81,7 +81,7 @@ yes/no/indeterminate verdict.>
 
 > **H**: <state precisely, in one sentence>.
 
-**Target hypothesis note** (if separate): <Hypothesis Title>
+**Target hypothesis note** (if separate): [<Hypothesis Title>](../../resources/analysis_thoughts/thought_hypothesis.md)
 
 ## Root Cause Connection
 
@@ -90,7 +90,7 @@ motivated running this experiment? This section anchors the experiment in
 the broader research trail; an experiment without a root-cause connection is
 unmoored.>
 
-This experiment serves: <Argument or Question>
+This experiment serves: [<Argument or Question>](../../resources/analysis_thoughts/thought_upstream.md)
 
 The argument needs this experiment because: <one-paragraph rationale>.
 
@@ -235,7 +235,7 @@ the verdict — it's the next experiment.>
 
 ## References
 
-- Hypothesis tested
-- Upstream argument
-- Method's source — if the procedure was defined elsewhere
-- Related experiment — for cross-reference
+- [Hypothesis tested](../../resources/analysis_thoughts/thought_hypothesis.md)
+- [Upstream argument](../../resources/analysis_thoughts/thought_upstream.md)
+- [Method's source](../../resources/how_to/howto_method.md) — if the procedure was defined elsewhere
+- [Related experiment](experiment_other.md) — for cross-reference

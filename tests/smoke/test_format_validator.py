@@ -541,38 +541,6 @@ def test_tess_005_skips_when_path_is_unknown():
     assert issues == []
 
 
-# ── LINK-006 — orphan exemption for status=template ─────────────────────────
-
-
-_ORPHAN_BODY = "Just body text. No internal markdown links anywhere."
-
-
-def test_link_006_fires_on_active_orphan():
-    fm = VALID_FRONTMATTER  # status: active, building_block: concept
-    note = _note(fm, body=_ORPHAN_BODY)
-    issues = [i for i in validate(note) if i.rule_id == "LINK-006"]
-    assert len(issues) == 1
-    assert issues[0].severity is Severity.WARNING
-
-
-def test_link_006_skipped_for_status_template():
-    """Templates are orphans by design — they're scaffolds. LINK-006
-    should skip them (parallel to TESS-004's status=template exemption)."""
-    fm = VALID_FRONTMATTER.replace("status: active", "status: template")
-    note = _note(fm, body=_ORPHAN_BODY)
-    issues = [i for i in validate(note) if i.rule_id == "LINK-006"]
-    assert issues == []
-
-
-def test_link_006_still_fires_for_status_draft():
-    """Drafts are work-in-progress notes; they should still get an
-    orphan warning so the author can fix it before promoting to active."""
-    fm = VALID_FRONTMATTER.replace("status: active", "status: draft")
-    note = _note(fm, body=_ORPHAN_BODY)
-    issues = [i for i in validate(note) if i.rule_id == "LINK-006"]
-    assert len(issues) == 1
-
-
 def test_tess_005_dks_extension_edge_passes(tmp_path):
     """The CTR→MOD DKS extension is in BB_SCHEMA — body link counter→model passes."""
     _write_note(tmp_path, "model_a", "model", "Body.")

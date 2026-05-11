@@ -75,8 +75,8 @@ definition above.>
 <Cross-references to closely related but distinct concepts. Use this section
 for "if you understood X, you might also want to know about Y" relations.>
 
-- Related Term A — <how it relates>
-- Related Term B — <how it relates>
+- [Related Term A](term_related_a.md) — <how it relates>
+- [Related Term B](term_related_b.md) — <how it relates>
 
 ## References
 

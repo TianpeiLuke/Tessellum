@@ -89,7 +89,7 @@ The Zettelkasten method addresses open loops in the knowledge domain. An idea en
 
 ### Investigation and Analytical Work
 
-In abuse investigation, each open case is an open loop for the analyst. Structured case management systems function as trusted systems: they capture all case details, clarify status and next actions, and organize by priority. Without such systems, investigators carry mental models of dozens of cases, degrading analytical quality through attention residue and cognitive overload.
+In abuse investigation, each open case is an open loop for the analyst. Structured case management systems function as trusted systems: they capture all case details, clarify status and next actions, and organize by priority. Without such systems, investigators carry [mental models](term_mental_model.md) of dozens of cases, degrading analytical quality through attention residue and cognitive overload.
 
 ### Agent and System Design
 
@@ -101,23 +101,23 @@ Every meeting that ends without clear next actions and owners creates open loops
 
 ## Related Terms
 
-- System 1 and System 2 — open loops consume System 2 bandwidth; externalizing them frees cognitive capacity for deliberate analytical thinking
-- WYSIATI — open loops exploit WYSIATI: the mind treats whatever incomplete commitments it can recall as "all there is," missing items not in immediate awareness
-- Planning Fallacy — open loops amplify the planning fallacy: cognitive overload from unprocessed commitments reduces the System 2 capacity needed for accurate estimation
-- Cognitive Bias — open loops increase susceptibility to all cognitive biases by depleting the executive function resources needed to override System 1 shortcuts
-- Flow State — open loops prevent flow: the background hum of unresolved commitments fragments the sustained concentration flow requires
-- Habit Loop — the Weekly Review habit (cue: end of week; response: process all inboxes; reward: clear mind) is the maintenance loop for closing open loops
+- [System 1 and System 2](term_system_1_and_system_2.md) — open loops consume System 2 bandwidth; externalizing them frees cognitive capacity for deliberate analytical thinking
+- [WYSIATI](term_wysiati.md) — open loops exploit WYSIATI: the mind treats whatever incomplete commitments it can recall as "all there is," missing items not in immediate awareness
+- [Planning Fallacy](term_planning_fallacy.md) — open loops amplify the planning fallacy: cognitive overload from unprocessed commitments reduces the System 2 capacity needed for accurate estimation
+- [Cognitive Bias](term_cognitive_bias.md) — open loops increase susceptibility to all cognitive biases by depleting the executive function resources needed to override System 1 shortcuts
+- [Flow State](term_flow_state.md) — open loops prevent flow: the background hum of unresolved commitments fragments the sustained concentration flow requires
+- [Habit Loop](term_habit_loop.md) — the Weekly Review habit (cue: end of week; response: process all inboxes; reward: clear mind) is the maintenance loop for closing open loops
 - [Trusted System](term_trusted_system.md) — the external system into which open loops are captured; trust in the system is the precondition for cognitive relief
-- Commitment Device — closing an open loop by making a concrete plan functions as a self-directed commitment device
+- [Commitment Device](term_commitment_device.md) — closing an open loop by making a concrete plan functions as a self-directed commitment device
 - [Compound Effect](term_compound_effect.md) — unresolved open loops compound: each new uncommitted task adds marginal cognitive load, producing accelerating mental fatigue
-- Choice Architecture — designing environments that reduce open loop generation (e.g., inbox-zero defaults, auto-capture tools) is choice architecture for cognitive hygiene
-- Deliberate Practice — deliberate practice requires full concentration; open loops are the primary obstacle to the sustained focus deliberate practice demands
+- [Choice Architecture](term_choice_architecture.md) — designing environments that reduce open loop generation (e.g., inbox-zero defaults, auto-capture tools) is choice architecture for cognitive hygiene
+- [Deliberate Practice](term_deliberate_practice.md) — deliberate practice requires full concentration; open loops are the primary obstacle to the sustained focus deliberate practice demands
 - [Zettelkasten](term_zettelkasten.md) — the Zettelkasten's capture-clarify-organize pipeline closes intellectual open loops the way GTD closes task open loops
 - [Progressive Summarization](term_progressive_summarization.md) — undistilled notes are intellectual open loops; Progressive Summarization closes them
 - [Intermediate Packets](term_intermediate_packets.md) — work-in-process IPs are open loops until completed or archived
 - [CODE Method](term_code_method.md) — the Capture phase of CODE externalizes open loops; the full cycle closes them
 - [Fleeting Notes](term_fleeting_notes.md) — capturing ideas as fleeting notes closes cognitive open loops (Zeigarnik effect)
-- Zeigarnik Effect — the cognitive mechanism underlying open loops; incomplete tasks create tension that persists until externalized or completed
+- [Zeigarnik Effect](term_zeigarnik_effect.md) — the cognitive mechanism underlying open loops; incomplete tasks create tension that persists until externalized or completed
 
 ## References
 
@@ -127,7 +127,7 @@ Every meeting that ends without clear next actions and owners creates open loops
 - Leroy, S. (2009). "Why Is It So Hard to Do My Work? The Challenge of Attention Residue When Switching Between Work Tasks." *Organizational Behavior and Human Decision Processes*, 109(2), 168–181.
 - Sweller, J. (1988). "Cognitive Load During Problem Solving: Effects on Learning." *Cognitive Science*, 12(2), 257–285.
 - [Wikipedia: Zeigarnik Effect](https://en.wikipedia.org/wiki/Zeigarnik_effect) — overview of the original research and modern extensions
-- Source: Digest: Getting Things Done
+- Source: [Digest: Getting Things Done](../digest/digest_getting_things_done_allen.md)
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — fleeting notes close intellectual open loops by externalizing ideas into the slip-box
 
 ---

@@ -102,6 +102,6 @@ the system depends on counter-arguments existing — make their authoring easier
 
 ## References
 
-- Related Argument — <how it relates>
-- Related Concept
-- Empirical Observation Cited
+- [Related Argument](thought_related.md) — <how it relates>
+- [Related Concept](../term_dictionary/term_related.md)
+- [Empirical Observation Cited](thought_or_observation_cited.md)

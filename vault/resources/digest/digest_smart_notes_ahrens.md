@@ -169,7 +169,7 @@ Ahrens explicitly grounds the method in established learning science:
 
 5. **Elaboration is the key** — Rephrasing in your own words forces genuine understanding. Never copy verbatim — the act of translation is where learning happens.
 
-6. **Structure beats willpower** — "Having a meaningful and well-defined task beats willpower every time." Design systems that create their own momentum. This is the systems-level complement to growth mindset: intellectual output is a function of method, not innate talent.
+6. **Structure beats willpower** — "Having a meaningful and well-defined task beats willpower every time." Design systems that create their own momentum. This is the systems-level complement to [growth mindset](../term_dictionary/term_growth_mindset.md): intellectual output is a function of method, not innate talent.
 
 7. **Process fleeting notes within 1-2 days** — "Just collecting unprocessed fleeting notes inevitably leads to chaos." The pipeline must flow.
 
@@ -236,11 +236,11 @@ This book is the intellectual foundation of the vault's architecture. Several co
 
 - **One idea per note (atomicity)** is the vault's core design principle. Every term note, paper note, and SOP is atomic — self-contained and independently linkable. This connects to [Zettelkasten](../term_dictionary/term_zettelkasten.md)'s first core principle.
 
-- **Organize by context, not topic** explains why the vault uses graph traversal and entry points rather than deep folder hierarchies. Notes are filed once but found many ways through links. See Choice Architecture for the design principle underlying this approach.
+- **Organize by context, not topic** explains why the vault uses graph traversal and entry points rather than deep folder hierarchies. Notes are filed once but found many ways through links. See [Choice Architecture](../term_dictionary/term_choice_architecture.md) for the design principle underlying this approach.
 
-- **Elaboration as the learning mechanism** connects to [Elaborative Interrogation](../term_dictionary/term_elaborative_interrogation.md) and [Desirable Difficulties](../term_dictionary/term_desirable_difficulties.md) — both from Make It Stick. Writing notes in your own words is the specific form of elaboration that produces lasting understanding.
+- **Elaboration as the learning mechanism** connects to [Elaborative Interrogation](../term_dictionary/term_elaborative_interrogation.md) and [Desirable Difficulties](../term_dictionary/term_desirable_difficulties.md) — both from [Make It Stick](digest_make_it_stick_brown.md). Writing notes in your own words is the specific form of elaboration that produces lasting understanding.
 
-- **The slip-box as communication partner** parallels the vault's agentic architecture: the database, graph traversal, and PPR scoring create a system that surfaces connections the user wouldn't find manually. This connects to Johnson's [Liquid Network](../term_dictionary/term_liquid_network.md) concept from Where Good Ideas Come From.
+- **The slip-box as communication partner** parallels the vault's agentic architecture: the database, graph traversal, and PPR scoring create a system that surfaces connections the user wouldn't find manually. This connects to Johnson's [Liquid Network](../term_dictionary/term_liquid_network.md) concept from [Where Good Ideas Come From](digest_good_ideas_johnson.md).
 
 - **Bottom-up writing** is how the vault generates reviews, question sets, and connection analyses — from accumulated note material, not from blank-page planning.
 
@@ -267,38 +267,38 @@ This book is the intellectual foundation of the vault's architecture. Several co
 - [Retrieval Practice](../term_dictionary/term_retrieval_practice.md) — writing permanent notes from memory exercises retrieval
 - [Desirable Difficulties](../term_dictionary/term_desirable_difficulties.md) — rephrasing in own words creates productive difficulty
 - [Spaced Repetition](../term_dictionary/term_spaced_repetition.md) — natural re-encounter with notes during linking approximates spaced review
-- Interleaving — cross-referencing creates varied contexts that deepen understanding
+- [Interleaving](../term_dictionary/term_interleaving.md) — cross-referencing creates varied contexts that deepen understanding
 - [Commonplace Book](../term_dictionary/term_commonplace_book.md) — historical predecessor; Zettelkasten adds explicit linking and atomicity
 - [Compound Effect](../term_dictionary/term_compound_effect.md) — knowledge compounds through interconnection; each note adds value to the whole
 - [Trusted System](../term_dictionary/term_trusted_system.md) — the slip-box is a trusted system that frees the mind for creative work
 - [Open Loops](../term_dictionary/term_open_loops.md) — Ahrens leverages the Zeigarnik effect: externalizing ideas closes cognitive loops
-- Flow State — "A good structure enables flow"; structure enables sustained creative immersion
-- Deliberate Practice — the slip-box workflow embeds deliberate practice into everyday intellectual work
-- Growth Mindset — Ahrens' implicit premise: intellectual output depends on method and effort, not innate talent; "becoming a different person with a different way of thinking"
+- [Flow State](../term_dictionary/term_flow_state.md) — "A good structure enables flow"; structure enables sustained creative immersion
+- [Deliberate Practice](../term_dictionary/term_deliberate_practice.md) — the slip-box workflow embeds deliberate practice into everyday intellectual work
+- [Growth Mindset](../term_dictionary/term_growth_mindset.md) — Ahrens' implicit premise: intellectual output depends on method and effort, not innate talent; "becoming a different person with a different way of thinking"
 - [BASB](../term_dictionary/term_basb.md) — Forte's complementary system; BASB organizes by actionability, Zettelkasten by connection
 - [Hub Notes](../term_dictionary/term_hub_notes.md) — navigational retrieval notes (Ahrens' overview notes)
 - [Index Notes](../term_dictionary/term_index_notes.md) — Ahrens' index and keyword selection philosophy
 
 ### Related Digest Notes
 - [A System for Writing](digest_system_for_writing_doto.md) — Doto's practical Zettelkasten primer; extends Ahrens with concrete examples, CLOGs, and writing-output focus
-- Writing with Zettelkasten (Part 3 Focus) — deep-dive into Doto's Part 3: writing as conversation, common mistakes (Fetzenwissen, Verknüpfungszwang), four writing formats, workflow management tools
+- [Writing with Zettelkasten (Part 3 Focus)](digest_writing_with_zettelkasten_doto.md) — deep-dive into Doto's Part 3: writing as conversation, common mistakes (Fetzenwissen, Verknüpfungszwang), four writing formats, workflow management tools
 - [Building a Second Brain](digest_building_second_brain_forte.md) — Forte's PKM methodology; complementary approach with project-centric organization
-- Getting Things Done — Allen manages tasks; Ahrens manages knowledge; both build trusted systems leveraging the Zeigarnik effect
-- Atomic Habits — Clear builds behaviors; Ahrens builds knowledge structures; both emphasize systems over goals and compound growth
-- Make It Stick — the learning science that explains why the Zettelkasten works: elaboration, retrieval practice, generation effect, interleaving
-- Where Good Ideas Come From — the slip-box implements Johnson's liquid network, slow hunch, and adjacent possible for idea development
-- The 5 Elements of Effective Thinking — Burger's "understand deeply" maps to Ahrens' elaboration; both argue understanding requires active transformation
-- Where Research Begins — Mullaney's Problem vs. Topic parallels Ahrens' bottom-up approach: let the question emerge from the material
-- The 7 Habits of Highly Effective People — Ahrens' Zettelkasten method builds knowledge interdependence; Covey's framework builds interpersonal interdependence; both move from independence to productive interconnection
+- [Getting Things Done](digest_getting_things_done_allen.md) — Allen manages tasks; Ahrens manages knowledge; both build trusted systems leveraging the Zeigarnik effect
+- [Atomic Habits](digest_atomic_habits_clear.md) — Clear builds behaviors; Ahrens builds knowledge structures; both emphasize systems over goals and compound growth
+- [Make It Stick](digest_make_it_stick_brown.md) — the learning science that explains why the Zettelkasten works: elaboration, retrieval practice, generation effect, interleaving
+- [Where Good Ideas Come From](digest_good_ideas_johnson.md) — the slip-box implements Johnson's liquid network, slow hunch, and adjacent possible for idea development
+- [The 5 Elements of Effective Thinking](digest_effective_thinking_burger.md) — Burger's "understand deeply" maps to Ahrens' elaboration; both argue understanding requires active transformation
+- [Where Research Begins](digest_where_research_begins_mullaney.md) — Mullaney's Problem vs. Topic parallels Ahrens' bottom-up approach: let the question emerge from the material
+- [The 7 Habits of Highly Effective People](digest_7_habits_covey.md) — Ahrens' Zettelkasten method builds knowledge interdependence; Covey's framework builds interpersonal interdependence; both move from independence to productive interconnection
 - [The Zettelkasten Iceberg](digest_zettelkasten_iceberg_sascha.md) — Sascha extends Ahrens by adding Level 4 (thinking tools) and critiquing Level 1 PKM; Ahrens covers Levels 2-3 of the iceberg
 - [Search Alone Is Not Enough](digest_search_not_enough_christian.md) — Christian articulates why Ahrens' emphasis on linking is the core thinking operation; links encode judgment that search cannot replicate
-- The Principle of Atomicity — Christian's atomicity principle ("separate concerns") answers the granularity question Ahrens leaves implicit: what constitutes one permanent note? Sascha's 2025 follow-up refines it with Six [Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md)
-- Atomicity — Principle vs. Implementation — Sascha's 2025 deep dive; the Desired Outcome implementation aligns with Ahrens' philosophy that thinking happens *through* writing, not before it
-- Mind Mapping — Knight's mind mapping is a complementary knowledge externalization system; mind maps give holistic visual overview while Zettelkasten gives deep atomic connections. Both mirror the brain's associative networks through different structures
-- BASB and Zettelkasten — Sascha's integration piece; positions Ahrens' Zettelkasten as the knowledge processing layer that complements BASB's resource management layer
-- The Complete Guide to Atomic Note-Taking — Sascha's comprehensive practical guide operationalizing the atomicity concepts Ahrens introduces; the four-step process systematizes how permanent notes are crafted, and the note maturation stages validate Ahrens' insight that writing is thinking
-- The Product is Docs — Gales applies product thinking to team-based documentation; complementary to Ahrens' personal knowledge management — Ahrens focuses on the writer's own understanding, Gales on documentation serving external audiences with defined metrics and cross-functional processes
-- Docs for Developers (Bhatti) — Bhatti's documentation-as-engineering-skill argument parallels Ahrens' writing-as-thinking thesis; both treat writing as a learnable, systematic process rather than innate talent
+- [The Principle of Atomicity](digest_atomicity_zettelkasten_christian.md) — Christian's atomicity principle ("separate concerns") answers the granularity question Ahrens leaves implicit: what constitutes one permanent note? Sascha's 2025 follow-up refines it with Six [Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md)
+- [Atomicity — Principle vs. Implementation](digest_atomicity_principle_implementation_sascha.md) — Sascha's 2025 deep dive; the Desired Outcome implementation aligns with Ahrens' philosophy that thinking happens *through* writing, not before it
+- [Mind Mapping](digest_mind_mapping_knight.md) — Knight's mind mapping is a complementary knowledge externalization system; mind maps give holistic visual overview while Zettelkasten gives deep atomic connections. Both mirror the brain's associative networks through different structures
+- [BASB and Zettelkasten](digest_basb_vs_zettelkasten_sascha.md) — Sascha's integration piece; positions Ahrens' Zettelkasten as the knowledge processing layer that complements BASB's resource management layer
+- [The Complete Guide to Atomic Note-Taking](digest_atomicity_guide_sascha.md) — Sascha's comprehensive practical guide operationalizing the atomicity concepts Ahrens introduces; the four-step process systematizes how permanent notes are crafted, and the note maturation stages validate Ahrens' insight that writing is thinking
+- [The Product is Docs](digest_product_is_docs_gales.md) — Gales applies product thinking to team-based documentation; complementary to Ahrens' personal knowledge management — Ahrens focuses on the writer's own understanding, Gales on documentation serving external audiences with defined metrics and cross-functional processes
+- [Docs for Developers (Bhatti)](digest_docs_for_developers_bhatti.md) — Bhatti's documentation-as-engineering-skill argument parallels Ahrens' writing-as-thinking thesis; both treat writing as a learnable, systematic process rather than innate talent
 
 ### Related Code Repos
 - [Tessellum](https://github.com/TianpeiLuke/Tessellum) — Production implementation of these principles

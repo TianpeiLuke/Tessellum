@@ -254,25 +254,25 @@ Doto's practical approach maps directly to several vault patterns:
 - [Progressive Summarization](../term_dictionary/term_progressive_summarization.md) — Forte's distillation technique; Doto opposes highlighting in favor of rephrasing
 - [CODE Method](../term_dictionary/term_code_method.md) — Forte's lifecycle framework; compatible but broader than Zettelkasten's narrow scope
 - [Compound Effect](../term_dictionary/term_compound_effect.md) — each note and connection adds value to the whole system
-- Deliberate Practice — the daily practice of note-making is a form of deliberate practice for thinking
+- [Deliberate Practice](../term_dictionary/term_deliberate_practice.md) — the daily practice of note-making is a form of deliberate practice for thinking
 - [Slow Hunch](../term_dictionary/term_slow_hunch.md) — trains of thought develop over time as notes accumulate and connect
 - [Hub Notes](../term_dictionary/term_hub_notes.md) — Doto's hub note concept for retrieval/navigation
 - [Index Notes](../term_dictionary/term_index_notes.md) — Doto's keyword notes as entry points
 
 ### Related Digest Notes
-- Writing with Zettelkasten (Part 3 Focus) — companion deep-dive into Part 3 (Chapters 7-9): the writing process, eight common mistakes (Fetzenwissen, Verknüpfungszwang), four writing formats, CLOGs/day logs/interstitial journaling, Triangle of Creativity, and hidden relevance
+- [Writing with Zettelkasten (Part 3 Focus)](digest_writing_with_zettelkasten_doto.md) — companion deep-dive into Part 3 (Chapters 7-9): the writing process, eight common mistakes (Fetzenwissen, Verknüpfungszwang), four writing formats, CLOGs/day logs/interstitial journaling, Triangle of Creativity, and hidden relevance
 - [How to Take Smart Notes](digest_smart_notes_ahrens.md) — Ahrens provides the theory; Doto provides the practice. The two books are complementary — read Ahrens for "why," Doto for "how"
 - [Building a Second Brain](digest_building_second_brain_forte.md) — Forte's broader PKM system; Doto explicitly draws a line between Zettelkasten and the "second brain" approach
-- Getting Things Done — Allen manages tasks; the Zettelkasten manages ideas; Doto's CLOGs bridge the two for writing projects
-- Where Good Ideas Come From — Johnson's liquid network and slow hunch explain why the Zettelkasten generates surprising connections
-- Atomic Habits — Clear's systems-over-goals and identity-based change parallel the Zettelkasten's emphasis on daily practice over grand plans
-- Make It Stick — the learning science that validates note-making (elaboration, generation effect) over note-taking (highlighting)
-- A Beautiful Question — Berger's emphasis on questioning connects to Doto's index compass and the practice of capturing disagreements
+- [Getting Things Done](digest_getting_things_done_allen.md) — Allen manages tasks; the Zettelkasten manages ideas; Doto's CLOGs bridge the two for writing projects
+- [Where Good Ideas Come From](digest_good_ideas_johnson.md) — Johnson's liquid network and slow hunch explain why the Zettelkasten generates surprising connections
+- [Atomic Habits](digest_atomic_habits_clear.md) — Clear's systems-over-goals and identity-based change parallel the Zettelkasten's emphasis on daily practice over grand plans
+- [Make It Stick](digest_make_it_stick_brown.md) — the learning science that validates note-making (elaboration, generation effect) over note-taking (highlighting)
+- [A Beautiful Question](digest_beautiful_question_berger.md) — Berger's emphasis on questioning connects to Doto's index compass and the practice of capturing disagreements
 - [The Zettelkasten Iceberg](digest_zettelkasten_iceberg_sascha.md) — Doto's practical guide bridges Level 2 (workflow) and Level 3 (method) of Sascha's iceberg model
 - [Search Alone Is Not Enough](digest_search_not_enough_christian.md) — Doto's hub notes and folgezettel implement the structural linking layer that Christian argues is essential over search
-- Mind Mapping — Doto's hub notes are textual mind maps — central concepts with radiating connections to subtopics; both serve as navigation structures for connected knowledge
-- The Principle of Atomicity — Christian's atomicity principle grounds Doto's note-making practice; the three-phase workflow (Pull → Cluster → Write) is the process Doto operationalizes with concrete examples and checklists
-- Atomicity — Principle vs. Implementation — Sascha classifies Doto as a "Capable Writer" whose Zettelkasten functions as a prompt machine; the eufriction concept from Doto maps to Sascha's Desired Outcome implementation
-- The Complete Guide to Atomic Note-Taking — Sascha's comprehensive practical guide; complements Doto's practical primer with a more theoretical framework (revised Six Knowledge Building Blocks, four-step process, tiered idea development)
-- The Product is Docs — Gales's content organization and information architecture concerns map to Doto's structure notes and hub notes; both address how to organize knowledge for findability and navigation
-- Docs for Developers (Bhatti) — Bhatti's content types taxonomy and documentation organization principles parallel Doto's structure notes and hub notes; both provide concrete frameworks for organizing knowledge for findability
+- [Mind Mapping](digest_mind_mapping_knight.md) — Doto's hub notes are textual mind maps — central concepts with radiating connections to subtopics; both serve as navigation structures for connected knowledge
+- [The Principle of Atomicity](digest_atomicity_zettelkasten_christian.md) — Christian's atomicity principle grounds Doto's note-making practice; the three-phase workflow (Pull → Cluster → Write) is the process Doto operationalizes with concrete examples and checklists
+- [Atomicity — Principle vs. Implementation](digest_atomicity_principle_implementation_sascha.md) — Sascha classifies Doto as a "Capable Writer" whose Zettelkasten functions as a prompt machine; the eufriction concept from Doto maps to Sascha's Desired Outcome implementation
+- [The Complete Guide to Atomic Note-Taking](digest_atomicity_guide_sascha.md) — Sascha's comprehensive practical guide; complements Doto's practical primer with a more theoretical framework (revised Six Knowledge Building Blocks, four-step process, tiered idea development)
+- [The Product is Docs](digest_product_is_docs_gales.md) — Gales's content organization and information architecture concerns map to Doto's structure notes and hub notes; both address how to organize knowledge for findability and navigation
+- [Docs for Developers (Bhatti)](digest_docs_for_developers_bhatti.md) — Bhatti's content types taxonomy and documentation organization principles parallel Doto's structure notes and hub notes; both provide concrete frameworks for organizing knowledge for findability

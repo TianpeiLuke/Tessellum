@@ -181,28 +181,28 @@ The desirable difficulties framework provides a theoretical justification for se
 
 - [Term: Retrieval Practice](term_retrieval_practice.md) -- the prototypical desirable difficulty; active recall strengthens memory traces
 - [Term: Spaced Repetition](term_spaced_repetition.md) -- distributing practice over time with forgetting between sessions is a canonical desirable difficulty
-- Term: Interleaving -- mixing practice types forces discrimination, a desirable difficulty that reduces practice performance but enhances learning
+- [Term: Interleaving](term_interleaving.md) -- mixing practice types forces discrimination, a desirable difficulty that reduces practice performance but enhances learning
 - [Term: Elaborative Interrogation](term_elaborative_interrogation.md) -- generating "why" explanations is effortful and constitutes a form of desirable difficulty
-- Term: Cognitive Bias -- fluency-based metacognitive illusions cause learners to prefer easy (ineffective) strategies over difficult (effective) ones
-- Term: System 1 and System 2 -- desirable difficulties force System 2 (slow, effortful, analytical) engagement over System 1 (fast, automatic, intuitive) processing
-- Term: Loss Aversion -- learners may avoid desirable difficulties because the immediate "cost" (effort, errors) looms larger than the delayed "gain" (durable learning)
-- Term: Planning Fallacy -- learners underestimate the time needed for effective spaced study, defaulting to cramming
-- Term: WYSIATI -- "What You See Is All There Is" applies to fluency: the visible ease of rereading obscures the invisible superiority of effortful retrieval
+- [Term: Cognitive Bias](term_cognitive_bias.md) -- fluency-based metacognitive illusions cause learners to prefer easy (ineffective) strategies over difficult (effective) ones
+- [Term: System 1 and System 2](term_system_1_and_system_2.md) -- desirable difficulties force System 2 (slow, effortful, analytical) engagement over System 1 (fast, automatic, intuitive) processing
+- [Term: Loss Aversion](term_loss_aversion.md) -- learners may avoid desirable difficulties because the immediate "cost" (effort, errors) looms larger than the delayed "gain" (durable learning)
+- [Term: Planning Fallacy](term_planning_fallacy.md) -- learners underestimate the time needed for effective spaced study, defaulting to cramming
+- [Term: WYSIATI](term_wysiati.md) -- "What You See Is All There Is" applies to fluency: the visible ease of rereading obscures the invisible superiority of effortful retrieval
 - [Term: Socratic Questioning](term_socratic_questioning.md) -- Socratic method deliberately introduces productive confusion, a form of desirable difficulty
 - [Term: Zettelkasten](term_zettelkasten.md) -- note-writing and linking practices embody multiple desirable difficulties
 - [Term: SlipBox](term_slipbox.md) -- SlipBox workflows (stub-to-active lifecycle, periodic review, cross-linking) naturally implement desirable difficulties
-- Deliberate Practice -- the practice framework that systematically applies desirable difficulties at the stretch zone (~4% beyond ability)
-- Flow State -- the challenge-skill sweet spot where desirable difficulties produce flow and maximum learning
+- [Deliberate Practice](term_deliberate_practice.md) -- the practice framework that systematically applies desirable difficulties at the stretch zone (~4% beyond ability)
+- [Flow State](term_flow_state.md) -- the challenge-skill sweet spot where desirable difficulties produce flow and maximum learning
 - [Compound Effect](term_compound_effect.md) -- the Plateau of Latent Potential is the habit-domain equivalent of desirable difficulty; short-term friction produces long-term compounding gains
 - [Progressive Summarization](term_progressive_summarization.md) — writing Layer 4 summaries in your own words creates desirable difficulty that deepens encoding
 - [Permanent Notes](term_permanent_notes.md) — writing permanent notes in your own words creates the desirable difficulty that produces deep understanding
 - [Folgezettel](term_folgezettel.md) — the eufriction of choosing where to place a note is a desirable difficulty for connection-thinking
-- Zeigarnik Effect — strategic interruption leverages the Zeigarnik Effect as a desirable difficulty that enhances encoding and retention
-- Analytical Reading — applying Adler's 15 rules is a desirable difficulty; the effort of systematic analysis produces deeper encoding
+- [Zeigarnik Effect](term_zeigarnik_effect.md) — strategic interruption leverages the Zeigarnik Effect as a desirable difficulty that enhances encoding and retention
+- [Analytical Reading](term_analytical_reading.md) — applying Adler's 15 rules is a desirable difficulty; the effort of systematic analysis produces deeper encoding
 
 ## References
 
-- Source: Digest: Make It Stick
+- Source: [Digest: Make It Stick](../digest/digest_make_it_stick_brown.md)
 - Source: [Digest: How to Take Smart Notes](../digest/digest_smart_notes_ahrens.md) — writing permanent notes in own words is a desirable difficulty
 - Source: [Digest: A System for Writing](../digest/digest_system_for_writing_doto.md) — folgezettel's eufriction is explicitly framed as a desirable difficulty
 - [Bjork & Bjork (2011) -- Making Things Hard on Yourself, But in a Good Way](https://bjorklab.psych.ucla.edu/wp-content/uploads/sites/13/2016/04/EBjork_RBjork_2011.pdf) -- the most widely cited summary of the desirable difficulties framework

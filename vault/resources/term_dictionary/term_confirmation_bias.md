@@ -70,22 +70,22 @@ More recently, Hugo Mercier and Dan Sperber's "argumentative theory of reasoning
 
 ## Related Terms
 
-- **Cognitive Bias**: parent concept; confirmation bias is arguably the most fundamental and pervasive cognitive bias
-- **WYSIATI**: Kahneman's principle that we draw conclusions from available information without considering what is missing, which confirmation bias exploits
-- **Narrative Fallacy**: confirmation bias feeds the construction of coherent but misleading stories from selectively gathered evidence
-- **Availability Heuristic**: confirming instances are more available to memory, reinforcing the bias
+- **[Cognitive Bias](term_cognitive_bias.md)**: parent concept; confirmation bias is arguably the most fundamental and pervasive cognitive bias
+- **[WYSIATI](term_wysiati.md)**: Kahneman's principle that we draw conclusions from available information without considering what is missing, which confirmation bias exploits
+- **[Narrative Fallacy](term_narrative_fallacy.md)**: confirmation bias feeds the construction of coherent but misleading stories from selectively gathered evidence
+- **[Availability Heuristic](term_availability_heuristic.md)**: confirming instances are more available to memory, reinforcing the bias
 - **[Critical Thinking](term_critical_thinking.md)**: the discipline of actively seeking disconfirming evidence as the primary counterweight to confirmation bias
-- **Logical Fallacies**: confirmation bias underlies several formal and informal fallacies, including cherry-picking and hasty generalization
-- **Survivorship Bias**: a specific form where disconfirming evidence (failures) is invisible, feeding confirmation of success narratives
-- **Hindsight Bias**: post-hoc, selectively remembering evidence that confirmed the known outcome
-- **Overconfidence Effect**: selectively processed confirming evidence inflates subjective confidence in one's judgments
-- **Anchoring Effect**: initial information serves as an anchor that confirmation bias then protects from revision
+- **[Logical Fallacies](term_logical_fallacies.md)**: confirmation bias underlies several formal and informal fallacies, including cherry-picking and hasty generalization
+- **[Survivorship Bias](term_survivorship_bias.md)**: a specific form where disconfirming evidence (failures) is invisible, feeding confirmation of success narratives
+- **[Hindsight Bias](term_hindsight_bias.md)**: post-hoc, selectively remembering evidence that confirmed the known outcome
+- **[Overconfidence Effect](term_overconfidence_effect.md)**: selectively processed confirming evidence inflates subjective confidence in one's judgments
+- **[Anchoring Effect](term_anchoring_effect.md)**: initial information serves as an anchor that confirmation bias then protects from revision
 
 ## References
 
 ### Vault Sources
-- Digest: The Art of Thinking Clearly --- Dobelli's chapter on confirmation bias as a central thinking error
-- Digest: Thinking, Fast and Slow --- Kahneman's WYSIATI framework and System 1 coherence-seeking
+- [Digest: The Art of Thinking Clearly](../digest/digest_thinking_clearly_dobelli.md) --- Dobelli's chapter on confirmation bias as a central thinking error
+- [Digest: Thinking, Fast and Slow](../digest/digest_thinking_fast_and_slow_kahneman.md) --- Kahneman's WYSIATI framework and System 1 coherence-seeking
 
 ### External Sources
 - Wason, P. C. (1960). On the Failure to Eliminate Hypotheses in a Conceptual Task. *Quarterly Journal of Experimental Psychology*, 12(3), 129--140.

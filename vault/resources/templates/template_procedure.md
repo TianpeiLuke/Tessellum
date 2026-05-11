@@ -106,5 +106,5 @@ and recovery. This is what differentiates a good procedure from a checklist.>
 
 ## References
 
-- Related Term — <how it relates>
+- [Related Term](../term_dictionary/term_related.md) — <how it relates>
 - [Source documentation](https://example.com) — <what's there>

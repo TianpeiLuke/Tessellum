@@ -126,5 +126,5 @@ grep -q "<expected-marker>" "<output-file>" || echo "MISSING marker"
 
 ## Related Entry Point <!-- :: section_id = related_entry_point :: -->
 
-- Skill Catalog — full vault skill index; this skill's row in the catalog has a back-link to this canonical body
+- [Skill Catalog](../../0_entry_points/entry_skill_catalog.md) — full vault skill index; this skill's row in the catalog has a back-link to this canonical body
 - [Templates](README.md) — back to the templates directory
