@@ -133,6 +133,37 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "substantively disagree, instead of string-compare. Falls back "
         "to string-compare on parse failure. Off by default.",
     )
+    # Phase 9 — meta-DKS (schema-mutation runtime)
+    dks.add_argument(
+        "--meta",
+        action="store_true",
+        help="Meta-DKS mode (Phase 9): scan past per-cycle traces "
+        "under --runs-dir, build a MetaObservation (top-K attacked "
+        "warrants + Toulmin failure distribution + unrealised schema "
+        "edges), run MetaCycle, propose 0-N schema edits. Default "
+        "--dry-run; pass --apply to actually write the edits.",
+    )
+    dks.add_argument(
+        "--apply",
+        action="store_true",
+        help="With --meta: actually write the surviving SchemaEditEvents "
+        "to runs/dks/meta/schema_events.jsonl + emit a migration note. "
+        "Without this, --meta runs in dry-run mode (proposals only).",
+    )
+    dks.add_argument(
+        "--min-cycles",
+        type=int,
+        default=None,
+        help="With --meta: minimum cycles required before any proposals "
+        "fire (cold-start guard). Default per DEFAULT_MIN_CYCLES=20.",
+    )
+    dks.add_argument(
+        "--target-failure",
+        choices=["premise", "warrant", "counter-example", "undercutting"],
+        default=None,
+        help="With --meta: only propose edits for cycles whose Toulmin "
+        "failure mode is the given component. Default: all components.",
+    )
     dks.add_argument(
         "--gate-confidence",
         type=float,
@@ -206,9 +237,13 @@ def run_dks_cli(args: argparse.Namespace) -> int:
     if args.calibrate:
         return _run_dks_calibrate(args)
 
+    # Phase 9 — --meta short-circuits to schema-mutation runtime.
+    if args.meta:
+        return _run_dks_meta(args)
+
     if args.observations is None:
         print(
-            "tessellum dks: missing observations file (or pass --report / --calibrate).",
+            "tessellum dks: missing observations file (or pass --report / --calibrate / --meta).",
             file=sys.stderr,
         )
         return 2
@@ -830,6 +865,196 @@ def _run_dks_report(args: argparse.Namespace) -> int:
             print(f"  bb graph: error — {bb_graph['error']}")
 
     return 0
+
+
+# ── --meta mode (Phase 9) ──────────────────────────────────────────────────
+
+
+def _run_dks_meta(args: argparse.Namespace) -> int:
+    """Meta-DKS replay over past per-cycle traces.
+
+    Builds a MetaObservation from the telemetry under --runs-dir
+    (top-K attacked warrants, Toulmin failure distribution,
+    unrealised schema edges from the current BB_SCHEMA), runs a
+    MetaCycle, prints the proposals + optionally writes the
+    surviving events to the schema_events.jsonl log.
+
+    Default ``--dry-run`` (no writes); ``--apply`` activates writes.
+    """
+    from collections import Counter
+
+    from tessellum.bb.types import BB_SCHEMA, BB_SCHEMA_EPISTEMIC
+    from tessellum.dks.meta import (
+        DEFAULT_MIN_CYCLES,
+        MetaCycle,
+        MetaObservation,
+        load_event_log,
+        write_event_log,
+    )
+
+    runs_dir = args.runs_dir.expanduser().resolve()
+    min_cycles = args.min_cycles if args.min_cycles is not None else DEFAULT_MIN_CYCLES
+
+    # Build MetaObservation from per-cycle traces.
+    if not runs_dir.is_dir():
+        observation = MetaObservation(
+            timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            cycles_examined=0,
+        )
+    else:
+        cycle_traces: list[dict] = []
+        for cycle_path in sorted(runs_dir.glob("*_cycle_*.json")):
+            try:
+                cycle_traces.append(json.loads(cycle_path.read_text(encoding="utf-8")))
+            except (OSError, json.JSONDecodeError):
+                continue
+
+        # Top attacked warrants: read per-aggregate warrant_changes
+        attacked: Counter[str] = Counter()
+        for agg_path in sorted(runs_dir.glob("*_aggregate.json")):
+            try:
+                agg = json.loads(agg_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            for change in agg.get("warrant_changes", []) or []:
+                if change.get("kind") in ("revised", "superseded"):
+                    fz = change.get("superseded_fz")
+                    if fz:
+                        attacked[fz] += 1
+
+        # Toulmin failure distribution: read per-cycle traces' counter.broken_component
+        toulmin: Counter[str] = Counter()
+        for ct in cycle_traces:
+            counter = ct.get("counter")
+            if isinstance(counter, dict):
+                comp = counter.get("broken_component")
+                if comp:
+                    toulmin[comp] += 1
+
+        # Unrealised schema edges: BB_SCHEMA entries with 0 corpus instances.
+        # Optional — only meaningful if a vault index DB is present + readable;
+        # for v0.0.52 we approximate by reading whether the edge appears in
+        # any cycle trace's folgezettel_nodes pattern. Conservative: empty
+        # tuple by default; meta-DKS can still propose retracts based on
+        # the corpus graph in future phases.
+        unrealised: tuple = ()
+
+        observation = MetaObservation(
+            timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            cycles_examined=len(cycle_traces),
+            top_attacked_warrants=tuple(attacked.most_common(10)),
+            toulmin_failure_counts=dict(toulmin),
+            unrealised_schema_edges=unrealised,
+        )
+
+    cycle = MetaCycle(
+        observation=observation,
+        min_cycles=min_cycles,
+        target_failure=args.target_failure,
+        dry_run=not args.apply,
+    )
+    result = cycle.run()
+
+    # Write events if --apply
+    events_path: Path | None = None
+    migration_note_path: Path | None = None
+    if args.apply and result.events_landed:
+        events_path = runs_dir / "meta" / "schema_events.jsonl"
+        write_event_log(events_path, result.events_landed, append=True)
+        # Emit a migration note for each event
+        migration_note_path = _write_migration_note(
+            runs_dir / "meta", result.events_landed
+        )
+
+    payload = {
+        "runs_dir": str(runs_dir),
+        "cycles_examined": result.observation.cycles_examined,
+        "min_cycles": min_cycles,
+        "dry_run": result.dry_run,
+        "target_failure": args.target_failure,
+        "observation": {
+            "top_attacked_warrants": [
+                {"fz": fz, "attacks": n}
+                for fz, n in result.observation.top_attacked_warrants
+            ],
+            "toulmin_failure_counts": result.observation.toulmin_failure_counts,
+            "unrealised_schema_edges_count": len(
+                result.observation.unrealised_schema_edges
+            ),
+        },
+        "proposals": [
+            {
+                "kind": p.kind,
+                "edge": {
+                    "source": p.edge.source.value,
+                    "target": p.edge.target.value,
+                    "label": p.edge.label,
+                },
+                "motivating_observation": p.motivating_observation,
+                "expected_impact": p.expected_impact,
+            }
+            for p in result.proposals
+        ],
+        "surviving_count": len(result.surviving),
+        "events_landed_count": len(result.events_landed),
+        "events_path": str(events_path) if events_path else None,
+        "migration_note_path": str(migration_note_path) if migration_note_path else None,
+        "elapsed_ms": result.elapsed_ms,
+    }
+
+    if args.output_format == "json":
+        print(json.dumps(payload, indent=2))
+    else:
+        mode_tag = "DRY RUN" if result.dry_run else "APPLIED"
+        print(
+            f"dks --meta  ({result.observation.cycles_examined} cycles examined; {mode_tag})"
+        )
+        if result.observation.cycles_examined < min_cycles:
+            print(
+                f"  cold-start guard active (--min-cycles={min_cycles}); "
+                f"no proposals will fire below this threshold."
+            )
+        if not result.proposals:
+            print("  no proposals generated from the available telemetry.")
+        else:
+            print(f"  {len(result.proposals)} proposals, {len(result.surviving)} surviving:")
+            for p in result.surviving:
+                print(
+                    f"    {p.kind:>9}  {p.edge.source.value} -> {p.edge.target.value}  "
+                    f"({p.edge.label})"
+                )
+                print(f"               {p.motivating_observation}")
+        if events_path:
+            print(f"  events appended to: {events_path}")
+        if migration_note_path:
+            print(f"  migration note:     {migration_note_path}")
+
+    return 0
+
+
+def _write_migration_note(meta_dir: Path, events) -> Path:
+    """Author a brief migration note documenting the landed events."""
+    meta_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    note_path = meta_dir / f"migration_{ts}.md"
+    lines = [
+        "# Schema Edit Migration Note",
+        "",
+        f"**Timestamp:** {datetime.now(timezone.utc).isoformat(timespec='seconds')}",
+        f"**Events landed:** {len(events)}",
+        "",
+        "## Events",
+        "",
+    ]
+    for e in events:
+        lines.append(
+            f"- **{e.kind}** `{e.edge.source.value} -> {e.edge.target.value}` "
+            f"({e.edge.label!r})"
+        )
+        if e.motivating_failure:
+            lines.append(f"  - Motivation: {e.motivating_failure}")
+    note_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return note_path
 
 
 # ── --calibrate mode (Phase 7) ─────────────────────────────────────────────

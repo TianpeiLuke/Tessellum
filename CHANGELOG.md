@@ -16,6 +16,107 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.52] — 2026-05-10
+
+### Added — Phase 9 of plan_dks_expansion: meta-DKS (the schema-mutation runtime)
+
+The centrepiece phase of the DKS expansion plan. Three load-bearing
+design commitments from the plan's Resolved-Decisions block land
+together; meta-DKS is *cycle-level DKS at one level of abstraction
+up* — the same 7-component dialectic but the substrate is the schema
+itself, not the corpus.
+
+**D3 — Event-sourced schema** (`src/tessellum/bb/types.py`).
+`BB_SCHEMA_USER_EXTENSIONS` is no longer a constant tuple; it is the
+fold over an append-only log of `SchemaEditEvent`s. Three event kinds:
+`added` (new edge enters the active set), `retracted` (an edge leaves;
+corpus instances become untyped), `refined` (drop old + add new).
+State is retractable; history is immutable. New surface:
+`SchemaEditEvent` frozen dataclass, `fold_schema_events()`,
+`set_user_extensions_from_events()`, `schema_event_log()`,
+`BB_SCHEMA_VERSION: int` (bumped per applied event in-memory).
+
+**D4 — META_SCHEMA in code, PR-gated** (new
+`src/tessellum/dks/meta/types.py`). The meta-FSM has 5 states
+(meta_observation / meta_argument / meta_counter / meta_pattern /
+meta_revision) and 4 transitions (proposing → attacking → aggregating
+→ landing). It lives as a hand-authored tuple of `MetaEdgeType`s; PR
+review is the only path to amend. **This is the recursion stop.** Why
+not infinite meta-meta-meta-schemas: the architectural commitment is
+that a self-mutating substrate needs at least one fixed authority to
+anchor identity. The meta-meta-schema is that anchor.
+
+**D8 — Frozen-at-creation `bb_schema_version`** (mechanism in place;
+auto-population + retroactive `tessellum bb migrate` deferred to Phase
+11+). Schema edits don't retroactively invalidate corpus notes;
+TESS-005 validates against the schema version recorded on the note at
+write time.
+
+**MetaCycle runtime** (new `src/tessellum/dks/meta/runtime.py`).
+4 stages: build proposals from MetaObservation telemetry → filter
+duplicates/already-in-schema → survive dialectical attack
+(v0.0.52: pass-through; Phase 11+: LLM-driven) → emit
+`SchemaEditEvent`s when `dry_run=False`. v0.0.52 ships *heuristic*
+proposers: Toulmin-failure dominance (one `broken_component` >50% of
+counters → propose the related typed edge via a lookup table) and
+unrealised-edge retraction (declared edges with zero corpus instances
+after ≥50 cycles → propose retract). Cold-start guard at
+`DEFAULT_MIN_CYCLES=20` prevents premature schema edits from
+statistically meaningless samples.
+
+**New CLI surface — `tessellum dks --meta`**:
+
+```
+tessellum dks --meta [--runs-dir <dir>] [--target-failure <component>] \
+    [--min-cycles N] [--apply] [--format human|json]
+```
+
+Default dry-run (proposals printed but no events written); `--apply`
+writes the events to `runs/dks/meta/schema_events.jsonl` (append-only)
+and emits an auto-generated migration note documenting each landed
+edit. `--target-failure` filters proposals to a specific Toulmin
+component when you want to address a known failure mode without
+changing the rest of the schema.
+
+**FZ 2c1 design note** — `vault/resources/analysis_thoughts/`
+`thought_meta_dks_design.md` ships as a child of FZ 2c (whose
+three-stage hybrid this runtime operationalises). Documents the
+meta-FSM, the recursion-stop architecture (D4), event-sourced schema
+discipline (D3), the cold-start guard, and the v0.0.52-vs-Phase 11+
+split. Added to the Dialectic trail entry point + the master FZ
+trail index (7 nodes; was 6).
+
+**Tests** — 21 new smoke tests (`tests/smoke/test_dks_meta.py`)
+cover the SchemaEditEvent fold (added/retracted/refined), META_SCHEMA
+shape, MetaObservation/SchemaEditProposal construction, MetaCycle
+behaviour (cold-start guard, Toulmin-dominance, target-failure filter,
+dry-run vs apply), and event log JSONL I/O round-trip. 8 new CLI
+tests (`tests/cli/test_dks_meta_cli.py`) cover `--meta` cold-start
+path, `--apply` event-log writes, `--min-cycles` override, `--format
+json` payload shape, `--target-failure` filtering.
+
+### Deferred to Phase 11+
+
+- LLM-driven proposer (Phase 11+ swaps in the Stage-2 LLM-validated
+  proposer FZ 2c describes).
+- True dialectical attack stage in MetaCycle (v0.0.52 is
+  pass-through).
+- Composer skill canonical for the meta-cycle.
+- `bb_schema_version` auto-populated on capture; `tessellum bb
+  migrate` retroactive validation command.
+- Unrealised-schema-edge population in `MetaObservation` (requires
+  BBGraph + index integration; v0.0.52 ships as empty tuple).
+
+### Why this is the centrepiece phase
+
+R-P's productive half lands here at full strength. Phase 4 (v0.0.44)
+landed the *defensive* half — TESS-004 enforces declared edges. Phase
+9 is the first phase where the schema *changes* in response to runtime
+evidence. Without meta-DKS the productive half is documentation; with
+it, it is mechanism.
+
+---
+
 ## [0.0.51] — 2026-05-10
 
 ### Added — Phase 8 of plan_dks_expansion: dispatcher refactor (FZ 2a2 deferred work)
