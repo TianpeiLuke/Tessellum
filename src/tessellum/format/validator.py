@@ -16,14 +16,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from tessellum.bb.types import BBType, VALID_BB_TYPE_VALUES, find_edge_type
+from tessellum.bb.types import BBType, VALID_BB_TYPE_VALUES
 from tessellum.format.frontmatter_spec import (
     DATE_FORMAT_REGEX,
     FORBIDDEN_FIELDS,
     MIN_KEYWORDS_RECOMMENDED,
     MIN_TAGS_REQUIRED,
     MIN_TOPICS_RECOMMENDED,
-    REQUIRED_FIELDS,
     TAG_FORMAT_REGEX,
     VALID_BUILDING_BLOCKS,
     VALID_PARA_BUCKETS,

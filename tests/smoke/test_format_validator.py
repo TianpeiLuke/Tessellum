@@ -226,7 +226,7 @@ def _write_pair(tmp_path, counter_body: str, *, counter_status: str = "active"):
     arg = tmp_path / "argument.md"
     arg.write_text(_ARGUMENT_FM + "\n")
 
-    fm = _COUNTER_FM_ACTIVE.replace(f"status: active", f"status: {counter_status}")
+    fm = _COUNTER_FM_ACTIVE.replace("status: active", f"status: {counter_status}")
     counter = tmp_path / "counter.md"
     counter.write_text(fm + "\n\n# Counter\n\n" + counter_body + "\n")
     return counter

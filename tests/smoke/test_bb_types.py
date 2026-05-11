@@ -12,7 +12,6 @@ Validates:
 
 from __future__ import annotations
 
-import pytest
 
 from tessellum.bb import (
     BB_SCHEMA,
@@ -20,7 +19,6 @@ from tessellum.bb import (
     BB_SCHEMA_EPISTEMIC,
     BB_SCHEMA_NAVIGATION,
     BBType,
-    EpistemicEdgeType,
     VALID_BB_TYPE_VALUES,
     edges_from,
     edges_to,

@@ -10,14 +10,12 @@ import pytest
 
 from tessellum.composer import (
     Assertion,
-    AssertionResult,
     DEFAULT_RUBRIC_DIMENSIONS,
     EvalError,
     EvalScenario,
     JudgeScore,
     LLMJudge,
     MockBackend,
-    ScenarioResult,
     load_scenario,
     load_scenarios,
     run_eval,
@@ -118,7 +116,7 @@ def test_load_scenario_missing_skill_raises(tmp_path: Path) -> None:
 def test_load_scenario_assertions_must_be_list(tmp_path: Path, skill: Path) -> None:
     p = tmp_path / "bad.scenario.yaml"
     p.write_text(
-        f"name: x\nskill: ./skill_demo.md\nassertions: 'not a list'\n",
+        "name: x\nskill: ./skill_demo.md\nassertions: 'not a list'\n",
         encoding="utf-8",
     )
     with pytest.raises(EvalError, match="assertions"):
@@ -128,7 +126,7 @@ def test_load_scenario_assertions_must_be_list(tmp_path: Path, skill: Path) -> N
 def test_load_scenario_default_rubric_dimensions(tmp_path: Path, skill: Path) -> None:
     p = tmp_path / "default.scenario.yaml"
     p.write_text(
-        f"name: x\nskill: ./skill_demo.md\n",
+        "name: x\nskill: ./skill_demo.md\n",
         encoding="utf-8",
     )
     scenario = load_scenario(p)
@@ -138,7 +136,7 @@ def test_load_scenario_default_rubric_dimensions(tmp_path: Path, skill: Path) ->
 def test_load_scenario_custom_rubric_dimensions(tmp_path: Path, skill: Path) -> None:
     p = tmp_path / "custom.scenario.yaml"
     p.write_text(
-        f"name: x\nskill: ./skill_demo.md\nrubric_dimensions: [relevance, clarity]\n",
+        "name: x\nskill: ./skill_demo.md\nrubric_dimensions: [relevance, clarity]\n",
         encoding="utf-8",
     )
     scenario = load_scenario(p)

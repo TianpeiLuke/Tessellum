@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from tessellum.composer.llm import MockBackend
 from tessellum.dks.core import DKSCycle, DKSObservation

@@ -15,14 +15,9 @@ Surfaces under test (v0.0.52):
 
 from __future__ import annotations
 
-from collections import Counter
-from datetime import datetime, timezone
 
-import pytest
 
 from tessellum.bb.types import (
-    BB_SCHEMA,
-    BB_SCHEMA_USER_EXTENSIONS,
     BBType,
     EpistemicEdgeType,
     SchemaEditEvent,

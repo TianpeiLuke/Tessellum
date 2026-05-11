@@ -21,11 +21,8 @@ import pytest
 
 from tessellum.composer.llm import MockBackend
 from tessellum.dks.core import (
-    DKSArgument,
-    DKSContradicts,
     DKSCycle,
     DKSObservation,
-    DKSWarrant,
 )
 
 

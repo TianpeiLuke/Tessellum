@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tessellum.bb import BB_SCHEMA, BBEdge, BBGraph, BBNode, BBType
+from tessellum.bb import BBGraph, BBType
 from tessellum.indexer import build
 
 
@@ -269,7 +269,6 @@ def test_unrealised_schema_edges_method_returns_tuple_of_edges(corpus_db):
 
 
 def test_unrealised_schema_edges_excludes_realised_bb_pairs(corpus_db):
-    from tessellum.bb.types import BB_SCHEMA
 
     g = BBGraph.from_db(corpus_db)
     unrealised = g.unrealised_schema_edges()

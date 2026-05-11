@@ -20,9 +20,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
-from tessellum.bb.types import BBType, EpistemicEdgeType
+from tessellum.bb.types import BBType
 from tessellum.composer.llm import MockBackend
 from tessellum.dks.meta import (
     DEFAULT_MIN_CYCLES,
@@ -30,7 +29,6 @@ from tessellum.dks.meta import (
     LLMProposer,
     MetaCycle,
     MetaObservation,
-    SchemaEditProposal,
 )
 from tessellum.dks.meta.runtime import _LLM_PROPOSER_SYSTEM_PROMPT
 

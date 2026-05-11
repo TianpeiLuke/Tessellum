@@ -25,7 +25,7 @@ the DKS Composer skill's step-7 materialiser, separately.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Iterator

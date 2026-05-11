@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -220,7 +219,7 @@ def test_bfs_hub_threshold_skips_popular_nodes(tmp_path):
         (v / f"resources/term_dictionary/term_{child}.md").write_text(
             _make_note(
                 f"Child {child}",
-                f"Links back to [hub](term_hub.md).",
+                "Links back to [hub](term_hub.md).",
             )
         )
     # term_hub has in_degree 5 (each child links to it).

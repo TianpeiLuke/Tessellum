@@ -19,9 +19,6 @@ import pytest
 from tessellum.bb.types import (
     BB_SCHEMA,
     BB_SCHEMA_AT_VERSION,
-    BB_SCHEMA_EPISTEMIC,
-    BB_SCHEMA_USER_EXTENSIONS,
-    BB_SCHEMA_VERSION,
     BBType,
     EpistemicEdgeType,
     SchemaEditEvent,
@@ -97,7 +94,7 @@ def test_schema_at_version_caches_per_event_log():
 def test_schema_at_version_cache_invalidates_on_event_log_change():
     """Replacing the event log invalidates the cache."""
     set_user_extensions_from_events([])
-    s_before = BB_SCHEMA_AT_VERSION(1)
+    BB_SCHEMA_AT_VERSION(1)  # warm cache; identity not used after invalidation
     edge_x = EpistemicEdgeType(BBType.MODEL, BBType.CONCEPT, "cache_invalidation_test")
     set_user_extensions_from_events(
         [

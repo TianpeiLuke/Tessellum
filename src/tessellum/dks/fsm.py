@@ -34,19 +34,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Protocol
+from typing import Protocol
 
 from tessellum.bb.types import BBType, EpistemicEdgeType
 from tessellum.composer.llm import LLMBackend
 from tessellum.dks.core import (
-    DKSArgument,
-    DKSContradicts,
-    DKSCounterArgument,
     DKSCycle,
     DKSCycleResult,
     DKSObservation,
-    DKSPattern,
-    DKSRuleRevision,
     DKSWarrant,
 )
 

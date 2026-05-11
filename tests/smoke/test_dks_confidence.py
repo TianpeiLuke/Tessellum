@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from tessellum.composer import MockBackend
 from tessellum.dks import (
@@ -241,7 +240,6 @@ def test_calibrated_confidence_all_added_returns_high_confidence(tmp_path):
     """History of only `added` events (no attacks) → confidence ≈ 1.0."""
     from tessellum.dks import (
         CalibratedConfidence,
-        DKSWarrant,
         WarrantChange,
         WarrantHistory,
     )
@@ -265,7 +263,6 @@ def test_calibrated_confidence_all_revised_returns_low_confidence(tmp_path):
     """History of `revised` events (all attacks) → confidence ≈ 0."""
     from tessellum.dks import (
         CalibratedConfidence,
-        DKSWarrant,
         WarrantChange,
         WarrantHistory,
     )
@@ -293,7 +290,6 @@ def test_calibrated_confidence_superseded_events_are_not_double_counted(tmp_path
     `revised` event contributes to the attack-rate signal."""
     from tessellum.dks import (
         CalibratedConfidence,
-        DKSWarrant,
         WarrantChange,
         WarrantHistory,
     )

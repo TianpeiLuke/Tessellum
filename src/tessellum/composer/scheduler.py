@@ -34,7 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tessellum.composer.compiler import CompiledPipeline, CompiledStep
+from tessellum.composer.compiler import CompiledPipeline
 from tessellum.composer.executor import StepResult, execute_step
 from tessellum.composer.llm import LLMBackend
 

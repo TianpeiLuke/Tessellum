@@ -16,7 +16,6 @@ N>2 disagreement cases that motivate Phase 10:
 
 from __future__ import annotations
 
-import pytest
 
 from tessellum.dks.dung import (
     DungAF,

@@ -563,8 +563,8 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             return 2
         if not isinstance(responses, dict):
             print(
-                f"tessellum composer run: --mock-responses must be a JSON object "
-                f"mapping pattern→response",
+                "tessellum composer run: --mock-responses must be a JSON object "
+                "mapping pattern→response",
                 file=sys.stderr,
             )
             return 2
@@ -582,8 +582,8 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             backend = AnthropicBackend(model=args.model)
         except ImportError as e:
             print(
-                f"tessellum composer run: --backend=anthropic requires the "
-                f"[agent] extras: pip install tessellum[agent]",
+                "tessellum composer run: --backend=anthropic requires the "
+                "[agent] extras: pip install tessellum[agent]",
                 file=sys.stderr,
             )
             print(f"  ({e})", file=sys.stderr)
@@ -727,8 +727,8 @@ def run_composer_batch_cli(args: argparse.Namespace) -> int:
             backend = AnthropicBackend(model=args.model)
         except ImportError as e:
             print(
-                f"tessellum composer batch: --backend=anthropic requires the "
-                f"[agent] extras: pip install tessellum[agent]",
+                "tessellum composer batch: --backend=anthropic requires the "
+                "[agent] extras: pip install tessellum[agent]",
                 file=sys.stderr,
             )
             print(f"  ({e})", file=sys.stderr)
@@ -1025,7 +1025,7 @@ def run_composer_scaffold_cli(args: argparse.Namespace) -> int:
     for sid in section_ids:
         print(f"    - {sid}")
     print()
-    print(f"  next: fill in materializer / expected_output_schema / prompt_template per step,")
+    print("  next: fill in materializer / expected_output_schema / prompt_template per step,")
     print(f"        then `tessellum composer validate {skill_path}`")
     return 0
 
@@ -1055,17 +1055,17 @@ def _render_sidecar(skill_stem: str, section_ids: list[str]) -> str:
         lines.extend(
             [
                 f"  - section_id: {sid}",
-                f"    role: CORE                  # CORE | DEFERRED | INFRA",
-                f"    aggregation: per_leaf       # per_leaf | cross_leaf | corpus_wide",
-                f"    batchable: false",
+                "    role: CORE                  # CORE | DEFERRED | INFRA",
+                "    aggregation: per_leaf       # per_leaf | cross_leaf | corpus_wide",
+                "    batchable: false",
                 f"    depends_on: {depends}",
-                f"    materializer: no_op         # pick a wire format from MATERIALIZER_CONTRACTS",
+                "    materializer: no_op         # pick a wire format from MATERIALIZER_CONTRACTS",
                 f"    output_key: {sid}_output",
-                f'    prompt_template: |',
+                '    prompt_template: |',
                 f'      TODO: fill in the prompt for "{sid}".',
-                f'      You may reference {{{{leaf.X}}}} per-leaf data and',
-                f'      {{{{upstream.Y}}}} outputs from previous steps.',
-                f"",
+                '      You may reference {{leaf.X}} per-leaf data and',
+                '      {{upstream.Y}} outputs from previous steps.',
+                "",
             ]
         )
 

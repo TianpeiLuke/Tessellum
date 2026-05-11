@@ -64,7 +64,7 @@ from typing import Any
 import yaml
 
 from tessellum.composer.compiler import compile_skill
-from tessellum.composer.llm import LLMBackend, LLMRequest, MockBackend
+from tessellum.composer.llm import LLMBackend, LLMRequest
 from tessellum.composer.scheduler import RunResult, StepResult, run_pipeline
 
 

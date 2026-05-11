@@ -31,7 +31,7 @@ from pathlib import Path
 import re
 
 from tessellum.bb import BB_SCHEMA, BBGraph, BBType
-from tessellum.bb.graph import BBEdge, BBNode
+from tessellum.bb.graph import BBNode
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:

@@ -12,7 +12,6 @@ v0.0.43 — DKS is a peer runtime to Composer, not a Composer feature.
 from __future__ import annotations
 
 import json
-import textwrap
 from pathlib import Path
 
 import pytest
