@@ -17,14 +17,26 @@ directly via the ``_dispatch`` helper.
 from __future__ import annotations
 
 
+import importlib.util
+
 import pytest
 
 from tessellum.mcp.server import _dispatch, build_server
 
 
+# Skip MCP-SDK-dependent tests when the optional [mcp] extras aren't
+# installed. The dispatch tests below run in any environment because
+# they exercise pure-Python runtime APIs via _dispatch (no SDK needed).
+_mcp_sdk_available = importlib.util.find_spec("mcp") is not None
+
+
 # ── Server construction ────────────────────────────────────────────────────
 
 
+@pytest.mark.skipif(
+    not _mcp_sdk_available,
+    reason="requires the [mcp] extras (mcp Python SDK)",
+)
 def test_build_server_returns_server_with_tessellum_name():
     server = build_server()
     assert server.name == "tessellum"
