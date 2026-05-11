@@ -70,6 +70,8 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/analysis_thoughts/thought_cqrs_design_evolution.md",                        # FZ 1a
     "resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md", # FZ 1a1
     "resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md",                   # FZ 1a1a
+    "resources/analysis_thoughts/thought_cqrs_r_cross_rules.md",                           # FZ 1a1b
+    "resources/analysis_thoughts/thought_cqrs_r_cross_gap_audit.md",                       # FZ 1a1b1
 
     # ── FZ trail nodes (Trail 2: Dialectic / DKS — 2 thoughts) ───────────
     "resources/analysis_thoughts/thought_dks_evolution.md",            # FZ 2

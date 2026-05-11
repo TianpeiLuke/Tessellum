@@ -37,7 +37,9 @@ The trail does two things at once: it records the *design history* (so a contrib
 1       Building Block Ontology Relationships  (substrate)
 └── 1a  How the CQRS Architecture Evolved      (four-step narrative)
     └── 1a1   Two-Systems CQRS Value Proposition  (★ pivot — the moment of clarity)
-        └── 1a1a   The Essence of CQRS for Tessellum  (distilled thesis + 5 rules)
+        ├── 1a1a   The Essence of CQRS for Tessellum  (distilled thesis + 5 rules)
+        └── 1a1b   The R-Cross Rules — Formal Discipline for the Two Sub-System Boundaries
+            └── 1a1b1   Gap Audit: Tessellum Through the R-Cross Lens
 ```
 
 ## FZ Table
@@ -48,6 +50,8 @@ The trail does two things at once: it records the *design history* (so a contrib
 | **1a** | [`thought_cqrs_design_evolution`](../resources/analysis_thoughts/thought_cqrs_design_evolution.md) | argument | **Narrative** — four-step descent: typed graph → three-regime framing (rejected) → two-systems counter → CQRS synthesis. |
 | **1a1** | [`thought_synthesis_two_systems_cqrs_value_proposition`](../resources/analysis_thoughts/thought_synthesis_two_systems_cqrs_value_proposition.md) | argument | **★ Pivot** — clarified two-system architecture: System P (Ontology + DKS, prescriptive) ⊥ System D (Retrieval, descriptive) ⊥ one shared substrate (the vault). |
 | **1a1a** | [`thought_cqrs_essence_for_tessellum`](../resources/analysis_thoughts/thought_cqrs_essence_for_tessellum.md) | argument | **Distilled thesis** — one boundary (declaration vs computation), two disciplines, one substrate. The 5 rules that fall out + "what CQRS is *not*" carve-outs. |
+| **1a1b** | [`thought_cqrs_r_cross_rules`](../resources/analysis_thoughts/thought_cqrs_r_cross_rules.md) | argument | **Formal rules** — R-P (Schema ⊥ Runtime co-evolution), R-D (Descriptive purity), R-Cross (System boundary). Three rules policing three sub-system boundaries; the architect-facing companion to the user-facing essence at 1a1a. |
+| **1a1b1** | [`thought_cqrs_r_cross_gap_audit`](../resources/analysis_thoughts/thought_cqrs_r_cross_gap_audit.md) | argument | **Gap audit** — applies the three R-rules to Tessellum's current codebase. Each rule's defensive half (what's forbidden) is held; each rule's productive half (what's enabled) is the v0.2+ work. Priority-ordered list of 6 gaps to close. |
 
 ## The dialectic in one line
 
@@ -88,4 +92,4 @@ Three design framings tested and found wanting:
 ---
 
 **Last Updated**: 2026-05-10
-**Status**: Active — Architecture trail (FZ 1) — 4 nodes, depth 4 (linear)
+**Status**: Active — Architecture trail (FZ 1) — 6 nodes, branching at 1a1 into the user-facing essence (1a1a) and the architect-facing R-Cross rules (1a1b → 1a1b1)
