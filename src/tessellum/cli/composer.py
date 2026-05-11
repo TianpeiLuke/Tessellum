@@ -159,6 +159,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default="human",
         help="Output format (default: human).",
     )
+    run_cmd.add_argument(
+        "--progress",
+        action="store_true",
+        help="Phase B.2 (v0.0.60): emit per-step start/finish lines to "
+        "stderr. Off by default. Useful for long multi-leaf runs where "
+        "the user wants to see what step is currently running.",
+    )
     run_cmd.set_defaults(func=run_composer_run_cli)
 
     batch_cmd = composer_sub.add_parser(
@@ -600,6 +607,7 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
         vault_root=vault_root,
         dry_run=args.dry_run,
         runs_dir=runs_dir,
+        progress=getattr(args, "progress", False),
     )
 
     if args.output_format == "json":

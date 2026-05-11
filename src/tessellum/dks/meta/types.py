@@ -103,6 +103,19 @@ class MetaObservation:
     counter_strength_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
     sample_counter_quotes: dict[str, tuple[str, ...]] = field(default_factory=dict)
     observation_source_metadata: str = ""
+    # v0.0.60 — Phase C — DKS silent-failure rate (telemetry only;
+    # doesn't change Phase 5's decide_escalation semantics).
+    silent_failure_count: int = 0
+    """Aggregate count of silent backend-call failures across the
+    cycle traces that produced this :class:`MetaObservation`.
+
+    Populated by the CLI's ``_run_dks_meta`` builder from each cycle
+    trace's ``silent_failures`` field. The LLMProposer's prompt
+    surfaces this: when ``silent_failure_count > 0``, the proposer
+    should factor degraded-backend likelihood into its proposals
+    (a backend that's silently failing every other call may be
+    producing misleading Toulmin distributions)."""
+
     # v0.0.55 — Phase I.3 — per-perspective stratification (multi-perspective
     # DKS, FZ 2c1's OQ-2c1-c interaction point).
     per_perspective_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)

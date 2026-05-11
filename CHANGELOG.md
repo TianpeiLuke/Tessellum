@@ -16,6 +16,145 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.60] — 2026-05-11
+
+### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)
+
+Four MeshClaw-pattern ports closing validated structural gaps in the
+Composer pipeline scheduler + DKS dispatcher. Lands *before* the
+alpha → public-beta cut (v0.1.0) so external users don't hit the
+gaps first. Patterns ported from FZ 15 of AbuseSlipBox + the
+companion code-snippet documentation (circuit-breaker, task-retry,
+context-budgets, task-runner-lifecycle).
+
+**Phase A — Composer retry layer.** Previously, `scheduler.py:128-140`
+ran each step exactly once; a failing step yielded `StepResult.error
+!= None`, the scheduler skipped storing its output in `upstream`, and
+downstream steps cascaded with `<missing upstream.X>` sentinels. Now:
+
+- New `execute_step_with_retry()` wraps `execute_step()`. Default
+  budgets: `MAX_LOGIC_RETRIES=3` (schema/materializer/contract
+  failures), `MAX_CRASH_RECOVERIES=2` (backend exceptions). Separate
+  budgets so subprocess flakes don't consume the algorithmic retry
+  budget (per R-1).
+- Same-error short-circuit (per R-7): 3 consecutive identical error
+  hashes fail early before exhausting the budget.
+- `StepResult.attempts` + `retry_kind_history` carry the retry
+  telemetry (`"logic"` / `"crash"` / `"success"` per attempt).
+- Scheduler now calls `execute_step_with_retry` by default; the
+  trace JSON includes per-step `attempts` + `retry_kind_history`.
+
+**Retry-aware prompt context (Pattern 5).** New placeholders
+`{{retry.attempt}}` + `{{retry.error}}` resolve in step prompts.
+On retries, the system prompt also gains a one-line prefix:
+`[Retry attempt N: prior call failed with: <sanitised error>]`.
+Error messages are sanitised (stack frames stripped, capped at 200
+chars; per R-7 + OQ-F) before being injected into the LLM context.
+
+**Phase B — Composer reliability layer.**
+
+- **Watchdog** (B.1). `execute_step` now wraps `backend.call()` in a
+  `concurrent.futures.ThreadPoolExecutor.result(timeout=N)`. Per
+  R-3 (revised): thread-based timeout instead of asyncio — simpler
+  single-callsite change, same outcome. Per R-6: timeouts don't
+  cancel the in-flight call; the thread completes in the background,
+  result discarded. `DEFAULT_TIMEOUT_SECONDS=120.0`; overridable per
+  sidecar via `timeout_seconds` field. Stalls surface as
+  `StepResult.error="stalled after Xs"` and are classified as crashes
+  by the retry layer (R-1).
+- **Progress heartbeat** (B.2). `run_pipeline(..., progress=True)`
+  + new CLI flag `tessellum composer run --progress` emits per-step
+  start/finish lines to stderr. Useful for long multi-leaf runs
+  where the user wants to see what's running.
+- **Context budget enforcement** (B.3). New constants in
+  `compiler.py`: `HARD_PROMPT_CAP_CHARS=150_000`,
+  `WARN_AT_PROMPT_FRACTION=0.7`,
+  `DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS=25_000`. Sidecar YAML schema
+  gains optional per-step `max_prompt_chars` + per-step's
+  `expected_output_schema.max_chars`. Compile-time validation:
+  estimated prompt size = `sum(upstream soft caps) + prompt-text
+  length`; > hard cap → `CompilerError`; > 70% → warning surfaced
+  on `CompiledPipeline.budget_warnings`. Runtime guard:
+  `execute_step` refuses to dispatch when actual rendered prompt
+  exceeds hard cap (catches cases where actual upstream output
+  exceeded its declared soft cap).
+
+**Phase C — DKS silent-failure observability.** Three swallow sites
+in `dks/core.py` were preserving graceful degradation per Phase 5's
+`decide_escalation` contract — but emitting no signal. A degraded
+backend's effects showed up only as vague "DKS produces worse
+outputs." Now:
+
+- `DKSCycleResult.silent_failures: tuple[str, ...]` records each
+  swallowed exception with the form
+  `"<site_name>: <ExceptionType>: <message>"`.
+- All three swallow sites wired:
+  - `_llm_check_disagreement` (backend raises during semantic
+    disagreement step)
+  - `_format_retrieval_context` (retrieval client raises)
+  - `_parse_json_or_record` (new wrapper; LLM returns unparseable
+    text → records JSON-parse failure before returning `{}`)
+- The semantics are unchanged — silent fallback still happens.
+  Just observable now.
+- `MetaObservation.silent_failure_count` aggregates across cycle
+  traces; `LLMProposer` prompt surfaces it. The CLI's
+  `_run_dks_meta` builder populates the count from each cycle
+  trace's new `silent_failures` field.
+
+### What this version doesn't change
+
+- **No semantics changes.** Graceful-degradation behaviour preserved
+  end-to-end. Retries are *additive* — callers that explicitly want
+  no-retry behaviour can pass `max_logic_retries=0,
+  max_crash_recoveries=0` to the scheduler. The Phase 5 decide_escalation
+  contract is preserved.
+- **No async-everywhere refactor.** Only the watchdog's backend-call
+  boundary uses threads; the scheduler stays sync. A full async
+  migration is a v0.2+ concern.
+- **No DKS escalation tracking** (MeshClaw Pattern 7) — Tessellum's
+  DKS doesn't currently do LLM-driven replan; escalation tracking has
+  no failure mode to prevent. Defer until DKS adds a meta-cycle that
+  proposes its own continuation.
+- **No tier-based safe-tool classifier** (MeshClaw Pattern 8) —
+  Tessellum doesn't dispatch arbitrary tools. Not applicable yet.
+
+### Tests
+
+27 new tests across three files:
+
+- `tests/smoke/test_composer_retry.py` (8 new) — retry-budgeted
+  executor, retry-aware prompts, same-error short-circuit,
+  scheduler cascade prevention.
+- `tests/smoke/test_composer_reliability.py` (12 new) — watchdog
+  stalls + per-step timeout override, compile-time + runtime
+  budget enforcement, progress heartbeat.
+- `tests/smoke/test_dks_silent_failures.py` (7 new) — three
+  swallow-site records, MetaObservation aggregation, LLMProposer
+  prompt inclusion.
+
+Full suite: **913 passed** (+27 from v0.0.59's 886).
+
+### Heritage
+
+Ports four MeshClaw patterns from AbuseSlipBox:
+
+- `snippet_meshclaw_circuit_breaker.md` → A.1 retry decision logic
+- `snippet_meshclaw_task_retry_recovery.md` → A.2 retry-aware prompts
+- `snippet_meshclaw_context_budgets.md` → B.3 two-tier budget model
+- `snippet_meshclaw_task_runner_lifecycle.md` → B.1 watchdog escalation
+
+See `plan_composer_dks_robustness.md` §Heritage for the full citation.
+
+### Sequencing
+
+This release intercepts the v0.0.59 → v0.1.0 transition with a
+robustness pass. The next release reverts to
+`plan_v01_completion_roadmap.md` §Phase VI: the alpha → public-beta
+cut at v0.1.0 — README polish + CHANGELOG consolidation + GitHub
+release + clean-venv quickstart validation.
+
+---
+
 ## [0.0.59] — 2026-05-11
 
 ### Added — Phase V of plan_v01_completion_roadmap: MCP server + how-to library

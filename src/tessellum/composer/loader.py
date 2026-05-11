@@ -92,6 +92,12 @@ class PipelineStep(BaseModel):
     prompt_template: str | None = None
     output_key: str | None = None
     mcp_dependencies: tuple[MCPDependency, ...] = ()
+    # Phase B (v0.0.60) — robustness fields. Both optional.
+    timeout_seconds: float | None = None
+    """Per-step watchdog timeout. None → use executor default (120s)."""
+    max_prompt_chars: int | None = None
+    """Per-step hard cap on rendered prompt size. None → use
+    compiler.HARD_PROMPT_CAP_CHARS (150K)."""
 
 
 class Pipeline(BaseModel):

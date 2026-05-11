@@ -721,6 +721,8 @@ def _serialize_cycle(cycle) -> dict:
             for e in cycle.contradicts_edges
         ],
         "grounded_labelling": dict(cycle.grounded_labelling),
+        # Phase C (v0.0.60) — silent-failure telemetry
+        "silent_failures": list(cycle.silent_failures),
         "surviving_argument_fzs": list(cycle.surviving_argument_fzs),
     }
 
@@ -1064,6 +1066,15 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
                 except Exception:  # noqa: BLE001 — defensive
                     unrealised = ()
 
+        # Phase C (v0.0.60) — aggregate silent_failure_count across
+        # cycle traces. Pre-v0.0.60 traces won't have the field;
+        # treat as zero.
+        silent_failure_count = 0
+        for ct in cycle_traces:
+            sf = ct.get("silent_failures")
+            if isinstance(sf, list):
+                silent_failure_count += len(sf)
+
         observation = MetaObservation(
             timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             cycles_examined=len(cycle_traces),
@@ -1073,6 +1084,7 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
             per_perspective_breakdown={
                 p: dict(c) for p, c in per_perspective.items()
             },
+            silent_failure_count=silent_failure_count,
         )
 
     # Build backend lazily — both proposer and attacker may need it

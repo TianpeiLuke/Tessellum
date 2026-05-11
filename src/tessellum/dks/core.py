@@ -276,6 +276,41 @@ class DKSCycleResult:
     ``rule_revisions[0] if rule_revisions else None`` so v0.0.54-era
     callers keep working."""
 
+    silent_failures: tuple[str, ...] = ()
+    """Phase C (v0.0.60) — telemetry for backend calls inside the
+    cycle that raised an exception but were silently fallen-back to
+    preserve graceful degradation (per Phase 5's ``decide_escalation``
+    contract).
+
+    Each entry is a one-line description of the form
+    ``"<site_name>: <ExceptionType>: <message>"``. The cycle's
+    semantics are unchanged — the silent fallback still happens — but
+    callers (and meta-DKS via :class:`MetaObservation`) can now
+    observe the rate at which it happens.
+
+    The three known swallow sites in :class:`DKSCycle` are:
+
+    - ``_llm_check_disagreement`` — backend raises during the
+      semantic-disagreement step → falls back to string-compare.
+    - ``_format_retrieval_context`` — retrieval client raises → falls
+      back to empty context block.
+    - ``_step_argument`` JSON parse — LLM returns unparseable JSON →
+      ``_parse_json`` returns ``{}``, the step proceeds with empty
+      data."""
+    """All :class:`DKSRuleRevision`s emitted by this cycle (v0.0.55).
+
+    For N=2 cycles + N>2 cycles with a single ``in`` survivor, this
+    tuple has exactly one entry that mirrors the legacy ``rule_revision``
+    field. For N>2 cycles where Dung grounded labelling identifies
+    multiple ``in`` survivors, the cycle emits one revision per
+    survivor (per the Phase 10 multi-revision spec: "emits multiple
+    revisions tagged with their FZs"). Empty when the cycle did not
+    reach step 7 (gated, short-circuited, or all-undec).
+
+    The legacy ``rule_revision`` field is preserved + populated as
+    ``rule_revisions[0] if rule_revisions else None`` so v0.0.54-era
+    callers keep working."""
+
     @property
     def folgezettel_nodes(self) -> tuple[str, ...]:
         """FZ positions this cycle deposited (excluding the edge).
@@ -516,6 +551,25 @@ class DKSCycle:
         self.perspectives: tuple[str, ...] = perspectives
         # FZ allocator state — children of the cycle root
         self._cycle_fz_existing: list[str] = [observation.folgezettel]
+        # Phase C (v0.0.60) — silent-failure telemetry. Each swallow
+        # site appends a one-line description before falling back.
+        # Surfaced on DKSCycleResult.silent_failures.
+        self._silent_failures: list[str] = []
+
+    def _parse_json_or_record(self, content: str, site_name: str) -> dict:
+        """Phase C (v0.0.60) wrapper around :func:`_parse_json` that
+        records a silent failure when content is non-empty but
+        parses to ``{}``. Preserves the v0.0.40 swallow semantics —
+        the empty-dict fallback still happens — but makes the
+        silence observable via ``DKSCycleResult.silent_failures``.
+        """
+        result = _parse_json(content)
+        if not result and content.strip():
+            self._silent_failures.append(
+                f"{site_name}: JSONDecodeError: content not parseable to dict "
+                f"(first 80 chars: {content[:80]!r})"
+            )
+        return result
 
     def run(self) -> DKSCycleResult:
         start = time.monotonic()
@@ -568,6 +622,7 @@ class DKSCycle:
                 arguments=(arg_a,),
                 contradicts_edges=(),
                 grounded_labelling={},
+                silent_failures=tuple(self._silent_failures),
             )
 
         # Step 3: argument B from a different angle.
@@ -611,6 +666,7 @@ class DKSCycle:
                 arguments=(arg_a, arg_b),
                 contradicts_edges=(),
                 grounded_labelling={},
+                silent_failures=tuple(self._silent_failures),
             )
 
         # Step 5: counter-argument naming the broken Toulmin component
@@ -641,6 +697,7 @@ class DKSCycle:
                 arg_b.folgezettel: "in",
             },
             rule_revisions=(revision,),
+            silent_failures=tuple(self._silent_failures),
         )
 
     # ── Phase 10 — N>2 perspective dispatch ─────────────────────────────
@@ -727,6 +784,7 @@ class DKSCycle:
                 arguments=tuple(arguments),
                 contradicts_edges=tuple(contradicts_edges),
                 grounded_labelling=dict(labels),
+                silent_failures=tuple(self._silent_failures),
             )
 
         attacked_fz = out_fzs[0]
@@ -792,6 +850,7 @@ class DKSCycle:
             contradicts_edges=tuple(contradicts_edges),
             grounded_labelling=dict(labels),
             rule_revisions=tuple(revisions),
+            silent_failures=tuple(self._silent_failures),
         )
 
     # ── Per-step methods ──────────────────────────────────────────────────
@@ -822,7 +881,7 @@ class DKSCycle:
         response = self.backend.call(
             LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
         )
-        data = _parse_json(response.content)
+        data = self._parse_json_or_record(response.content, "_step_argument")
         fz = self.observation.folgezettel + suffix_hint
         self._cycle_fz_existing.append(fz)
         return DKSArgument(
@@ -893,8 +952,13 @@ class DKSCycle:
             response = self.backend.call(
                 LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
             )
-            data = _parse_json(response.content)
-        except Exception:
+            data = self._parse_json_or_record(
+                response.content, "_llm_check_disagreement"
+            )
+        except Exception as e:  # noqa: BLE001 — silent fallback per Phase 5 contract
+            self._silent_failures.append(
+                f"_llm_check_disagreement: {type(e).__name__}: {e}"
+            )
             return None
         if not isinstance(data, dict) or "disagree" not in data:
             return None
@@ -928,7 +992,7 @@ class DKSCycle:
         response = self.backend.call(
             LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
         )
-        data = _parse_json(response.content)
+        data = self._parse_json_or_record(response.content, "_step_counter")
         broken = _get_str(data, "broken_component", "warrant")
         if broken not in ("premise", "warrant", "counter-example", "undercutting"):
             broken = "warrant"
@@ -959,7 +1023,7 @@ class DKSCycle:
         response = self.backend.call(
             LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
         )
-        data = _parse_json(response.content)
+        data = self._parse_json_or_record(response.content, "_step_pattern")
         observed = data.get("observed") if isinstance(data, dict) else None
         if not isinstance(observed, list):
             observed = []
@@ -1015,7 +1079,7 @@ class DKSCycle:
         response = self.backend.call(
             LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
         )
-        data = _parse_json(response.content)
+        data = self._parse_json_or_record(response.content, "_step_rule_revision")
         fz = _next_child_of(parent_fz, tuple(self._cycle_fz_existing))
         self._cycle_fz_existing.append(fz)
         supersedes_raw = _get_str(data, "supersedes", "")
@@ -1053,7 +1117,10 @@ class DKSCycle:
             return ""
         try:
             hits = self.retrieval_client.search(self.observation.summary, k=k)
-        except Exception:
+        except Exception as e:  # noqa: BLE001 — silent fallback per Phase 5 contract
+            self._silent_failures.append(
+                f"_format_retrieval_context: {type(e).__name__}: {e}"
+            )
             return ""
         if not hits:
             return ""

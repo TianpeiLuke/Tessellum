@@ -53,9 +53,12 @@ from tessellum.composer.contracts import (
     NoOpContract,
 )
 from tessellum.composer.executor import (
+    MAX_CRASH_RECOVERIES,
+    MAX_LOGIC_RETRIES,
     ExecutorError,
     StepResult,
     execute_step,
+    execute_step_with_retry,
 )
 from tessellum.composer.llm import (
     AnthropicBackend,
@@ -152,6 +155,9 @@ __all__ = [
     "MaterializerError",
     # Executor + scheduler (Wave 3)
     "execute_step",
+    "execute_step_with_retry",
+    "MAX_LOGIC_RETRIES",
+    "MAX_CRASH_RECOVERIES",
     "StepResult",
     "ExecutorError",
     "run_pipeline",
