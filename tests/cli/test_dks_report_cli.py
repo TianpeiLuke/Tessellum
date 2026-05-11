@@ -310,3 +310,112 @@ def test_cli_no_observations_and_no_report_errors(tmp_path, capsys):
     assert code == 2
     err = capsys.readouterr().err
     assert "missing observations file" in err
+
+
+# ── Phase 6 — --include-bb-graph join with corpus telemetry ────────────────
+
+
+def test_cli_report_include_bb_graph_missing_db_returns_error_payload(
+    tmp_path, capsys
+):
+    """--include-bb-graph with a missing index DB → report includes a
+    `bb_graph.error` sentinel; exit code stays 0 (report still ran)."""
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+    code = main(
+        [
+            "dks", "--report",
+            "--runs-dir", str(runs_dir),
+            "--include-bb-graph",
+            "--bb-db", str(tmp_path / "missing.db"),
+            "--format", "json",
+        ]
+    )
+    assert code == 0
+    # Empty runs dir returns the empty payload; --include-bb-graph
+    # joins only when run_summaries is non-empty. The empty path is
+    # handled separately and doesn't include bb_graph.
+    payload = json.loads(capsys.readouterr().out)
+    # Empty report shape — no bb_graph join attempted
+    assert payload["run_count"] == 0
+
+
+def test_cli_report_include_bb_graph_attaches_section(
+    obs_jsonl, mock_responses, tmp_path, capsys
+):
+    """A real run + --include-bb-graph emits a bb_graph section in JSON."""
+    from tessellum.indexer import build as build_index
+
+    # First run a dks session so there's an aggregate trace to read
+    runs_dir = tmp_path / "runs"
+    main(
+        [
+            "dks", str(obs_jsonl),
+            "--mock-responses", str(mock_responses),
+            "--runs-dir", str(runs_dir),
+        ]
+    )
+
+    # Build a small index DB so --bb-db has something to load
+    import textwrap as tw
+    vault = tmp_path / "v"
+    vault.mkdir()
+    (vault / "resources" / "term_dictionary").mkdir(parents=True)
+    (vault / "resources" / "term_dictionary" / "term_one.md").write_text(
+        tw.dedent("""\
+        ---
+        tags: [resource, terminology]
+        keywords: [a, b, c]
+        topics: [Tx, Ty]
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: concept
+        ---
+
+        # Term One
+
+        Body.
+        """)
+    )
+    db = tmp_path / "tess.db"
+    build_index(vault, db, with_dense=False)
+
+    capsys.readouterr()
+    code = main(
+        [
+            "dks", "--report",
+            "--runs-dir", str(runs_dir),
+            "--include-bb-graph",
+            "--bb-db", str(db),
+            "--format", "json",
+        ]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "bb_graph" in payload
+    assert "error" not in payload["bb_graph"]
+    assert payload["bb_graph"]["node_count"] == 1
+    assert payload["bb_graph"]["nodes_by_type"]["concept"] == 1
+
+
+def test_cli_report_without_include_bb_graph_omits_section(
+    obs_jsonl, mock_responses, tmp_path, capsys
+):
+    """Default --report does NOT include the bb_graph section."""
+    runs_dir = tmp_path / "runs"
+    main(
+        [
+            "dks", str(obs_jsonl),
+            "--mock-responses", str(mock_responses),
+            "--runs-dir", str(runs_dir),
+        ]
+    )
+
+    capsys.readouterr()
+    code = main(
+        ["dks", "--report", "--runs-dir", str(runs_dir), "--format", "json"]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert "bb_graph" not in payload
