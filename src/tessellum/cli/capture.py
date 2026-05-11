@@ -41,6 +41,24 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Overwrite an existing target file.",
     )
+    cap.add_argument(
+        "--destination",
+        type=str,
+        default=None,
+        help="Override the REGISTRY-default destination directory "
+        "(relative to --vault). Useful when an agent knows the "
+        "specific sub-category — e.g., `--destination "
+        "areas/code_repos` for a model note describing a repo.",
+    )
+    cap.add_argument(
+        "--prefix",
+        dest="filename_prefix",
+        type=str,
+        default=None,
+        help="Override the REGISTRY-default filename prefix (e.g., "
+        "`repo_` for repo-architecture model notes, `tool_` for "
+        "algorithm/tool model notes).",
+    )
     cap.set_defaults(func=run_capture)
 
 
@@ -52,6 +70,8 @@ def run_capture(args: argparse.Namespace) -> int:
             slug=args.slug,
             vault_root=vault_root,
             force=args.force,
+            destination=args.destination,
+            filename_prefix=args.filename_prefix,
         )
     except ValueError as e:
         print(f"tessellum capture: {e}", file=sys.stderr)
