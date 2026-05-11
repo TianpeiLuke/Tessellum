@@ -14,7 +14,7 @@ Two complementary kinds of checks:
      pipeline ran, the right number of steps fired, files landed where
      expected. They don't say anything about content quality.
 
-  2. **LLMJudge 5-dim rubric** — content-quality scoring:
+  2. **LLMJudge 6-dim rubric** — content-quality scoring:
 
      - ``relevance``: does the output address the input?
      - ``completeness``: are all required facets covered?
@@ -22,6 +22,8 @@ Two complementary kinds of checks:
      - ``clarity``: is the writing clear and well-structured?
      - ``structural_integrity``: does the output respect the format
        contract (frontmatter, sections, etc.)?
+     - ``epistemic_congruence``: does the output honour the BB-type
+       expectations the question implies? (added v0.0.44, DKS Phase 4)
 
      Each dimension is rated 1-5 by an LLM judge. The default judge is
      ``MockBackend`` (returns canned high scores — useful for testing the
@@ -48,7 +50,7 @@ What this module does NOT do (deferred):
 
   - Bootstrapped confidence intervals on judge scores. v0.2+ if needed.
   - Multi-judge ensembles. v0.2+ if needed.
-  - Pairwise/preference judging. The 5-dim rubric is what users want first.
+  - Pairwise/preference judging. The 6-dim rubric is what users want first.
 """
 
 from __future__ import annotations
@@ -72,6 +74,13 @@ DEFAULT_RUBRIC_DIMENSIONS: tuple[str, ...] = (
     "accuracy",
     "clarity",
     "structural_integrity",
+    # Added v0.0.44 (DKS Phase 4) — asks the judge whether the response
+    # honours the BB-type expectations the question implies. DKS cycles
+    # produce typed notes (empirical_observation / argument /
+    # counter_argument / model / procedure / concept), and an
+    # epistemically-congruent response must respect those types. See
+    # plans/plan_dks_implementation.md Phase 4.
+    "epistemic_congruence",
 )
 
 
@@ -351,7 +360,7 @@ def _build_judge_prompt(
 
 
 class LLMJudge:
-    """Wraps any LLMBackend to produce 5-dim rubric scores.
+    """Wraps any LLMBackend to produce 6-dim rubric scores.
 
     Attributes:
         backend: The judge LLM. Use ``MockBackend`` for tests, real

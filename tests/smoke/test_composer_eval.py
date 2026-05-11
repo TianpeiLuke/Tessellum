@@ -253,7 +253,7 @@ def test_llmjudge_parses_full_rubric() -> None:
         actual_output="The summary.",
         dimensions=DEFAULT_RUBRIC_DIMENSIONS,
     )
-    assert len(scores) == 5
+    assert len(scores) == len(DEFAULT_RUBRIC_DIMENSIONS)
     assert all(isinstance(s, JudgeScore) for s in scores)
     assert all(s.score == 4 for s in scores)
 
@@ -334,7 +334,7 @@ def test_run_eval_with_judge_aggregates_mean_scores(
         judge=LLMJudge(MockBackend(default=canned)),
     )
     assert result.passed_count == 1
-    assert len(result.mean_score_by_dim) == 5
+    assert len(result.mean_score_by_dim) == len(DEFAULT_RUBRIC_DIMENSIONS)
     for mean in result.mean_score_by_dim.values():
         assert mean == 4.0
 

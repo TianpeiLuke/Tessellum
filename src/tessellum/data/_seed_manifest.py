@@ -82,10 +82,11 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/analysis_thoughts/thought_cqrs_r_cross_rules.md",                           # FZ 1a1b
     "resources/analysis_thoughts/thought_cqrs_r_cross_gap_audit.md",                       # FZ 1a1b1
 
-    # ── FZ trail nodes (Trail 2: Dialectic / DKS — 2 thoughts) ───────────
+    # ── FZ trail nodes (Trail 2: Dialectic / DKS — 4 thoughts) ───────────
     "resources/analysis_thoughts/thought_dks_evolution.md",            # FZ 2
     "resources/analysis_thoughts/thought_dks_design_synthesis.md",     # FZ 2a
     "resources/analysis_thoughts/thought_dks_fz_integration.md",       # FZ 2a1
+    "resources/analysis_thoughts/thought_dks_runtime_integration.md",  # FZ 2b — runtime integration (Phase 4)
 
     # ── FZ trail nodes (Trail 3: Retrieval / System D — 2 thoughts) ──────
     "resources/analysis_thoughts/thought_retrieval_evolution.md",      # FZ 3

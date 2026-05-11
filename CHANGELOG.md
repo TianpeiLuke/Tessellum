@@ -16,6 +16,119 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.44] — 2026-05-10
+
+### Added — DKS Phase 4: integration with the rest of Tessellum
+
+The integration phase. Phase 1-3 built the runtime in isolation; Phase 4
+wires DKS through every other Tessellum subsystem along typed
+contracts. R-P (Schema ⊥ Runtime co-evolution) and R-Cross (P calls D;
+D never calls P) move from "held by absence" to "actively enforced".
+
+#### `src/tessellum/dks/retrieval_client.py` — P-side R-Cross client
+
+`RetrievalClient(db_path).search(query, k=20)` is a thin adapter over
+`tessellum.retrieval.hybrid_search` (BM25 + dense via RRF). The typed
+`RetrievalHit` re-exposes only the fields a DKS step actually needs
+(note_id, note_name, score, bm25_rank, dense_rank), so the P→D
+contract is explicit and DKS callers aren't coupled to retrieval's
+internal types.
+
+**Read-only by construction:** the class has no `index`, `update`, or
+`delete` surface, and the underlying retrieval module exposes no
+mutating operations either. R-Cross now holds *productively* (P
+formally reads D), not just defensively.
+
+DKS step 1 (observation capture) and step 6 (pattern discovery) are
+the intended primary consumers — both ask "has this observation /
+contradiction pattern shown up before?" against the indexed substrate.
+
+Exported from `tessellum.dks` public API: `RetrievalClient`,
+`RetrievalHit`.
+
+#### TESS-004 validator rule — counter_argument link discipline
+
+`src/tessellum/format/validator.py` gains `_check_counter_argument_link`:
+for any note with `building_block: counter_argument` AND
+`status: active`, scan the body for at least one internal `.md` link
+whose target, resolved on disk, has `building_block: argument` in its
+frontmatter. If no such link exists → emit `TESS-004` ERROR.
+
+**Authoring-state exemption:** `status: template | draft | stub |
+archived` skips the rule entirely. Templates exist to be copied and
+filled; drafts are still in progress. Only `status: active` triggers
+TESS-004. Matches the lean in `plan_dks_implementation` Phase 4 open
+questions.
+
+The rule is the single-note backstop for the stronger
+"counter.folgezettel_parent resolves to a BB=argument note"
+invariant (which is enforced at index-build time by the DKS runtime
+write side, not by the static validator). Together, TESS-001/002/003
++ TESS-004 promote the BB-edge contract from comment to invariant.
+
+#### 6th LLMJudge rubric dimension — `epistemic_congruence`
+
+`DEFAULT_RUBRIC_DIMENSIONS` grows from 5 to 6 with the addition of
+`epistemic_congruence`: "Does the output honour the BB-type
+expectations the question implies?". DKS cycles produce typed notes
+(`empirical_observation` / `argument` / `counter_argument` / `model`
+/ `procedure` / `concept`); the LLMJudge can now score whether
+they're *typed correctly* — not just whether the prose is clear or
+complete.
+
+The judge prompt template iterates dimensions dynamically (no
+hardcoded list); `tessellum composer eval`'s canned default-judge
+fallback now reads from `DEFAULT_RUBRIC_DIMENSIONS` directly so future
+additions (e.g. `dialectical_adequacy` in Phase 5) are single-line
+edits.
+
+#### FZ 2b — `thought_dks_runtime_integration.md`
+
+New thought note at FZ 2b under Trail 2 (Dialectic). Synthesises how
+the live runtime wires into composer (dispatcher), retrieval (P-side
+client), format (TESS-004), eval (6th rubric dim), capture (no new
+flavor), and indexer (read-only via D). Documents the R-Cross status
+matrix (both halves now enforced) and what Phase 5 still owes.
+
+Seed manifest: `SEED_VAULT_MANIFEST` gains the FZ 2b note so
+`tessellum init` copies it into every new vault. Trail 2 in the
+entry-points grew from 3 to 4 nodes; `entry_dialectic_trail.md` +
+`entry_folgezettel_trails.md` updated to match.
+
+#### Tests
+
+- `tests/smoke/test_dks_retrieval_client.py` (8 tests) — construction
+  with missing DB raises FileNotFoundError; str + Path both work;
+  search returns RetrievalHit instances; k=0 returns empty; field
+  propagation from HybridHit → RetrievalHit; the class exposes only
+  `db_path` + `search` (R-Cross defensive half — no mutating surface).
+- `tests/smoke/test_format_validator.py` (+7 tests for TESS-004) —
+  counter linking to a real BB=argument passes; counter with no body
+  links errors; counter linking to a non-argument (e.g. concept)
+  errors; template/draft status exempt; non-counter notes unaffected;
+  in-memory note (path=None) skipped.
+- `tests/smoke/test_composer_eval.py` updated — assertions on `len ==
+  5` replaced with `len == len(DEFAULT_RUBRIC_DIMENSIONS)` so adding
+  the 6th dim doesn't require lockstep test edits.
+
+### Changed
+
+- `tessellum.composer.eval` docstring + `LLMJudge` docstring updated
+  from "5-dim" to "6-dim".
+- `tessellum composer eval`'s canned default-judge response now reads
+  from `DEFAULT_RUBRIC_DIMENSIONS` instead of hardcoding 5 dims.
+- `entry_dialectic_trail.md` — Trail 2 grows 3 → 4 nodes; ASCII tree
+  becomes a two-branch fork at FZ 2 (2a synthesis branch + 2b
+  integration branch); "What ships in Tessellum today" updated to
+  reflect that the 7-component runtime is live.
+- `entry_folgezettel_trails.md` — master totals: 3 trails / 11 nodes
+  → 3 trails / 12 nodes.
+- `__about__.py` and `pyproject.toml` bumped to `0.0.44`.
+
+Full suite: 585 passed, 1 skipped (was 570 / +15 new tests).
+
+---
+
 ## [0.0.43] — 2026-05-10
 
 ### Changed — DKS lifted to its own top-level module
