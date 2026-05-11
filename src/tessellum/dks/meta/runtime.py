@@ -239,6 +239,8 @@ class LLMProposer:
             f"{json.dumps(observation.toulmin_failure_counts)}\n"
             f"  counter_strength_breakdown: "
             f"{json.dumps(observation.counter_strength_breakdown)}\n"
+            f"  per_perspective_breakdown: "
+            f"{json.dumps(observation.per_perspective_breakdown)}\n"
             f"  top_attacked_warrants: "
             f"{json.dumps(list(observation.top_attacked_warrants))}\n"
             f"  unrealised_schema_edges: "

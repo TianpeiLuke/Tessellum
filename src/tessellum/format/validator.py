@@ -412,6 +412,29 @@ def _check_bb_typed_edges(note: Note) -> list[Issue]:
     if note.path is None:
         return []
 
+    # Phase I.2 (v0.0.55) — version-aware validation. When the note
+    # records its bb_schema_version, validate against the schema as
+    # of that version (D8 frozen-at-creation). Falls back to the live
+    # ``BB_SCHEMA`` when the field is missing or non-integer
+    # (back-compat for v0.0.52-era notes).
+    recorded_version_raw = note.frontmatter.get("bb_schema_version")
+    schema_version: int | None = None
+    try:
+        if recorded_version_raw is not None:
+            schema_version = int(recorded_version_raw)
+    except (TypeError, ValueError):
+        schema_version = None
+    if schema_version is not None and schema_version >= 1:
+        from tessellum.bb.types import BB_SCHEMA_AT_VERSION
+
+        active_schema = BB_SCHEMA_AT_VERSION(schema_version)
+        schema_version_tag = f"v{schema_version}"
+    else:
+        from tessellum.bb.types import BB_SCHEMA as _LIVE_SCHEMA
+
+        active_schema = _LIVE_SCHEMA
+        schema_version_tag = "live"
+
     source_bb = BBType(bb_value)
     body_no_code = _FENCED_CODE_RE.sub("", note.body)
     issues: list[Issue] = []
@@ -451,10 +474,10 @@ def _check_bb_typed_edges(note: Note) -> list[Issue]:
         if target_bb is source_bb:
             continue
 
-        # Bidirectional match against BB_SCHEMA.
-        if find_edge_type(source_bb, target_bb) is not None:
+        # Bidirectional match against the version-pinned schema.
+        if _has_edge_in_schema(active_schema, source_bb, target_bb):
             continue
-        if find_edge_type(target_bb, source_bb) is not None:
+        if _has_edge_in_schema(active_schema, target_bb, source_bb):
             continue
 
         issues.append(
@@ -463,13 +486,24 @@ def _check_bb_typed_edges(note: Note) -> list[Issue]:
                 "TESS-005",
                 "links",
                 f"body link from {source_bb.value!r} to {target_bb.value!r} "
-                f"({path_part}): BB-pair not in BB_SCHEMA in either "
-                f"direction. Either retarget the link, accept as "
+                f"({path_part}): BB-pair not in BB_SCHEMA@{schema_version_tag} "
+                f"in either direction. Either retarget the link, accept as "
                 f"documentation, or propose a schema extension.",
             )
         )
 
     return issues
+
+
+def _has_edge_in_schema(
+    schema: tuple, source: BBType, target: BBType
+) -> bool:
+    """Check whether the schema contains any edge from ``source`` to
+    ``target`` (label-agnostic, per Phase I.2)."""
+    for edge in schema:
+        if edge.source is source and edge.target is target:
+            return True
+    return False
 
 
 def _check_yaml_links(raw_frontmatter: str) -> list[Issue]:

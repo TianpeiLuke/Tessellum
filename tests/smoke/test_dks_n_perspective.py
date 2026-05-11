@@ -312,3 +312,171 @@ def test_contradicts_edges_attacker_is_later_perspective():
     for edge in result.contradicts_edges:
         # attacker is the later-index perspective → larger suffix
         assert edge.attacker_fz > edge.attacked_fz
+
+
+# ── Multi-revision authoring (Phase I.1 — v0.0.55) ─────────────────────────
+
+
+def test_n2_emits_single_rule_revision_via_tuple():
+    """N=2 disagreement → rule_revisions has 1 entry; legacy field mirrors it."""
+    obs = _build_observation()
+    responses = {
+        "(conservative)": _argument_response("A"),
+        "(exploratory)": _argument_response("B"),
+        "counter-argument": _COUNTER_RESPONSE,
+        "pattern discovery": _PATTERN_RESPONSE,
+        "rule revision": _REVISION_RESPONSE,
+    }
+    result = DKSCycle(
+        observation=obs, warrants=(), backend=MockBackend(responses=responses)
+    ).run()
+    assert len(result.rule_revisions) == 1
+    assert result.rule_revisions[0] is result.rule_revision
+
+
+def test_n2_agreement_emits_zero_revisions():
+    """Short-circuit when arguments agree → rule_revisions empty + legacy None."""
+    obs = _build_observation()
+    backend = MockBackend(default=_argument_response("same"))
+    result = DKSCycle(observation=obs, warrants=(), backend=backend).run()
+    assert result.rule_revisions == ()
+    assert result.rule_revision is None
+
+
+def test_gated_emits_zero_revisions():
+    obs = _build_observation()
+    backend = MockBackend(default=_argument_response("X"))
+    result = DKSCycle(
+        observation=obs,
+        warrants=(),
+        backend=backend,
+        confidence_model=lambda obs, warrants: 0.99,
+        confidence_threshold=0.6,
+    ).run()
+    assert result.rule_revisions == ()
+    assert result.escalation_decision == "gated"
+
+
+def test_n3_multi_survivor_emits_one_revision_per_in():
+    """N=3 with one OUT (A), two IN (B, C): the rule_revisions list has 2 entries."""
+    obs = _build_observation()
+    # Force a specific shape: arg_a == arg_b ≠ arg_c.
+    # Edges: (B,A) — claims agree, no edge; (C,A) — claims differ, edge;
+    #        (C,B) — claims differ, edge.
+    # Grounded: C in (no attackers), A out (attacked by IN C), B out
+    # (attacked by IN C).
+    # Multi-survivor: only C is IN → 1 revision.
+    # To get 2 INs we need a shape where two args are unattacked. Let's
+    # use the "1 dissenter attacks 2 agreeing" shape inverted:
+    # arg_a ≠ arg_b ≠ arg_c, all differ → 3 edges → labels: A out, B
+    # out, C in (only 1 IN). So we need a more careful shape.
+    # Two INs requires two unattacked arguments. With pairwise i<j
+    # attacker-is-later, the only way two args are unattacked is if
+    # both are the *first* indices — impossible since only index 0 has
+    # no later attackers... unless the claims of args j ≤ k AGREE with
+    # earlier args, so no edge fires for them.
+    # Setup: A's claim = X, B's claim = X (agrees → no edge B,A), C's
+    # claim = Y (differs → edges C,A and C,B). Grounded: A unattacked
+    # by IN (B didn't attack; C did — but B's defence doesn't matter
+    # since C attacks A directly). A: attacked by C IN → out. B same.
+    # That still gives only C as the single IN.
+    # The cleanest multi-IN shape with our attacker-is-later
+    # convention: A and B claims differ from each other but neither
+    # attacks one another in the right direction. Actually, since
+    # edges are emitted for every (i, j) with differing claims, two
+    # differing-claim siblings ALWAYS produce an attack edge.
+    # Multi-IN requires UNDEFENDED mutual-disagreement OR a chain.
+    # With our convention there's no mutual attack — every edge goes
+    # one direction.
+    # The right shape: A ≠ B ≠ C ≠ A with the natural attack pattern,
+    # and a 4th argument D that's a defender. But our perspectives
+    # tuple drives the indices.
+    # Simpler shape: 4 perspectives where 3 agree, 1 dissents.
+    # arg_a = X, arg_b = X, arg_c = X, arg_d = Y. Edges: (D, A), (D,
+    # B), (D, C). Grounded: D in (no attackers), A/B/C all out
+    # (attacked by IN D). Still only 1 IN.
+    # The minimum-arity multi-IN shape: 4 perspectives, A and B agree,
+    # C and D agree, A != C. Edges: (C, A), (C, B), (D, A), (D, B).
+    # (A↔B and C↔D have no edges since claims agree internally; A↔C,
+    # A↔D, B↔C, B↔D have edges.) Grounded: A attacked by C and D
+    # (both undec initially), B same, C attacked by ... wait, no — C
+    # is at index 2 and A is at index 0; edge (C, A) means C attacks
+    # A, not the reverse. C has NO attackers (only later-index
+    # perspectives can attack it). D also has no attackers. So C in,
+    # D in, A out, B out — TWO INs (C and D).
+    responses = {
+        "(persp_a)": _argument_response("X"),
+        "(persp_b)": _argument_response("X"),
+        "(persp_c)": _argument_response("Y"),
+        "(persp_d)": _argument_response("Y"),
+        "counter-argument": _COUNTER_RESPONSE,
+        "pattern discovery": _PATTERN_RESPONSE,
+        "multi-survivor": _REVISION_RESPONSE,
+        "rule revision": _REVISION_RESPONSE,
+    }
+    result = DKSCycle(
+        observation=obs,
+        warrants=(),
+        backend=MockBackend(responses=responses),
+        perspectives=("persp_a", "persp_b", "persp_c", "persp_d"),
+    ).run()
+    labels = result.grounded_labelling
+    # Confirm the shape we engineered
+    in_labels = sorted(fz for fz, lbl in labels.items() if lbl == "in")
+    assert in_labels == ["9c", "9d"]
+    # Multi-revision: 2 revisions (one per IN survivor)
+    assert len(result.rule_revisions) == 2
+    # Each anchored to its survivor's FZ (parent_fz for the revision
+    # is the survivor's FZ, so revision FZ has the survivor's prefix)
+    rev_fzs = [r.folgezettel for r in result.rule_revisions]
+    assert all(fz.startswith("9c") or fz.startswith("9d") for fz in rev_fzs)
+    # Legacy field mirrors first
+    assert result.rule_revision is result.rule_revisions[0]
+
+
+def test_n3_single_survivor_still_one_revision():
+    """N=3 with only one IN survivor → 1 revision (the single-survivor path)."""
+    obs = _build_observation()
+    responses = {
+        "(p1)": _argument_response("A"),
+        "(p2)": _argument_response("B"),
+        "(p3)": _argument_response("C"),
+        "counter-argument": _COUNTER_RESPONSE,
+        "pattern discovery": _PATTERN_RESPONSE,
+        "rule revision": _REVISION_RESPONSE,
+    }
+    result = DKSCycle(
+        observation=obs,
+        warrants=(),
+        backend=MockBackend(responses=responses),
+        perspectives=("p1", "p2", "p3"),
+    ).run()
+    # Grounded labels per the existing N=3 test: C in, A out, B out.
+    # Only 1 IN → 1 revision.
+    in_labels = sorted(fz for fz, lbl in result.grounded_labelling.items() if lbl == "in")
+    assert len(in_labels) == 1
+    assert len(result.rule_revisions) == 1
+
+
+def test_folgezettel_nodes_includes_all_revisions():
+    """folgezettel_nodes property includes every emitted revision's FZ."""
+    obs = _build_observation()
+    responses = {
+        "(persp_a)": _argument_response("X"),
+        "(persp_b)": _argument_response("X"),
+        "(persp_c)": _argument_response("Y"),
+        "(persp_d)": _argument_response("Y"),
+        "counter-argument": _COUNTER_RESPONSE,
+        "pattern discovery": _PATTERN_RESPONSE,
+        "rule revision": _REVISION_RESPONSE,
+    }
+    result = DKSCycle(
+        observation=obs,
+        warrants=(),
+        backend=MockBackend(responses=responses),
+        perspectives=("persp_a", "persp_b", "persp_c", "persp_d"),
+    ).run()
+    nodes = result.folgezettel_nodes
+    # All 2 revision FZs are in the node list
+    for rev in result.rule_revisions:
+        assert rev.folgezettel in nodes

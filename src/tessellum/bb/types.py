@@ -264,6 +264,8 @@ def set_user_extensions_from_events(
     global _SCHEMA_EVENT_LOG, BB_SCHEMA_USER_EXTENSIONS, BB_SCHEMA, BB_SCHEMA_VERSION
     _SCHEMA_EVENT_LOG = list(events)
     BB_SCHEMA_USER_EXTENSIONS = fold_schema_events(_SCHEMA_EVENT_LOG)
+    # Invalidate the per-version cache — event log identity has changed.
+    _SCHEMA_AT_VERSION_CACHE.clear()
     BB_SCHEMA = (
         *BB_SCHEMA_EPISTEMIC,
         *BB_SCHEMA_NAVIGATION,
@@ -281,6 +283,74 @@ def set_user_extensions_from_events(
 def schema_event_log() -> tuple[SchemaEditEvent, ...]:
     """Return the in-memory event log (defensive copy)."""
     return tuple(_SCHEMA_EVENT_LOG)
+
+
+# ── BB_SCHEMA_AT_VERSION — version-aware schema reconstruction (v0.0.55) ───
+
+
+def BB_SCHEMA_AT_VERSION(
+    version: int,
+) -> tuple[EpistemicEdgeType, ...]:
+    """Reconstruct the BB_SCHEMA tuple as of a specific version (Phase I.2).
+
+    The frozen-at-creation D8 discipline (every captured note records
+    its ``bb_schema_version`` in YAML frontmatter) is only useful if
+    callers can ask: *what did the schema look like at version N?*
+    This helper answers that question by folding the prefix of
+    ``_SCHEMA_EVENT_LOG`` whose post-fold version number is ``≤ version``.
+
+    The core epistemic + navigation + DKS extensions are constant
+    across all versions (they live in module-level tuples that no
+    runtime event can mutate per D4). Only the
+    :data:`BB_SCHEMA_USER_EXTENSIONS` portion varies with the event
+    log; this function folds it at the requested version.
+
+    Args:
+        version: Integer ≥ 1. Version 1 = the static v0.0.47 schema
+            with no user extensions; each ``added`` or ``retracted``
+            event bumps the version by 1.
+
+    Returns:
+        The full ``BB_SCHEMA`` tuple as of the requested version.
+
+    Raises:
+        ValueError: ``version < 1``.
+
+    Memoised per ``(version, len(_SCHEMA_EVENT_LOG))`` — repeated calls
+    at the same version against the same event log return cached
+    results. Cache resets implicitly whenever the event log replaces
+    (via :func:`set_user_extensions_from_events`).
+    """
+    if version < 1:
+        raise ValueError(f"version must be >= 1; got {version}")
+    cache_key = (version, len(_SCHEMA_EVENT_LOG), id(_SCHEMA_EVENT_LOG))
+    cached = _SCHEMA_AT_VERSION_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+    # Fold the prefix of the event log whose post-fold version is
+    # ``<= version``. v=1 means zero events applied; v=N means the
+    # first (N-1) added/retracted events applied.
+    target_event_count = version - 1
+    applied = 0
+    truncated_events: list[SchemaEditEvent] = []
+    for event in _SCHEMA_EVENT_LOG:
+        if event.kind in ("added", "retracted"):
+            if applied >= target_event_count:
+                break
+            applied += 1
+        truncated_events.append(event)
+    user_extensions = fold_schema_events(truncated_events)
+    schema = (
+        *BB_SCHEMA_EPISTEMIC,
+        *BB_SCHEMA_NAVIGATION,
+        *BB_SCHEMA_DKS_EXTENSIONS,
+        *user_extensions,
+    )
+    _SCHEMA_AT_VERSION_CACHE[cache_key] = schema
+    return schema
+
+
+_SCHEMA_AT_VERSION_CACHE: dict[tuple, tuple[EpistemicEdgeType, ...]] = {}
 
 
 # ── BB_SCHEMA_VERSION — bumps on every landed event (Phase 9) ──────────────
@@ -365,6 +435,7 @@ __all__ = [
     "BB_SCHEMA_DKS_EXTENSIONS",
     "BB_SCHEMA_USER_EXTENSIONS",
     "BB_SCHEMA",
+    "BB_SCHEMA_AT_VERSION",
     "BB_SCHEMA_VERSION",
     "SCHEMA_EDIT_KIND",
     "SchemaEditEvent",
