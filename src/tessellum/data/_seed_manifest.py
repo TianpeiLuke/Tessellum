@@ -76,6 +76,12 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/skills/skill_tessellum_meta_dks_cycle.md",              # 4-step meta-cycle canonical (v0.0.53)
     "resources/skills/skill_tessellum_meta_dks_cycle.pipeline.yaml",   # meta-cycle sidecar
 
+    # ── Capture-side helpers (v0.0.58) — classification + routing ────────
+    "resources/skills/skill_tessellum_classify_content.md",            # 5-step BB classification (ported from AB, adapted)
+    "resources/skills/skill_tessellum_classify_content.pipeline.yaml", # classify sidecar
+    "resources/skills/skill_tessellum_route_content.md",               # 6-step routing + 3-criterion novelty (ported from AB, trimmed)
+    "resources/skills/skill_tessellum_route_content.pipeline.yaml",    # route sidecar
+
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
 
