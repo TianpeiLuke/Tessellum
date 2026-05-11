@@ -18,6 +18,7 @@ status: template
 building_block: argument
 folgezettel: ""              # if part of an FZ trail; empty/absent otherwise
 folgezettel_parent: ""       # if has a parent in the FZ trail; null for roots; empty/absent for non-trail notes
+argument_perspective: ""     # optional: the perspective this argument was generated from (e.g. "conservative", "exploratory", "empirical"). Open vocabulary. Phase 10+.
 ---
 
 <!--

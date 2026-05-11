@@ -103,6 +103,24 @@ class MetaObservation:
     counter_strength_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
     sample_counter_quotes: dict[str, tuple[str, ...]] = field(default_factory=dict)
     observation_source_metadata: str = ""
+    # v0.0.55 — Phase I.3 — per-perspective stratification (multi-perspective
+    # DKS, FZ 2c1's OQ-2c1-c interaction point).
+    per_perspective_breakdown: dict[str, dict[str, int]] = field(default_factory=dict)
+    """Per-perspective Toulmin failure distribution.
+
+    Maps ``{argument_perspective: {broken_component: count}}``. Each
+    entry counts the failures attributed to arguments produced under
+    that perspective (i.e., counters whose attacked argument's
+    perspective matched the key).
+
+    Populated by the CLI from per-cycle traces when the
+    ``argument_perspective`` field is present on the attacked
+    argument. Defaults to empty for backward compatibility with
+    cycles produced before v0.0.55.
+
+    The LLMProposer prompt renders this as a stratified breakdown so
+    the proposer can reason about perspective-specific schema gaps
+    (Phase V constraint C2 stratified by perspective)."""
 
 
 # ── SchemaEditProposal — the meta-cycle's argument ─────────────────────────

@@ -262,20 +262,44 @@ class DKSCycleResult:
     N>2, this is the basis of survival selection — surviving
     arguments are those labelled ``"in"``."""
 
+    rule_revisions: tuple[DKSRuleRevision, ...] = ()
+    """All :class:`DKSRuleRevision`s emitted by this cycle (v0.0.55).
+
+    For N=2 cycles + N>2 cycles with a single ``in`` survivor, this
+    tuple has exactly one entry that mirrors the legacy ``rule_revision``
+    field. For N>2 cycles where Dung grounded labelling identifies
+    multiple ``in`` survivors, the cycle emits one revision per
+    survivor (per the Phase 10 multi-revision spec: "emits multiple
+    revisions tagged with their FZs"). Empty when the cycle did not
+    reach step 7 (gated, short-circuited, or all-undec).
+
+    The legacy ``rule_revision`` field is preserved + populated as
+    ``rule_revisions[0] if rule_revisions else None`` so v0.0.54-era
+    callers keep working."""
+
     @property
     def folgezettel_nodes(self) -> tuple[str, ...]:
-        """FZ positions this cycle deposited (excluding the edge)."""
-        nodes: list[str] = [
-            self.observation.folgezettel,
-            self.argument_a.folgezettel,
-        ]
-        if self.argument_b is not None:
-            nodes.append(self.argument_b.folgezettel)
+        """FZ positions this cycle deposited (excluding the edge).
+
+        v0.0.54: extends to all ``arguments`` (not just A/B).
+        v0.0.55: extends to all ``rule_revisions`` (not just the
+        legacy ``rule_revision`` field).
+        """
+        nodes: list[str] = [self.observation.folgezettel]
+        if self.arguments:
+            nodes.extend(a.folgezettel for a in self.arguments)
+        else:
+            # Legacy path for cycles constructed without `arguments`.
+            nodes.append(self.argument_a.folgezettel)
+            if self.argument_b is not None:
+                nodes.append(self.argument_b.folgezettel)
         if self.counter:
             nodes.append(self.counter.folgezettel)
         if self.pattern:
             nodes.append(self.pattern.folgezettel)
-        if self.rule_revision:
+        if self.rule_revisions:
+            nodes.extend(r.folgezettel for r in self.rule_revisions)
+        elif self.rule_revision:
             nodes.append(self.rule_revision.folgezettel)
         return tuple(nodes)
 
@@ -617,6 +641,7 @@ class DKSCycle:
                 arg_a.folgezettel: "out",
                 arg_b.folgezettel: "in",
             },
+            rule_revisions=(revision,),
         )
 
     # ── Phase 10 — N>2 perspective dispatch ─────────────────────────────
@@ -722,7 +747,33 @@ class DKSCycle:
 
         counter = self._step_counter(primary_contradicts, attacked, attacker)
         pattern = self._step_pattern(counter)
-        revision = self._step_rule_revision(pattern)
+
+        # Phase I.1 (v0.0.55) — multi-revision authoring.
+        # When grounded labelling identifies multiple ``in`` survivors,
+        # emit one DKSRuleRevision per survivor. Each revision uses an
+        # independent LLM call so the revised warrants can differ (the
+        # surviving warrants are themselves distinct; revisions
+        # building from each should be distinct too).
+        in_fzs = sorted(fz for fz, lbl in labels.items() if lbl == "in")
+        revisions: list[DKSRuleRevision] = []
+        if len(in_fzs) <= 1:
+            # Single survivor (or none) — preserve N=2 semantics:
+            # one revision, derived from the pattern alone.
+            revisions.append(self._step_rule_revision(pattern))
+        else:
+            # Multi-survivor: one revision per surviving argument.
+            # The pattern is shared; the surviving warrant's claim
+            # threads into each prompt as additional context.
+            survivors = [
+                next(a for a in arguments if a.folgezettel == fz)
+                for fz in in_fzs
+            ]
+            for survivor in survivors:
+                revisions.append(
+                    self._step_rule_revision(
+                        pattern, surviving_argument=survivor
+                    )
+                )
 
         return DKSCycleResult(
             cycle_id=cycle_id,
@@ -733,7 +784,7 @@ class DKSCycle:
             contradicts=primary_contradicts,
             counter=counter,
             pattern=pattern,
-            rule_revision=revision,
+            rule_revision=revisions[0],
             elapsed_ms=(time.monotonic() - start) * 1000.0,
             backend_id=backend_id,
             escalation_decision="full",
@@ -741,6 +792,7 @@ class DKSCycle:
             arguments=tuple(arguments),
             contradicts_edges=tuple(contradicts_edges),
             grounded_labelling=dict(labels),
+            rule_revisions=tuple(revisions),
         )
 
     # ── Per-step methods ──────────────────────────────────────────────────
@@ -784,6 +836,10 @@ class DKSCycle:
                 qualifier=_get_str(data, "qualifier", ""),
             ),
             evidence=_get_str(data, "evidence"),
+            # Phase I.3 (v0.0.55) — record the perspective string on
+            # every DKSArgument. Surfaces in cycle traces +
+            # MetaObservation per-perspective stratification.
+            perspective=perspective,
         )
 
     def _step_disagreement(
@@ -916,22 +972,52 @@ class DKSCycle:
             observed=tuple(str(x) for x in observed),
         )
 
-    def _step_rule_revision(self, pattern: DKSPattern) -> DKSRuleRevision:
-        """Step 7 — revise the warrant the pattern indicts."""
-        prompt = (
-            f"Step: rule revision.\n"
-            f"Pattern: {pattern.description}\n\n"
-            f"Produce a revised warrant that prevents the same "
-            f"contradiction in future cycles. Return JSON:\n"
-            f'{{"claim": "...", "data": "...", "warrant": "...", '
-            f'"backing": "...", "qualifier": "...", '
-            f'"supersedes": "<FZ of replaced rule, or empty string>"}}'
-        )
+    def _step_rule_revision(
+        self,
+        pattern: DKSPattern,
+        surviving_argument: DKSArgument | None = None,
+    ) -> DKSRuleRevision:
+        """Step 7 — revise the warrant the pattern indicts.
+
+        Phase I.1 (v0.0.55): when ``surviving_argument`` is supplied
+        (multi-revision N>2 cycles), the prompt names the surviving
+        warrant so the revised rule can build from it rather than from
+        the pattern alone. The revision's ``folgezettel`` is a child
+        of the survivor's FZ (so each revision is anchored to the
+        survivor it elaborates), not of the pattern's FZ.
+        """
+        if surviving_argument is not None:
+            prompt = (
+                f"Step: rule revision (multi-survivor, anchored to "
+                f"{surviving_argument.folgezettel}).\n"
+                f"Pattern: {pattern.description}\n"
+                f"Surviving warrant — claim: "
+                f"{surviving_argument.warrant.claim!r}\n"
+                f"Surviving warrant — rule: "
+                f"{surviving_argument.warrant.warrant!r}\n\n"
+                f"Produce a revised warrant that elaborates the surviving "
+                f"warrant + addresses the pattern. Return JSON:\n"
+                f'{{"claim": "...", "data": "...", "warrant": "...", '
+                f'"backing": "...", "qualifier": "...", '
+                f'"supersedes": "<FZ of replaced rule, or empty string>"}}'
+            )
+            parent_fz = surviving_argument.folgezettel
+        else:
+            prompt = (
+                f"Step: rule revision.\n"
+                f"Pattern: {pattern.description}\n\n"
+                f"Produce a revised warrant that prevents the same "
+                f"contradiction in future cycles. Return JSON:\n"
+                f'{{"claim": "...", "data": "...", "warrant": "...", '
+                f'"backing": "...", "qualifier": "...", '
+                f'"supersedes": "<FZ of replaced rule, or empty string>"}}'
+            )
+            parent_fz = pattern.folgezettel
         response = self.backend.call(
             LLMRequest(system_prompt=_SYSTEM_PROMPT, user_prompt=prompt)
         )
         data = _parse_json(response.content)
-        fz = _next_child_of(pattern.folgezettel, tuple(self._cycle_fz_existing))
+        fz = _next_child_of(parent_fz, tuple(self._cycle_fz_existing))
         self._cycle_fz_existing.append(fz)
         supersedes_raw = _get_str(data, "supersedes", "")
         return DKSRuleRevision(
@@ -1136,40 +1222,41 @@ class DKSRunner:
                 perspectives=self.perspectives,
             ).run()
             cycles.append(cycle)
-            if cycle.rule_revision is None:
-                continue
-
-            rev = cycle.rule_revision
-            if rev.supersedes:
-                changes.append(
-                    WarrantChange(
-                        cycle_id=cycle.cycle_id,
-                        kind="revised",
-                        warrant=rev.revised_warrant,
-                        revision_fz=rev.folgezettel,
-                        superseded_fz=rev.supersedes,
+            # Phase I.1 (v0.0.55) — iterate every emitted revision.
+            # For N=2 cycles + N>2 single-survivor cycles, rule_revisions
+            # has 0 or 1 entry. For N>2 multi-survivor cycles, this
+            # loop threads each revision into the warrant change log.
+            for rev in cycle.rule_revisions:
+                if rev.supersedes:
+                    changes.append(
+                        WarrantChange(
+                            cycle_id=cycle.cycle_id,
+                            kind="revised",
+                            warrant=rev.revised_warrant,
+                            revision_fz=rev.folgezettel,
+                            superseded_fz=rev.supersedes,
+                        )
                     )
-                )
-                changes.append(
-                    WarrantChange(
-                        cycle_id=cycle.cycle_id,
-                        kind="superseded",
-                        warrant=None,
-                        revision_fz=rev.folgezettel,
-                        superseded_fz=rev.supersedes,
+                    changes.append(
+                        WarrantChange(
+                            cycle_id=cycle.cycle_id,
+                            kind="superseded",
+                            warrant=None,
+                            revision_fz=rev.folgezettel,
+                            superseded_fz=rev.supersedes,
+                        )
                     )
-                )
-            else:
-                changes.append(
-                    WarrantChange(
-                        cycle_id=cycle.cycle_id,
-                        kind="added",
-                        warrant=rev.revised_warrant,
-                        revision_fz=rev.folgezettel,
-                        superseded_fz=None,
+                else:
+                    changes.append(
+                        WarrantChange(
+                            cycle_id=cycle.cycle_id,
+                            kind="added",
+                            warrant=rev.revised_warrant,
+                            revision_fz=rev.folgezettel,
+                            superseded_fz=None,
+                        )
                     )
-                )
-            warrants.append(rev.revised_warrant)
+                warrants.append(rev.revised_warrant)
 
         return DKSRunResult(
             cycles=tuple(cycles),

@@ -36,6 +36,7 @@ Typical use::
 
 from tessellum.bb.types import (
     BB_SCHEMA,
+    BB_SCHEMA_AT_VERSION,
     BB_SCHEMA_DKS_EXTENSIONS,
     BB_SCHEMA_EPISTEMIC,
     BB_SCHEMA_NAVIGATION,
@@ -80,6 +81,7 @@ __all__ = [
     "BB_SCHEMA_DKS_EXTENSIONS",
     "BB_SCHEMA_USER_EXTENSIONS",
     "BB_SCHEMA",
+    "BB_SCHEMA_AT_VERSION",
     "BB_SCHEMA_VERSION",
     "SCHEMA_EDIT_KIND",
     "SchemaEditEvent",

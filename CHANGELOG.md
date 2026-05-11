@@ -16,6 +16,92 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.55] — 2026-05-11
+
+### Added — Phase I of plan_v01_completion_roadmap: close deferred alpha surface
+
+Three deferred items from Phases 9-10 land together as the first
+phase of the v0.1.0 completion roadmap.
+
+**I.1 — Multi-revision authoring**. `DKSCycleResult.rule_revisions:
+tuple[DKSRuleRevision, ...]` joins the existing
+`rule_revision: DKSRuleRevision | None` field. For N=2 cycles + N>2
+cycles with a single Dung-IN survivor: 1 revision (legacy mirrored as
+`rule_revisions[0]`). For N>2 cycles where grounded labelling
+identifies multiple `in` survivors: one revision per survivor (one
+LLM call each, prompt names the surviving warrant + FZ anchored to
+the survivor). `DKSRunner` iterates `rule_revisions` instead of the
+single `rule_revision` for warrant threading. `folgezettel_nodes`
+property + CLI trace serialiser expose all revisions. Implements the
+Phase 10 spec: "emits multiple revisions tagged with their FZs".
+
+**I.2 — Version-aware TESS-005**. New helper
+`tessellum.bb.types.BB_SCHEMA_AT_VERSION(n)` reconstructs the schema
+as of a specific version by folding the prefix of the
+`_SCHEMA_EVENT_LOG` whose post-fold version is `≤ n` (cached per `n`;
+invalidated by `set_user_extensions_from_events`). TESS-005 now reads
+each note's `bb_schema_version` frontmatter field (recorded at
+capture per Phase B.4) and validates against that version's schema
+instead of the live `BB_SCHEMA`. Issue message names the version:
+`BB-pair not in BB_SCHEMA@v3 in either direction` vs `@live` for
+back-compat fallback. Missing or non-integer `bb_schema_version`
+falls back to live (v0.0.52-era notes keep working). Closes the
+consumer side of D8 frozen-at-creation.
+
+**I.3 — `argument_perspective:` YAML field**. `DKSArgument`'s
+`perspective: str = ""` field (defined in v0.0.51 Phase 8 but never
+populated) now gets the per-step perspective string at construction
+time. Surfaces in cycle traces (`arguments[*].argument_perspective`).
+New `MetaObservation.per_perspective_breakdown: dict[str, dict[str,
+int]]` field maps `{perspective: {broken_component: count}}`,
+populated by the CLI's `_run_dks_meta` builder when cycle traces
+carry the perspective. `LLMProposer` user-prompt template renders the
+stratified breakdown so the proposer can reason about
+perspective-specific schema gaps (FZ 2c1's OQ-2c1-c interaction
+point). `template_argument.md` template gains the optional
+`argument_perspective: ""` placeholder; `tessellum capture argument`
+emits it. DKS cycle skill canonical sidecar's step-2 + step-3
+prompts now include `argument_perspective: "conservative"` and
+`"exploratory"` respectively.
+
+### Back-compat
+
+All three changes are additive:
+
+- `DKSCycleResult.rule_revision` (legacy) still works; `rule_revisions`
+  is empty when the cycle didn't reach step 7.
+- `bb_schema_version` absent → falls back to live schema (today's
+  behaviour).
+- `DKSArgument.perspective` defaults to empty string when not set;
+  `MetaObservation.per_perspective_breakdown` defaults to `{}`.
+
+### Tests
+
+- `tests/smoke/test_dks_n_perspective.py` (+6 new = 18 total) —
+  N=2 emits 1 revision; agreement emits 0; gated emits 0; N=4 with
+  2 INs emits 2 revisions; N=3 single survivor still emits 1;
+  `folgezettel_nodes` includes all revisions.
+- `tests/smoke/test_bb_schema_at_version.py` (+10 new) —
+  `BB_SCHEMA_AT_VERSION` basics, event-log prefix reflection, cache
+  identity + invalidation, retract-event removal, TESS-005
+  version-aware validation, missing-field fallback, non-integer
+  fallback.
+- `tests/smoke/test_argument_perspective.py` (+7 new) —
+  `DKSArgument.perspective` populated for N=2 + N=3,
+  `MetaObservation.per_perspective_breakdown` default + populated
+  cases, LLMProposer prompt includes the breakdown, template
+  placeholder + capture writes the field.
+
+Full suite: **867 passed** (+23 from v0.0.54's 844).
+
+### Sequencing
+
+v0.0.55 completes **Phase I** of `plan_v01_completion_roadmap.md`.
+Next: **v0.0.56 — Phase II** ships the GitHub Actions CI workflow +
+hatch force-include verification for templates.
+
+---
+
 ## [0.0.54] — 2026-05-11
 
 ### Added — Phase 10 of plan_dks_expansion: multi-perspective DKS + Dung grounded labelling

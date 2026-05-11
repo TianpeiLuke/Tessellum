@@ -121,6 +121,7 @@ pipeline:
           building_block: argument
         - folgezettel: "<cycle_root_fz>a"
         - folgezettel_parent: "<cycle_root_fz>"
+        - argument_perspective: "conservative"
 
       The body MUST include:
         - # Argument A: <Concise Claim> (FZ <cycle_root_fz>a)
@@ -179,6 +180,7 @@ pipeline:
           building_block: argument
         - folgezettel: "<cycle_root_fz>b"
         - folgezettel_parent: "<cycle_root_fz>"
+        - argument_perspective: "exploratory"
 
       The body MUST mirror Argument A's section structure (Claim / Data /
       Warrant / Backing / Qualifier / Rebuttal / Evidence) and include

@@ -635,6 +635,10 @@ def _serialize_cycle(cycle) -> dict:
             "folgezettel": a.folgezettel,
             "warrant": _w(a.warrant),
             "evidence": a.evidence,
+            # Phase I.3 (v0.0.55) — perspective string per argument.
+            # Empty string when the field was not populated by older
+            # DKSArgument constructions.
+            "argument_perspective": getattr(a, "perspective", ""),
         }
 
     return {
@@ -693,6 +697,17 @@ def _serialize_cycle(cycle) -> dict:
                 "supersedes": cycle.rule_revision.supersedes,
             }
         ),
+        # Phase I.1 (v0.0.55) — multi-revision tuple. For N=2 + N>2
+        # single-survivor cycles this is `(rule_revision,)`; for N>2
+        # multi-survivor cycles, one entry per Dung-IN survivor.
+        "rule_revisions": [
+            {
+                "folgezettel": r.folgezettel,
+                "revised_warrant": _w(r.revised_warrant),
+                "supersedes": r.supersedes,
+            }
+            for r in cycle.rule_revisions
+        ],
         # Phase 10 — multi-perspective fields. Always serialised, even
         # in N=2 cycles, so downstream tools (meta-DKS observation
         # builder, audit) can read them uniformly.
@@ -1001,12 +1016,35 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
 
         # Toulmin failure distribution: read per-cycle traces' counter.broken_component
         toulmin: Counter[str] = Counter()
+        # Phase I.3 (v0.0.55) — per-perspective stratification. Build a
+        # {perspective: {broken_component: count}} map for each cycle's
+        # ATTACKED argument's perspective (the counter targets that
+        # argument's warrant; attributing the failure to its
+        # perspective gives the right stratification).
+        per_perspective: dict[str, Counter] = {}
         for ct in cycle_traces:
             counter = ct.get("counter")
-            if isinstance(counter, dict):
-                comp = counter.get("broken_component")
-                if comp:
-                    toulmin[comp] += 1
+            if not isinstance(counter, dict):
+                continue
+            comp = counter.get("broken_component")
+            if not comp:
+                continue
+            toulmin[comp] += 1
+            # Resolve attacked argument's perspective via the
+            # arguments + counter.attacked_fz join. v0.0.54 traces
+            # carry arguments[]; older traces may not.
+            attacked_fz = counter.get("attacked_fz")
+            arguments_list = ct.get("arguments") or []
+            attacked_persp: str | None = None
+            for arg in arguments_list:
+                if (
+                    isinstance(arg, dict)
+                    and arg.get("folgezettel") == attacked_fz
+                ):
+                    attacked_persp = arg.get("argument_perspective") or None
+                    break
+            if attacked_persp:
+                per_perspective.setdefault(attacked_persp, Counter())[comp] += 1
 
         # Unrealised schema edges: BB_SCHEMA entries with 0 corpus
         # instances. v0.0.53 (Phase B.6) — when --bb-db points at a
@@ -1034,6 +1072,9 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
             top_attacked_warrants=tuple(attacked.most_common(10)),
             toulmin_failure_counts=dict(toulmin),
             unrealised_schema_edges=unrealised,
+            per_perspective_breakdown={
+                p: dict(c) for p, c in per_perspective.items()
+            },
         )
 
     # Build backend lazily — both proposer and attacker may need it
