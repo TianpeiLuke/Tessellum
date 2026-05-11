@@ -56,7 +56,7 @@ jobs:
       - name: Install package + dev deps
         run: |
           pip install --upgrade pip
-          pip install -e ".[agent,dev]"
+          pip install -e ".[agent,mcp,dev]"
       - name: Run pytest
         run: pytest tests/ -v --tb=short
 
