@@ -16,6 +16,75 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.42] — 2026-05-10
+
+### Added — DKS Phase 2: composer skill (`tessellum-dks-cycle`)
+
+Ships the second phase of `plans/plan_dks_implementation.md`: the
+Composer-pipeline surface of the Dialectic Knowledge System. Phase 1
+(v0.0.40) shipped the pure-Python core at `tessellum.composer.dks`;
+this version wraps the same 7-component closed loop as an
+agent-invocable skill that runs through Tessellum's composer.
+
+#### `vault/resources/skills/skill_tessellum_dks_cycle.md` (~210 LOC)
+
+Canonical body with 7 anchored sections — one per DKS component — plus
+`skill_description`, `setup`, `resources`, `error_handling`, and
+`important_constraints` sections. Each step section names the BB type
+produced, the FZ position in the cycle's subtree, and the writing
+rules that constrain the agent's output. Validates clean against
+`tessellum format check` (0 errors, 0 warnings).
+
+#### `vault/resources/skills/skill_tessellum_dks_cycle.pipeline.yaml` (~310 LOC)
+
+Composer-compatible sidecar with 7 pipeline steps whose `section_id`
+fields match the canonical's anchors one-for-one:
+
+| Step | section_id | materializer | output_path pattern |
+|---|---|---|---|
+| 1 | `step_1_observation_capture` | `body_markdown_frontmatter_to_file` | `archives/experiments/observation_*.md` |
+| 2 | `step_2_argument_a` | `body_markdown_frontmatter_to_file` | `resources/analysis_thoughts/argument_a_*.md` |
+| 3 | `step_3_argument_b` | `body_markdown_frontmatter_to_file` | `resources/analysis_thoughts/argument_b_*.md` |
+| 4 | `step_4_disagreement_detection` | `no_op` | (edge — link in attacker body) |
+| 5 | `step_5_counter_argument_capture` | `body_markdown_frontmatter_to_file` | `resources/analysis_thoughts/counter_*.md` |
+| 6 | `step_6_pattern_discovery` | `body_markdown_frontmatter_to_file` | `areas/models/pattern_*.md` |
+| 7 | `step_7_rule_improvement` | `body_markdown_frontmatter_to_file` | `resources/skills/procedure_*.md` OR `resources/term_dictionary/concept_*.md` |
+
+`expected_output_schema` per step mirrors the field surface of the
+Phase 1 dataclasses (`DKSObservation`, `DKSArgument`/`DKSWarrant`,
+`DKSContradicts`, `DKSCounterArgument`, `DKSPattern`,
+`DKSRuleRevision`). `mcp_dependencies` on step 1 declares `session-mcp`
+as optional — same pattern as `skill_tessellum_write_coe` so an agent
+running inside Claude Code can extract observations from the active
+transcript, and the skill degrades gracefully without it.
+
+Each closed-loop cycle deposits a 6-node Folgezettel subtree as
+designed in FZ 2a1 (observation + 2 sibling arguments + counter +
+pattern + revised warrant). Short-circuit case (A and B agree at step
+4): 3-node subtree (observation + 2 args), `closed_loop: False`,
+steps 5-7 not run.
+
+#### Tests
+
+`tests/smoke/test_dks_skill.py` — 13 integration tests covering:
+canonical passes format check; all 7 step anchors present in the
+canonical body; sidecar loads cleanly with 7 steps in expected order;
+dependency edges match the Phase 2 design (1 → {2,3} → 4 → 5 → 6 → 7);
+materialiser routing matches the BB-type table (1 no_op + 6 file
+writes); skill compiles to a 7-node DAG; step 4 `no_op` still declares
+the `contradicts` output schema; step 5 / step 7 `output_path`
+patterns hit the right BB-directory mapping; step 1's session-mcp dep
+is optional; every step is CORE role. Full suite: 542 passed, 1
+skipped (+13 new).
+
+### Changed
+
+- `SEED_VAULT_MANIFEST` gains the canonical + sidecar pair, so
+  `tessellum init` copies both files into every new vault.
+- `__about__.py` and `pyproject.toml` bumped to `0.0.42`.
+
+---
+
 ## [0.0.41] — 2026-05-10
 
 ### Added — FZ trail tooling
