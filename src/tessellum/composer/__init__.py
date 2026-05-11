@@ -104,6 +104,21 @@ from tessellum.composer.session_mcp import (
     resolve_transcript_path,
     search_transcript,
 )
+from tessellum.composer.dks import (
+    CounterStrength,
+    CycleMode,
+    DKSArgument,
+    DKSContradicts,
+    DKSCounterArgument,
+    DKSCycle,
+    DKSCycleResult,
+    DKSObservation,
+    DKSPattern,
+    DKSRuleRevision,
+    DKSWarrant,
+    ToulminComponent,
+    allocate_cycle_fz,
+)
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
     load_pipeline_metadata,
@@ -181,4 +196,18 @@ __all__ = [
     "read_recent_messages",
     "resolve_transcript_path",
     "search_transcript",
+    # DKS — Dialectic Knowledge System runtime (Phase 1)
+    "ToulminComponent",
+    "CycleMode",
+    "CounterStrength",
+    "DKSObservation",
+    "DKSWarrant",
+    "DKSArgument",
+    "DKSContradicts",
+    "DKSCounterArgument",
+    "DKSPattern",
+    "DKSRuleRevision",
+    "DKSCycleResult",
+    "DKSCycle",
+    "allocate_cycle_fz",
 ]

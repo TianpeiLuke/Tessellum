@@ -51,7 +51,7 @@ Together they give you both: a disciplined runtime *and* a persistent breadcrumb
 
 ## The 7-component → 5-node mapping
 
-Each DKS cycle deposits a 5-node FZ subtree into the vault. The 7 components produce notes; the 4th component (disagreement detection) produces an *edge*, not a node, so it doesn't get its own FZ ID.
+Each DKS cycle deposits a 6-node FZ subtree into the vault. The 7 components produce notes; the 4th component (disagreement detection) produces an *edge*, not a node, so it doesn't get its own FZ ID.
 
 ```
 DKS component               →   FZ position             Node BB type

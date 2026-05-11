@@ -16,6 +16,78 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [0.0.40] — 2026-05-10
+
+### Added — DKS Phase 1: core runtime (Python API)
+
+Ships the first phase of `plans/plan_dks_implementation.md`: the pure-Python core of the Dialectic Knowledge System. No composer skill machinery yet (Phase 2); no multi-cycle orchestration (Phase 3); no LLM dependency required (works with `MockBackend`). Just the data shapes and the single-cycle dispatcher that demonstrates the loop closes.
+
+#### `src/tessellum/composer/dks.py` (~420 LOC)
+
+**Seven typed dataclasses** (frozen, one per component output):
+
+| Dataclass | Component | BB type produced | FZ position |
+|-----------|-----------|------------------|-------------|
+| `DKSObservation` | 1 | empirical_observation | cycle root (FZ N) |
+| `DKSArgument` (w/ `DKSWarrant`) | 2 | argument | FZ N.a |
+| `DKSArgument` (w/ `DKSWarrant`) | 3 | argument | FZ N.b |
+| `DKSContradicts` | 4 | (edge — no FZ) | link from attacker to attacked |
+| `DKSCounterArgument` | 5 | counter_argument | FZ &lt;attacked&gt;.a |
+| `DKSPattern` | 6 | model | FZ &lt;counter&gt;.a |
+| `DKSRuleRevision` | 7 | procedure/concept | FZ &lt;pattern&gt;.a (leaf) |
+
+Plus `DKSCycleResult` aggregating all seven with `folgezettel_nodes` and `closed_loop` properties.
+
+**`allocate_cycle_fz()`** — pure-function FZ allocator implementing the three multi-cycle modes from FZ 2a1:
+
+- `fresh`: next unused top-level integer (`1`, `2`, `3`, …)
+- `extend`: next letter-suffix child of `parent_fz` (`a`, `b`, `c`, …)
+- `branch`: same machinery as `extend`; intent-only distinction
+
+Deterministic given the input set; falls back to two-letter suffixes if a-z is exhausted (very unlikely).
+
+**`DKSCycle`** — drives one cycle through any `LLMBackend`. Seven per-step methods build prompts, call the backend, parse JSON responses, allocate FZ IDs, return typed dataclasses. Step 4 (disagreement detection) is computed locally — when `argument_a.warrant.claim == argument_b.warrant.claim`, the cycle short-circuits and produces a 3-node FZ subtree (observation + 2 arguments) instead of 6. When claims diverge, the full closed loop fires and deposits all 6 nodes.
+
+Tolerant JSON parsing (strict first, then first `{…}` block); safe fallbacks for malformed responses (e.g., unknown `broken_component` → `"warrant"`).
+
+#### `tests/smoke/test_dks_core.py` (24 tests)
+
+Covers:
+
+- **FZ allocator (10 tests)** — fresh-first-root, gap-finding, empty-string handling, first-child letter, sibling letter progression, deep descent, branch-equals-extend at allocator layer, error on missing `parent_fz`.
+- **Short-circuit when args agree (1 test)** — 3-node cycle: observation + 2 arguments, no counter/pattern/revision.
+- **Full closed loop when args disagree (1 test)** — `closed_loop` is True; all 6 components fire.
+- **6-node FZ subtree shape (1 test)** — `folgezettel_nodes` length is 6 when the loop closes.
+- **FZ parent-child relationships (4 tests)** — each child's FZ begins with its parent's FZ string.
+- **Toulmin classification (2 tests)** — valid Literal values; fallback to `"warrant"` on garbage.
+- **Result metadata (2 tests)** — elapsed_ms ≥ 0; backend_id captured.
+- **Dataclass discipline (2 tests)** — frozen; argument carries full warrant.
+
+All 24 pass.
+
+#### Composer package exports
+
+`tessellum.composer.__init__.py` exports all 13 public DKS names so the runtime is reachable as `from tessellum.composer import DKSCycle, DKSObservation, …`.
+
+#### Plan + thought-note count fix
+
+The FZ-integration note and the implementation plan both said "5-node FZ subtree" — miscounted. The correct number is **6** (observation + 2 arguments + counter + pattern + revision; disagreement is an edge, not a node). Fixed in both places.
+
+### Verification
+
+- DKS-core tests: **24 passed**.
+- Full suite: **512 passed, 1 skipped** (was 488; +24 new).
+- Editable + wheel mode: unchanged — Phase 1 ships engine code, not seed-vault content.
+
+### What's next
+
+| Phase | Version | Scope |
+|-------|---------|-------|
+| Phase 2 | v0.0.41 | DKS as a composer skill (`skill_tessellum_dks_cycle.md` + sidecar with 7 steps) |
+| Phase 3 | v0.0.42 | Multi-cycle orchestration + `tessellum composer dks` CLI |
+| Phase 4 | v0.0.43 | P-side retrieval client + TESS-004 validator + 6th eval dim |
+| Phase 5 | v0.0.44 | Confidence gating + warrant persistence + telemetry |
+
 ## [0.0.38] — 2026-05-10
 
 ### Added — DKS × Folgezettel unification (FZ 2a1) + plan revision

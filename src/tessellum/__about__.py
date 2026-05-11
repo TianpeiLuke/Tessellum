@@ -1,15 +1,15 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.38"
+__version__ = "0.0.40"
 
 __status__ = (
-    "alpha — DKS × Folgezettel unification. A new thought note "
-    "(thought_dks_fz_integration, FZ 2a1) appends to the Dialectic trail, "
-    "establishing that DKS and FZ are one mechanism viewed from two axes: "
-    "FZ is the spatial encoding of argumentative descent; DKS is the "
-    "temporal mechanism that produces it. Every DKS cycle deposits a "
-    "5-node FZ subtree as a side-effect of running. Plus the DKS "
-    "implementation plan (plan_dks_implementation.md) is updated to make "
-    "FZ integration a load-bearing design principle, not an afterthought."
+    "alpha — DKS Phase 1 ships. tessellum.composer.dks lands the core "
+    "Python API: 7 typed dataclasses (DKSObservation, DKSWarrant, "
+    "DKSArgument, DKSContradicts, DKSCounterArgument, DKSPattern, "
+    "DKSRuleRevision), DKSCycleResult, the allocate_cycle_fz allocator "
+    "with three modes (fresh/extend/branch), and DKSCycle that drives "
+    "the 7-component closed loop through any LLMBackend. Each cycle "
+    "deposits a 6-node Folgezettel subtree as designed in FZ 2a1. "
+    "Phase 2 (DKS as a composer skill) is next."
 )

@@ -62,7 +62,7 @@ Four reasons DKS is the highest-leverage v0.2 work:
 
 ## DKS and Folgezettel are the same mechanism
 
-This is the load-bearing design observation. Spelled out below because it shapes every phase of the implementation.
+This is the load-bearing design observation. The full argument lives in [`thought_dks_fz_integration`](../vault/resources/analysis_thoughts/thought_dks_fz_integration.md) (FZ 2a1); a short version follows because it shapes every phase of the implementation.
 
 **Folgezettel** ([`term_folgezettel`](../vault/resources/term_dictionary/term_folgezettel.md)) is the *spatial* encoding of argumentative descent — `1 → 1a → 1a1 → 1a1a` says "this note descends from that one in the order thinking developed." Luhmann used FZ to record how one slip led to the next.
 
@@ -75,7 +75,7 @@ They are not two systems that *integrate*; they are **one system viewed from two
 | **Spatial** (FZ) | The relationship between any two nodes is `descends-from` — visible by reading their `folgezettel:` IDs |
 | **Temporal** (DKS) | The relationship between any two nodes is `produced-by` — visible by tracing the cycle that emitted them |
 
-Every DKS cycle **must produce a Folgezettel trail** as its substrate output. The 7 components map onto a 4-or-5-node trail descent:
+Every DKS cycle **must produce a Folgezettel trail** as its substrate output. The 7 components map onto a 6-node trail descent (the 4th component is an edge, not a node):
 
 ```
 DKS component               →    FZ position
@@ -89,7 +89,7 @@ Step 6: Pattern             →    FZ N.a.a.a (descends from the counter that re
 Step 7: Rule revision       →    FZ N.a.a.a.a (leaf — the cycle's deposited warrant change)
 ```
 
-Each cycle therefore deposits a **5-node FZ trail** into the vault. Multi-cycle runs either:
+Each cycle therefore deposits a **6-node FZ trail** into the vault. Multi-cycle runs either:
 
 - **Start a fresh trail** when the observation has no prior connection — `cycle_id = N+1`, root at FZ (N+1).
 - **Extend an existing trail** when the new observation refutes / extends a prior cycle's leaf — the new cycle descends from the prior cycle's leaf FZ ID.
@@ -134,20 +134,18 @@ Total: ~1,500 LOC + 600 YAML across 5 versions. Roughly 1-2 weeks at current cad
 Deliverables:
 
 - **`src/tessellum/composer/dks.py`** (~400 LOC) — the Python API:
-  - `DKSObservation` — frozen dataclass wrapping an `empirical_observation` note
-  - `DKSWarrant` — frozen dataclass for a Toulmin-typed standing reason (with `claim`, `data`, `warrant`, `backing`, `qualifier`, `rebuttal` fields)
-  - `DKSArgument` — claim + warrant + supporting evidence (a typed `argument`)
-  - `DKSCounterArgument` — names which Toulmin component is broken (`premise` / `warrant` / `counter-example` / `undercutting`)
-  - `DKSCycle` — runs one cycle: `__init__(observation, warrants, vault_root, backend)`, `run() -> DKSCycleResult`
-  - `DKSCycleResult` — observation, 2 args, 0+ counters, optional revised warrant, attack-graph snapshot
+  - Seven typed dataclasses, one per component output: `DKSObservation`, `DKSWarrant` (Toulmin-typed with `claim`/`data`/`warrant`/`backing`/`qualifier`/`rebuttal`), `DKSArgument`, `DKSContradicts` (edge — no FZ), `DKSCounterArgument` (with `broken_component: Literal["premise","warrant","counter-example","undercutting"]`), `DKSPattern`, `DKSRuleRevision`.
+  - `DKSCycleResult` — aggregates all seven; properties `folgezettel_nodes` (the 5 FZ positions deposited) and `closed_loop` (whether step 7 fired).
+  - `allocate_cycle_fz(existing_trails, mode, parent_fz)` — the FZ ID allocator implementing the three multi-cycle modes from FZ 2a1 (`fresh` / `extend` / `branch`). Pure function, deterministic given the input set.
+  - `DKSCycle.run()` — drives the 7 steps through an `LLMBackend`. Each step is one `_step_N()` method that builds a prompt, calls the backend, parses the JSON response, allocates the next FZ ID, returns the typed dataclass.
 - **`tests/smoke/test_dks_core.py`** — 15-20 unit tests:
-  - The cycle terminates when the warrant survives all attacks (dialectical adequacy)
-  - The cycle produces 7 typed notes when all components fire
-  - The cycle produces fewer notes when escalation is gated off (placeholder for Phase 5)
-  - Counter-arguments classify by Toulmin component
-  - Empty observation set → cycle returns degraded result
+  - FZ allocator handles all three modes (`fresh` / `extend` / `branch`); the allocator is deterministic.
+  - Cycle produces 5 FZ nodes (`folgezettel_nodes` length) when all components fire.
+  - Cycle short-circuits when A and B agree (no contradicts → no counter → no pattern → no revision); 3 nodes total.
+  - The Toulmin classification in `DKSCounterArgument.broken_component` is one of the 4 literals.
+  - The closed-loop property holds: revision's FZ has the pattern as parent, pattern's FZ has the counter as parent, counter's FZ has the attacked argument as parent.
 
-Phase 1 deliberately does not touch the composer skill machinery. It's a pure Python API with no LLM dependency (uses `MockBackend` only). Tests demonstrate the loop closes.
+Phase 1 deliberately does not touch the composer skill machinery. It's a pure Python API testable with `MockBackend` (no `[agent]` extras required). Tests demonstrate the loop closes and the FZ subtree is correctly shaped.
 
 ### Phase 2 — DKS as a composer skill (~v0.0.41)
 
