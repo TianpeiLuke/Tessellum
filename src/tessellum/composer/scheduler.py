@@ -27,6 +27,7 @@ Out of scope:
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import json
 import threading
@@ -35,7 +36,7 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Sequence
+from typing import Any, Callable, Literal, Sequence
 
 from tessellum.composer.compiler import CompiledPipeline, CompiledStep
 from tessellum.composer.executor import (
@@ -44,6 +45,7 @@ from tessellum.composer.executor import (
     StepResult,
     execute_step_with_retry,
 )
+from tessellum.composer.gates import GateSuite, GroundingVerdict
 from tessellum.composer.llm import LLMBackend
 from tessellum.composer.manifest import AttemptRecord, Manifest
 from tessellum.composer.materializer import MaterializedOutput
@@ -222,7 +224,7 @@ def run_pipeline(
     )
 
 
-# ── Typed discriminated-union outcome (§C9 / Phase 2.3) ─────────────────────
+# ── Typed discriminated-union outcome ───────────────────────────────────────
 
 
 StepOutcomeKind = Literal[
@@ -365,7 +367,7 @@ def classify_outcome(result: StepResult) -> StepOutcome:
     )
 
 
-# ── Pure ready-set computation (§C1 / Phase 2.1) ────────────────────────────
+# ── Pure ready-set computation ──────────────────────────────────────────────
 
 
 SkipReasonKind = Literal[
@@ -445,7 +447,7 @@ def compute_ready_set(
     return tuple(promoted), tuple(skipped)
 
 
-# ── Self-claiming dynamic scheduler (§C1 / Phase 2.2) ───────────────────────
+# ── Self-claiming dynamic scheduler ─────────────────────────────────────────
 
 
 def run_pipeline_dynamic(
@@ -463,6 +465,10 @@ def run_pipeline_dynamic(
     run_id: str | None = None,
     events_path: Path | None = None,
     stats_path: Path | None = None,
+    close_gate: GateSuite | None = None,
+    grounding_verifier: "Callable[[CompiledStep, dict, StepResult], GroundingVerdict] | None" = None,
+    max_fix_rounds: int = 0,
+    fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None" = None,
 ) -> RunResult:
     """Wave-parallel, self-claiming variant of :func:`run_pipeline`.
 
@@ -493,9 +499,22 @@ def run_pipeline_dynamic(
       manifest is a crash-safety projection here; output-reconstruction on
       resume (skip-a-done-leaf) is deferred to a later phase, so a fresh
       run always executes every task (identical to serial).
-    - **Observability (§C9).** When ``events_path`` is set, a
+    - **Observability.** When ``events_path`` is set, a
       machine-readable per-leaf lifecycle event is appended per task; when
       ``stats_path`` is set, a final ``statistics.json`` rollup is written.
+    - **Per-session close-gate (opt-in).** When a ``close_gate``
+      is supplied, each task that materialized a note is a *session*:
+      after capture it runs the close-gate against the written note
+      (``format`` + ``grounding`` via the ``grounding_verifier``); the
+      session closes ``done`` **only on gate PASS**. On FAIL it routes to
+      the ``fixer`` up to ``max_fix_rounds`` times, then closes
+      ``blocked`` (never silently ``done`` — the lifecycle-terminator
+      invariant). Gate-then-commit: the note file is written during
+      capture, but the manifest row flips ``done`` and the ``StepResult``
+      is treated as clean **only after** the gate passes; a gate FAIL
+      turns an otherwise-clean capture into an errored result. When
+      ``close_gate`` is ``None`` (the default) this whole path is skipped
+      — parity with the pre-Phase-3 behaviour is preserved.
 
     Determinism: ``step_results`` are sorted by ``(topological step index,
     leaf index)`` before the :class:`RunResult` is built, so the tuple
@@ -508,6 +527,19 @@ def run_pipeline_dynamic(
             uuid is generated when ``None``.
         events_path: Optional sidecar for the lifecycle event stream.
         stats_path: Optional path for the final ``statistics.json``.
+        close_gate: Optional per-session close :class:`GateSuite`. When
+            set, every session that wrote a note file must pass it to
+            close ``done`` (else ``blocked``). ``None`` = no gating.
+        grounding_verifier: Callable ``(step, leaf, result) ->
+            GroundingVerdict`` — the read-only semantic verifier the
+            ``grounding`` predicate consumes. Required only if the
+            ``close_gate`` includes a ``grounding`` gate; a ``None``
+            verifier makes grounding fail-closed.
+        max_fix_rounds: Max close-gate fix retries per session (0 = no
+            fix loop; a first FAIL closes ``blocked``).
+        fixer: Callable ``(step, leaf, issues) -> StepResult`` invoked on
+            a close-gate FAIL to repair the note in place. ``None`` skips
+            the fix loop.
 
     Returns:
         RunResult — byte-comparable to :func:`run_pipeline`'s (modulo the
@@ -554,6 +586,28 @@ def run_pipeline_dynamic(
             max_logic_retries=max_logic_retries,
             max_crash_recoveries=max_crash_recoveries,
         )
+
+        # Per-session close-gate. Only when a close_gate is
+        # supplied AND the capture produced a clean, materialized note —
+        # a capture that already errored stays errored (gate can't repair
+        # a note that wasn't written). Gate-then-commit: the note file
+        # exists (written during capture), but this determines whether the
+        # session closes ``done`` or ``blocked``.
+        gate_cause: str | None = None
+        if close_gate is not None and result.error is None:
+            result, gate_cause = _run_close_gate(
+                step=step,
+                leaf=leaf,
+                result=result,
+                close_gate=close_gate,
+                grounding_verifier=grounding_verifier,
+                fixer=fixer,
+                max_fix_rounds=max_fix_rounds,
+                backend=backend,
+                vault_root=vault_root,
+                dry_run=dry_run,
+            )
+
         outcome = classify_outcome(result)
         with lock:
             results[(topo_index[step.section_id], leaf_index)] = result
@@ -565,14 +619,18 @@ def run_pipeline_dynamic(
                         outcome=(
                             "success"
                             if result.error is None
-                            else (result.error_class or "crash")
+                            else (gate_cause or result.error_class or "crash")
                         ),
                         at=started,
                     ),
                 )
-                # Durable-commit ordering: mark done before releasing the claim.
+                # Gate-then-commit: mark done only on a clean (gate-passed)
+                # result; a gate FAIL closes the session ``blocked``, never
+                # silently ``done`` (lifecycle-terminator invariant).
                 if result.error is None:
                     manifest.mark_done(key)
+                elif gate_cause is not None:
+                    manifest.mark_blocked(key, blocked_by=())
                 if manifest.path is not None:
                     manifest.save()
             if events_path is not None:
@@ -671,6 +729,75 @@ def run_pipeline_dynamic(
     )
 
 
+def _run_close_gate(
+    *,
+    step: CompiledStep,
+    leaf: dict,
+    result: StepResult,
+    close_gate: GateSuite,
+    grounding_verifier: "Callable[[CompiledStep, dict, StepResult], GroundingVerdict] | None",
+    fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None",
+    max_fix_rounds: int,
+    backend: LLMBackend,
+    vault_root: Path,
+    dry_run: bool,
+) -> tuple[StepResult, str | None]:
+    """Gate a materialized note; fix-loop on FAIL; return (result, cause).
+
+    A session closes on a close-gate PASS. The gate runs against the
+    note file the capture wrote (``files_written`` / ``files_applied``);
+    a session that wrote no file (a corpus/no-op step) has nothing to
+    gate and passes through untouched. On FAIL, the ``fixer`` (if any) is
+    invoked up to ``max_fix_rounds`` times, re-gating after each; if it
+    still fails, the clean ``StepResult`` is rewritten into an errored one
+    whose ``error`` names the terminal gate cause, so ``error_count`` and
+    ``classify_outcome`` reflect the blocked session.
+
+    Returns:
+        ``(result, gate_cause)`` — ``gate_cause`` is ``None`` on PASS (or
+        when there was no note to gate), else the first failing gate's
+        cause tag (the session is ``blocked``).
+    """
+    note_paths = list(result.materialized.files_written) + list(
+        result.materialized.files_applied
+    )
+    if not note_paths:
+        return result, None  # nothing to gate (corpus/no-op step)
+    note_path = note_paths[0]
+
+    def _evaluate() -> tuple[bool, str | None, tuple]:
+        verdict = (
+            grounding_verifier(step, leaf, result)
+            if grounding_verifier is not None
+            else None
+        )
+        composite = close_gate.evaluate(note_path, verdict=verdict)
+        return composite.passed, composite.first_failure_cause, composite.blocking_issues
+
+    passed, cause, issues = _evaluate()
+    rounds = 0
+    while not passed and fixer is not None and rounds < max_fix_rounds:
+        rounds += 1
+        # The fixer repairs the note in place; re-gate the same path.
+        try:
+            fixer(step, leaf, issues)
+        except Exception:  # noqa: BLE001 — a fixer crash is a gate FAIL, not a raise
+            break
+        passed, cause, issues = _evaluate()
+
+    if passed:
+        return result, None
+
+    # Blocked: rewrite the clean result into an errored one so the run's
+    # error_count + typed outcome reflect the failed session.
+    blocked = dataclasses.replace(
+        result,
+        error=f"close-gate blocked ({cause}): {len(issues)} blocking issue(s)",
+        error_class="validation",
+    )
+    return blocked, cause
+
+
 def _write_statistics(
     *,
     stats_path: Path,
@@ -678,7 +805,7 @@ def _write_statistics(
     step_results: Sequence[StepResult],
     duration: float,
 ) -> Path:
-    """Write the final ``statistics.json`` rollup (§C9).
+    """Write the final ``statistics.json`` rollup.
 
     Per-stage processed/succeeded/failed counts + a total-duration line,
     keyed by ``section_id``. A machine-readable summary distinct from the

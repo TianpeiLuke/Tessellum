@@ -447,7 +447,7 @@ def test_dynamic_skips_infra(tmp_path: Path) -> None:
     assert [r.section_id for r in run.step_results] == ["step_2"]
 
 
-# ── manifest integration + observability (§C5 / §C9) ─────────────────────────
+# ── manifest integration + observability ────────────────────────────────────
 
 
 def test_dynamic_records_manifest_done(tmp_path: Path) -> None:

@@ -105,6 +105,16 @@ from tessellum.composer.eval import (
     load_scenarios,
     run_eval,
 )
+from tessellum.composer.gates import (
+    DIGEST_GATES,
+    CompositeGateResult,
+    Gate,
+    GateResult,
+    GateSuite,
+    GroundingVerdict,
+    build_close_gate,
+    build_wave_gate,
+)
 from tessellum.composer.scheduler import (
     ReadySetState,
     RunResult,
@@ -187,6 +197,15 @@ __all__ = [
     "SkipReason",
     "StepOutcome",
     "classify_outcome",
+    # Gate engine (Phase 3)
+    "Gate",
+    "GateResult",
+    "GateSuite",
+    "CompositeGateResult",
+    "GroundingVerdict",
+    "build_close_gate",
+    "build_wave_gate",
+    "DIGEST_GATES",
     # Batch runner
     "BatchJob",
     "BatchJobResult",

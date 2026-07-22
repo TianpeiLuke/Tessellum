@@ -50,6 +50,19 @@ Second phase: a wave-parallel, self-claiming variant of the scheduler plus a typ
 - `StepOutcome` / `classify_outcome(StepResult)`: closed kind set `SUCCESS | RETRY_EXHAUSTED | WATCHDOG_KILLED | SAME_ERROR_LOOP | CONTRACT_VIOLATION | BUDGET_EXHAUSTED`. The materialized artifact is **readable only on `SUCCESS`** (accessing `.artifact` on any failure raises), so a caller can't consume a note that never validated. Cost/duration/attempts recorded on every outcome. Precedence surfaces the proximate cause (same-error-loop > watchdog > contract-violation > budget) — a contract defect that burned its budget stays a `CONTRACT_VIOLATION` (fix-routable), not a generic exhaustion. `BUDGET_EXHAUSTED` is reserved for the later global-budget layer.
 - Optional machine-readable per-leaf lifecycle event stream (`events_path`, one JSON line per invocation) + a final `statistics.json` rollup (`stats_path`: per-stage processed/succeeded/failed + total duration), distinct from the existing human run trace.
 
+### Composer v4 refactor — Phase 3 (per-session close-gate + validate) — 2026-07-22
+
+Third phase: a gate engine (`composer/gates.py`, new) and an **opt-in** per-session close-gate wired into `run_pipeline_dynamic`. Makes "every note that closed is well-formed and grounded" a runtime, per-note commit check. **`close_gate=None` (default) preserves the Phase-2 behaviour exactly.** Suite `983 → 1003 passing` (+20 tests), 1 skipped.
+
+**Added — gate engine (`composer/gates.py`, new).**
+- One `Gate {gate_id, kind (compile|preflight|checkpoint|sweep), scope (plan|session|wave), predicate, block_on}` abstraction; `Gate.run` classifies by severity (blocks at `block_on`, default ERROR; sub-blocking issues still carried for diagnostics). `GateSuite.evaluate` composes an ordered set — short-circuits at the first failing gate by default (cheapest structural check fails fast before the semantic one), or runs a full sweep. `CompositeGateResult` exposes the terminal cause + all blocking issues (the fix-stage input).
+- **Predicates are pure programs (no LLM).** `format_predicate` reuses `tessellum.format.validate` (frontmatter spec + wiki/markdown link checks + BB-typed edges — one shared format definition, no re-implementation). `grounding_predicate` consumes a typed `GroundingVerdict` from an independent read-only verifier (the agent produces evidence; the program decides) — **fail-closed**: a missing verdict or an `auth_blocked` verdict is a FAIL, never a plausibility pass. `duplicate_target_predicate` is a wave-scope cross-set dedup sweep (catches two sessions writing the same path — invisible to a per-session gate).
+- `DIGEST_GATES` registry keyed by scope (`session` → `build_close_gate`, `wave` → `build_wave_gate`) so the driver selects gates by scope with no second mechanism.
+
+**Added — per-session close-gate in `run_pipeline_dynamic` (opt-in).**
+- New params `close_gate`, `grounding_verifier`, `max_fix_rounds`, `fixer` (all default off). When a `close_gate` is set, each task that materialized a note becomes a session: after capture it runs the close-gate against the written file; the session closes `done` **only on PASS**. On FAIL it routes to the `fixer` up to `max_fix_rounds` times (re-gating each round), then closes `blocked` — never silently `done` (the lifecycle-terminator invariant).
+- **Gate-then-commit ordering**: the note file is written during capture, but the manifest row flips `done` (and the `StepResult` counts as clean) *only after* the gate passes; a gate FAIL rewrites the otherwise-clean result into an errored one whose `error` names the terminal cause, so `error_count`, `classify_outcome` (`CONTRACT_VIOLATION`), and the manifest (`blocked`) all reflect the blocked session. Sessions that wrote no file (corpus/no-op steps) pass through ungated.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)
