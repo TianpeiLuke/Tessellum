@@ -45,9 +45,10 @@ from tessellum.composer.executor import (
     StepResult,
     execute_step_with_retry,
 )
+from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.fix import FixContext, run_fix_loop
 from tessellum.composer.gates import GateSuite, GroundingVerdict
-from tessellum.composer.llm import LLMBackend
+from tessellum.composer.llm import LLMBackend, LLMResponse
 from tessellum.composer.manifest import AttemptRecord, Manifest
 from tessellum.composer.materializer import MaterializedOutput
 
@@ -309,20 +310,19 @@ def classify_outcome(result: StepResult) -> StepOutcome:
     markers :func:`~tessellum.composer.executor.execute_step_with_retry`
     emits) with a precedence that surfaces the *proximate* cause:
 
-    1. ``same-error loop`` marker → ``SAME_ERROR_LOOP``.
-    2. ``stalled after`` marker → ``WATCHDOG_KILLED`` (even when the
+    1. ``run budget exhausted`` marker → ``BUDGET_EXHAUSTED`` (the global
+       run-level budget halted this leaf before dispatch).
+    2. ``same-error loop`` marker → ``SAME_ERROR_LOOP``.
+    3. ``stalled after`` marker → ``WATCHDOG_KILLED`` (even when the
        stall also exhausted the crash budget — the timeout is the root).
-    3. validation / contract markers (or ``error_class == "validation"``)
-       → ``CONTRACT_VIOLATION``. Checked *before* the budget marker so a
-       schema/contract defect that exhausted its retry budget still
+    4. validation / contract markers (or ``error_class == "validation"``)
+       → ``CONTRACT_VIOLATION``. Checked *before* the retry-budget marker
+       so a schema/contract defect that exhausted its retry budget still
        surfaces as the actionable contract violation (route to fix), not
        a generic budget exhaustion.
-    4. ``budget exhausted`` marker → ``RETRY_EXHAUSTED``.
-    5. anything else with an error → ``RETRY_EXHAUSTED`` (generic).
-
-    ``BUDGET_EXHAUSTED`` is intentionally never produced here — a single
-    step can't observe the global budget; the Phase 5 budget layer emits
-    it directly.
+    5. ``budget exhausted`` marker (a per-step *retry* budget) →
+       ``RETRY_EXHAUSTED``.
+    6. anything else with an error → ``RETRY_EXHAUSTED`` (generic).
     """
     if result.error is None:
         return StepOutcome(
@@ -337,8 +337,12 @@ def classify_outcome(result: StepResult) -> StepOutcome:
         )
 
     e = result.error.lower()
-    if "same-error loop" in e:
-        kind: StepOutcomeKind = "SAME_ERROR_LOOP"
+    if "run budget exhausted" in e:
+        # The global run-level budget halted this leaf before dispatch —
+        # distinct from a per-step retry budget (below).
+        kind: StepOutcomeKind = "BUDGET_EXHAUSTED"
+    elif "same-error loop" in e:
+        kind = "SAME_ERROR_LOOP"
     elif "stalled after" in e:
         kind = "WATCHDOG_KILLED"
     elif (
@@ -348,7 +352,7 @@ def classify_outcome(result: StepResult) -> StepOutcome:
         or "materializer" in e
         or "contract" in e
     ):
-        # Checked before the budget marker: a contract defect that
+        # Checked before the retry-budget marker: a contract defect that
         # burned its retry budget is still a contract violation (the
         # actionable, fix-routable cause), not a generic exhaustion.
         kind = "CONTRACT_VIOLATION"
@@ -470,6 +474,7 @@ def run_pipeline_dynamic(
     grounding_verifier: "Callable[[CompiledStep, dict, StepResult], GroundingVerdict] | None" = None,
     max_fix_rounds: int = 0,
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None" = None,
+    budget: RunBudget | None = None,
 ) -> RunResult:
     """Wave-parallel, self-claiming variant of :func:`run_pipeline`.
 
@@ -541,6 +546,11 @@ def run_pipeline_dynamic(
         fixer: Callable ``(step, leaf, issues) -> StepResult`` invoked on
             a close-gate FAIL to repair the note in place. ``None`` skips
             the fix loop.
+        budget: Optional global run-level :class:`RunBudget`. When set,
+            each task charges one invocation (+ cost) before dispatch; a
+            refused spend halts that leaf with a typed
+            ``BUDGET_EXHAUSTED`` outcome (and a ``blocked`` manifest row)
+            without calling the backend. ``None`` = unbounded (parity).
 
     Returns:
         RunResult — byte-comparable to :func:`run_pipeline`'s (modulo the
@@ -577,6 +587,47 @@ def run_pipeline_dynamic(
         if manifest is not None:
             with lock:
                 manifest.claim(key, run_id=run_id, now=started)
+
+        # Global run-level budget gate (opt-in). A refused spend halts this
+        # leaf with a typed BUDGET_EXHAUSTED result *before* dispatch — the
+        # runaway-fan-out breaker a static compile gate can't catch. When
+        # ``budget`` is None the dispatch always proceeds (parity).
+        if budget is not None and not budget.try_spend(cost=1.0):
+            budget_result = StepResult(
+                section_id=step.section_id,
+                leaf_id=leaf.get("_id"),
+                response=LLMResponse(
+                    content="",
+                    elapsed_ms=0.0,
+                    backend_id=getattr(backend, "backend_id", ""),
+                    metadata={"budget_exhausted": True},
+                ),
+                materialized=MaterializedOutput(
+                    structured={}, notes="run budget exhausted"
+                ),
+                elapsed_ms=0.0,
+                error="run budget exhausted",
+                error_class="crash",
+            )
+            with lock:
+                results[(topo_index[step.section_id], leaf_index)] = budget_result
+                if manifest is not None:
+                    manifest.mark_blocked(key, blocked_by=())
+                    if manifest.path is not None:
+                        manifest.save()
+                if events_path is not None:
+                    events.append(
+                        {
+                            "section_id": step.section_id,
+                            "leaf_id": leaf.get("_id"),
+                            "outcome": "BUDGET_EXHAUSTED",
+                            "attempts": 0,
+                            "elapsed_ms": 0.0,
+                            "error_class": "crash",
+                        }
+                    )
+            return
+
         result = execute_step_with_retry(
             step,
             leaf=leaf,

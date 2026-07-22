@@ -105,6 +105,14 @@ from tessellum.composer.eval import (
     load_scenarios,
     run_eval,
 )
+from tessellum.composer.credential_pool import (
+    DEFAULT_STAGE_EFFORT,
+    BudgetExhausted,
+    CredentialPool,
+    CredentialPoolError,
+    RunBudget,
+    effort_for_stage,
+)
 from tessellum.composer.fix import (
     AttemptOutcome,
     FixContext,
@@ -229,6 +237,13 @@ __all__ = [
     "classify_planning_depth",
     "content_fingerprint",
     "should_skip_unchanged",
+    # Credential pool + budgets (Phase 5)
+    "CredentialPool",
+    "CredentialPoolError",
+    "RunBudget",
+    "BudgetExhausted",
+    "effort_for_stage",
+    "DEFAULT_STAGE_EFFORT",
     # Batch runner
     "BatchJob",
     "BatchJobResult",

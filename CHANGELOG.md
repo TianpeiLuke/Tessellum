@@ -76,6 +76,19 @@ Fourth phase: a non-regressive fix loop (`composer/fix.py`, new) and planner eco
 - `classify_planning_depth(LeafComplexity) -> "fast" | "full"`: a pure, conservative complexity/novelty classifier that fast-paths only genuinely trivial leaves (single-note, small source, templated or low-novelty) and routes everything else — multi-note, large source, high or unknown novelty — to the full planning depth (default-to-full is the fail-safe: never skip depth on an unknown).
 - `content_fingerprint(str|bytes|Path)` + `should_skip_unchanged(leaf_id, source, prior_fingerprints)`: the `$0` change-detection pre-gate — SHA-256 content addressing (mtime+size fallback for unreadable paths), skipping a leaf *before* the expensive capture only on an exact fingerprint match (a changed/new/absent source is never skipped).
 
+### Composer v4 refactor — Phase 5 (credential pool + budgets) — 2026-07-22
+
+Fifth phase: a same-provider credential pool + run-level budgets (`composer/credential_pool.py`, new), with the budget wired into `run_pipeline_dynamic` as an opt-in dispatch gate. Pure bookkeeping, no network/LLM; timestamps injected for determinism. Suite `1023 → 1042 passing` (+19 tests), 1 skipped.
+
+**Added — credential pool (`composer/credential_pool.py`, new).**
+- `CredentialPool` holds *key ids* (never the secrets — the caller maps id→secret out of band). `lease(worker_id, now)` hands out the **least-used, available, unleased** key under a lock (per-worker leasing → parallel waves never double-drive one key onto a shared rate wall); `release` guards the owner.
+- **Error-class rotation**: `report_failure(key, worker, cause, now)` — a `transient` soft-429 keeps the lease (the retry ladder retries the same key); a persistent `rate_limit` benches the key `COOLDOWN_RATE_LIMIT_SECS` (1h) and releases; `quota` (402) and `auth` bench for `COOLDOWN_QUOTA_SECS` (24h). Cooldowns are absolute "available at" timestamps, so `to_cooldowns`/`load_cooldowns` let a benched key survive a restart.
+- Per-stage effort tiers: `effort_for_stage` (`validate`/`format`→low, `capture`/`enrich`→high, `fix`→medium; unknown→high).
+
+**Added — run-level budgets (`composer/credential_pool.py`).**
+- `RunBudget(max_invocations, max_cost)`: `try_spend(cost)` atomically checks + charges, refusing (and charging nothing — all-or-nothing) when a cap would be breached. The invocation cap is the runaway-fan-out breaker a static compile gate can't catch. `None` caps = unbounded.
+- `run_pipeline_dynamic` gains an opt-in `budget` param: each task charges one invocation before dispatch; a refused spend halts that leaf with a typed `BUDGET_EXHAUSTED` outcome (+ `blocked` manifest row) **without calling the backend**. `classify_outcome` now maps the run-budget marker to `BUDGET_EXHAUSTED` (distinct from a per-step retry-budget `RETRY_EXHAUSTED`). `budget=None` (default) preserves parity.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)
