@@ -51,10 +51,13 @@ from tessellum.composer.contracts import (
 from tessellum.composer.executor import (
     MAX_CRASH_RECOVERIES,
     MAX_LOGIC_RETRIES,
+    ErrorClass,
     ExecutorError,
     StepResult,
+    classify_error,
     execute_step,
     execute_step_with_retry,
+    full_jitter_backoff,
 )
 from tessellum.composer.llm import (
     AnthropicBackend,
@@ -68,6 +71,14 @@ from tessellum.composer.loader import (
     PipelineStep,
     PipelineValidationError,
     load_pipeline,
+)
+from tessellum.composer.manifest import (
+    MANIFEST_VERSION,
+    VALID_STATUSES,
+    AttemptRecord,
+    Manifest,
+    ManifestEntry,
+    ManifestError,
 )
 from tessellum.composer.materializer import (
     MaterializedOutput,
@@ -155,6 +166,10 @@ __all__ = [
     "MAX_CRASH_RECOVERIES",
     "StepResult",
     "ExecutorError",
+    # Error classification + backoff (Phase 1.4, v4)
+    "classify_error",
+    "full_jitter_backoff",
+    "ErrorClass",
     "run_pipeline",
     "RunResult",
     # Batch runner
@@ -162,6 +177,13 @@ __all__ = [
     "BatchJobResult",
     "BatchResult",
     "run_batch",
+    # Resume manifest (Composer v4, Phase 1)
+    "Manifest",
+    "ManifestEntry",
+    "AttemptRecord",
+    "ManifestError",
+    "MANIFEST_VERSION",
+    "VALID_STATUSES",
     # Eval framework
     "DEFAULT_RUBRIC_DIMENSIONS",
     "Assertion",

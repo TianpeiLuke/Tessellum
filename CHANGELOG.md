@@ -16,6 +16,24 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+### Composer v4 refactor — Phase 1 (manifest + retry hardening) — 2026-07-22
+
+First phase of the Composer v4 dynamic-workflow refactor. Turns the composer from a serial `run_pipeline` toward a wave-parallel, resumable, gated pipeline by hardening the resume manifest and the retry ladder. **All changes additive; `run_pipeline` (serial default path) byte-for-byte unchanged.** Suite `912 → 961 passing` (+49 tests), 1 skipped.
+
+**Added — resume manifest (`composer/manifest.py`, new).**
+- Per-leaf `ManifestEntry` (status `pending|in_progress|done|blocked`, per-attempt `AttemptRecord` list, `blocked_by` edges, `run_id`, `heartbeat`) held in a `Manifest` keyed by `leaf_id`.
+- **Delta-patch-by-id**: `upsert_entry` / `add_attempt` / `mark_done` / `mark_blocked` / `mark_in_progress` each replace ONE entry — never a whole-array rewrite (lost-update guard under concurrency).
+- **Atomic write + durability trio**: `save()` = rotate `.bak`/`.bak.1`/`.bak.2` (keep last 3) → write to a unique `.tmp` → fsync → `os.replace` (never in-place). `load()` fails closed: sweeps orphan `.tmp`, tries main→.bak chain, takes the first valid-JSON + shape-checked payload; corruption → next backup; none good → empty + logged warning.
+- **Owner-scoped crash-reclaim**: `reclaim_stale(current_run_id, now, stale_secs)` requeues only `in_progress` rows of a *foreign* run past its heartbeat staleness — never the current run's or terminal rows (multi-instance safe).
+- **Atomic claim + double-dispatch safety**: `claim(leaf_id, run_id, now)` is compare-and-swap (succeeds only when absent/pending); `mark_done` is the durable-commit step callers persist BEFORE releasing a claim.
+- **Rebuildable-from-vault** (`rebuild_from_vault`): derives `done` iff the target note exists on disk — the manifest is a System-D projection; the vault is the source of truth. Deterministic (timestamps passed in as `now: float`, no clock reads in transition logic).
+
+**Added — error-class + full-jitter retry ladder (`composer/executor.py`, additive).**
+- `classify_error(msg) -> ErrorClass` (`transient|validation|rate_limit|auth|crash`) — pure, deterministic, precedence stall>validation>rate_limit>auth>crash; empty/None fail-closed to `crash`.
+- `full_jitter_backoff(attempt, base=0.5, cap=30.0, rng=None)` = `uniform(0, min(cap, base*2**attempt))` with injectable rng — the thundering-herd guard for wave-parallel calls on a shared rate limit.
+- `execute_step_with_retry` gains optional `backoff=False` (+ `sleep_fn`/`backoff_base`/`backoff_cap`/`backoff_rng`): backoff sleeps only when `backoff=True` and only between retries; with the default `backoff=False` `sleep_fn` is never called — the existing path is byte-identical.
+- New `StepResult.error_class` field (default `None`, keeps existing frozen-dataclass consumers intact), populated on every error return.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

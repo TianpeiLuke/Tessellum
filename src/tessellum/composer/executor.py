@@ -38,11 +38,12 @@ from __future__ import annotations
 import concurrent.futures
 import hashlib
 import json
+import random
 import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Literal
 
 import jsonschema
 
@@ -99,6 +100,13 @@ discarded).
 """
 
 
+ErrorClass = Literal["transient", "validation", "rate_limit", "auth", "crash"]
+"""Phase 1.4 (v4) — fine-grained error class returned by
+:func:`classify_error`. Orthogonal to the coarse logic/crash/stall split
+that :func:`execute_step_with_retry` uses for budget accounting; this is
+the *diagnostic* class surfaced on :attr:`StepResult.error_class`."""
+
+
 @dataclass(frozen=True)
 class StepResult:
     """One step's execution outcome.
@@ -124,6 +132,14 @@ class StepResult:
             that produced the returned response). The final entry is
             always ``"success"`` on a returned-clean result, or the
             last failure kind on budget-exhausted results.
+        error_class: The fine-grained :func:`classify_error` class of
+            ``error`` (``"transient"``, ``"validation"``,
+            ``"rate_limit"``, ``"auth"``, or ``"crash"``), or ``None``
+            when ``error`` is ``None``. This makes validation-class
+            failures distinguishable from transient/infra ones without
+            breaking the coarse ``retry_kind_history`` logic/crash
+            split. Defaults to ``None`` so existing frozen-dataclass
+            consumers are unaffected.
     """
 
     section_id: str
@@ -134,6 +150,7 @@ class StepResult:
     error: str | None = None
     attempts: int = 1
     retry_kind_history: tuple[str, ...] = ("success",)
+    error_class: ErrorClass | None = None
 
 
 _LEAF_PLACEHOLDER_RE = re.compile(r"\{\{\s*leaf\.([a-z0-9_]+)\s*\}\}")
@@ -245,6 +262,7 @@ def execute_step(
                 f"prompt exceeded HARD_PROMPT_CAP_CHARS: rendered "
                 f"{len(prompt)} chars > cap {effective_max_prompt_chars}"
             ),
+            error_class="validation",
         )
 
     request = LLMRequest(
@@ -281,6 +299,7 @@ def execute_step(
             ),
             elapsed_ms=elapsed_ms,
             error=f"stalled after {effective_timeout}s",
+            error_class="transient",
         )
 
     error: str | None = None
@@ -320,6 +339,7 @@ def execute_step(
         materialized=materialized,
         elapsed_ms=elapsed_ms,
         error=error,
+        error_class=classify_error(error) if error is not None else None,
     )
 
 
@@ -426,6 +446,126 @@ def _validate_against_schema(content: str, schema: dict) -> str | None:
     return None
 
 
+# ── Error classification + backoff (Phase 1.4, v4) ──────────────────────────
+
+
+def classify_error(error_msg: str) -> ErrorClass:
+    """Classify a normalized error message into a fine-grained class.
+
+    Pure, deterministic string-heuristic classifier — no LLM, no I/O
+    (IDENT-3). Orthogonal to the coarse logic/crash/stall split used for
+    retry-budget accounting: it exists so callers can *diagnose* why a
+    step failed (e.g. an ``auth`` failure is worth alerting on, a
+    ``rate_limit`` one is worth slowing down, a ``validation`` one is a
+    logic/prompt defect).
+
+    Precedence, checked against the lower-cased message:
+
+    1. ``transient`` — the watchdog stall marker (``"stalled after"``).
+    2. ``validation`` — schema / materializer / contract failures.
+    3. ``rate_limit`` — ``"429"`` / ``"rate limit"`` / ``"quota"`` /
+       ``"too many requests"`` / ``"throttl"``.
+    4. ``auth`` — ``"401"`` / ``"403"`` / ``"auth"`` / ``"login"`` /
+       ``"expired"`` / ``"credential"`` / ``"forbidden"`` /
+       ``"unauthorized"``.
+    5. ``crash`` — anything else (backend raised / unclassified).
+
+    Args:
+        error_msg: The error string (typically ``StepResult.error`` or a
+            backend exception rendered as ``f"{type}: {msg}"``). ``None``
+            or empty is treated as ``crash`` (fail-closed, IDENT-5).
+
+    Returns:
+        One of ``"transient"``, ``"validation"``, ``"rate_limit"``,
+        ``"auth"``, ``"crash"``.
+    """
+    if not error_msg:
+        return "crash"
+    msg = error_msg.lower()
+
+    # 1. Stall marker → transient (infra-level, retry may clear it).
+    if "stalled after" in msg:
+        return "transient"
+
+    # 2. Logic-class validation failures.
+    if (
+        "schema" in msg
+        or "materializer" in msg
+        or "contract" in msg
+        or "not valid json" in msg
+    ):
+        return "validation"
+
+    # 3. Rate limiting / throttling / quota.
+    if (
+        "429" in msg
+        or "rate limit" in msg
+        or "ratelimit" in msg
+        or "quota" in msg
+        or "too many requests" in msg
+        or "throttl" in msg
+    ):
+        return "rate_limit"
+
+    # 4. Auth / credential failures.
+    if (
+        "401" in msg
+        or "403" in msg
+        or "auth" in msg
+        or "login" in msg
+        or "expired" in msg
+        or "credential" in msg
+        or "forbidden" in msg
+        or "unauthorized" in msg
+    ):
+        return "auth"
+
+    # 5. Everything else — treat as crash.
+    return "crash"
+
+
+def full_jitter_backoff(
+    attempt: int,
+    base: float = 0.5,
+    cap: float = 30.0,
+    rng: random.Random | None = None,
+) -> float:
+    """Full-jitter exponential backoff delay (thundering-herd guard).
+
+    Returns ``uniform(0, min(cap, base * 2**attempt))`` — the "Full
+    Jitter" strategy from the AWS Architecture Blog. Because the delay
+    is sampled uniformly from ``[0, ceiling]``, concurrent retriers
+    de-correlate rather than all waking at the same exponential instant.
+
+    Pure and deterministic given ``rng`` — inject a seeded
+    :class:`random.Random` in tests. ``attempt`` is clamped at ``0`` so
+    negative inputs can't invert the ceiling; the exponent is capped so
+    ``2**attempt`` can't overflow before ``min(cap, ...)`` clamps it.
+
+    Args:
+        attempt: 0-indexed retry attempt (0 → ceiling ``base``, 1 →
+            ``2*base``, …). Values ``< 0`` are treated as ``0``.
+        base: Base delay in seconds.
+        cap: Maximum ceiling in seconds; the sampled delay never
+            exceeds this.
+        rng: Injectable RNG for determinism; defaults to the module
+            :mod:`random`.
+
+    Returns:
+        A float in ``[0, min(cap, base * 2**attempt)]``.
+    """
+    r = rng if rng is not None else random
+    safe_attempt = attempt if attempt > 0 else 0
+    # Clamp the exponent so base*2**attempt can't overflow for huge
+    # attempts before the min() clamp runs (2**exp beyond ~1024 is
+    # pointless once cap applies).
+    exp = min(safe_attempt, 64)
+    ceiling = min(cap, base * (2 ** exp))
+    if ceiling <= 0.0:
+        return 0.0
+    return r.uniform(0.0, ceiling)
+
+
 def execute_step_with_retry(
     step: CompiledStep,
     *,
@@ -436,6 +576,11 @@ def execute_step_with_retry(
     dry_run: bool = False,
     max_logic_retries: int = MAX_LOGIC_RETRIES,
     max_crash_recoveries: int = MAX_CRASH_RECOVERIES,
+    backoff: bool = False,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    backoff_base: float = 0.5,
+    backoff_cap: float = 30.0,
+    backoff_rng: random.Random | None = None,
 ) -> StepResult:
     """Retry-budgeted wrapper around :func:`execute_step`.
 
@@ -453,6 +598,33 @@ def execute_step_with_retry(
     exhaustion + crash-budget exhaustion both surface as
     ``StepResult.error`` with ``attempts`` reflecting the count and
     ``retry_kind_history`` reflecting the failure-kind sequence.
+
+    Phase 1.4 (v4) — additive, IDENT-4 preserving:
+
+    - ``backoff`` (default ``False``): when ``True``, sleep
+      :func:`full_jitter_backoff` seconds via ``sleep_fn`` *between*
+      attempts (before each retry, never after the terminal result).
+      When ``False`` (the default) **no** ``sleep_fn`` call is made at
+      all, so the default behaviour is byte-identical to the pre-1.4
+      wrapper.
+    - ``sleep_fn`` (default :func:`time.sleep`): injectable sleep so
+      tests can record/no-op the backoff without wall-clock delay.
+    - ``backoff_base`` / ``backoff_cap`` / ``backoff_rng``: forwarded to
+      :func:`full_jitter_backoff`; inject a seeded RNG for determinism.
+
+    The returned :class:`StepResult` additionally carries
+    :attr:`~StepResult.error_class` — the :func:`classify_error` class of
+    its ``error`` (``None`` on success).
+
+    Args:
+        backoff: Opt-in flag to enable inter-attempt sleeping. Default
+            ``False`` keeps the serial path byte-identical (IDENT-4).
+        sleep_fn: Callable invoked with the backoff delay in seconds.
+            Only called when ``backoff`` is ``True``.
+        backoff_base: Base delay forwarded to
+            :func:`full_jitter_backoff`.
+        backoff_cap: Ceiling forwarded to :func:`full_jitter_backoff`.
+        backoff_rng: Optional seeded RNG for deterministic jitter.
     """
     history: list[str] = []  # error-message hashes, in attempt order
     kind_history: list[str] = []
@@ -466,6 +638,19 @@ def execute_step_with_retry(
 
     while True:
         attempt_n = len(kind_history) + 1
+        # Phase 1.4 (v4) — full-jitter backoff *between* attempts. Only
+        # sleeps on a retry (attempt_n > 1) and only when opted in via
+        # ``backoff=True``; when off, ``sleep_fn`` is never called so the
+        # default path is byte-identical to the pre-1.4 wrapper (IDENT-4).
+        if backoff and attempt_n > 1:
+            sleep_fn(
+                full_jitter_backoff(
+                    attempt_n - 1,
+                    base=backoff_base,
+                    cap=backoff_cap,
+                    rng=backoff_rng,
+                )
+            )
         try:
             result = execute_step(
                 step,
@@ -503,6 +688,7 @@ def execute_step_with_retry(
                     error=f"crash budget exhausted ({crash_recoveries - 1} retries): {err}",
                     attempts=attempt_n,
                     retry_kind_history=tuple(kind_history),
+                    error_class=classify_error(err),
                 )
             # Same-error short-circuit on crashes too (R-7)
             if _same_error_loop_fires(history):
@@ -523,6 +709,7 @@ def execute_step_with_retry(
                     error=f"same-error loop short-circuit (crash): {err}",
                     attempts=attempt_n,
                     retry_kind_history=tuple(kind_history),
+                    error_class=classify_error(err),
                 )
             continue
 
@@ -563,6 +750,7 @@ def execute_step_with_retry(
                     ),
                     attempts=attempt_n,
                     retry_kind_history=tuple(kind_history),
+                    error_class=classify_error(err),
                 )
             if _same_error_loop_fires(history):
                 return StepResult(
@@ -574,6 +762,7 @@ def execute_step_with_retry(
                     error=f"same-error loop short-circuit (stall): {err}",
                     attempts=attempt_n,
                     retry_kind_history=tuple(kind_history),
+                    error_class=classify_error(err),
                 )
             continue
 
@@ -597,6 +786,7 @@ def execute_step_with_retry(
                 error=f"same-error loop short-circuit (logic): {err}",
                 attempts=attempt_n,
                 retry_kind_history=tuple(kind_history),
+                error_class=classify_error(err),
             )
 
         if logic_attempts > max_logic_retries:
@@ -612,6 +802,7 @@ def execute_step_with_retry(
                 ),
                 attempts=attempt_n,
                 retry_kind_history=tuple(kind_history),
+                error_class=classify_error(err),
             )
         # else: loop back for another attempt
 
@@ -649,9 +840,12 @@ def _call_backend_with_timeout(
 
 __all__ = [
     "StepResult",
+    "ErrorClass",
     "ExecutorError",
     "MAX_LOGIC_RETRIES",
     "MAX_CRASH_RECOVERIES",
     "execute_step",
     "execute_step_with_retry",
+    "classify_error",
+    "full_jitter_backoff",
 ]
