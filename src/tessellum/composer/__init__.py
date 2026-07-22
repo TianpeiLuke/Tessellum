@@ -105,7 +105,16 @@ from tessellum.composer.eval import (
     load_scenarios,
     run_eval,
 )
-from tessellum.composer.scheduler import RunResult, run_pipeline
+from tessellum.composer.scheduler import (
+    ReadySetState,
+    RunResult,
+    SkipReason,
+    StepOutcome,
+    classify_outcome,
+    compute_ready_set,
+    run_pipeline,
+    run_pipeline_dynamic,
+)
 from tessellum.composer.session_mcp import (
     SESSION_MCP_TOOLS,
     get_session_metadata,
@@ -171,7 +180,13 @@ __all__ = [
     "full_jitter_backoff",
     "ErrorClass",
     "run_pipeline",
+    "run_pipeline_dynamic",
     "RunResult",
+    "compute_ready_set",
+    "ReadySetState",
+    "SkipReason",
+    "StepOutcome",
+    "classify_outcome",
     # Batch runner
     "BatchJob",
     "BatchJobResult",

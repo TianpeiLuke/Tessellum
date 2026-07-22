@@ -29,12 +29,15 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import threading
 import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, Sequence
 
-from tessellum.composer.compiler import CompiledPipeline
+from tessellum.composer.compiler import CompiledPipeline, CompiledStep
 from tessellum.composer.executor import (
     MAX_CRASH_RECOVERIES,
     MAX_LOGIC_RETRIES,
@@ -42,6 +45,8 @@ from tessellum.composer.executor import (
     execute_step_with_retry,
 )
 from tessellum.composer.llm import LLMBackend
+from tessellum.composer.manifest import AttemptRecord, Manifest
+from tessellum.composer.materializer import MaterializedOutput
 
 
 @dataclass(frozen=True)
@@ -217,6 +222,490 @@ def run_pipeline(
     )
 
 
+# ── Typed discriminated-union outcome (§C9 / Phase 2.3) ─────────────────────
+
+
+StepOutcomeKind = Literal[
+    "SUCCESS",
+    "RETRY_EXHAUSTED",
+    "WATCHDOG_KILLED",
+    "SAME_ERROR_LOOP",
+    "CONTRACT_VIOLATION",
+    "BUDGET_EXHAUSTED",
+]
+"""The closed set of terminal outcomes for a single (step × leaf) run.
+
+- ``SUCCESS`` — clean result; the materialized artifact is readable.
+- ``RETRY_EXHAUSTED`` — the executor burned its logic/crash retry budget.
+- ``WATCHDOG_KILLED`` — the per-step watchdog timeout fired (stall).
+- ``SAME_ERROR_LOOP`` — the same-error short-circuit tripped.
+- ``CONTRACT_VIOLATION`` — schema / materializer / prompt-cap failure
+  (a logic/contract defect, distinct from an infra flake).
+- ``BUDGET_EXHAUSTED`` — a *global* run-level invocation/token budget
+  halted the run. Never produced by :func:`classify_outcome` (a single
+  ``StepResult`` can't see the global budget); emitted by the Phase 5
+  budget layer. Present here so the union is closed up-front.
+"""
+
+
+@dataclass(frozen=True)
+class StepOutcome:
+    """A typed, discriminated outcome derived from a :class:`StepResult`.
+
+    The artifact is *readable only on* ``SUCCESS`` — accessing
+    :attr:`artifact` on any failure kind raises, so a caller can't
+    accidentally consume a note that never validated (CC's
+    discriminated-union discipline). Cost/duration/attempts are recorded
+    on **every** outcome, success or failure, for the ``statistics.json``
+    rollup.
+
+    Attributes:
+        kind: One of :data:`StepOutcomeKind`.
+        section_id: The step that ran.
+        leaf_id: The leaf id (``None`` for corpus/cross-leaf steps).
+        attempts: How many attempts ran (mirrors ``StepResult.attempts``).
+        elapsed_ms: Wall-clock for the (final) attempt.
+        error_class: The fine-grained :func:`classify_error` class, or
+            ``None`` on success.
+        error: The raw error string, or ``None`` on success.
+    """
+
+    kind: StepOutcomeKind
+    section_id: str
+    leaf_id: str | None
+    attempts: int
+    elapsed_ms: float
+    error_class: str | None = None
+    error: str | None = None
+    _artifact: MaterializedOutput | None = None
+
+    @property
+    def is_success(self) -> bool:
+        return self.kind == "SUCCESS"
+
+    @property
+    def artifact(self) -> MaterializedOutput:
+        """The materialized output — readable only on ``SUCCESS``.
+
+        Raises:
+            ValueError: If the outcome is not ``SUCCESS`` (the artifact
+                of a failed step is meaningless and must not be consumed).
+        """
+        if self.kind != "SUCCESS" or self._artifact is None:
+            raise ValueError(
+                f"artifact is only readable on SUCCESS; this outcome is {self.kind}"
+            )
+        return self._artifact
+
+
+def classify_outcome(result: StepResult) -> StepOutcome:
+    """Map a :class:`StepResult` onto a typed :class:`StepOutcome`.
+
+    Pure and deterministic — a program decision (IDENT-3), no LLM. The
+    mapping reads the executor's terminal ``error`` string (the same
+    markers :func:`~tessellum.composer.executor.execute_step_with_retry`
+    emits) with a precedence that surfaces the *proximate* cause:
+
+    1. ``same-error loop`` marker → ``SAME_ERROR_LOOP``.
+    2. ``stalled after`` marker → ``WATCHDOG_KILLED`` (even when the
+       stall also exhausted the crash budget — the timeout is the root).
+    3. validation / contract markers (or ``error_class == "validation"``)
+       → ``CONTRACT_VIOLATION``. Checked *before* the budget marker so a
+       schema/contract defect that exhausted its retry budget still
+       surfaces as the actionable contract violation (route to fix), not
+       a generic budget exhaustion.
+    4. ``budget exhausted`` marker → ``RETRY_EXHAUSTED``.
+    5. anything else with an error → ``RETRY_EXHAUSTED`` (generic).
+
+    ``BUDGET_EXHAUSTED`` is intentionally never produced here — a single
+    step can't observe the global budget; the Phase 5 budget layer emits
+    it directly.
+    """
+    if result.error is None:
+        return StepOutcome(
+            kind="SUCCESS",
+            section_id=result.section_id,
+            leaf_id=result.leaf_id,
+            attempts=result.attempts,
+            elapsed_ms=result.elapsed_ms,
+            error_class=None,
+            error=None,
+            _artifact=result.materialized,
+        )
+
+    e = result.error.lower()
+    if "same-error loop" in e:
+        kind: StepOutcomeKind = "SAME_ERROR_LOOP"
+    elif "stalled after" in e:
+        kind = "WATCHDOG_KILLED"
+    elif (
+        result.error_class == "validation"
+        or "prompt exceeded" in e
+        or "schema" in e
+        or "materializer" in e
+        or "contract" in e
+    ):
+        # Checked before the budget marker: a contract defect that
+        # burned its retry budget is still a contract violation (the
+        # actionable, fix-routable cause), not a generic exhaustion.
+        kind = "CONTRACT_VIOLATION"
+    elif "budget exhausted" in e:
+        kind = "RETRY_EXHAUSTED"
+    else:
+        kind = "RETRY_EXHAUSTED"
+
+    return StepOutcome(
+        kind=kind,
+        section_id=result.section_id,
+        leaf_id=result.leaf_id,
+        attempts=result.attempts,
+        elapsed_ms=result.elapsed_ms,
+        error_class=result.error_class,
+        error=result.error,
+    )
+
+
+# ── Pure ready-set computation (§C1 / Phase 2.1) ────────────────────────────
+
+
+SkipReasonKind = Literal[
+    "deps_unmet",
+    "concurrency_capped",
+    "contract_gate_failed",
+    "no_input",
+]
+"""The closed enum of reasons a step is *not* promoted this round.
+
+- ``deps_unmet`` — one or more ``depends_on`` steps are not yet ``done``.
+- ``concurrency_capped`` — ready, but no promotion slot remains this call.
+- ``contract_gate_failed`` — a compile/preflight gate rejected the step
+  (emitted by the driver / Gate Engine, not by :func:`compute_ready_set`).
+- ``no_input`` — a ``per_leaf`` step with an empty leaf scope (emitted by
+  the driver).
+"""
+
+
+@dataclass(frozen=True)
+class SkipReason:
+    """Why a step was skipped in a given :func:`compute_ready_set` call."""
+
+    section_id: str
+    reason: SkipReasonKind
+
+
+@dataclass(frozen=True)
+class ReadySetState:
+    """The pure input to :func:`compute_ready_set`.
+
+    Attributes:
+        steps: ``(section_id, depends_on)`` pairs in topological order.
+        done: section_ids that have fully completed.
+        in_flight: section_ids currently executing.
+        concurrency_cap: max steps that may be promoted *this call*
+            (remaining slots). ``0`` promotes nothing.
+    """
+
+    steps: tuple[tuple[str, tuple[str, ...]], ...]
+    done: frozenset[str]
+    in_flight: frozenset[str]
+    concurrency_cap: int
+
+
+def compute_ready_set(
+    state: ReadySetState,
+) -> tuple[tuple[str, ...], tuple[SkipReason, ...]]:
+    """Decide which steps are ready to run — a pure functional core.
+
+    A candidate is any step not already ``done`` or ``in_flight``. It is
+    **promoted** iff all its ``depends_on`` are ``done`` *and* a promotion
+    slot remains; otherwise it is **skipped** with a closed
+    :class:`SkipReason` (``deps_unmet`` or ``concurrency_capped``). No
+    I/O, no clock, no LLM — reproducible and unit-testable (a
+    functional-core discipline). The effectful driver applies the result.
+
+    Returns:
+        ``(promoted, skipped)`` — ``promoted`` in topological order,
+        ``skipped`` with one reason each. Steps already done/in-flight
+        appear in neither list.
+    """
+    promoted: list[str] = []
+    skipped: list[SkipReason] = []
+    slots = state.concurrency_cap
+    for sid, deps in state.steps:
+        if sid in state.done or sid in state.in_flight:
+            continue
+        if any(d not in state.done for d in deps):
+            skipped.append(SkipReason(sid, "deps_unmet"))
+            continue
+        if slots <= 0:
+            skipped.append(SkipReason(sid, "concurrency_capped"))
+            continue
+        promoted.append(sid)
+        slots -= 1
+    return tuple(promoted), tuple(skipped)
+
+
+# ── Self-claiming dynamic scheduler (§C1 / Phase 2.2) ───────────────────────
+
+
+def run_pipeline_dynamic(
+    pipeline: CompiledPipeline,
+    *,
+    leaves: list[dict] | None = None,
+    backend: LLMBackend,
+    vault_root: Path,
+    dry_run: bool = False,
+    runs_dir: Path | None = None,
+    max_logic_retries: int = MAX_LOGIC_RETRIES,
+    max_crash_recoveries: int = MAX_CRASH_RECOVERIES,
+    max_workers: int = 4,
+    manifest: Manifest | None = None,
+    run_id: str | None = None,
+    events_path: Path | None = None,
+    stats_path: Path | None = None,
+) -> RunResult:
+    """Wave-parallel, self-claiming variant of :func:`run_pipeline`.
+
+    Semantically byte-identical to :func:`run_pipeline` — same vault
+    output, same per-leaf outcomes, same ordered ``RunResult`` — but the
+    per-leaf executions of every ready step run **concurrently** through a
+    shared worker pool instead of one-leaf-at-a-time. This removes the
+    intra-step straggler stall (a slow leaf no longer serializes its
+    siblings) while preserving the step-level ``upstream`` accumulation
+    barrier that data dependencies require.
+
+    Mechanics:
+
+    - **Ready-set driven.** Each round, :func:`compute_ready_set` promotes
+      every step whose ``depends_on`` are ``done`` (independent steps run
+      together); the round's ``(step × leaf)`` tasks are submitted to one
+      :class:`~concurrent.futures.ThreadPoolExecutor`. Its internal work
+      queue *is* the self-claiming queue — an idle worker pulls the next
+      task. ``upstream`` is published (on the main thread, between rounds)
+      only after a step's whole leaf scope completes, exactly as the
+      serial path accumulates it, so downstream steps read an identical
+      context.
+    - **Manifest claim (optional).** When a ``manifest`` is supplied, each
+      task ``claim``s its ``"{section_id}::{leaf_id}"`` key (compare-and-
+      swap, double-dispatch safe) and, on success, records an
+      :class:`~tessellum.composer.manifest.AttemptRecord` + ``mark_done``
+      *before* releasing — the durable-commit-before-release ordering. The
+      manifest is a crash-safety projection here; output-reconstruction on
+      resume (skip-a-done-leaf) is deferred to a later phase, so a fresh
+      run always executes every task (identical to serial).
+    - **Observability (§C9).** When ``events_path`` is set, a
+      machine-readable per-leaf lifecycle event is appended per task; when
+      ``stats_path`` is set, a final ``statistics.json`` rollup is written.
+
+    Determinism: ``step_results`` are sorted by ``(topological step index,
+    leaf index)`` before the :class:`RunResult` is built, so the tuple
+    order matches the serial path regardless of completion order.
+
+    Args:
+        max_workers: Worker-pool size (leaf-level concurrency ceiling).
+        manifest: Optional resume manifest for claim/attempt recording.
+        run_id: This run's uuid (for owner-scoped manifest ops). A fresh
+            uuid is generated when ``None``.
+        events_path: Optional sidecar for the lifecycle event stream.
+        stats_path: Optional path for the final ``statistics.json``.
+
+    Returns:
+        RunResult — byte-comparable to :func:`run_pipeline`'s (modulo the
+        wall-clock ``started_at`` / ``duration_seconds`` / ``trace_path``).
+    """
+    started = time.monotonic()
+    started_iso = dt.datetime.now(dt.UTC).isoformat()
+    run_id = run_id or uuid.uuid4().hex
+
+    if leaves is None or not leaves:
+        leaves = [{"_id": "corpus"}]
+    else:
+        for i, leaf in enumerate(leaves):
+            if "_id" not in leaf:
+                leaf["_id"] = f"leaf_{i}"
+
+    # Topological index for every runnable (non-INFRA) step — the sort key
+    # that reproduces the serial step_results ordering.
+    runnable = [s for s in pipeline.steps if s.role != "INFRA"]
+    topo_index = {s.section_id: i for i, s in enumerate(runnable)}
+    by_id = {s.section_id: s for s in runnable}
+
+    upstream: dict[str, Any] = {}
+    # results keyed by (topo_step_index, leaf_index) → StepResult
+    results: dict[tuple[int, int], StepResult] = {}
+    events: list[dict] = []
+    lock = threading.Lock()
+
+    def _scope_leaves(step: CompiledStep) -> list[dict]:
+        return leaves if step.aggregation == "per_leaf" else [{"_id": "corpus"}]
+
+    def _run_task(step: CompiledStep, leaf: dict, leaf_index: int) -> None:
+        key = f"{step.section_id}::{leaf.get('_id')}"
+        if manifest is not None:
+            with lock:
+                manifest.claim(key, run_id=run_id, now=started)
+        result = execute_step_with_retry(
+            step,
+            leaf=leaf,
+            upstream=upstream,
+            backend=backend,
+            vault_root=vault_root,
+            dry_run=dry_run,
+            max_logic_retries=max_logic_retries,
+            max_crash_recoveries=max_crash_recoveries,
+        )
+        outcome = classify_outcome(result)
+        with lock:
+            results[(topo_index[step.section_id], leaf_index)] = result
+            if manifest is not None:
+                manifest.add_attempt(
+                    key,
+                    AttemptRecord(
+                        attempt_n=result.attempts,
+                        outcome=(
+                            "success"
+                            if result.error is None
+                            else (result.error_class or "crash")
+                        ),
+                        at=started,
+                    ),
+                )
+                # Durable-commit ordering: mark done before releasing the claim.
+                if result.error is None:
+                    manifest.mark_done(key)
+                if manifest.path is not None:
+                    manifest.save()
+            if events_path is not None:
+                events.append(
+                    {
+                        "section_id": step.section_id,
+                        "leaf_id": leaf.get("_id"),
+                        "outcome": outcome.kind,
+                        "attempts": outcome.attempts,
+                        "elapsed_ms": outcome.elapsed_ms,
+                        "error_class": outcome.error_class,
+                    }
+                )
+
+    # Ready-set loop over STEPS. Within a round every ready step's leaves
+    # are dispatched together; upstream is published after the round.
+    step_topo = tuple((s.section_id, s.depends_on) for s in runnable)
+    done_steps: set[str] = set()
+    with ThreadPoolExecutor(
+        max_workers=max_workers, thread_name_prefix="composer-leaf"
+    ) as pool:
+        while len(done_steps) < len(runnable):
+            promoted, _skipped = compute_ready_set(
+                ReadySetState(
+                    steps=step_topo,
+                    done=frozenset(done_steps),
+                    in_flight=frozenset(),
+                    concurrency_cap=len(runnable),  # leaf pool bounds real parallelism
+                )
+            )
+            if not promoted:  # pragma: no cover — compiler guarantees a DAG
+                break
+            futures = []
+            for sid in promoted:
+                step = by_id[sid]
+                for leaf_index, leaf in enumerate(_scope_leaves(step)):
+                    futures.append(pool.submit(_run_task, step, leaf, leaf_index))
+            for fut in as_completed(futures):
+                fut.result()  # propagate unexpected framework errors
+
+            # Publish upstream for each step just completed (topo order).
+            for sid in promoted:
+                step = by_id[sid]
+                if step.output_key:
+                    scope = _scope_leaves(step)
+                    per_leaf = step.aggregation == "per_leaf"
+                    outs = [
+                        results[(topo_index[sid], i)].materialized.structured
+                        for i in range(len(scope))
+                        if results[(topo_index[sid], i)].error is None
+                    ]
+                    if outs:
+                        upstream[step.output_key] = outs if per_leaf else outs[0]
+                done_steps.add(sid)
+
+    # Rebuild ordered step_results to match the serial path exactly.
+    step_results = [results[k] for k in sorted(results.keys())]
+    error_count = sum(1 for r in step_results if r.error is not None)
+    duration = time.monotonic() - started
+
+    if events_path is not None:
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        events_path.write_text(
+            "".join(json.dumps(ev) + "\n" for ev in events), encoding="utf-8"
+        )
+    if stats_path is not None:
+        _write_statistics(
+            stats_path=stats_path,
+            pipeline=pipeline,
+            step_results=step_results,
+            duration=duration,
+        )
+
+    trace_path: Path | None = None
+    if runs_dir is not None:
+        trace_path = _write_trace(
+            runs_dir=runs_dir,
+            pipeline=pipeline,
+            started_iso=started_iso,
+            duration=duration,
+            leaves=leaves,
+            step_results=step_results,
+            error_count=error_count,
+        )
+
+    return RunResult(
+        skill_name=pipeline.skill_name,
+        skill_path=pipeline.skill_path,
+        pipeline_version=pipeline.pipeline_version,
+        started_at=started_iso,
+        duration_seconds=duration,
+        leaves=tuple(leaves),
+        step_results=tuple(step_results),
+        error_count=error_count,
+        trace_path=trace_path,
+    )
+
+
+def _write_statistics(
+    *,
+    stats_path: Path,
+    pipeline: CompiledPipeline,
+    step_results: Sequence[StepResult],
+    duration: float,
+) -> Path:
+    """Write the final ``statistics.json`` rollup (§C9).
+
+    Per-stage processed/succeeded/failed counts + a total-duration line,
+    keyed by ``section_id``. A machine-readable summary distinct from the
+    per-leaf event stream and the human trace.
+    """
+    stats_path.parent.mkdir(parents=True, exist_ok=True)
+    per_stage: dict[str, dict[str, int]] = {}
+    for r in step_results:
+        bucket = per_stage.setdefault(
+            r.section_id, {"processed": 0, "succeeded": 0, "failed": 0}
+        )
+        bucket["processed"] += 1
+        if r.error is None:
+            bucket["succeeded"] += 1
+        else:
+            bucket["failed"] += 1
+    payload = {
+        "skill_name": pipeline.skill_name,
+        "duration_seconds": duration,
+        "invocation_count": len(step_results),
+        "error_count": sum(1 for r in step_results if r.error is not None),
+        "per_stage": per_stage,
+    }
+    stats_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return stats_path
+
+
 # ── Run trace ──────────────────────────────────────────────────────────────
 
 
@@ -275,4 +764,15 @@ def _write_trace(
     return target
 
 
-__all__ = ["RunResult", "run_pipeline"]
+__all__ = [
+    "RunResult",
+    "run_pipeline",
+    "run_pipeline_dynamic",
+    "compute_ready_set",
+    "ReadySetState",
+    "SkipReason",
+    "SkipReasonKind",
+    "StepOutcome",
+    "StepOutcomeKind",
+    "classify_outcome",
+]

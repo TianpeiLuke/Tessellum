@@ -34,6 +34,22 @@ First phase of the Composer v4 dynamic-workflow refactor. Turns the composer fro
 - `execute_step_with_retry` gains optional `backoff=False` (+ `sleep_fn`/`backoff_base`/`backoff_cap`/`backoff_rng`): backoff sleeps only when `backoff=True` and only between retries; with the default `backoff=False` `sleep_fn` is never called — the existing path is byte-identical.
 - New `StepResult.error_class` field (default `None`, keeps existing frozen-dataclass consumers intact), populated on every error return.
 
+### Composer v4 refactor — Phase 2 (self-claiming scheduler + typed outcome) — 2026-07-22
+
+Second phase: a wave-parallel, self-claiming variant of the scheduler plus a typed discriminated-union outcome, all in `composer/scheduler.py`. **The serial `run_pipeline` body is byte-for-byte unchanged; the new `run_pipeline_dynamic` is a separate entry point.** Suite `961 → 983 passing` (+22 tests), 1 skipped.
+
+**Added — pure ready-set functional core.**
+- `compute_ready_set(state) -> (promoted, skipped)` — a pure, deterministic function (no I/O, no clock, no LLM) that promotes every step whose `depends_on` are all `done` (independent steps promoted together, in topological order) and defers the rest with a **closed skip-enum** `SkipReason` (`deps_unmet | concurrency_capped | contract_gate_failed | no_input`). `ReadySetState` (steps + done + in-flight + concurrency cap) is its only input; the effectful driver applies the result.
+
+**Added — `run_pipeline_dynamic` self-claiming scheduler.**
+- Ready-set-driven rounds: each round submits every ready step's `(step × leaf)` tasks to one `ThreadPoolExecutor` whose internal queue *is* the self-claiming queue (an idle worker pulls the next task) — removes the intra-step straggler stall (a slow leaf no longer serializes its siblings) while preserving the step-level `upstream` accumulation barrier that data dependencies require.
+- **Parity gate**: semantically byte-identical to `run_pipeline` — same vault output, same ordered per-leaf outcomes (`step_results` sorted by `(topological step index, leaf index)` regardless of completion order), same `error_count`. Verified on success, written-files, and failure paths.
+- **Optional manifest integration**: when a `Manifest` is supplied, each task does a compare-and-swap `claim`, records an `AttemptRecord`, and `mark_done`s *before* releasing (the durable-commit ordering); the manifest is a crash-safety projection (resume-skip is deferred to a later phase, so a fresh run always re-executes every task — identical to serial). INFRA steps skipped, synthetic corpus leaf when `leaves=None`.
+
+**Added — typed discriminated-union outcome + observability.**
+- `StepOutcome` / `classify_outcome(StepResult)`: closed kind set `SUCCESS | RETRY_EXHAUSTED | WATCHDOG_KILLED | SAME_ERROR_LOOP | CONTRACT_VIOLATION | BUDGET_EXHAUSTED`. The materialized artifact is **readable only on `SUCCESS`** (accessing `.artifact` on any failure raises), so a caller can't consume a note that never validated. Cost/duration/attempts recorded on every outcome. Precedence surfaces the proximate cause (same-error-loop > watchdog > contract-violation > budget) — a contract defect that burned its budget stays a `CONTRACT_VIOLATION` (fix-routable), not a generic exhaustion. `BUDGET_EXHAUSTED` is reserved for the later global-budget layer.
+- Optional machine-readable per-leaf lifecycle event stream (`events_path`, one JSON line per invocation) + a final `statistics.json` rollup (`stats_path`: per-stage processed/succeeded/failed + total duration), distinct from the existing human run trace.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)
