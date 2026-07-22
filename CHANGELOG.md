@@ -89,6 +89,18 @@ Fifth phase: a same-provider credential pool + run-level budgets (`composer/cred
 - `RunBudget(max_invocations, max_cost)`: `try_spend(cost)` atomically checks + charges, refusing (and charging nothing — all-or-nothing) when a cap would be breached. The invocation cap is the runaway-fan-out breaker a static compile gate can't catch. `None` caps = unbounded.
 - `run_pipeline_dynamic` gains an opt-in `budget` param: each task charges one invocation before dispatch; a refused spend halts that leaf with a typed `BUDGET_EXHAUSTED` outcome (+ `blocked` manifest row) **without calling the backend**. `classify_outcome` now maps the run-budget marker to `BUDGET_EXHAUSTED` (distinct from a per-step retry-budget `RETRY_EXHAUSTED`). `budget=None` (default) preserves parity.
 
+### Composer v4 refactor — Phase 6 (context assembler + sign-off approver) — 2026-07-22
+
+Sixth and final phase: the input-side context seam (`composer/context_assembler.py`, new) and the plan→execute sign-off approver (`composer/signoff.py`, new). Completes the v4 build ladder. Pure/local-I-O, no network/LLM (model + human calls are injected). Suite `1042 → 1075 passing` (+33 tests), 1 skipped. **Composer v4 refactor complete: `912 → 1075` across six phases; the serial `run_pipeline` is byte-for-byte unchanged throughout (IDENT-4).**
+
+**Added — context assembler (`composer/context_assembler.py`, new).**
+- A single-active `ContextAssembler` ABC selected by config (`get_assembler("full_source" | "windowed")`), so the assembly strategy swaps **without touching the executor** — guarded by a parametrized contract test (both concrete assemblers obey one `assemble`/bounds contract).
+- **Percentage-scaled fail-soft bounds**: `assemble` never raises — an oversized source truncates + warns (`FullSourceAssembler`) or is shaped head+tail with a `[... middle elided ...]` marker (`WindowedAssembler`); a near-cap source earns a soft warning; a non-string source or a strategy crash degrades to an empty context + warning, never crashing a worker. Plus a cheap `estimate_chars` preflight.
+- **Read-path hardening**: `is_safe_read_path(path, workspace_root)` is fail-closed — denies a sensitive-marker path (`.env`/`.aws`/`credentials`/keys/`.git`/…), a workspace escape (`../`/absolute), and a binary file (NUL-byte sniff).
+
+**Added — sign-off approver (`composer/signoff.py`, new).**
+- `run_sign_off` composes the `review → ready` gate cheapest-first: **program gate** (pure structural pre-filter — a fail rejects outright, never spending an agent) → **reviewer agent** (agent-as-judge returning an approve/reject + confidence) → **human interruption** (suspend/approve/resume), escalated to **only** on low agent confidence or high blast radius. A confident agent approval on a low-blast plan is terminal at the agent rung; when the human rung is required but disabled, the result is a surfaced `needs_human`. `SignOffPolicy` (which rungs run + thresholds) is chosen per run; the agent-judge and human-prompt callables are injected (the module owns the ladder logic, not the model/UI calls).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

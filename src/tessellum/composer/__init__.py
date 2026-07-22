@@ -105,6 +105,14 @@ from tessellum.composer.eval import (
     load_scenarios,
     run_eval,
 )
+from tessellum.composer.context_assembler import (
+    AssembledContext,
+    ContextAssembler,
+    FullSourceAssembler,
+    WindowedAssembler,
+    get_assembler,
+    is_safe_read_path,
+)
 from tessellum.composer.credential_pool import (
     DEFAULT_STAGE_EFFORT,
     BudgetExhausted,
@@ -145,6 +153,12 @@ from tessellum.composer.scheduler import (
     compute_ready_set,
     run_pipeline,
     run_pipeline_dynamic,
+)
+from tessellum.composer.signoff import (
+    AgentVerdict,
+    SignOffPolicy,
+    SignOffResult,
+    run_sign_off,
 )
 from tessellum.composer.session_mcp import (
     SESSION_MCP_TOOLS,
@@ -244,6 +258,17 @@ __all__ = [
     "BudgetExhausted",
     "effort_for_stage",
     "DEFAULT_STAGE_EFFORT",
+    # Context assembler + sign-off approver (Phase 6)
+    "ContextAssembler",
+    "FullSourceAssembler",
+    "WindowedAssembler",
+    "AssembledContext",
+    "get_assembler",
+    "is_safe_read_path",
+    "SignOffPolicy",
+    "SignOffResult",
+    "AgentVerdict",
+    "run_sign_off",
     # Batch runner
     "BatchJob",
     "BatchJobResult",
