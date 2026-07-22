@@ -45,6 +45,7 @@ from tessellum.composer.executor import (
     StepResult,
     execute_step_with_retry,
 )
+from tessellum.composer.fix import FixContext, run_fix_loop
 from tessellum.composer.gates import GateSuite, GroundingVerdict
 from tessellum.composer.llm import LLMBackend
 from tessellum.composer.manifest import AttemptRecord, Manifest
@@ -774,28 +775,41 @@ def _run_close_gate(
         composite = close_gate.evaluate(note_path, verdict=verdict)
         return composite.passed, composite.first_failure_cause, composite.blocking_issues
 
-    passed, cause, issues = _evaluate()
-    rounds = 0
-    while not passed and fixer is not None and rounds < max_fix_rounds:
-        rounds += 1
-        # The fixer repairs the note in place; re-gate the same path.
-        try:
-            fixer(step, leaf, issues)
-        except Exception:  # noqa: BLE001 — a fixer crash is a gate FAIL, not a raise
-            break
-        passed, cause, issues = _evaluate()
+    # The scheduler's fixer contract is (step, leaf, issues) -> anything;
+    # adapt it to the informed-fix contract (FixContext) the fix loop uses.
+    # The fix loop owns the checkpoint-before-fix + revert-to-BEST safety;
+    # the fixer only repairs the note in place. Prior-attempt outcomes ride
+    # inside the FixContext so the fixer is informed, not blind.
+    informed_fixer = None
+    if fixer is not None:
 
-    if passed:
+        def informed_fixer(ctx: FixContext) -> object:  # noqa: F811 — local closure
+            return fixer(step, leaf, ctx.issues)
+
+    loop = run_fix_loop(
+        note_path=Path(note_path),
+        evaluate=_evaluate,
+        fixer=informed_fixer,
+        max_rounds=max_fix_rounds,
+    )
+
+    if loop.passed:
         return result, None
 
     # Blocked: rewrite the clean result into an errored one so the run's
-    # error_count + typed outcome reflect the failed session.
+    # error_count + typed outcome reflect the failed session. The fix loop
+    # has already restored the BEST-scoring snapshot to disk if a later
+    # attempt regressed, so the note left behind is the best version seen.
     blocked = dataclasses.replace(
         result,
-        error=f"close-gate blocked ({cause}): {len(issues)} blocking issue(s)",
+        error=(
+            f"close-gate blocked ({loop.cause}): "
+            f"{loop.final_score} blocking issue(s)"
+            + (" [reverted to best]" if loop.reverted else "")
+        ),
         error_class="validation",
     )
-    return blocked, cause
+    return blocked, loop.cause
 
 
 def _write_statistics(

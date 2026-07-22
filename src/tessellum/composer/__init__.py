@@ -105,6 +105,13 @@ from tessellum.composer.eval import (
     load_scenarios,
     run_eval,
 )
+from tessellum.composer.fix import (
+    AttemptOutcome,
+    FixContext,
+    FixLoopResult,
+    run_fix_loop,
+    score_issues,
+)
 from tessellum.composer.gates import (
     DIGEST_GATES,
     CompositeGateResult,
@@ -114,6 +121,12 @@ from tessellum.composer.gates import (
     GroundingVerdict,
     build_close_gate,
     build_wave_gate,
+)
+from tessellum.composer.planning import (
+    LeafComplexity,
+    classify_planning_depth,
+    content_fingerprint,
+    should_skip_unchanged,
 )
 from tessellum.composer.scheduler import (
     ReadySetState,
@@ -206,6 +219,16 @@ __all__ = [
     "build_close_gate",
     "build_wave_gate",
     "DIGEST_GATES",
+    # Fix stage + planner economics (Phase 4)
+    "FixContext",
+    "FixLoopResult",
+    "AttemptOutcome",
+    "run_fix_loop",
+    "score_issues",
+    "LeafComplexity",
+    "classify_planning_depth",
+    "content_fingerprint",
+    "should_skip_unchanged",
     # Batch runner
     "BatchJob",
     "BatchJobResult",

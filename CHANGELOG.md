@@ -63,6 +63,19 @@ Third phase: a gate engine (`composer/gates.py`, new) and an **opt-in** per-sess
 - New params `close_gate`, `grounding_verifier`, `max_fix_rounds`, `fixer` (all default off). When a `close_gate` is set, each task that materialized a note becomes a session: after capture it runs the close-gate against the written file; the session closes `done` **only on PASS**. On FAIL it routes to the `fixer` up to `max_fix_rounds` times (re-gating each round), then closes `blocked` — never silently `done` (the lifecycle-terminator invariant).
 - **Gate-then-commit ordering**: the note file is written during capture, but the manifest row flips `done` (and the `StepResult` counts as clean) *only after* the gate passes; a gate FAIL rewrites the otherwise-clean result into an errored one whose `error` names the terminal cause, so `error_count`, `classify_outcome` (`CONTRACT_VIOLATION`), and the manifest (`blocked`) all reflect the blocked session. Sessions that wrote no file (corpus/no-op steps) pass through ungated.
 
+### Composer v4 refactor — Phase 4 (fix stage + planner economics) — 2026-07-22
+
+Fourth phase: a non-regressive fix loop (`composer/fix.py`, new) and planner economics (`composer/planning.py`, new). The close-gate's fix path now uses checkpoint-before-fix + revert-to-BEST instead of a blind re-dispatch. Both new modules are pure/local-I-O; no LLM (the fixer callable is injected). Suite `1003 → 1023 passing` (+20 tests), 1 skipped.
+
+**Added — non-regressive fix loop (`composer/fix.py`, new).**
+- `run_fix_loop` **checkpoints the note's bytes before each fix and keeps the BEST-scoring snapshot**, restoring it at the end — so a later regressing fix can never overwrite a better earlier note. Scoring is by blocking-issue count (lower is better; `0` = clean pass, exits early). `FixLoopResult.reverted` flags when a roll-back happened.
+- **Informed fixer**: the fixer receives a `FixContext` carrying the current gate `issues` *and* the prior rounds' `AttemptOutcome` history (score + causes) — so it sees what failed and what it already tried, instead of retrying blind. A fixer crash is a dead round (caught, not propagated); `fixer=None`/`max_rounds=0` makes a first FAIL terminal.
+- `run_pipeline_dynamic`'s close-gate now delegates its fix path to `run_fix_loop`, so a blocked session leaves the best-scoring note version on disk (and the error string notes `[reverted to best]` when a roll-back occurred).
+
+**Added — planner economics (`composer/planning.py`, new).**
+- `classify_planning_depth(LeafComplexity) -> "fast" | "full"`: a pure, conservative complexity/novelty classifier that fast-paths only genuinely trivial leaves (single-note, small source, templated or low-novelty) and routes everything else — multi-note, large source, high or unknown novelty — to the full planning depth (default-to-full is the fail-safe: never skip depth on an unknown).
+- `content_fingerprint(str|bytes|Path)` + `should_skip_unchanged(leaf_id, source, prior_fingerprints)`: the `$0` change-detection pre-gate — SHA-256 content addressing (mtime+size fallback for unreadable paths), skipping a leaf *before* the expensive capture only on an exact fingerprint match (a changed/new/absent source is never skipped).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)
