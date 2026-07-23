@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tessellum"
-version = "1.0.1"
+version = "1.0.2"
 description = "Typed atomic notes in a graph — a Zettelkasten that scales. Knowledge construction with Building Blocks, Folgezettel trails, and the Dialectic Knowledge System (DKS)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -129,10 +129,12 @@ packages = ["src/tessellum"]
 path = "hatch_build.py"
 
 [tool.hatch.build.targets.sdist]
-# Tessellum dogfoods itself — there is no separate `docs/` directory; public
-# documentation lives in `vault/` as typed atomic notes. See DEVELOPING.md.
+# Two doc surfaces ship in the sdist: `docs/` is the engineering architecture +
+# per-module design/reference; `vault/` is the dogfooded knowledge documentation
+# (typed atomic notes). See DEVELOPING.md.
 include = [
     "src/tessellum",
+    "docs",
     "vault",
     "plans",
     "scripts",

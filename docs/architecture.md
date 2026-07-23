@@ -35,21 +35,52 @@ There is one feedback arrow, and it does not break the law. The composer and DKS
 
 Read the system from the ground up, and it stacks in layers. At the bottom sit two primitives. Above them, projection. Above that, the ways of reading. At the top, the two engines and the two front doors.
 
+```mermaid
+flowchart TB
+    subgraph SP["System P — authorship (source of truth)"]
+        bb["bb : Building Block ontology"]
+        format["format : parse + validate notes"]
+        vault[("vault/ : typed markdown notes")]
+    end
+
+    subgraph SD["System D — projection (read + compute)"]
+        indexer["indexer : build vault into SQLite"]
+        db[("tessellum.db : notes, links, FTS5, sqlite-vec")]
+        retrieval["retrieval : bm25 / dense / hybrid / bfs / filter"]
+    end
+
+    subgraph ENG["Engines"]
+        composer["composer : compile, schedule, gate, fix"]
+        dks["dks : dialectic cycles + meta-DKS"]
+    end
+
+    subgraph UI["Front doors"]
+        cli["cli : 11 commands"]
+        mcp["mcp : 7 agent tools"]
+        cts["composer-ts : TS control bridge"]
+    end
+
+    bb --> format
+    format -.->|validates| vault
+    vault -->|build P to D| indexer --> db --> retrieval
+
+    composer -->|writes new notes| vault
+    composer -.->|reuses validator| format
+    dks -.->|reads, one-way R-Cross| retrieval
+    dks -->|writes warrants + notes| vault
+    dks -.->|meta mutates schema| bb
+
+    cli --> composer
+    cli --> dks
+    cli --> retrieval
+    cli --> indexer
+    mcp --> retrieval
+    mcp --> format
+    mcp --> bb
+    cts --> cli
 ```
-   bb  ─────────┐  (BB ontology: types + corpus graph)
-   format ──────┤  (parse / validate .md; the P-side gatekeeper)
-                ▼
-   indexer ─────►  build vault → SQLite (P→D)
-                ▼
-   retrieval ───►  5 surfaces over the DB (metadata/bfs/bm25/dense/hybrid)
-                ▼
-   composer ────►  compile skill → typed DAG → schedule → gate → fix → observe
-   dks ─────────►  7-component dialectic cycles over bb + retrieval, deposit FZ subtrees
-                ▼
-   cli ─────────►  11 subcommands (the human front door)
-   mcp ─────────►  7 stdio tools (the agent front door)
-   composer-ts ─►  TypeScript control-flow bridge over the composer CLI
-```
+
+Solid arrows carry data or authored notes; dotted arrows mean *uses* or *reads* — a check, a query, a schema edit — never a write to someone else's source of truth. Two facts jump out of the picture. First, `bb` and `format` guard the P side: the ontology defines what may exist, the validator enforces it. Second, the engines close a loop through the substrate — they read System D and write new notes back into System P, which the next build re-projects. The loop never runs around the vault; it always runs through it.
 
 The `bb` subsystem is the ontology of Building Blocks. It fixes what kinds of thought exist and how they may connect. `bb/types.py` is the source of truth for the eight BB types and the roughly sixteen typed edges between them; `bb/graph.py` is the corpus view — the actual instances, streamed from the index. The `format` subsystem is the gatekeeper on the P side: it parses a note into frontmatter and body, validates it against the YAML spec and the link and edge rules, and checks its links. Nothing enters the vault well-formed by accident; `format` is where form is enforced.
 

@@ -16,6 +16,19 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [1.0.2] — 2026-07-22
+
+Documentation packaging patch (no code or behaviour change).
+
+### Added
+
+- `docs/` — the engineering architecture + per-module design/reference — now ships in the sdist (added to `[tool.hatch.build.targets.sdist].include`), so source installs carry it.
+- A Mermaid module-relationship diagram in `docs/architecture.md` (the CQRS System-P/System-D split, the one-way P→D build, and the engines' write-back loop through the vault).
+
+### Changed
+
+- `docs/` rewritten for readability: each `docs/<module>.md` is now concept→model→procedure prose (short sentences, paragraphs), with the API-symbol material split into `docs/reference/<module>.md`.
+
 ## [1.0.1] — 2026-07-22
 
 Documentation + release-metadata patch (no code or behaviour change).
