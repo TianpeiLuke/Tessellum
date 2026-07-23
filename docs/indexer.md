@@ -1,117 +1,65 @@
-# `tessellum.indexer` — Building System D
+# Indexer (`tessellum.indexer`)
 
-## 1. Purpose
+## The mental model
 
-`tessellum.indexer` is the projection stage of the CQRS split: it reads the markdown vault (System P) and writes one self-contained SQLite database (System D) that the retrieval layer queries. It walks the vault, parses each typed atomic note, extracts internal markdown links (with broken-path repair), and materializes four tables — `notes`, `note_links`, `notes_fts` (BM25), `notes_vec` (dense) — in a single transaction.
+Tessellum keeps its knowledge in a folder of markdown notes and answers queries out of a single SQLite database. The folder is the source of truth; the database is a derived projection of it. The indexer is the one-way bridge between them. It reads the vault and compiles it into that database, and nothing else writes the database. The arrow points from vault to DB, and only that way.
 
-## 2. Architecture / data flow
+The core idea is *compile, don't sync*. Rather than track which notes changed and patch the database in place, every run throws the database away and rebuilds it from scratch. This keeps the builder simple and its output always consistent with the vault at the moment it ran. The database is a snapshot, not a live mirror. One build produces four correlated tables — a structured note table, a link-edge table, a full-text index, and a dense-vector index — so the retrieval layer can search the same corpus lexically, semantically, or as a graph without re-reading a single markdown file.
 
-`indexer.build.build()` is the single entry point (`build.py:100`). One invocation does a full, from-scratch rebuild — there is **no incremental path yet** (`build.py:9`, `build.py:153`). The flow:
+## The model — how the pieces relate
 
 ```
 vault/*.md
-  │  _walk_vault + _is_note_file        (drop README/CHANGELOG/… and Rank_* files)
+  │  walk + filter        (drop README/CHANGELOG/… and Rank_* files)
   ▼
-per-file _extract_note_metadata         (parse_note → frontmatter dict; assign note_int_id)
+per-file metadata parse   (frontmatter → note row; assign surrogate id)
   │  (files with unparseable frontmatter → skipped, counted, not indexed)
   ▼
-_build_note_name_index                  (stem → note_id, or [note_ids] if the stem is ambiguous)
+name index                (stem → note id, or a list when the stem is ambiguous)
   │
   ▼
-_extract_all_links                      (regex over code-stripped body; resolve + broken-path repair; dedupe pairs)
+link extraction           (mine body links, resolve paths, repair broken ones, dedupe)
   │
   ▼
-_open_with_vec  →  one txn:  executescript(schema.sql)
-                             _write_notes / _write_links / _write_fts / _write_embeddings
+one transaction:  apply schema  →  write notes / links / full-text / embeddings
   ▼
-BuildResult(db_path, notes_indexed, links_indexed, skipped_files, duration_seconds, embeddings_generated)
+BuildResult               (db path, counts, skipped, duration, embeddings)
 ```
 
-Ordering matters: metadata is collected for **all** notes first so `note_int_id` surrogate keys are assigned (`build.py:154`) and the name index is complete before link resolution runs. Schema creation and all four writes happen inside a single `with conn:` block (`build.py:162-169`), so the DB is either fully built or not written. The connection is opened with the `sqlite-vec` extension loaded up front (`_open_with_vec`, `build.py:79`) because `executescript` creates the `vec0` virtual table.
+Three things flow through this pipeline, and the order is not incidental. The builder collects metadata for *every* note first. Each note needs a stable integer key, and the vector table joins back to notes through that key, so the whole key space has to exist before anything else can reference it. Only then can the builder build the name index — a map from a note's filename stem to its identity — because link resolution needs that map to be complete before it runs. And only after the name index exists can links be mined and resolved, because repairing a broken link path means looking a note up by name across the entire vault.
 
-## 3. Key modules + abstractions
+The four output tables split into two base tables and two search indexes. The note table holds one row per note, with its frontmatter fields flattened into columns. The link table holds one row per resolved internal link as a source-to-target edge. On top of those sit the two indexes: a full-text index that powers lexical search, and a dense-vector index that powers semantic search. The vector index is the subtle one. It cannot key on a note's path string, so it keys on the surrogate integer id and joins back through it. That surrogate is the seam that stitches a semantic hit back to a real note.
 
-| File | Role |
-|------|------|
-| `indexer/__init__.py` | Public surface: re-exports `build`, `BuildResult`, `Database`, `NoteRow`, `LinkRow`. |
-| `indexer/build.py` | The builder. Vault walk, metadata extraction, PARA/second-category derivation, link extraction + broken-path repair, all DB writes, dense-embedding generation. Defines `BuildResult`. |
-| `indexer/schema.sql` | The four-table DDL, applied verbatim via `executescript`. Columns match the parent the source vault schema for portability. |
-| `indexer/db.py` | Read-oriented `Database` wrapper + `NoteRow` / `LinkRow` dataclasses. Thin typed SQL adapter; no writes. |
-| `cli/index.py` | `tessellum index build` argparse wiring; maps flags to `build(...)` and exit codes. |
+## The procedure — how a build runs
 
-Key functions in `build.py`:
+`build()` is the single public entry point, and one call does a full rebuild. It begins by checking the output path. If a database already exists there, the build refuses — unless the caller passed `force`, in which case it deletes the old file and starts clean. That refusal is the whole story of "no incremental path." There is no merge step, only overwrite.
 
-- `build(vault_path, db_path, *, force=False, with_dense=True) -> BuildResult` (`build.py:100`) — the entry point.
-- `_walk_vault` / `_is_note_file` (`build.py:186`, `:195`) — recursive `*.md` glob minus the non-note skip list.
-- `_extract_note_metadata` (`build.py:218`) — one file → `notes`-row dict; returns `None` on `FrontmatterParseError`.
-- `_determine_note_category` / `_determine_second_category` (`build.py:283`, `:290`) — PARA bucket from path[0]; `tags[1]` (source of truth) with parent-dir fallback.
-- `_build_note_name_index` (`build.py:313`) — stem → note_id (or list when the stem collides).
-- `_extract_all_links` / `_resolve_link` (`build.py:329`, `:400`) — link mining + relative-path resolution.
-- `_write_notes` / `_write_links` / `_write_fts` / `_write_embeddings` (`build.py:450`, `:457`, `:466`, `:501`) — the four table writers.
+The builder then walks the vault, recursively collecting every markdown file and dropping the handful that are not notes — top-level docs like the README and CHANGELOG, plus ranking scratch files. For each surviving file it parses the YAML frontmatter and flattens the fields it cares about into a row: name, location, category, status, dates, tags, keywords, topics, building block, and Folgezettel position. Two of these columns are *derived* rather than copied. The PARA category comes from the note's top-level folder. The second category comes from the note's second tag — the authoring rules make that tag the source of truth — and falls back to the parent directory name only when the tags are too short to supply it. If a note's frontmatter cannot be parsed, the builder does not fail. It skips that one note, counts it, and moves on. Surfacing the defect is the format checker's job, not the indexer's.
 
-## 4. Invariants / design decisions + WHY
+Once all notes are collected, the builder assigns each a sequential surrogate id and constructs the name index. Then it runs link extraction. For each note it first strips fenced code blocks out of the body, so a link written inside an example never becomes a real edge, then scans the remaining prose for markdown links that point at other notes, skipping anything external, a `mailto:`, or a bare anchor. Each surviving target is resolved relative to the linking note. If the target file exists, it becomes a clean edge. If the path is broken but its filename stem uniquely identifies a real note, the link is *repaired* — pointed at that note and tagged as a broken-path edge, so a consumer can still tell a repaired edge from a pristine one. If the stem is missing or ambiguous, the link is dropped silently; it will resurface as a diagnostic under format check, not as a database row. Every kept edge is deduplicated on its source-target pair.
 
-**Rebuild-from-scratch each run; no incremental update.** If `db_path` exists, `build` raises `FileExistsError` unless `force=True`, in which case it `unlink()`s and recreates (`build.py:134-139`). WHY: `note_int_id` is a sequential surrogate assigned by enumeration order (`build.py:154`), stable only within one build; an incremental path would need stable surrogate management, which is deferred (`build.py:153`). Header comment states this explicitly (`build.py:9`).
+Finally the builder writes everything in one transaction. It opens a connection with the vector extension already loaded — the schema declares a virtual vector table, so the extension must be present before the schema can be applied — applies the schema, and writes the four tables inside a single transactional block. Either the whole database is built or nothing is written; there is no half-populated intermediate state. The dense embeddings are the only optional table. For each note the builder concatenates its name, keywords, topics, tags, and body into one embedding text, encodes the batch with a sentence-transformers model, and stores each vector against its surrogate id. When embeddings are disabled, the step is skipped and the vector table is simply left empty. The call returns a `BuildResult` summarizing the run.
 
-**`note_int_id` is the join key for the dense index.** `notes.note_int_id INTEGER UNIQUE` (`schema.sql:32`) is the primary key of the `vec0` virtual table `notes_vec` (`schema.sql:75`). WHY: `vec0` requires an integer rowid to join dense hits back to note rows; the natural key `note_id` (a path string) can't serve. `notes_vec` embeddings and `notes` rows are correlated only through this surrogate.
+Reading is a separate, deliberately thin surface. A small `Database` wrapper opens the finished DB and offers typed lookups — by id, by category, by building block, by Folgezettel root, and the links into or out of a note — but it never mutates. To change a row, you rebuild. That asymmetry is the CQRS split made concrete: the indexer is the write side, the wrapper is the read side, and they meet only at the file on disk.
 
-**Two link types, with unique-pair dedup and broken-path repair.** `_extract_all_links` strips fenced code (`_FENCED_CODE_RE`, `build.py:352`) before matching, skips external/`mailto:`/anchor targets, and dedupes on `(source, target)` to satisfy the `UNIQUE(source_note_id, target_note_id)` constraint (`schema.sql:53`, `build.py:347`,`:380`). Resolution rules (`build.py:362-378`):
-- target file exists in-vault → `link_type='markdown'`.
-- target path is broken **but** its stem uniquely names an existing note → repaired to that note with `link_type='markdown_broken_path'` (`build.py:369-371`).
-- stem missing or ambiguous (name index returns a list) → link silently dropped (`build.py:372`); it will surface as a format-check diagnostic, not a DB row.
+## Design decisions and why
 
-WHY: broken-path repair keeps a typo'd relative path from severing a real graph edge, while the distinct `link_type` label (and index `idx_note_links_type`, `schema.sql:58`) lets consumers tell repaired edges from clean ones. The regex requires a `.md` extension (`build.py:33-35`) because links to other formats aren't note relationships.
+**Rebuild from scratch; no incremental update.** Each run drops and recreates the database rather than diffing the vault against it. The reason is the surrogate key. A note's integer id is assigned by enumeration order within a single build, and it is only stable *within* that build. An incremental path would have to keep those ids stable across runs so the vector index survived, and that stable-id bookkeeping is deliberately deferred. Rebuild-from-scratch trades a slower rebuild for a builder with no drift and no reconciliation logic.
 
-**FK cascade on `note_links`.** Both endpoints are `REFERENCES notes(note_id) ON DELETE CASCADE` (`schema.sql:51-52`). WHY parity/correctness — deleting a note row cleans up its edges — though note that cascade requires `PRAGMA foreign_keys=ON` at connection time to enforce, and in the current full-rebuild model tables are dropped-and-recreated wholesale rather than row-deleted.
+**The surrogate id is the join key for semantic search.** The natural key for a note is its vault-relative path, but the vector index requires an integer rowid to join dense hits back to note rows — a path string cannot serve. So every note carries a surrogate integer id, and the vector table is keyed on it. This is precisely why metadata collection must finish for all notes before anything else runs: the surrogate space has to be fully assigned first.
 
-**Frontmatter is the source of truth; second-category from `tags[1]`.** `note_second_category` prefers `tags[1]` per the DEVELOPING.md rule, falling back to the parent directory name only when tags are too short (`build.py:290-307`). `note_creation_date` reads the YAML `date of note`, falling back to file-mtime date (`build.py:248`); `note_update_date` is always the mtime date. `_str_or_none` coerces the literal YAML string `"null"` to `None` (`build.py:267-280`) because templates author `folgezettel: null` as a string.
+**Broken links are repaired, not dropped, when the name is unambiguous.** A typo in a relative path should not sever a link that clearly means to reach a real note. When a broken path's filename uniquely identifies a note, the builder reconnects the edge and labels it as repaired. The label matters. A consumer that cares about link hygiene can still tell repaired edges from clean ones, so repair improves graph connectivity without hiding the underlying defect. Truly ambiguous or unresolvable links are left for the format checker to report.
 
-**Unparseable notes are skipped, not fatal.** `_extract_note_metadata` returns `None` on `FrontmatterParseError` (`build.py:224-227`); the file is counted in `skipped_files` and excluded from every table. WHY: one malformed note shouldn't fail the whole index; `tessellum format check` is the place that surfaces the defect.
+**One malformed note never fails the whole index.** A note with unparseable frontmatter is skipped and counted, not fatal. A single bad note should not cost the entire build. The index stays useful over the healthy notes, and the defective one is caught by `tessellum format check`, which exists precisely to surface such problems.
 
-**Non-note files are filtered.** `_NON_NOTE_NAMES` (README, CHANGELOG, CONTRIBUTING, DEVELOPING, LICENSE, MEMORY) and the `Rank_` prefix are excluded (`build.py:42-52`), deliberately mirroring the `format check` skip list so both commands see the same "real" notes.
+**Fenced code is stripped before links are mined.** A link inside a code example documents syntax; it does not assert that two notes relate. Stripping fenced code before the link scan runs keeps illustrative links out of the real graph.
 
-**Dense embedding contract.** `sentence-transformers/all-MiniLM-L6-v2`, 384-dim, L2-normalized, cosine (`build.py:56-57`, `:511`; `schema.sql:63,76`). The embedding text concatenates name + keywords + topics + tags + body (`_build_embedding_text`, `build.py:480`) so both short metadata queries and long prose queries match. The encoder is a lazily-loaded module singleton (`_get_encoder`, `build.py:62`) — ~1.5s on first call, cached thereafter. Vectors are stored as packed little-endian float32 blobs (`_vec_blob`, `build.py:74`). `dense_search` returns `score = 1 - distance` so users see higher-is-better (`schema.sql:73`).
+**The non-note skip list mirrors the format checker's.** The indexer and the format checker exclude the same files, so both commands operate over an identical set of real notes. Keeping the two lists in sync means the thing you index is exactly the thing you validate.
 
-**`--no-dense` / `with_dense=False` fast build.** Skips `_write_embeddings` entirely (`build.py:167-169`); `embeddings_generated` stays 0. WHY: a BM25-only build needs no ML dependency and no model load — for CI or environments without the `sentence-transformers` stack cached (`build.py:117-119`). The `notes_vec` table still exists (schema always applied) but is empty, so `search --dense` returns nothing.
+**Frontmatter is the source of truth.** Derived columns prefer explicit frontmatter over filesystem guesses. The second category comes from the note's tags before it falls back to the directory name, and the creation date comes from the YAML date before it falls back to file mtime. The one place the filesystem wins outright is the update date, which is always the file's modification time. A literal string `"null"` in YAML is also coerced to a real null, because templates author unset trail fields that way.
 
-**FTS5 tokenizer.** `notes_fts` uses `porter unicode61` (`schema.sql:98`) — porter stemming + full Unicode normalization — with `note_id UNINDEXED` (join-only, not token-matched). It reuses the body already in memory from metadata extraction, so no extra disk read (`_write_fts` docstring, `build.py:466`).
+**Two search substrates, one corpus, uniform conventions.** The full-text index uses porter stemming with full Unicode normalization, so English queries match across word forms, and it reuses the note body already in memory rather than re-reading from disk. The dense index stores L2-normalized vectors and reports similarity as one-minus-distance, so that — like every other Tessellum search surface — higher means more similar. Both indexes are built from the same in-memory note data in the same transaction, so they can never disagree about what the corpus contains.
 
-Retrieval detail worth stating plainly: there is **no PageRank / link-authority scoring** in the index. `schema.sql:8-10` notes `static_ppr_score` and `in_degree` are among the parent-project columns Tessellum has **not** shipped; the graph is stored as raw edges only.
+**No link-authority scoring in the index.** The graph is stored as raw edges only. There is deliberately no PageRank or in-degree authority column baked into the database. Link authority is a retrieval-time concern, not something the projection should precompute.
 
-## 5. Public API / CLI
-
-**Python API** (`from tessellum.indexer import ...`):
-
-```python
-build(vault_path, db_path, *, force=False, with_dense=True) -> BuildResult
-```
-- Raises `FileNotFoundError` if the vault doesn't exist; `FileExistsError` if the DB exists and `force=False`.
-- `BuildResult` (frozen dataclass, `build.py:88`): `db_path`, `notes_indexed`, `links_indexed`, `skipped_files`, `duration_seconds`, `embeddings_generated`.
-
-```python
-Database(db_path)   # read-oriented wrapper; context manager or explicit close()
-```
-Raises `FileNotFoundError` if the DB is absent, pointing the user at `tessellum index build` (`db.py:71`). Query helpers (`db.py`):
-- Notes: `all_notes()`, `note_by_id(id)`, `notes_by_building_block(bb)`, `notes_by_category(cat)`, `notes_by_second_category(cat)`, `notes_by_folgezettel_root(root)` (string-prefix trail match).
-- Links: `all_links()`, `links_from(id)`, `links_to(id)`.
-- Aggregates: `note_count()`, `link_count()`.
-- Results are `NoteRow` / `LinkRow` frozen dataclasses; JSON columns (`tags`/`keywords`/`topics`) are parsed to tuples (`_parse_json_list`, `db.py:179`).
-
-**CLI** (`cli/index.py`):
-
-```
-tessellum index build [--vault PATH] [--db PATH] [--force/-f] [--no-dense]
-```
-- `--vault` default `./vault`, `--db` default `./data/tessellum.db` (`index.py:33-44`).
-- `--no-dense` maps to `with_dense=False` (`index.py:66`).
-- Exit codes (`index.py:7-11`): `0` success, `1` DB exists without `--force`, `2` invocation error (e.g. missing vault).
-- On success prints db path, notes/links counts, embeddings (if any), skipped count, and duration (`index.py:74-82`).
-
-## 6. Extension points
-
-- **Incremental indexing.** The stated deferral (`build.py:9`, `:153`). Adding it requires stable `note_int_id` management across builds so `notes_vec` rows survive — the current enumeration-order assignment is the blocker to design around.
-- **New note metadata columns.** Add a column to `schema.sql`, populate it in `_extract_note_metadata`, list it in `_NOTES_INSERT_COLUMNS` (`build.py:427`), and add the field to `NoteRow` + `_row_to_note` (`db.py:191`). The parent-schema-parity comment (`schema.sql:7-10`) is the guide for column naming.
-- **New link types.** `_extract_all_links` returns a `link_type` string written straight into `note_links.link_type`; a new resolver branch can emit a new label without a schema change (the column is untyped TEXT, indexed by `idx_note_links_type`).
-- **Alternative embedding model.** Change `EMBEDDING_MODEL_NAME` / `EMBEDDING_DIM` (`build.py:56-57`) and the `FLOAT[384]` width in `schema.sql:76` in lockstep. `_build_embedding_text` is the single place to change what gets embedded.
-- **New read queries.** Add methods to `Database`; keep it a thin SQL adapter — the module docstring (`db.py:1-8`) directs specialized traversals (FZ trails, orphan detection) to dedicated modules rather than accreting here.
-- **Non-note filtering.** Extend `_NON_NOTE_NAMES` / `_NON_NOTE_PREFIXES` (`build.py:42-52`) — but keep it in sync with the `format check` skip list, which is the stated reason the two lists mirror each other.
+**Reference:** [reference/indexer.md](reference/indexer.md) — API, symbols, and signatures.

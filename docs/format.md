@@ -1,129 +1,66 @@
 # `tessellum.format` — Note Format & Validation
 
-## 1. Purpose
+## The Mental Model
 
-`tessellum.format` defines what a Tessellum atomic note *is* — the YAML frontmatter spec, the typed body-link contract, and the rule engine that decides pass/fail — operating purely over a single note's text on disk with no database dependency. It is the static, per-note validator for **System P** (the markdown vault substrate), distinct from the index/retrieval side (System D); everything here is a deterministic function of `(frontmatter, body, and — for two cross-note rules — the resolved link targets on disk)`.
+A Tessellum note is a small mosaic tile — a *tessellum* — carrying one epistemic claim. Before that tile can be indexed, retrieved, or woven into a Folgezettel trail, something has to decide whether it is *well-formed*: whether its YAML frontmatter obeys the spec, whether its links point at real notes, and whether its typed edges are the edges the ontology allows. That is what `tessellum.format` does. It defines what a note *is*, and it judges each note on its own terms.
 
-## 2. Architecture / Data Flow
+The judgement is deliberately narrow. Every rule here is a pure function of a single note's text on disk — its frontmatter, its body, and (for two rules) the notes its links happen to point at. There is no database, no index, no query. This is the write-side of the CQRS split: it validates the prescriptive substrate (System P, what you author), never the descriptive retrieval layer (System D, what queries return). A note is well-formed or not for reasons entirely local to itself, which is what makes the validator fast, cacheable, and safe to run on a single file in an editor save-hook.
 
-The layer is a pipeline of pure functions:
+## The Model
+
+The layer is a short pipeline of pure functions. Text on disk becomes a frozen `Note`; the `Note` becomes a flat list of `Issue`s; the list collapses to a single pass/fail bit.
 
 ```
-path/str/Note ──parse_note/parse_text──▶ Note(frozen) ──validate──▶ list[Issue]
-                                              │                          │
-                                              ├─ raw_frontmatter ────────┤ (YAML-100/101 scan)
-                                              ├─ frontmatter (dict) ─────┤ (YAML-*, TESS-001/002/003)
-                                              └─ body ───────────────────┤ (LINK-* via link_checker;
-                                                                          │  TESS-004/005 resolve
-                                                                          │  target notes from disk)
-                                                                          ▼
+path/str/Note ──parse──▶ Note (frozen) ──validate──▶ list[Issue] ──▶ is_valid()
+                              │                          │
+                              ├─ raw_frontmatter ────────┤  scan YAML text for links
+                              ├─ frontmatter (dict) ─────┤  required / type / enum / format
+                              └─ body ───────────────────┤  body-link lint
+                                                          │  + 2 rules that read link targets
+                                                          ▼
                                         is_valid() = no ERROR-severity Issue
 ```
 
-`validate(target)` (`validator.py:validate`) accepts a `Path`, `str`, or an already-parsed `Note`; if not already a `Note` it calls `parse_note` (`parser.py:parse_note`). It then appends `Issue`s from each rule group in a fixed field order and returns the flat list. `is_valid(target)` (`validator.py:is_valid`) is the boolean shortcut: `True` iff no `Issue` has `Severity.ERROR` — warnings and infos never fail a note.
+The parser is the gateway. It splits the `---` fences, loads the YAML into a dict, and — this is the load-bearing choice — *keeps the original frontmatter text alongside the parsed dict*. Parsing is lossy: once YAML is a Python object, the `[[wiki]]` and `[](markdown)` link syntax is gone. A rule that must forbid links *inside* YAML has to read the source text, not the dict. So the `Note` carries both.
 
-Two rules (**TESS-004**, **TESS-005**) are *BB-graph-aware*: they re-`parse_note` the link targets referenced in the body to read the target's `building_block`, and consult the BB schema in `tessellum.bb.types`. They still take no database — resolution is `note.path.parent / link` on the filesystem. Every other rule is intra-note.
+Everything downstream is a rule group appended, in a fixed order, to one growing list of `Issue`s. Most rules never leave the note: they read a frontmatter field and check its presence, type, value, or format. Two rules reach one hop further — they resolve a body link on the filesystem and read the *target* note's building-block type — but even these take no database. Resolution is nothing more than `note.path.parent / link`. The reach is one directory hop, not a graph traversal.
 
-## 3. Key Modules + Abstractions
+An `Issue` carries a severity, a stable rule ID, an optional field locator, and a message. Severity is the whole story of pass versus fail. `is_valid()` is `True` exactly when no issue is an ERROR; warnings and infos are lint signals that never fail a note. This single distinction — ERROR gates, everything else advises — is the spine of the design.
 
-| File | Role |
-|------|------|
-| `parser.py` | Frozen `Note` dataclass + `parse_note`/`parse_text`. Regex-splits `---` frontmatter, `yaml.safe_load`s it, and **keeps `raw_frontmatter`** (the original YAML text) so downstream checks can scan the source. Raises `FrontmatterParseError` if frontmatter isn't a YAML mapping. |
-| `frontmatter_spec.py` | Closed enums + soft minima + regexes: `VALID_PARA_BUCKETS` (5), `VALID_STATUSES` (21), `REQUIRED_FIELDS` (7), `FORBIDDEN_FIELDS`, `MIN_*`, `DATE_FORMAT_REGEX`, `TAG_FORMAT_REGEX`. `VALID_BUILDING_BLOCKS` is **re-exported from `bb.types.VALID_BB_TYPE_VALUES`**, not defined locally. |
-| `validator.py` | The rule engine: `validate` / `is_valid` plus per-rule helpers. Owns YAML-\* frontmatter rules, TESS-001/002 (folgezettel pair), TESS-003 (forbidden), YAML-100/101 (links-in-YAML), and the two BB-graph-aware rules TESS-004/005. Delegates LINK-\* to `link_checker`. |
-| `link_checker.py` | `check_links(note)` → LINK-001/002/003/006, all `WARNING`. Owns the skip lists (external / anchor / non-md / placeholder / directory / code-fence). |
-| `issue.py` | `Severity` (str-Enum: error/warning/info) + frozen `Issue(severity, rule_id, field, message)`. `__str__` renders `ERROR[field] YAML-014: …`. Its own module to avoid a validator↔link_checker cycle. |
-| `__init__.py` | Public surface: re-exports the parser, spec constants, `Issue`/`Severity`, `validate`/`is_valid`/`check_links`, and the building-block taxonomy. |
-| `cli/format_check.py` | `tessellum format check <path>` — wires `validate` into the CLI, recurses directories over `*.md`, filters non-note files, emits human/JSON, computes exit code. |
+## How Validation Flows
 
-### The `Note` dataclass (`parser.py:Note`)
+The entry point, `validate`, accepts a path, a raw string, or an already-parsed `Note`. If it is not already a `Note`, it parses one. Then it walks its rule groups in a fixed sequence and returns the concatenated issues. The order is stable so that output is diffable and reproducible; nothing about correctness depends on it, but everything about readable reports does.
 
-`@dataclass(frozen=True)` with `path`, `frontmatter: dict`, `body: str`, and `raw_frontmatter: str`. Frozen = immutable/hashable; validation never mutates it. Convenience properties (`tags`, `para_bucket`, `second_category`, `building_block`, `status`, `folgezettel`, `folgezettel_parent`) coerce to `str`/`list[str]` and tolerate missing/mistyped fields (return `None`/`[]`). `folgezettel_parent` reads `folgezettel_parent` then falls back to `fz_parent`. Keeping `raw_frontmatter` is load-bearing: YAML-100/101 scan the *text* (line-numbered) because a parsed dict has already lost the `[[...]]`/`[](...)` syntax.
+The frontmatter rules come first and form the bulk of the gate. Seven fields are *required* — `tags`, `keywords`, `topics`, `language`, `date of note`, `status`, `building_block` — and a missing one is always an ERROR. On top of presence, each field that is present is checked for type, and closed-enum fields are checked for membership. The `tags` field carries the most contract: its first element must be a PARA bucket, its second is the note's canonical *second category*, and every element must be lowercase-slug-shaped. The two-tag minimum is not arbitrary. `tags[1]` is the single source of truth for second category — which is precisely why a separate `note_second_category` field is *forbidden*: a duplicated field could disagree with `tags[1]`, and the indexer already reads the second category from `tags[1]` automatically.
 
-## 4. Rules, Invariants & Design Decisions (with WHY)
+Not every frontmatter shortfall is fatal. Missing a required field is an ERROR, but merely having *too few* keywords or topics is a WARNING — the spec recommends three keywords and two topics, but a thin note is a lint target, not a broken one. This is the severity model doing its work: the gate enforces structure, the warnings nudge quality.
 
-### 4.1 Required fields — 7, all ERROR
+The building-block enum is special in one respect that matters more than it looks. Its valid values are not defined in the format spec at all — they are re-exported from the BB ontology (`tessellum.bb`). The validator imports the value set rather than restating it, so the format layer can never drift out of sync with the ontology it is meant to enforce. When someone adds a ninth building-block type, the validator accepts it the moment the ontology does, with no edit here.
 
-`_REQUIRED_FIELD_RULE_IDS` maps the 7 `REQUIRED_FIELDS` to rule IDs: `tags`→YAML-010, `keywords`→YAML-020, `topics`→YAML-030, `language`→YAML-040, `date of note`→YAML-050, `status`→YAML-060, `building_block`→YAML-062. Missing ⇒ ERROR. **Note `date of note` and `building_block` are the literal YAML keys** (space in the former).
+After the frontmatter, two Tessellum-specific structural rules run. The **folgezettel pair** rule enforces both-or-neither: a note may declare its trail position and its parent, or neither, but not one alone — a positioned note with no parent (or a parent with no position) can't be placed in a trail. The **forbidden-field** rule rejects the redundant second-category field described above. Then a rule scans the *raw* frontmatter text, line by line, for link syntax and forbids it: links belong in the body, where they can be resolved and typed, not buried in YAML values where they are invisible to the graph.
 
-### 4.2 `tags` — the PARA + second-category contract
+The body rules come last, and here severity flips almost entirely to advisory. The **link checker** walks every markdown link in the body — after stripping fenced code so examples don't get flagged — and emits warnings for links that miss a `.md` extension, use an absolute path, point at a file that doesn't exist on disk, or, at the note level, for a note with no internal links at all (an orphan). Every one of these is a WARNING. A note with broken links or no links still validates. The checker also carries a substantial skip list — external URLs, anchors, images and other non-markdown files, placeholder targets, directory links, template-ish prefixes — so that only genuine internal-note links are ever judged. Templates, which are scaffolds meant to be orphans until copied, are exempt from the orphan check entirely.
 
-`_check_tags`: must be a list (else YAML-011 ERROR); `len < MIN_TAGS_REQUIRED` (2) ⇒ YAML-012 ERROR ("PARA bucket + second category"); `tags[0] ∉ VALID_PARA_BUCKETS` ⇒ YAML-014 ERROR; each element non-string ⇒ YAML-013 ERROR; each element failing `TAG_FORMAT_REGEX` (`^[a-z0-9_]+$`) ⇒ YAML-015 ERROR. **Closed enum, 5 buckets:** `resource`, `area`, `project`, `archive`, `entry_point`. WHY the 2-tag minimum: `tags[1]` is the canonical *second category* — which is why `note_second_category` is forbidden (§4.6).
+## The Two Graph-Aware Rules
 
-### 4.3 Soft minima — the only *frontmatter* warnings
+Two rules are different in kind. They are the only rules that look beyond the single note, and they exist to make the *typed graph* observable in the corpus rather than merely implied.
 
-`_check_list_min` for `keywords` (≥`MIN_KEYWORDS_RECOMMENDED`=3, YAML-021 type / YAML-022 count) and `topics` (≥`MIN_TOPICS_RECOMMENDED`=2, YAML-031 / YAML-032). Wrong type ⇒ ERROR; too-few ⇒ **WARNING** (recommended, not required). Both are itemized-list fields.
+**TESS-004** is the one body rule that can fail a note. When a note is an *active* counter-argument, it must link, in its body, to at least one note whose type is `argument`. The rule resolves each internal link on disk, parses the target, and reads its building-block type; if none is an argument, it errors. The insight is structural: a counter-argument that doesn't name the argument it attacks is a claim floating free of its target. The typed dialectical edge should be *readable in the text*, not inferred by a downstream tool. The rule deliberately stops short of the stronger invariant — that the linked argument is the *specific* one the counter's folgezettel-parent points to — because the validator has no index to check that against. The stronger check lives in the indexer and the DKS runtime at write time; TESS-004 is the static, single-note backstop.
 
-### 4.4 Closed-enum fields
+**TESS-005** is the softer companion. For an active BB-typed note, it inspects each link to a *differently*-typed note and asks whether that source-to-target type pair appears anywhere in the BB schema, in either direction. If the pair has no declared epistemic relationship at all, it emits a WARNING. It is a warning, never an error, for a deep reason: the schema describes *epistemic transitions*, but a real corpus is full of legitimate links that aren't transitions — term lookups, skill pointers, sibling cross-references. Those are documentation, not bugs. TESS-005 doesn't presume to know which is which; it surfaces the undeclared pair and leaves three doors open — retarget the link, accept it as documentation, or propose a new edge in the schema. The link may be evidence that the *schema* is missing an edge, not that the note is wrong.
 
-`_check_enum` for `building_block` (YAML-063) and `status` (YAML-061): non-string ⇒ ERROR, value ∉ enum ⇒ ERROR. `VALID_STATUSES` has **21** values (`active`, `draft`, `archived`, `deprecated`, `superseded`, `stub`, `placeholder`, `template`, `wip`, `in_progress`, `production`, `proposal`, `development`, `planning`, `legacy`, `disabled`, `research`, `review`, `pending`, `completed`, `cancelled`). `VALID_BUILDING_BLOCKS` is **derived from `bb.BBType`** (8 types) — `frontmatter_spec.py` imports `VALID_BB_TYPE_VALUES` and aliases it, so BB enum drift can't desync the validator from the ontology. All enum checks **skip when the value is absent** (that's already covered by the required-field check — no double-report).
+One subtlety keeps TESS-005 honest as the ontology evolves. A note may record the schema version it was authored against, and when it does, TESS-005 validates against the schema *as of that version*, frozen at creation, tagging its message accordingly. A note written under an older ontology is judged by the ontology it knew, not by a schema that has since grown new edges. Only notes that record no version fall back to the live schema.
 
-### 4.5 Date format
+Both rules share the authoring-state exemption that runs through the whole layer: they fire only for `status: active` notes. Templates, drafts, and stubs are works in progress; the gate waits until a note is promoted before it demands the note honor its typed contract.
 
-`_check_date`: value stringified, must match `DATE_FORMAT_REGEX` (`^\d{4}-\d{2}-\d{2}$`) ⇒ else YAML-051 ERROR. Absent ⇒ skipped (required-field check owns it).
+## Design Decisions & Why
 
-### 4.6 TESS-001/002/003 — Tessellum-specific frontmatter rules
+The severity model is the design's center of gravity. Exactly one body rule — TESS-004 — can turn a note red; every other body signal is a warning. So a note fails validation only for a *structural* reason: a missing or malformed frontmatter field, a broken folgezettel pair, a forbidden field, a link smuggled into YAML, or an active counter-argument that doesn't name its argument. Broken links, orphans, and undeclared typed edges advise but never block. This is what lets the validator run everywhere without being tyrannical — the gate protects the substrate's structure, the warnings improve its quality, and the two roles never blur.
 
-- **TESS-001 / TESS-002** (`_check_folgezettel_pair`): folgezettel is a *both-or-neither* pair. `folgezettel` set without a parent (`folgezettel_parent` or `fz_parent`) ⇒ TESS-001 ERROR; parent without `folgezettel` ⇒ TESS-002 ERROR. WHY: a positioned note with no parent (or vice-versa) can't be placed in a trail.
-- **TESS-003** (`_check_forbidden`): any `FORBIDDEN_FIELDS` member present ⇒ ERROR. Currently only `note_second_category`, with a bespoke message: `tags[1]` is the single source of truth and the indexer reads the second category from it automatically — a duplicated field could disagree.
+No rule calls a database, and no rule calls an LLM. Every judgement is a deterministic function of text on disk. That determinism is what makes the layer cheap enough to run on every save, safe to cache, and trivially reproducible in CI — the same note always yields the same issues. The two graph-aware rules stretch this to exactly one filesystem hop, and no further, precisely to preserve it.
 
-### 4.7 YAML-100/101 — no links inside YAML
+Keeping the ontology as the single source of truth is a drift-prevention decision. Building-block values, and the schema TESS-004/005 consult, both come from `tessellum.bb`. The format layer restates neither. An ontology change propagates to the validator for free, and the validator can never enforce a taxonomy the ontology has abandoned.
 
-`_check_yaml_links` scans `raw_frontmatter` **line by line** (offset starts at 2 to approximate real line numbers under the opening `---`). A `[[...]]` match ⇒ YAML-100 ERROR; a `[..](..)` match ⇒ YAML-101 ERROR. WHY it uses `raw_frontmatter` and not the parsed dict: link syntax must be caught as *text*; the parse discards it.
+Finally, the layer draws a firm line between *what it can know* and *what it should enforce*. A single-note validator with no index cannot verify that a counter attacks the *right* argument, only that it attacks *an* argument; it cannot know whether an undeclared typed edge is a mistake or a missing schema rule. So it enforces the local, checkable half and defers the global half to the systems that hold the index. Every rule respects that boundary — which is why the whole layer stays pure.
 
-### 4.8 LINK-001/002/003/006 — body links, all WARNING
-
-`link_checker.check_links` strips fenced code (`_FENCED_CODE_RE`), then per `[text](target)`:
-
-| Rule | Condition | Severity |
-|------|-----------|----------|
-| LINK-001 | internal link missing `.md` extension | WARNING |
-| LINK-002 | internal link uses an absolute path (`/…`) | WARNING |
-| LINK-003 | internal `.md` target does not exist on disk (relative to `note.path.parent`) | WARNING |
-| LINK-006 | note has **no** internal `.md` links (orphan) | WARNING |
-
-**Every LINK-\* is WARNING, never ERROR** — a lint signal, not a gate; broken/orphan notes don't fail validation. **Skip lists** (never flagged): external (`^https?://`), `mailto:`/anchor (`#…`); non-md extensions (`_NON_MD_EXTS` — images, docs, code/data, config, LaTeX); directory links (trailing `/`); placeholder targets (`_PLACEHOLDER_TARGETS`: `-`, `link`, `path`, `url`, `ticket_link`, `source`, `target`, `...`, …); template-ish prefixes (`<`, `{`, `_no_`); and anything inside a code fence. LINK-003 only runs when `note.path` is set (string-parsed notes can't resolve on disk). **LINK-006 is exempted for `status: template`** — templates are scaffolds meant to be orphans until copied.
-
-### 4.9 TESS-004 — counter_argument → argument (ERROR, BB-graph-aware)
-
-`_check_counter_argument_link`. Fires only when `building_block == "counter_argument"` **and** `status == "active"` **and** `note.path` is set. It strips code fences, walks each body markdown link, resolves internal `.md` targets on disk, `parse_note`s them, and passes iff at least one target has `building_block: argument`. Otherwise ⇒ **TESS-004 ERROR**. WHY: a counter-argument must structurally name the argument it attacks so the typed dialectical edge is observable in the corpus, not just implied. Deliberate scope limits stated in code: it does **not** check that the target's FZ equals the counter's `folgezettel_parent` (the validator has no index; the stronger invariant is enforced by the indexer/DKS at write time — this is the static single-note backstop), and a malformed target is silently skipped (surfaced by LINK-003, not double-reported). **Authoring-state exemption:** any status other than `active` (`template`/`draft`/`stub`/`archived`) skips the rule.
-
-### 4.10 TESS-005 — undeclared BB-pair body links (WARNING, version-aware)
-
-`_check_bb_typed_edges`. Fires when the note's `building_block` is BB-typed **and** `status == "active"` **and** `note.path` is set. For each distinct internal `.md` target that is itself BB-typed, if the (source_bb → target_bb) pair is in **neither direction** of the BB schema, emit **TESS-005 WARNING**. Skips: same-BB links (sibling cross-references are silent-by-design in the schema), un-typed endpoints, unresolvable/unparseable targets, and dedups repeat targets. **Version-aware:** if the note records an integer `bb_schema_version ≥ 1`, it validates against `bb.types.BB_SCHEMA_AT_VERSION(n)` (frozen-at-creation) and tags the message `@v{n}`; otherwise it falls back to the live `BB_SCHEMA` (tagged `@live`). WHY WARNING not ERROR: the schema describes *epistemic transitions*, but legitimate documentation links (term lookups, skill pointers) exist beyond them — so TESS-005 surfaces candidates for retarget / accept / schema-extension rather than failing the note. The richer corpus-graph view is `tessellum bb audit`; TESS-005 is its single-note companion.
-
-### 4.11 Severity model
-
-`is_valid` gates on ERROR only. In practice the **only ERROR-producing body rule is TESS-004**; all LINK-\* and TESS-005 are WARNING. So a note with broken links or orphan status still `is_valid()`; a required-field/enum/format/forbidden/folgezettel violation, a link-in-YAML, or an active counter-argument with no argument link does not.
-
-## 5. Public API / CLI
-
-### Python API (`tessellum.format`)
-
-- `validate(target: Path | str | Note) -> list[Issue]` — full report, fixed field order, empty = clean.
-- `is_valid(target: Path | str | Note) -> bool` — no ERROR ⇒ True.
-- `parse_note(path) -> Note`, `parse_text(text) -> Note`, `Note`, `FrontmatterParseError`.
-- `check_links(note: Note) -> list[Issue]`.
-- `Issue`, `Severity`.
-- Spec constants: `VALID_PARA_BUCKETS`, `VALID_BUILDING_BLOCKS`, `VALID_STATUSES`, `REQUIRED_FIELDS`, `FORBIDDEN_FIELDS`, `MIN_TAGS_REQUIRED`, `MIN_KEYWORDS_RECOMMENDED`, `MIN_TOPICS_RECOMMENDED`, `DATE_FORMAT_REGEX`, `TAG_FORMAT_REGEX`.
-
-### CLI (`cli/format_check.py`, registered in `cli/main.py`)
-
-```
-tessellum format check <path> [--strict] [--quiet|-q] [--format human|json]
-```
-
-`<path>` is a `.md` file or a directory. Directories `rglob("*.md")` and skip non-note files via `_is_note_file`: excludes `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `DEVELOPING.md`, `LICENSE.md`, `MEMORY.md`, and any `Rank_*` prefix. Human output lists per-file issues + a summary line (`validated N file(s); … errors, … warnings, … infos`); `--quiet` suppresses the summary when clean. JSON emits `{files: [{path, issues:[{rule_id, severity, field, message}]}], summary:{…}}`.
-
-**Exit codes** (`_exit_code`): `0` = no errors (warnings/infos OK); `1` = ≥1 ERROR, **or** any WARNING under `--strict`; `2` = invocation error (path missing / not a `.md` file or dir). `--strict` promotes warnings to CI-failing without changing the `Issue` severities themselves.
-
-`format check` is one of the shipped CLI commands; the subparser is added in `main.py` alongside `bb`, `capture`, `composer`, `dks`, `mcp`, `filter`, `fz`, `index`, `init`, `search`.
-
-## 6. Extension Points
-
-- **New frontmatter rule:** add a `_check_*` helper in `validator.py` and one `issues.extend(...)` line in `validate`. Keep the fixed field order (issues are reported in append order). Pick an ID in the documented range (`YAML-0xx` presence/type/value, `YAML-1xx` linkage, `TESS-0xx` Tessellum-specific).
-- **New enum value / required field:** edit `frontmatter_spec.py` only (validator imports the constants). BB types are the exception — edit `bb.types.BBType`, and `VALID_BUILDING_BLOCKS` follows automatically.
-- **New body-link rule:** extend `link_checker.py` (LINK-\*) or add a BB-graph-aware rule in `validator.py`. Reuse the skip-list / code-fence-strip / on-disk-resolve pattern from `check_links` and `_check_bb_typed_edges`.
-- **New BB edge for TESS-004/005:** amend the schema in `bb.types` (`BB_SCHEMA_*` / `BB_SCHEMA_DKS_EXTENSIONS`, or land a `SchemaEditEvent`); TESS-005's version-aware path picks it up via `BB_SCHEMA_AT_VERSION`. No change to `validator.py` needed.
-- **New output format:** add an `_emit_*` in `format_check.py` and branch in `run_format_check`; keep `_exit_code` as the single exit-code authority.
-- **Non-note filename filters:** extend `_NON_NOTE_NAMES` / `_NON_NOTE_PREFIXES`.
+**Reference:** [reference/format.md](reference/format.md) — API, symbols, and signatures.

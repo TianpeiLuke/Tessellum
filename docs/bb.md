@@ -1,124 +1,66 @@
-# Building Block (BB) Ontology — `tessellum.bb`
+# Building Block Ontology — `tessellum.bb`
 
-## Purpose
+## The mental model
 
-`tessellum.bb` is the source-of-truth for Tessellum's typed substrate: the 8 Building Block types and the ~16-edge schema graph of epistemic transitions between them. It splits a **schema view** (finite, closed, type-level — what transitions are *allowed*) from a **corpus view** (open, growing, instance-level — what edges the vault *actually realises*), so the DKS runtime can type-check its FSM walk and `tessellum bb audit` can measure structural balance across the real corpus.
+Every note in Tessellum carries a type — one of eight Building Blocks. This module answers a single question about those types: given a note of type A that links to a note of type B, is that a *legal* move in Tessellum's grammar of thought? A concept can be structured into a model; a hypothesis can be tested into an argument; an argument can be challenged by a counter-argument. Those transitions are not decoration. They are the finite alphabet of epistemic moves the system knows how to make, and `tessellum.bb` is where that alphabet is written down.
 
-## Architecture / Data Flow
+The deep idea is a split between two very different kinds of graph. One is the **schema**: closed, finite, type-level — the roughly sixteen transitions the ontology *permits*. The other is the **corpus**: open, growing, instance-level — the thousands of links the vault *actually contains*. Keeping these apart is what lets the schema act as a type-checker for the corpus. A real link between two typed notes either instantiates one of the permitted transitions, or it does not — and the ones that do not are exactly the signals worth looking at.
 
-Two layers, mirroring the schema-vs-corpus split (`bb/__init__.py:15-21`):
+## The model
+
+The module is two layers, one per side of that split. `types.py` holds the schema; `graph.py` holds the corpus view. The schema is the source of truth, and the corpus view depends on it — never the reverse.
 
 ```
-  bb/types.py  (schema — closed, type-level)
-    BBType (8 enum members)  ── the FSM states
-    EpistemicEdgeType        ── one typed transition (source, target, label)
-    BB_SCHEMA = EPISTEMIC(8) + NAVIGATION(7) + DKS_EXTENSIONS(1) + USER_EXTENSIONS(0+)
-    fold_schema_events / BB_SCHEMA_AT_VERSION / BB_SCHEMA_VERSION  ── event-sourced growth
-          │
-          │  find_edge_type(src.bb_type, tgt.bb_type)  (the type-check)
-          ▼
-  bb/graph.py  (corpus — open, instance-level, read-only)
-    BBNode (+ 8 per-type subclasses), BBEdge (with provenance)
-    BBGraph.schema()   ── synthetic 8-node graph over BB_SCHEMA
-    BBGraph.from_db()  ── loads corpus from the index DB
-          │
-          ▼
-  cli/bb.py  (tessellum bb audit / migrate)
+  types.py  (schema — closed, type-level)
+    BBType (8 members)  ── the FSM's states
+    EpistemicEdgeType   ── one typed transition (source, target, label)
+    BB_SCHEMA = epistemic + navigation + DKS-extension + user-extension edges
+        │
+        │  find_edge_type(source_bb, target_bb)  ── the type-check
+        ▼
+  graph.py  (corpus — open, instance-level, read-only)
+    BBNode, BBEdge (with provenance)
+    BBGraph.schema()   ── synthetic graph over the schema
+    BBGraph.from_db()  ── loads the real corpus from the index
+        │
+        ▼
+  tessellum bb audit / migrate  ── corpus telemetry + version reconciliation
 ```
 
-Flow: `frontmatter_spec.VALID_BUILDING_BLOCKS` is derived from `BBType` (`format/frontmatter_spec.py:30`), so every captured note's `building_block:` YAML field must be one of the 8. `BBGraph.from_db` reads the built index DB (`indexer.db.Database`), keeps only notes whose `building_block` parses as a `BBType`, and materialises two edge families — body-links and folgezettel-parent links — stamping each with the schema edge it instantiates (or `None` if untyped). `tessellum bb audit` walks that corpus graph for telemetry; `tessellum bb migrate` reconciles each note's frozen `bb_schema_version` against the current schema version.
+The eight types are the states. Seven of them form a dialectic cycle — observation names a concept, the concept is structured into a model, the model predicts a hypothesis and codifies a procedure, the hypothesis is tested into an argument, the argument is challenged by a counter-argument, and the counter motivates a fresh observation that restarts the loop. The eighth type, Navigation, sits outside the cycle: it is the index node, pointing at each of the other seven without ever being part of the argument.
 
-## Key Modules + Abstractions
+A **transition** in the schema is a typed edge: a source type, a target type, and a label naming the operation ("naming", "structuring", "testing", and so on). This is a *type*, not an instance. The schema declares each transition once; the corpus can realise it many times. That one-to-many relationship is the whole reason the two layers exist separately.
 
-| File | Role |
-|------|------|
-| `bb/types.py` | Schema source-of-truth: `BBType` (8), `EpistemicEdgeType`, the four schema tuples composing `BB_SCHEMA`, the event-sourcing machinery (`SchemaEditEvent`, `fold_schema_events`, `set_user_extensions_from_events`), versioning (`BB_SCHEMA_VERSION`, `BB_SCHEMA_AT_VERSION`), and lookups (`find_edge_type`, `edges_from`, `edges_to`, `is_valid_transition`). |
-| `bb/graph.py` | Corpus (instance) view: `BBNode` + 8 per-type subclasses, `BBEdge` (with provenance), `BBGraph` with `schema()`/`from_db()` constructors, O(1) node/edge indexes, and audit helpers (`untyped_edges`, `unrealised_schema_edges`, `edges_by_type`). |
-| `bb/__init__.py` | Public façade re-exporting both layers under `tessellum.bb`. |
-| `cli/bb.py` | `tessellum bb {audit,migrate}` — corpus telemetry and retroactive `bb_schema_version` classification. |
-| `format/building_blocks.py` | **Legacy parallel implementation** (`BuildingBlock` enum, `EPISTEMIC_EDGES` = 10, `BB_SPECS`). Still exported from `tessellum` top-level; see caveat below. |
+On the corpus side, a **node** is a real BB-typed note pulled from the index, and an **edge** is a real link between two such notes, stamped with the schema transition it instantiates — or stamped as *untyped* when it matches no permitted transition. Each corpus edge also carries its **provenance**: whether it came from a markdown link in a note's body, or from a Folgezettel parent relationship. The `BBGraph` is the queryable view that holds these together, built either synthetically from the schema (to ask "what is allowed?") or from the live index (to ask "what exists?").
 
-### `BBType` — 8 types (`bb/types.py:35-57`)
+## How work flows through it
 
-A `StrEnum`: `EMPIRICAL_OBSERVATION`, `CONCEPT`, `MODEL`, `HYPOTHESIS`, `ARGUMENT`, `COUNTER_ARGUMENT`, `PROCEDURE`, `NAVIGATION`. This is the single source of truth — `frontmatter_spec.VALID_BUILDING_BLOCKS` derives from it, and DKS dataclasses carry a `bb_type` class-attribute pointing here.
+The type system starts at capture time, upstream of this module. The set of legal `building_block:` values in a note's YAML is derived directly from the eight-member enum here, so there is exactly one place where the vocabulary of types is defined. Everything downstream inherits it.
 
-### `EpistemicEdgeType` — one typed transition (`bb/types.py:68-86`)
+The corpus view is assembled on demand by `BBGraph.from_db`. It opens the built index, streams every note whose declared building block parses as a known type, and drops the rest. Then it walks the links twice. First it takes every body link whose two endpoints are both typed notes and turns it into an edge. Then it derives a second family of edges from Folgezettel parentage — where a note names another as its trail parent, that becomes an edge too. Each edge, from either family, is run through the schema's lookup to find the transition it instantiates. Matches get typed; the rest are kept as untyped, deliberately, because the untyped ones are the interesting ones. The graph builds its lookup indexes in memory and closes the database rather than holding the connection open.
 
-Frozen dataclass `(source: BBType, target: BBType, label: str)`. It is a *type*, not an *instance*: a corpus `BBEdge` is one realisation of one `EpistemicEdgeType`. The schema graph holds ~16 such types; the corpus can hold many edges per type.
+From that graph, `tessellum bb audit` produces the vault's structural telemetry. It counts nodes by type and edges by transition label, surfaces the untyped edges (the ones a validator or a schema author should examine), flags orphan nodes with no connections at all, and lists the schema transitions the corpus has never once realised. The last of these matters more than it looks: a schema with a "challenging" edge and zero challenges in the corpus is telling you something about the health of the thinking, not just the data.
 
-### `BB_SCHEMA` — four composed tuples, ~16 edges (`bb/types.py:377-382`)
+The second command, `tessellum bb migrate`, exists because the schema is allowed to grow, and a growing schema would otherwise silently invalidate old notes. Every note records the schema version it was born under. Migrate walks the vault, finds notes recorded below a target version, re-validates each to see whether it would still pass under the new schema, and — only when asked, and only for the notes that would pass — bumps the recorded version. Notes that would fail are reported for a human to look at and are never rewritten automatically.
 
-`BB_SCHEMA = BB_SCHEMA_EPISTEMIC + BB_SCHEMA_NAVIGATION + BB_SCHEMA_DKS_EXTENSIONS + BB_SCHEMA_USER_EXTENSIONS`:
+## Design decisions and why
 
-- **`BB_SCHEMA_EPISTEMIC` — 8 edges** (`bb/types.py:99-108`), the dialectic cycle: OBS→CON (naming), CON→MOD (structuring), MOD→HYP (predicting), MOD→PRO (codifying), HYP→ARG (testing), ARG→CTR (challenging), CTR→OBS (motivates_new), PRO→OBS (execution_data).
-- **`BB_SCHEMA_NAVIGATION` — 7 edges** (`bb/types.py:119-130`), generated as NAV→X (`"indexes"`) for each of the 7 non-navigation types. FZ 1's narrative collapses these into one "Navigation → all" family; the implementation expands them so the FSM can type-check NAV-to-X transitions like any other.
-- **`BB_SCHEMA_DKS_EXTENSIONS` — 1 edge** (`bb/types.py:145-149`): `COUNTER_ARGUMENT → MODEL` (`"pattern_of_failure"`). Runtime-required by DKS step 6's pattern discovery but absent from FZ 1's 10-edge narrative; committed in package source rather than event-sourced.
-- **`BB_SCHEMA_USER_EXTENSIONS` — 0+ edges** (`bb/types.py:250`): event-sourced, ships empty by default.
+**The schema is closed; the corpus is view-only.** The schema changes only through deliberate, auditable revision. The corpus layer never writes to the substrate — it reads the index and nothing more. This is the productive discipline at the heart of the design: the runtime may exercise any transition the schema declares, but growing the schema is an act of intent, not a runtime side-effect.
 
-So the shipped default is 8 + 7 + 1 + 0 = **16 edges**.
+**A corpus edge instantiates exactly one transition, or none.** The lookup matches on the source-and-target pair, which is unique across the schema today, so "the first match" and "the only match" coincide. This is what turns the schema into a type-checker. An untyped edge is never ignored; it is a fork in the road. Either the link is wrong, or the schema is missing a transition that reality has started to demand — and the second case is precisely how the ontology learns it needs to grow.
 
-### `BBNode` + 8 subclasses (`bb/graph.py:47-132`)
+**Schema growth is event-sourced, and retraction is first-class.** New transitions are not edited into a list. They arrive as events on an append-only log, and the active schema is the *fold* over that log. Events can add, retract, or refine, and a refinement is simply a retract composed with an add. The log is never rewritten. The reason is a sharp distinction: schema *state* must be retractable, but schema *history* must be permanent. When a transition is retracted, the corpus edges that used to instantiate it become untyped — a migration signal — without any loss of the record of why the edge once existed.
 
-`BBNode` is a frozen, kw-only dataclass (`note_id`, `note_name`, `bb_type`, `folgezettel`, `folgezettel_parent`, `note_status`). Per design decision D1, there is one subclass per `BBType` (`EmpiricalObservationNode`, `ConceptNode`, …, `NavigationNode`), each fixing `bb_type` via `field(default=X, init=False)` so the discriminator stays out of every constructor call while remaining statically typed. `_NODE_CLASS_BY_BB_TYPE` / `node_class_for` map a type to its subclass; `BBGraph.from_db` uses this to instantiate the right subclass per corpus note.
+**Notes are validated against the schema they were born under.** Because the schema can change, every note freezes its schema version at creation. The module can reconstruct the schema as of any past version by folding the right prefix of the event log, and it memoises that reconstruction. The version bumps once per landed add or retract; a refine does not bump separately, since it is already an add-plus-retract. The payoff is that a later schema edit cannot retroactively invalidate notes written before it. Only the user-extension portion of the schema varies across versions — the core epistemic, navigation, and DKS-extension transitions are constant.
 
-### `BBEdge` with provenance (`bb/graph.py:135-157`)
+**Shipped code and per-deployment state are kept apart.** The package ships with an empty event log. Real events live outside both the package and the vault, written by the meta-DKS runtime that proposes schema edits. So the same installed code can carry different schemas in different deployments, and the schema a team owns is never entangled with the schema a single vault has grown.
 
-Frozen dataclass `(source_note_id, target_note_id, edge_type: EpistemicEdgeType | None, provenance: str)`. `edge_type=None` means the corpus edge instantiates no schema edge (an *untyped* edge — a validator/audit candidate). `provenance` is `"body_link"`, `"folgezettel_parent"`, `"schema"` (synthetic), or `"contradicts"` (reserved for a future DKS writer — not yet emitted by `from_db`).
+**There is one node subclass per type.** Rather than pass the type as a constructor argument on every call, each type gets its own frozen node class that fixes its own type. The discriminator stays statically checkable and stays out of the constructor. Synthetic schema nodes, which are not real corpus instances, use the bare base node with the type set explicitly.
 
-### `BBGraph` — typed corpus view (`bb/graph.py:163-401`)
+**Enforcement is deliberately narrow today.** The schema *can* type-check every realised link, and the lookup to do so exists. But the wired validators do not yet use it broadly: one rule enforces a single transition, and the version-checking rule is warning-only. This is worth stating plainly rather than implying the type system is fully enforced — the capability is present; the enforcement is not yet turned all the way up.
 
-Two constructors:
-- `BBGraph.schema()` (`bb/graph.py:192-217`) — synthetic graph: 8 `BBNode`s (one per type, `note_id = bb.value`) + one `BBEdge` per `BB_SCHEMA` entry (`provenance="schema"`). For "what transitions are allowed?" without touching the corpus.
-- `BBGraph.from_db(db_path)` (`bb/graph.py:219-304`) — loads the corpus. Lazily imports `indexer.db.Database` (so BB consumers don't pay the sqlite cost at import), walks `all_notes()` keeping BB-typed notes, then walks `all_links()` for body-link edges (both endpoints must be BB nodes) and adds a second family from `folgezettel_parent → folgezettel` resolution. Each edge's `edge_type` is set by `find_edge_type(src.bb_type, tgt.bb_type)`.
+## A caveat: two parallel implementations
 
-The constructor builds `_nodes_by_id`, `_nodes_by_type`, `_out_edges`, `_in_edges` up-front so reads are O(1) / O(|out-edges|). Read API: `node`, `nodes_of_type`, `out_edges`, `in_edges`, `edges`, `node_count`, `edge_count`, plus `__iter__/__len__/__contains__`. Audit helpers: `untyped_edges()`, `unrealised_schema_edges()` (matches by `(source, target)` BB-pair only, not label), `edges_by_type()` (label→count, untyped grouped under `"(untyped)"`).
+There are two BB ontologies in the tree, and both are exported from the top-level package. This module, `tessellum.bb`, is the canonical one — it is what validation and the `tessellum bb` CLI are wired to, and it is what the note format's legal-value set derives from. The older `tessellum.format.building_blocks` defines a separate enum with the same eight string values but a different edge count and a different data model. It survives for one reason: it carries per-type descriptive metadata — each type's guiding question, its epistemic function, its required sections — that the canonical module does not. Treat `tessellum.bb` as authoritative for types and transitions, and reach for the legacy module only when you need that descriptive per-type spec. Consolidating the two remains an open cleanup.
 
-## Invariants / Design Decisions + WHY
-
-- **Schema is closed and finite; corpus is open and view-only.** `bb/types.py` mutates only via disciplined revision; `bb/graph.py` never writes the substrate (`bb/graph.py:26-27`). WHY: this is R-P's productive half — the FSM exercises whatever the schema declares, and schema growth is a deliberate, auditable act, not a runtime side-effect.
-
-- **A corpus edge instantiates exactly one schema edge, or is untyped.** `find_edge_type` matches by `(source, target)` (unique across `BB_SCHEMA` today, so "first" = "only" — `bb/types.py:394-402`). WHY: makes the schema a type-checker for realised links; untyped edges surface as either a bad link or a missing schema edge (the R-P productive-half signal).
-
-- **Schema growth is event-sourced, retractions first-class (`bb/types.py:152-284`).** `BB_SCHEMA_USER_EXTENSIONS` is the *fold* over an append-only `SchemaEditEvent` log — the surface the **meta-DKS** mutates. `fold_schema_events` handles `added` / `retracted` / `refined` (`refined` = drop prior `(source,target)` + add new); the log is never rewritten. WHY (per D3): schema *state* must be retractable but schema *history* append-only, so a retracted edge's corpus instances become untyped (a TESS-005 migration signal) without losing the audit trail.
-
-- **Frozen-at-creation `bb_schema_version` (D8).** Every captured note records the schema version it was created under; `BB_SCHEMA_VERSION` bumps once per landed `added`/`retracted` event (`refined` doesn't bump separately — it's a retract+add composition, `bb/types.py:277-279`). `BB_SCHEMA_AT_VERSION(v)` reconstructs the schema as of version `v` by folding the event-log prefix, memoised per `(version, log-length, log-identity)` (`bb/types.py:290-352`). WHY: validators (TESS-005) check a note against the schema it was *born under*, not the current one — otherwise every schema edit would retroactively invalidate old notes. The core epistemic + navigation + DKS-extension tuples are constant across all versions; only `USER_EXTENSIONS` varies.
-
-- **Default event log is empty; real events live outside package + vault.** Events land via `tessellum dks --meta --apply` at `runs/dks/meta/schema_events.jsonl`, same shape as `warrant_history.jsonl` (`bb/types.py:161-165`). `set_user_extensions_from_events` rebuilds `BB_SCHEMA`, `BB_SCHEMA_VERSION`, and clears the version cache in one call (`bb/types.py:253-279`). WHY: separates shipped code from per-deployment schema state.
-
-- **Per-`BBType` subclass hierarchy (D1)** keeps the discriminator statically typed and out of constructors (`bb/graph.py:73-127`). Synthetic schema nodes use bare `BBNode` with explicit `bb_type` since they aren't real corpus instances.
-
-- **`from_db` streams then closes the DB.** It pulls `all_notes()`/`all_links()` inside a `with Database(...)` block and builds in memory, rather than holding the connection (`bb/graph.py:242-244`). Untyped corpus edges are *kept* (`edge_type=None`) so callers can audit them, not dropped.
-
-- **Enforcement is currently narrow.** `is_valid_transition` is available for a general "every realised BB-link must instantiate a declared edge" rule, but TESS-004 today only enforces `counter_argument → argument` and TESS-005 is WARNING-only (`bb/types.py:415-424`, `cli/bb.py:366-374`). Say so plainly: the schema *can* type-check every link, but the wired validators do not yet.
-
-## Public API / CLI
-
-Import surface (`bb/__init__.py:37-110`), all under `tessellum.bb`:
-
-- Schema: `BBType`, `VALID_BB_TYPE_VALUES`, `EpistemicEdgeType`, `BB_SCHEMA_EPISTEMIC`, `BB_SCHEMA_NAVIGATION`, `BB_SCHEMA_DKS_EXTENSIONS`, `BB_SCHEMA_USER_EXTENSIONS`, `BB_SCHEMA`, `BB_SCHEMA_AT_VERSION`, `BB_SCHEMA_VERSION`, `SCHEMA_EDIT_KIND`, `SchemaEditEvent`, `fold_schema_events`, `set_user_extensions_from_events`, `schema_event_log`.
-- Lookups: `find_edge_type`, `edges_from`, `edges_to`, `is_valid_transition`.
-- Corpus: `BBNode`, `BBEdge`, `BBGraph`, the 8 node subclasses, `node_class_for`.
-
-CLI — `tessellum bb` is one of Tessellum's 11 CLI commands (wired in `cli/main.py:14`), with two sub-subcommands (`cli/bb.py`):
-
-- **`tessellum bb audit [--db PATH] [--format human|json] [--show-untyped]`** — builds `BBGraph.from_db` and reports: nodes by BB type, edges by schema label, untyped corpus edges (count + BB-pair breakdown, full list under `--show-untyped`), orphan BB nodes (no inbound/outbound edges), and unrealised schema edges (0 corpus instances). JSON omits the verbose per-edge list unless `--show-untyped` (`cli/bb.py:111-292`).
-- **`tessellum bb migrate [--vault PATH] [--target-version current|N] [--apply] [--format ...]`** — walks the vault, finds notes whose recorded `bb_schema_version` is below target, runs `validate()` to classify each as would-pass / would-fail under TESS-005, and (with `--apply`) bumps the frontmatter version on would-pass notes only. Would-fail notes are reported but **never auto-rewritten** — manual review required (`cli/bb.py:303-482`). Absent `bb_schema_version` defaults to 1.
-
-Exit codes: `0` completed (warnings are not failure), `2` invocation error (DB/vault missing).
-
-## Extension Points
-
-- **Add a schema edge at runtime** — append a `SchemaEditEvent(kind="added", …)` to the event log and call `set_user_extensions_from_events`; this is how meta-DKS grows the schema (`bb/types.py:253`). The `motivating_failure` field anchors the dialectical justification.
-- **Commit a schema edge in source** — for edges the project team owns (not per-deployment), add to `BB_SCHEMA_DKS_EXTENSIONS` (`bb/types.py:145`), the canonical place for runtime-driven growth the static palette would miss.
-- **New audit heuristics** — `BBGraph.untyped_edges` and `unrealised_schema_edges` feed meta-DKS heuristics (e.g. Heuristic-2 retract-unused-edge consumes `unrealised_schema_edges`, `bb/graph.py:359-387`).
-- **New provenance family** — `BBEdge.provenance` already reserves `"contradicts"` for a future DKS writer; `from_db` would gain a third edge-building loop.
-- **Tighten enforcement** — generalise TESS-004 to call `is_valid_transition` over all realised BB-pairs, and/or promote TESS-005 from WARNING to ERROR.
-
-## Caveat: Two Parallel BB Implementations
-
-There are **two** BB ontology implementations in the tree, both exported from the top-level `tessellum` package:
-
-1. **`tessellum.bb`** (this doc) — `BBType` `StrEnum`, `EpistemicEdgeType`, `BB_SCHEMA` (~16 edges, versioned + event-sourced). This is the source of truth wired into validation: `frontmatter_spec.VALID_BUILDING_BLOCKS` derives from `BBType` (`format/frontmatter_spec.py:30`).
-2. **`tessellum.format.building_blocks`** (legacy) — a separate `BuildingBlock` `str, Enum` (same 8 string values), `EpistemicLayer`, `BBSpec`/`BB_SPECS` (per-type metadata: question, function, required sections), and `EPISTEMIC_EDGES` — a **10-edge** tuple (8 core + 2 explicit NAV edges, with the rest of the NAV family generated on demand by `all_edges_with_navigation_complete`). It is re-exported from both `tessellum.format` (`format/__init__.py:19-28`) and the top-level `tessellum` package (`tessellum/__init__.py:27-42`), and `cli/main.py:57` advertises `from tessellum import BuildingBlock, BB_SPECS, EPISTEMIC_EDGES` in its help text.
-
-The two enums are byte-compatible at the string level (identical 8 values), but they are distinct Python types with different edge counts (16 vs 10) and different data models (`EpistemicEdgeType` vs `BBEdge`+`BBSpec`). The validator path and `tessellum bb` CLI use only `tessellum.bb`; `building_blocks.py` survives for its per-type `BB_SPECS` metadata (required sections, epistemic function/question, layer grouping) which `tessellum.bb` does not carry. Contributors should treat `tessellum.bb.BBType` / `BB_SCHEMA` as canonical for typing and transitions, and reach for `format.building_blocks.BB_SPECS` only when they need the descriptive per-type spec. Consolidating the two remains an open cleanup.
+**Reference:** [reference/bb.md](reference/bb.md) — API, symbols, and signatures.
