@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-07-23
+
+New feature: a composer-native **digestion pipeline** — `tessellum composer digest` runs plan → augment → review → execute as one native flow, with the graduated sign-off gate between review and execute, and the four digestion skills shipped as compilable `CapabilityRegistry` SkillTools. Backward-compatible; the existing `run`/`batch`/`eval` paths are unchanged. Suite 1152 → 1164.
+
 ### Digestion phase driver — native plan → augment → review → execute — 2026-07-23
 
 The composer can now **replicate the full digestion pipeline** as one native flow (the "planning skills as phases" design realized against the shipped scheduler). Builds on the 4 digestion SkillTools below. Suite `1152 → 1164 passing` (+12 tests).

@@ -1,7 +1,7 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 
 __status__ = (
     "1.0.0 — Composer v4 dynamic-workflow runtime.\n"
