@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Digestion pipeline as composer-native SkillTools — 2026-07-23
+
+Author the four **digestion skills** (plan → augment → review → execute) as compilable SkillTools — paired canonical `.md` (with `<!-- :: section_id :: -->` markers) + typed `.pipeline.yaml` sidecar — under `vault/resources/skills/`. They now `build_skill_tool`-compile and register in the `CapabilityRegistry` (10 SkillTools total), the prerequisite for a native plan→augment→review→execute phase driver.
+
+- `skill_tessellum_plan_digestion` (5 steps, `produces_notes`) — read source → route → decompose → cross-references → write the plan file (the only PRODUCE step).
+- `skill_tessellum_augment_digestion_plan` (5 steps, `produces_notes`) — read draft → re-read source → add coverage/gates → add cross-ref contract → rewrite the augmented plan.
+- `skill_tessellum_review_digestion_plan` (4 steps, **`read_only`**) — read → structure/gate checks → density/term checks → typed READY/NOT-READY verdict (`required: [ready, failures]`). No PRODUCE step: the review→ready sign-off gate only judges.
+- `skill_tessellum_execute_digestion_plan` (5 steps, `produces_notes`) — preflight → boot/amend → extract contracts → **per-leaf** note dispatch (`body_markdown_frontmatter_to_file`) → cross-leaf post-hoc verify. The per-leaf write step is the phase that maps onto `run_pipeline_dynamic`'s wave.
+- Each step's prompt is its marked canonical section; the four are cross-linked as a pipeline. All format-clean (0 errors/warnings) and compile with 0 budget warnings; prose grounded in the parent project's real digestion SOPs. Suite unchanged (1152).
+
 ### Planned for v0.1.0 — Public Beta
 
 - Engine port from parent project (composer + retrieval primitives)
