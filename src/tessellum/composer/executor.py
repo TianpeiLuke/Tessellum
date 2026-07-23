@@ -241,7 +241,7 @@ def execute_step(
     #   2. context_assembler set: fail-soft bounding — the rendered prompt
     #      is passed through the assembler, which truncates/windows it to
     #      its char budget and *warns* rather than erroring. An oversized
-    #      source degrades instead of crashing the worker (§C10). The
+    #      source degrades instead of crashing the worker. The
     #      assembler's warnings are captured to surface in the response
     #      metadata for diagnostics.
     from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS

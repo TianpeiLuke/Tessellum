@@ -184,7 +184,7 @@ def test_executor_stringifies_dict_upstream(compiled, tmp_path: Path) -> None:
     assert '"value"' in backend.calls[0].user_prompt
 
 
-# ── Context assembler (§C10) — fail-soft prompt bounding ────────────────────
+# ── Context assembler — fail-soft prompt bounding ───────────────────────────
 
 
 def test_executor_context_assembler_bounds_oversized_prompt(compiled, tmp_path: Path) -> None:
@@ -229,7 +229,7 @@ def test_executor_context_assembler_clean_when_under_budget(compiled, tmp_path: 
 
 def test_executor_no_assembler_preserves_hard_cap(compiled, tmp_path: Path) -> None:
     """Without an assembler, an oversized prompt is still the hard-cap
-    validation error (parity with the pre-§C10 behaviour)."""
+    validation error (parity with the pre-assembler behaviour)."""
     backend = MockBackend(default='{"ok": true}')
     result = execute_step(
         compiled.steps[0],

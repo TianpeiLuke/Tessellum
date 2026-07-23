@@ -146,7 +146,7 @@ Activates a standalone Phase-3 primitive the as-built audit found built-but-unca
 - After the whole wave completes, an optional `GateSuite` runs once over every written note path — cross-set checks a per-session close-gate structurally can't see (e.g. two sessions writing the SAME target path, a dedup miss). On FAIL, the offending results are rewritten to errored (cause `wave_gate`), so `error_count` + `classify_outcome` (`CONTRACT_VIOLATION`) reflect the cross-set violation. Sessions that already errored or wrote no file are untouched.
 - CLI `--wave-gate` (under `--dynamic`) wires `build_wave_gate()` (the dedup sweep). Verified end-to-end: duplicate paths across sessions → both flagged; distinct paths → clean (no false positive).
 
-### Composer v4 — wire the ContextAssembler into dispatch (§C10) — 2026-07-22
+### Composer v4 — wire the ContextAssembler into dispatch — 2026-07-22
 
 Activates another standalone primitive the as-built audit found built-but-uncalled: fail-soft prompt bounding now runs in the live executor. Suite `1103 → 1107 passing` (+4 tests). Opt-in; default off = byte-identical (IDENT-4).
 
