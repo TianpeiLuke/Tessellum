@@ -1,8 +1,8 @@
 """Digestion phase driver — the native plan → augment → review → execute flow.
 
 This is the orchestrator that makes the four digestion SkillTools a single
-pipeline (the FZ 20k2a "planning skills as phases" design realized against
-the shipped composer). It sequences:
+pipeline (the "planning skills as phases" design realized against the
+shipped composer). It sequences:
 
     plan  ──▶  augment  ──▶  review  ──[sign-off]──▶  execute
 
