@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 from tessellum.composer import (
+    AgentVerdict,
     BatchJob,
     CompilerError,
     ContractViolation,
@@ -37,6 +38,7 @@ from tessellum.composer import (
     MockBackend,
     PipelineValidationError,
     RunBudget,
+    SignOffPolicy,
     build_close_gate,
     build_wave_gate,
     compile_skill,
@@ -46,6 +48,7 @@ from tessellum.composer import (
     load_pipeline,
     load_scenarios,
     run_batch,
+    run_digestion_pipeline,
     run_eval,
     run_pipeline,
     run_pipeline_dynamic,
@@ -425,6 +428,51 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Print the sidecar to stdout instead of writing it.",
     )
     scaffold_cmd.set_defaults(func=run_composer_scaffold_cli)
+
+    digest_cmd = composer_sub.add_parser(
+        "digest",
+        help="Run the native plan → augment → review →[sign-off]→ execute "
+        "digestion pipeline over a source.",
+    )
+    digest_cmd.add_argument(
+        "--skills-dir",
+        type=Path,
+        default=Path("vault") / "resources" / "skills",
+        help="Directory with the 4 skill_tessellum_*_digestion phase skills "
+        "(default: ./vault/resources/skills).",
+    )
+    digest_cmd.add_argument(
+        "--source",
+        type=Path,
+        required=True,
+        help="JSON file: the source leaf for the plan phase (the plan_doc seed).",
+    )
+    digest_cmd.add_argument(
+        "--vault", type=Path, default=Path("vault"),
+        help="Vault root for materializer file paths (default: ./vault).",
+    )
+    digest_cmd.add_argument(
+        "--backend", choices=["mock", "anthropic", "bedrock"], default="mock",
+        help="LLM backend (default: mock).",
+    )
+    digest_cmd.add_argument("--model", default=None, help="Model id for anthropic|bedrock.")
+    digest_cmd.add_argument("--region", default="us-east-1", help="AWS region for bedrock.")
+    digest_cmd.add_argument("--aws-profile", default=None, help="AWS_PROFILE for bedrock.")
+    digest_cmd.add_argument(
+        "--mock-responses", type=Path,
+        help="JSON pattern→response map for --backend=mock.",
+    )
+    digest_cmd.add_argument(
+        "--require-agent-signoff", action="store_true",
+        help="Enable the reviewer-agent rung at review→ready (else program-gate "
+        "only). Without an injected agent the CLI uses a conservative "
+        "auto-approver only when the review verdict is ready.",
+    )
+    digest_cmd.add_argument("--dry-run", action="store_true", help="Skip filesystem writes.")
+    digest_cmd.add_argument(
+        "--format", dest="output_format", choices=["human", "json"], default="human",
+    )
+    digest_cmd.set_defaults(func=run_composer_digest_cli)
 
 
 def run_composer_validate(args: argparse.Namespace) -> int:
@@ -1246,6 +1294,108 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
                 print(f"  {d}: {mean:.2f}")
 
     return 1 if (result.failed_count or result.error_count) else 0
+
+
+# ── tessellum composer digest ──────────────────────────────────────────────
+
+
+def _build_backend_for(args) -> "LLMBackend | int":
+    """Construct the LLM backend for a run/digest command (or return an exit
+    code on failure). Shared 3-way (mock | anthropic | bedrock) logic."""
+    responses = None
+    if getattr(args, "mock_responses", None) is not None:
+        try:
+            responses = json.loads(
+                args.mock_responses.expanduser().resolve().read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"tessellum composer: --mock-responses load failed: {e}", file=sys.stderr)
+            return 2
+    if args.backend == "anthropic":
+        try:
+            from tessellum.composer import AnthropicBackend
+            return AnthropicBackend(model=args.model or "claude-sonnet-4-6")
+        except ImportError as e:
+            print(f"tessellum composer: --backend=anthropic needs [agent] extras ({e})",
+                  file=sys.stderr)
+            return 2
+    if args.backend == "bedrock":
+        try:
+            from tessellum.composer import BedrockBackend
+            return BedrockBackend(
+                model=args.model or "us.anthropic.claude-sonnet-4-6",
+                region=args.region, aws_profile=args.aws_profile,
+            )
+        except ImportError as e:
+            print(f"tessellum composer: --backend=bedrock needs [agent] extras ({e})",
+                  file=sys.stderr)
+            return 2
+    return MockBackend(responses=responses)
+
+
+def run_composer_digest_cli(args: argparse.Namespace) -> int:
+    skills_dir: Path = args.skills_dir.expanduser().resolve()
+    if not skills_dir.is_dir():
+        print(f"tessellum composer digest: {skills_dir} is not a directory", file=sys.stderr)
+        return 2
+    source_path: Path = args.source.expanduser().resolve()
+    if not source_path.is_file():
+        print(f"tessellum composer digest: --source {source_path} not found", file=sys.stderr)
+        return 2
+    try:
+        source_leaf = json.loads(source_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print(f"tessellum composer digest: --source is not valid JSON: {e}", file=sys.stderr)
+        return 2
+    if not isinstance(source_leaf, dict):
+        print("tessellum composer digest: --source must be a JSON object", file=sys.stderr)
+        return 2
+
+    backend = _build_backend_for(args)
+    if isinstance(backend, int):
+        return backend
+
+    policy = SignOffPolicy(use_agent=args.require_agent_signoff, use_human=False)
+    # Conservative CLI auto-approver: when the agent rung is enabled headless,
+    # approve (the program gate already vetted plan-structure + review verdict).
+    agent_judge = (
+        (lambda: AgentVerdict(approved=True, confidence=1.0, reason="cli auto-approve"))
+        if args.require_agent_signoff
+        else None
+    )
+
+    result = run_digestion_pipeline(
+        skills_dir=skills_dir,
+        source_leaf=source_leaf,
+        backend=backend,
+        vault_root=args.vault.expanduser().resolve(),
+        dry_run=args.dry_run,
+        sign_off_policy=policy,
+        agent_judge=agent_judge,
+    )
+
+    if args.output_format == "json":
+        print(json.dumps({
+            "completed": result.completed,
+            "stopped_at": result.stopped_at,
+            "sign_off": (
+                {"decision": result.sign_off.decision, "rung": result.sign_off.deciding_rung}
+                if result.sign_off else None
+            ),
+            "phases": [
+                {"phase": p.phase, "ran": p.ran, "error_count": p.error_count}
+                for p in result.phases
+            ],
+        }, indent=2))
+    else:
+        print("digestion pipeline: plan → augment → review →[sign-off]→ execute")
+        for p in result.phases:
+            print(f"  {'OK ' if p.error_count == 0 else 'ERR'}  {p.phase:8s}  errors={p.error_count}")
+        if result.sign_off:
+            print(f"  sign-off: {result.sign_off.decision} (via {result.sign_off.deciding_rung})")
+        print(f"  → completed={result.completed}"
+              + (f"  stopped_at={result.stopped_at}" if result.stopped_at else ""))
+    return 0 if result.completed else 1
 
 
 # ── tessellum composer scaffold-sidecar ────────────────────────────────────

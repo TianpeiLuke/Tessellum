@@ -352,10 +352,63 @@ def build_wave_gate() -> GateSuite:
     )
 
 
+# ── Plan-scope predicate (the pre-filter before the review-agent) ───────────
+
+
+def plan_structure_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
+    """A ``plan`` structural pre-filter over a ``plan_doc`` mapping.
+
+    The cheapest rung of the ``review → ready`` sign-off ladder — a pure
+    structural check that a plan is even *shaped* like a plan before an
+    (expensive) reviewer agent judges its substance: it must carry a
+    non-empty ``plan_path``/``plan_text`` and a positive ``total_notes``.
+    A structurally-broken plan is rejected here without spending an agent.
+    Missing/``None`` plan → a single blocking issue (fail-closed).
+    """
+    if not isinstance(plan_doc, dict):
+        return [
+            Issue(Severity.ERROR, "PLAN-000", "plan_doc",
+                  "no plan_doc available — fail-closed")
+        ]
+    issues: list[Issue] = []
+    if not str(plan_doc.get("plan_path") or "").strip():
+        issues.append(
+            Issue(Severity.ERROR, "PLAN-001", "plan_path", "plan has no plan_path")
+        )
+    if not str(plan_doc.get("plan_text") or "").strip():
+        issues.append(
+            Issue(Severity.ERROR, "PLAN-002", "plan_text", "plan body is empty")
+        )
+    total = plan_doc.get("total_notes")
+    if not isinstance(total, int) or total <= 0:
+        issues.append(
+            Issue(Severity.ERROR, "PLAN-003", "total_notes",
+                  f"plan declares no notes to produce (total_notes={total!r})")
+        )
+    return issues
+
+
+def build_plan_gate() -> GateSuite:
+    """The plan-scope structural pre-filter (the sign-off ladder's rung 1)."""
+    return GateSuite(
+        gates=(
+            Gate(
+                gate_id="plan_structure",
+                kind="preflight",
+                scope="plan",
+                predicate=plan_structure_predicate,
+                cause="plan_structure",
+            ),
+        )
+    )
+
+
 # A scope → suite-builder registry so the driver can select gates by scope
-# without a second mechanism. ``plan`` scope is a placeholder for the
-# augment/review plan-time gates (Phase 6 wires the sign-off approver).
+# without a second mechanism. All three scopes are now populated: ``plan``
+# (structural pre-filter, the sign-off ladder's cheap rung), ``session``
+# (per-note close-gate), ``wave`` (cross-set post-batch sweep).
 DIGEST_GATES: dict[GateScope, Callable[[], GateSuite]] = {
+    "plan": build_plan_gate,
     "session": build_close_gate,
     "wave": build_wave_gate,
 }
@@ -375,5 +428,7 @@ __all__ = [
     "duplicate_target_predicate",
     "build_close_gate",
     "build_wave_gate",
+    "build_plan_gate",
+    "plan_structure_predicate",
     "DIGEST_GATES",
 ]

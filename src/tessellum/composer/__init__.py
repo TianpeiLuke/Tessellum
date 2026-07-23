@@ -140,6 +140,7 @@ from tessellum.composer.gates import (
     GateSuite,
     GroundingVerdict,
     build_close_gate,
+    build_plan_gate,
     build_wave_gate,
 )
 from tessellum.composer.planning import (
@@ -159,6 +160,12 @@ from tessellum.composer.scheduler import (
     compute_ready_set,
     run_pipeline,
     run_pipeline_dynamic,
+)
+from tessellum.composer.digestion import (
+    PHASE_SKILLS,
+    DigestionResult,
+    PhaseOutcome,
+    run_digestion_pipeline,
 )
 from tessellum.composer.signoff import (
     AgentVerdict,
@@ -255,6 +262,7 @@ __all__ = [
     "CompositeGateResult",
     "GroundingVerdict",
     "build_close_gate",
+    "build_plan_gate",
     "build_wave_gate",
     "DIGEST_GATES",
     # Fix stage + planner economics (Phase 4)
@@ -289,6 +297,11 @@ __all__ = [
     "SignOffResult",
     "AgentVerdict",
     "run_sign_off",
+    # Digestion phase driver (plan → augment → review → execute)
+    "run_digestion_pipeline",
+    "DigestionResult",
+    "PhaseOutcome",
+    "PHASE_SKILLS",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",

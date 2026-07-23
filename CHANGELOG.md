@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Digestion phase driver — native plan → augment → review → execute — 2026-07-23
+
+The composer can now **replicate the full digestion pipeline** as one native flow (the "planning skills as phases" design realized against the shipped scheduler). Builds on the 4 digestion SkillTools below. Suite `1152 → 1164 passing` (+12 tests).
+
+**Added — `composer/digestion.py` + `tessellum composer digest`.**
+- `run_digestion_pipeline(...)` sequences the four phases: **plan → augment → review** run as *linear* phases (one skill each via `run_pipeline` over the single `plan_doc`, whose structured output threads into the next phase), then the **review → ready** transition is the graduated `run_sign_off` gate, then **execute** runs via `run_pipeline_dynamic` (the self-claiming wave, one leaf per note — inheriting close-gate/manifest/fix/budget). Returns a typed `DigestionResult` (per-phase `PhaseOutcome` + the `SignOffResult` + the final `plan_doc`).
+- **The gate is load-bearing**: a linear-phase error, a structurally-broken plan (plan-scope pre-filter), a NOT-READY review verdict, or an agent/human sign-off rejection all **stop before execute** — the pipeline never spends the execution wave on an unsound plan. `blast_radius = total_notes` drives high-blast escalation to the human rung.
+- **Populated the `plan` gate scope**: new `build_plan_gate` / `plan_structure_predicate` (a pure pre-filter requiring `plan_path` + non-empty `plan_text` + positive `total_notes`, fail-closed) registered in `DIGEST_GATES` — all three scopes (`plan`/`session`/`wave`) are now live.
+- CLI `tessellum composer digest --source <plan-seed.json> [--skills-dir --backend --require-agent-signoff --dry-run --format]`; backend selection shared with `run` (mock/anthropic/bedrock). Verified end-to-end: all 4 phases run, program-gate approves, exit 0.
+
 ### Digestion pipeline as composer-native SkillTools — 2026-07-23
 
 Author the four **digestion skills** (plan → augment → review → execute) as compilable SkillTools — paired canonical `.md` (with `<!-- :: section_id :: -->` markers) + typed `.pipeline.yaml` sidecar — under `vault/resources/skills/`. They now `build_skill_tool`-compile and register in the `CapabilityRegistry` (10 SkillTools total), the prerequisite for a native plan→augment→review→execute phase driver.
