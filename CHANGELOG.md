@@ -179,6 +179,15 @@ The close-gate's revert-to-BEST fix loop was built but dormant — it only ran i
 - `run_pipeline_dynamic` gains an `informed_fixer` param (`FixContext -> anything`) that takes precedence over the legacy 3-arg `fixer` — it gets the full context (note_path + issues + prior attempts), where the legacy adapter dropped all but issues.
 - CLI `--fix-with-backend` (+ `--max-fix-rounds`, default 1) builds the fixer from the run's `--backend` and requires `--close-gate` (guarded: a bare `--fix-with-backend` is an invocation error). Verified end-to-end: a format-failing captured note is repaired in place, re-gated, and the session closes clean; an unrepairable note still blocks (never silently done).
 
+### Composer v4 — self-claiming scheduler (remove the wave barrier) — 2026-07-22
+
+Closes the last v4 fidelity gap: `run_pipeline_dynamic` was a per-*round* wave barrier (`compute_ready_set` always got an empty `in_flight`, and the loop joined the whole round before promoting dependents — a slow leaf stalled its independent siblings). It is now a continuous, completion-driven **self-claiming** loop. Suite `1149 → 1152 passing` (+3 tests). Parity with serial `run_pipeline` preserved (existing parity tests + a new diamond-DAG parity test).
+
+**Changed — `run_pipeline_dynamic` scheduling loop.**
+- A step is promoted the instant *its own* `depends_on` are `done` and it isn't already `done`/`in_flight` (the real `in_flight` set now gates `compute_ready_set`, as designed). The loop waits `FIRST_COMPLETED` rather than the whole round; the moment a step's leaf scope finishes, its `output_key` is published and it's marked `done`, freeing its dependents immediately — no wait on unrelated in-flight steps (kills the straggler stall).
+- **Race-safety**: each promoted step's leaves run against a **frozen `upstream` snapshot** (a dict copy taken at promotion), and the shared `upstream` is mutated only on the main thread between promotions — so a worker never reads the context mid-publish. Downstream steps still read the exact accumulated context the serial path produces.
+- Tests: diamond-DAG dependency ordering (`d` sees both `b`'s and `c`'s resolved outputs, which each saw `a`'s), diamond-DAG serial↔dynamic parity, and a straggler test proving an independent fast step completes without waiting on a slow sibling. Verified stable across repeated runs (no flakiness).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

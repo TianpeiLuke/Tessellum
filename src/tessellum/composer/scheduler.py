@@ -33,7 +33,7 @@ import json
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal, Sequence
@@ -480,7 +480,7 @@ def run_pipeline_dynamic(
     wave_gate: GateSuite | None = None,
     context_assembler: "ContextAssembler | None" = None,
 ) -> RunResult:
-    """Wave-parallel, self-claiming variant of :func:`run_pipeline`.
+    """Self-claiming, dependency-gated parallel variant of :func:`run_pipeline`.
 
     Semantically byte-identical to :func:`run_pipeline` — same vault
     output, same per-leaf outcomes, same ordered ``RunResult`` — but the
@@ -492,15 +492,19 @@ def run_pipeline_dynamic(
 
     Mechanics:
 
-    - **Ready-set driven.** Each round, :func:`compute_ready_set` promotes
-      every step whose ``depends_on`` are ``done`` (independent steps run
-      together); the round's ``(step × leaf)`` tasks are submitted to one
-      :class:`~concurrent.futures.ThreadPoolExecutor`. Its internal work
-      queue *is* the self-claiming queue — an idle worker pulls the next
-      task. ``upstream`` is published (on the main thread, between rounds)
-      only after a step's whole leaf scope completes, exactly as the
-      serial path accumulates it, so downstream steps read an identical
-      context.
+    - **Self-claiming (no wave barrier).** :func:`compute_ready_set`
+      promotes every step whose ``depends_on`` are ``done`` and that isn't
+      already ``done`` or ``in_flight``; its ``(step × leaf)`` tasks go to
+      one :class:`~concurrent.futures.ThreadPoolExecutor` (an idle worker
+      pulls the next task). The loop waits ``FIRST_COMPLETED`` — the moment
+      a step's whole leaf scope finishes, its ``output_key`` is published
+      and it's marked ``done``, which frees its dependents on the next
+      promotion pass **without** waiting for unrelated in-flight steps
+      (this kills the straggler stall). Each step's leaves run against a
+      **frozen ``upstream`` snapshot** taken at promotion, so a worker
+      never reads the shared context while a between-steps publish (on the
+      main thread only) mutates it — downstream steps still read the exact
+      accumulated context the serial path produces.
     - **Manifest claim (optional).** When a ``manifest`` is supplied, each
       task ``claim``s its ``"{section_id}::{leaf_id}"`` key (compare-and-
       swap, double-dispatch safe) and, on success, records an
@@ -600,7 +604,12 @@ def run_pipeline_dynamic(
     def _scope_leaves(step: CompiledStep) -> list[dict]:
         return leaves if step.aggregation == "per_leaf" else [{"_id": "corpus"}]
 
-    def _run_task(step: CompiledStep, leaf: dict, leaf_index: int) -> None:
+    def _run_task(
+        step: CompiledStep,
+        leaf: dict,
+        leaf_index: int,
+        upstream_snapshot: dict[str, Any],
+    ) -> None:
         key = f"{step.section_id}::{leaf.get('_id')}"
         if manifest is not None:
             with lock:
@@ -649,7 +658,7 @@ def run_pipeline_dynamic(
         result = execute_step_with_retry(
             step,
             leaf=leaf,
-            upstream=upstream,
+            upstream=upstream_snapshot,
             backend=backend,
             vault_root=vault_root,
             dry_run=dry_run,
@@ -717,46 +726,77 @@ def run_pipeline_dynamic(
                     }
                 )
 
-    # Ready-set loop over STEPS. Within a round every ready step's leaves
-    # are dispatched together; upstream is published after the round.
+    # Self-claiming loop: a step is promoted the instant *its own* deps are
+    # ``done`` (no fixed wave barrier). Each promoted step's leaves are
+    # submitted with a FROZEN ``upstream`` snapshot (dict copy), so a worker
+    # never reads the shared context while a between-steps publish mutates
+    # it. We wait FIRST_COMPLETED (not the whole round), and the moment a
+    # step's leaves are ALL finished we publish its output_key + mark it
+    # done — which frees its dependents on the next promotion pass, without
+    # waiting for unrelated in-flight steps (kills the straggler stall).
     step_topo = tuple((s.section_id, s.depends_on) for s in runnable)
     done_steps: set[str] = set()
+    in_flight_steps: set[str] = set()
+    # Per in-flight step: its leaf scope + the count of leaves still running.
+    remaining: dict[str, int] = {}
+    fut_to_step: dict[Any, str] = {}
+
+    def _publish_and_finish(sid: str) -> None:
+        """A step's leaves are all done — publish its upstream, mark done."""
+        step = by_id[sid]
+        if step.output_key:
+            scope = _scope_leaves(step)
+            per_leaf = step.aggregation == "per_leaf"
+            outs = [
+                results[(topo_index[sid], i)].materialized.structured
+                for i in range(len(scope))
+                if results[(topo_index[sid], i)].error is None
+            ]
+            if outs:
+                # Mutate the shared upstream on the MAIN thread only, between
+                # promotions — no worker is reading it (they hold snapshots).
+                upstream[step.output_key] = outs if per_leaf else outs[0]
+        in_flight_steps.discard(sid)
+        done_steps.add(sid)
+
     with ThreadPoolExecutor(
         max_workers=max_workers, thread_name_prefix="composer-leaf"
     ) as pool:
         while len(done_steps) < len(runnable):
+            # Promote every step whose deps are done and that isn't already
+            # done or in-flight — the real ``in_flight`` set gates this
+            # (unlike the old barrier, which passed an empty in_flight).
             promoted, _skipped = compute_ready_set(
                 ReadySetState(
                     steps=step_topo,
                     done=frozenset(done_steps),
-                    in_flight=frozenset(),
-                    concurrency_cap=len(runnable),  # leaf pool bounds real parallelism
+                    in_flight=frozenset(in_flight_steps),
+                    concurrency_cap=len(runnable),
                 )
             )
-            if not promoted:  # pragma: no cover — compiler guarantees a DAG
-                break
-            futures = []
             for sid in promoted:
                 step = by_id[sid]
-                for leaf_index, leaf in enumerate(_scope_leaves(step)):
-                    futures.append(pool.submit(_run_task, step, leaf, leaf_index))
-            for fut in as_completed(futures):
-                fut.result()  # propagate unexpected framework errors
+                scope = _scope_leaves(step)
+                # Freeze the upstream context this step sees at promotion.
+                snapshot = dict(upstream)
+                in_flight_steps.add(sid)
+                remaining[sid] = len(scope)
+                for leaf_index, leaf in enumerate(scope):
+                    fut = pool.submit(_run_task, step, leaf, leaf_index, snapshot)
+                    fut_to_step[fut] = sid
 
-            # Publish upstream for each step just completed (topo order).
-            for sid in promoted:
-                step = by_id[sid]
-                if step.output_key:
-                    scope = _scope_leaves(step)
-                    per_leaf = step.aggregation == "per_leaf"
-                    outs = [
-                        results[(topo_index[sid], i)].materialized.structured
-                        for i in range(len(scope))
-                        if results[(topo_index[sid], i)].error is None
-                    ]
-                    if outs:
-                        upstream[step.output_key] = outs if per_leaf else outs[0]
-                done_steps.add(sid)
+            if not fut_to_step:
+                break  # pragma: no cover — compiler guarantees a runnable DAG
+
+            done_futs, _pending = wait(
+                fut_to_step.keys(), return_when=FIRST_COMPLETED
+            )
+            for fut in done_futs:
+                fut.result()  # propagate unexpected framework errors
+                sid = fut_to_step.pop(fut)
+                remaining[sid] -= 1
+                if remaining[sid] == 0:
+                    _publish_and_finish(sid)
 
     # Rebuild ordered step_results to match the serial path exactly.
     step_results = [results[k] for k in sorted(results.keys())]

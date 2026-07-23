@@ -567,3 +567,203 @@ def test_dynamic_surfaces_errors_in_outcome(tmp_path: Path) -> None:
     s_outcome = classify_outcome(serial.step_results[0])
     d_outcome = classify_outcome(dynamic.step_results[0])
     assert s_outcome.kind == d_outcome.kind == "CONTRACT_VIOLATION"
+
+
+# ── Self-claiming scheduler: dependency ordering + no straggler barrier ──────
+
+
+_DIAMOND_CANON = textwrap.dedent(
+    """\
+    ---
+    tags: [resource, skill]
+    keywords: [alpha, beta, gamma]
+    topics: [X]
+    language: markdown
+    date of note: 2026-05-10
+    status: active
+    building_block: procedure
+    pipeline_metadata: ./skill_d.pipeline.yaml
+    ---
+
+    # Diamond
+
+    ## Step a <!-- :: section_id = a :: -->
+
+    A.
+
+    ## Step b <!-- :: section_id = b :: -->
+
+    B reads {{upstream.a_out}}.
+
+    ## Step c <!-- :: section_id = c :: -->
+
+    C reads {{upstream.a_out}}.
+
+    ## Step d <!-- :: section_id = d :: -->
+
+    D reads {{upstream.b_out}} and {{upstream.c_out}}.
+    """
+)
+
+_DIAMOND_SIDE = textwrap.dedent(
+    """\
+    version: "1.0"
+    pipeline:
+      - section_id: a
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        prompt_template: "A."
+        output_key: a_out
+      - section_id: b
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: [a]
+        materializer: no_op
+        prompt_template: "B."
+        output_key: b_out
+      - section_id: c
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: [a]
+        materializer: no_op
+        prompt_template: "C."
+        output_key: c_out
+      - section_id: d
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: [b, c]
+        materializer: no_op
+        prompt_template: "D."
+    """
+)
+
+
+def test_dynamic_diamond_dependency_ordering(tmp_path: Path) -> None:
+    """The self-claiming loop honours a diamond DAG: d sees both b's and c's
+    outputs, which each saw a's — proving deps gate promotion + upstream
+    accumulates across the (now barrier-free) loop."""
+    sk = tmp_path / "skill_d.md"
+    sk.write_text(_DIAMOND_CANON, encoding="utf-8")
+    (tmp_path / "skill_d.pipeline.yaml").write_text(_DIAMOND_SIDE, encoding="utf-8")
+    compiled = compile_skill(sk)
+    backend = MockBackend(default='{"v": 1}')
+    run = run_pipeline_dynamic(compiled, leaves=None, backend=backend, vault_root=tmp_path / "v")
+    assert run.error_count == 0
+    assert len(run.step_results) == 4
+    # d's prompt must have seen BOTH b's and c's RESOLVED outputs (proves b
+    # AND c ran + published before d). A resolved {{upstream.X}} becomes the
+    # value; an unmet dep would leave a "<missing upstream.X>" sentinel.
+    d_call = next(c for c in backend.calls if "D reads" in c.user_prompt)
+    assert "<missing" not in d_call.user_prompt
+    assert d_call.user_prompt.count('"v": 1') == 2  # both b_out and c_out resolved
+    # b's + c's prompts each saw a's resolved output (a ran + published first).
+    b_call = next(c for c in backend.calls if "B reads" in c.user_prompt)
+    c_call = next(c for c in backend.calls if "C reads" in c.user_prompt)
+    assert "<missing" not in b_call.user_prompt and '"v": 1' in b_call.user_prompt
+    assert "<missing" not in c_call.user_prompt and '"v": 1' in c_call.user_prompt
+
+
+def test_dynamic_diamond_matches_serial(tmp_path: Path) -> None:
+    """Parity on a diamond DAG: serial and self-claiming produce the same
+    ordered step_results + error count."""
+    sk = tmp_path / "skill_d.md"
+    sk.write_text(_DIAMOND_CANON, encoding="utf-8")
+    (tmp_path / "skill_d.pipeline.yaml").write_text(_DIAMOND_SIDE, encoding="utf-8")
+    compiled = compile_skill(sk)
+    serial = run_pipeline(compiled, leaves=None, backend=MockBackend(default='{"v": 1}'), vault_root=tmp_path / "vs")
+    dynamic = run_pipeline_dynamic(compiled, leaves=None, backend=MockBackend(default='{"v": 1}'), vault_root=tmp_path / "vd")
+    assert [r.section_id for r in serial.step_results] == [r.section_id for r in dynamic.step_results]
+    assert serial.error_count == dynamic.error_count == 0
+
+
+def test_dynamic_straggler_does_not_block_independent_step(tmp_path: Path) -> None:
+    """The barrier-free loop: an independent fast step finishes BEFORE a slow
+    sibling in the same promotion — the slow one no longer gates the fast one.
+
+    Two independent per_leaf steps; step_slow's backend sleeps, step_fast's
+    doesn't. We record completion order via the backend call timestamps: the
+    fast step's call must return before the slow step's, and the run stays
+    correct. (Under the old whole-round barrier the fast leaf still had to
+    wait for the round's join; here nothing gates it.)"""
+    import time as _time
+
+    canon = textwrap.dedent(
+        """\
+        ---
+        tags: [resource, skill]
+        keywords: [alpha, beta, gamma]
+        topics: [X]
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: procedure
+        pipeline_metadata: ./skill_s.pipeline.yaml
+        ---
+
+        # S
+
+        ## Step fast <!-- :: section_id = fast :: -->
+
+        FAST.
+
+        ## Step slow <!-- :: section_id = slow :: -->
+
+        SLOW.
+        """
+    )
+    side = textwrap.dedent(
+        """\
+        version: "1.0"
+        pipeline:
+          - section_id: fast
+            role: CORE
+            aggregation: corpus_wide
+            batchable: false
+            depends_on: []
+            materializer: no_op
+            prompt_template: "FAST."
+          - section_id: slow
+            role: CORE
+            aggregation: corpus_wide
+            batchable: false
+            depends_on: []
+            materializer: no_op
+            prompt_template: "SLOW."
+        """
+    )
+    sk = tmp_path / "skill_s.md"
+    sk.write_text(canon, encoding="utf-8")
+    (tmp_path / "skill_s.pipeline.yaml").write_text(side, encoding="utf-8")
+    compiled = compile_skill(sk)
+
+    completed: list[str] = []
+    lock = __import__("threading").Lock()
+
+    class _TimedBackend:
+        backend_id = "timed"
+
+        def call(self, request):
+            if "SLOW" in request.user_prompt:
+                _time.sleep(0.2)
+                tag = "slow"
+            else:
+                tag = "fast"
+            with lock:
+                completed.append(tag)
+            return LLMResponse(content='{"v": 1}', elapsed_ms=1.0, backend_id="timed")
+
+    run = run_pipeline_dynamic(
+        compiled, leaves=None, backend=_TimedBackend(), vault_root=tmp_path / "v",
+        max_workers=2,
+    )
+    assert run.error_count == 0
+    # The fast step completed before the slow one (they ran concurrently,
+    # and nothing made fast wait for slow).
+    assert completed[0] == "fast"
+    assert set(completed) == {"fast", "slow"}
