@@ -146,6 +146,14 @@ Activates a standalone Phase-3 primitive the as-built audit found built-but-unca
 - After the whole wave completes, an optional `GateSuite` runs once over every written note path — cross-set checks a per-session close-gate structurally can't see (e.g. two sessions writing the SAME target path, a dedup miss). On FAIL, the offending results are rewritten to errored (cause `wave_gate`), so `error_count` + `classify_outcome` (`CONTRACT_VIOLATION`) reflect the cross-set violation. Sessions that already errored or wrote no file are untouched.
 - CLI `--wave-gate` (under `--dynamic`) wires `build_wave_gate()` (the dedup sweep). Verified end-to-end: duplicate paths across sessions → both flagged; distinct paths → clean (no false positive).
 
+### Composer v4 — wire the ContextAssembler into dispatch (§C10) — 2026-07-22
+
+Activates another standalone primitive the as-built audit found built-but-uncalled: fail-soft prompt bounding now runs in the live executor. Suite `1103 → 1107 passing` (+4 tests). Opt-in; default off = byte-identical (IDENT-4).
+
+**Added — `context_assembler` threaded `execute_step` → `execute_step_with_retry` → `run_pipeline_dynamic` → CLI `--context-strategy`.**
+- When a `ContextAssembler` is supplied, each step's rendered prompt is bounded **fail-soft** — an oversized prompt is truncated (`full_source`) or head+tail windowed (`windowed`) and *warned*, instead of the crude `HARD_PROMPT_CAP_CHARS` **validation error** that halts the step. The assembler's warnings surface in the step's response metadata (`context_warnings`) without mutating the backend's frozen response. When `context_assembler` is `None` (the default), the hard-cap behaviour is preserved byte-for-byte.
+- CLI: `--context-strategy full_source|windowed` (+ `--context-max-chars`) under `--dynamic`. Verified: an oversized prompt degrades to a clean truncated run with the assembler; without it, the hard-cap validation error is preserved.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

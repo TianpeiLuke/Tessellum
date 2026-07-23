@@ -48,6 +48,7 @@ from typing import Any, Callable, Literal
 import jsonschema
 
 from tessellum.composer.compiler import CompiledStep
+from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.llm import LLMBackend, LLMRequest, LLMResponse
 from tessellum.composer.materializer import (
     MaterializedOutput,
@@ -171,6 +172,7 @@ def execute_step(
     retry_attempt: int = 1,
     retry_last_error: str | None = None,
     timeout_seconds: float | None = None,
+    context_assembler: ContextAssembler | None = None,
 ) -> StepResult:
     """Run one step against one leaf with one upstream context.
 
@@ -231,10 +233,17 @@ def execute_step(
             f"{sanitised}]\n{system_prompt}"
         )
 
-    # Runtime hard cap on rendered prompt size. The compiler should
-    # have caught oversized prompts at compile time, but actual
-    # upstream outputs may exceed their declared max_chars; this is
-    # the runtime safety net.
+    # Prompt-size handling. Two modes:
+    #
+    #   1. context_assembler is None (default): the crude runtime hard cap
+    #      — an oversized rendered prompt is a *validation error* that
+    #      halts the step. Byte-identical to the pre-assembler behaviour.
+    #   2. context_assembler set: fail-soft bounding — the rendered prompt
+    #      is passed through the assembler, which truncates/windows it to
+    #      its char budget and *warns* rather than erroring. An oversized
+    #      source degrades instead of crashing the worker (§C10). The
+    #      assembler's warnings are captured to surface in the response
+    #      metadata for diagnostics.
     from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS
 
     effective_max_prompt_chars = (
@@ -242,28 +251,34 @@ def execute_step(
         if step.max_prompt_chars is not None
         else HARD_PROMPT_CAP_CHARS
     )
-    if len(prompt) > effective_max_prompt_chars:
-        elapsed_ms = (time.monotonic() - start) * 1000.0
-        return StepResult(
-            section_id=step.section_id,
-            leaf_id=leaf.get("_id"),
-            response=LLMResponse(
-                content="",
-                elapsed_ms=0.0,
-                backend_id=getattr(backend, "backend_id", ""),
-                metadata={"prompt_exceeded_cap": True},
-            ),
-            materialized=MaterializedOutput(
-                structured={},
-                notes=f"prompt exceeded hard cap ({len(prompt)} chars > {effective_max_prompt_chars})",
-            ),
-            elapsed_ms=elapsed_ms,
-            error=(
-                f"prompt exceeded HARD_PROMPT_CAP_CHARS: rendered "
-                f"{len(prompt)} chars > cap {effective_max_prompt_chars}"
-            ),
-            error_class="validation",
-        )
+    context_warnings: tuple[str, ...] = ()
+    if context_assembler is None:
+        if len(prompt) > effective_max_prompt_chars:
+            elapsed_ms = (time.monotonic() - start) * 1000.0
+            return StepResult(
+                section_id=step.section_id,
+                leaf_id=leaf.get("_id"),
+                response=LLMResponse(
+                    content="",
+                    elapsed_ms=0.0,
+                    backend_id=getattr(backend, "backend_id", ""),
+                    metadata={"prompt_exceeded_cap": True},
+                ),
+                materialized=MaterializedOutput(
+                    structured={},
+                    notes=f"prompt exceeded hard cap ({len(prompt)} chars > {effective_max_prompt_chars})",
+                ),
+                elapsed_ms=elapsed_ms,
+                error=(
+                    f"prompt exceeded HARD_PROMPT_CAP_CHARS: rendered "
+                    f"{len(prompt)} chars > cap {effective_max_prompt_chars}"
+                ),
+                error_class="validation",
+            )
+    else:
+        assembled = context_assembler.assemble(prompt)
+        prompt = assembled.text
+        context_warnings = assembled.warnings
 
     request = LLMRequest(
         system_prompt=system_prompt,
@@ -331,6 +346,17 @@ def execute_step(
         materialized = MaterializedOutput(structured={}, notes=f"materializer error: {e}")
 
     elapsed_ms = (time.monotonic() - start) * 1000.0
+
+    # Surface any context-assembler warnings (oversized/truncated source)
+    # in the response metadata for diagnostics, without mutating the
+    # backend's frozen response.
+    if context_warnings:
+        response = LLMResponse(
+            content=response.content,
+            elapsed_ms=response.elapsed_ms,
+            backend_id=response.backend_id,
+            metadata={**response.metadata, "context_warnings": list(context_warnings)},
+        )
 
     return StepResult(
         section_id=step.section_id,
@@ -581,6 +607,7 @@ def execute_step_with_retry(
     backoff_base: float = 0.5,
     backoff_cap: float = 30.0,
     backoff_rng: random.Random | None = None,
+    context_assembler: ContextAssembler | None = None,
 ) -> StepResult:
     """Retry-budgeted wrapper around :func:`execute_step`.
 
@@ -661,6 +688,7 @@ def execute_step_with_retry(
                 dry_run=dry_run,
                 retry_attempt=attempt_n,
                 retry_last_error=last_error,
+                context_assembler=context_assembler,
             )
         except Exception as e:  # noqa: BLE001 — crash path: any backend exception
             # Crash failure (backend.call raised, or some hard executor error).

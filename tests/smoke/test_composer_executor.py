@@ -182,3 +182,62 @@ def test_executor_stringifies_dict_upstream(compiled, tmp_path: Path) -> None:
     )
     assert '"key"' in backend.calls[0].user_prompt
     assert '"value"' in backend.calls[0].user_prompt
+
+
+# ── Context assembler (§C10) — fail-soft prompt bounding ────────────────────
+
+
+def test_executor_context_assembler_bounds_oversized_prompt(compiled, tmp_path: Path) -> None:
+    """With a context_assembler, an oversized rendered prompt is truncated +
+    warned (fail-soft), NOT turned into a validation error, and the bounded
+    text is what reaches the backend."""
+    from tessellum.composer.context_assembler import FullSourceAssembler
+
+    backend = MockBackend(default='{"ok": true}')
+    result = execute_step(
+        compiled.steps[0],
+        leaf={"_id": "leaf_0", "id": "Z" * 5000},  # 5000-char leaf field
+        upstream={"prev": "P"},
+        backend=backend,
+        vault_root=tmp_path,
+        context_assembler=FullSourceAssembler(max_chars=200),
+    )
+    assert result.error is None  # degraded, not errored
+    # The backend saw the bounded (≤200-char) prompt, not the full 5000.
+    assert len(backend.calls[0].user_prompt) <= 200
+    # A truncation warning surfaced in the response metadata.
+    warnings = result.response.metadata.get("context_warnings")
+    assert warnings and any("truncated" in w for w in warnings)
+
+
+def test_executor_context_assembler_clean_when_under_budget(compiled, tmp_path: Path) -> None:
+    """A prompt under the assembler's budget passes through with no warning."""
+    from tessellum.composer.context_assembler import FullSourceAssembler
+
+    backend = MockBackend(default='{"ok": true}')
+    result = execute_step(
+        compiled.steps[0],
+        leaf={"_id": "leaf_0", "id": "small"},
+        upstream={"prev": "P"},
+        backend=backend,
+        vault_root=tmp_path,
+        context_assembler=FullSourceAssembler(max_chars=100_000),
+    )
+    assert result.error is None
+    assert "context_warnings" not in result.response.metadata
+
+
+def test_executor_no_assembler_preserves_hard_cap(compiled, tmp_path: Path) -> None:
+    """Without an assembler, an oversized prompt is still the hard-cap
+    validation error (parity with the pre-§C10 behaviour)."""
+    backend = MockBackend(default='{"ok": true}')
+    result = execute_step(
+        compiled.steps[0],
+        leaf={"_id": "leaf_0", "id": "Z" * 2_000_000},  # beyond HARD_PROMPT_CAP_CHARS
+        upstream={"prev": "P"},
+        backend=backend,
+        vault_root=tmp_path,
+    )
+    assert result.error is not None
+    assert "HARD_PROMPT_CAP_CHARS" in result.error
+    assert result.error_class == "validation"

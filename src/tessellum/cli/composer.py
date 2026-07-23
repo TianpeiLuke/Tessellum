@@ -40,6 +40,7 @@ from tessellum.composer import (
     build_close_gate,
     build_wave_gate,
     compile_skill,
+    get_assembler,
     load_pipeline,
     load_scenarios,
     run_batch,
@@ -241,6 +242,22 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "sweep (e.g. duplicate target paths across sessions) run once after "
         "the wave. Offending results are flagged errored. Ignored without "
         "--dynamic.",
+    )
+    run_cmd.add_argument(
+        "--context-strategy",
+        choices=["full_source", "windowed"],
+        default=None,
+        help="Enable fail-soft context bounding for --dynamic: an oversized "
+        "rendered prompt is truncated (`full_source`) or head+tail windowed "
+        "(`windowed`) + warned, instead of the hard-cap validation error. "
+        "Ignored without --dynamic; omit for the hard-cap behaviour.",
+    )
+    run_cmd.add_argument(
+        "--context-max-chars",
+        type=int,
+        default=None,
+        help="Char budget for --context-strategy (default: the assembler's "
+        "built-in cap). Ignored without --context-strategy.",
     )
     run_cmd.set_defaults(func=run_composer_run_cli)
 
@@ -723,6 +740,14 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             else None
         )
         wave_gate = build_wave_gate() if getattr(args, "wave_gate", False) else None
+        context_assembler = None
+        if getattr(args, "context_strategy", None) is not None:
+            if args.context_max_chars is not None:
+                context_assembler = get_assembler(
+                    args.context_strategy, max_chars=args.context_max_chars
+                )
+            else:
+                context_assembler = get_assembler(args.context_strategy)
         run = run_pipeline_dynamic(
             compiled,
             leaves=leaves,
@@ -736,6 +761,7 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             budget=budget,
             stats_path=stats_path,
             wave_gate=wave_gate,
+            context_assembler=context_assembler,
         )
         # The manifest is a rebuildable projection; persist the final state so
         # a later run can resume from it (the write-side already saved per-leaf

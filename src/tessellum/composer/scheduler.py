@@ -45,6 +45,7 @@ from tessellum.composer.executor import (
     StepResult,
     execute_step_with_retry,
 )
+from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.fix import FixContext, run_fix_loop
 from tessellum.composer.gates import GateSuite, GroundingVerdict
@@ -476,6 +477,7 @@ def run_pipeline_dynamic(
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None" = None,
     budget: RunBudget | None = None,
     wave_gate: GateSuite | None = None,
+    context_assembler: "ContextAssembler | None" = None,
 ) -> RunResult:
     """Wave-parallel, self-claiming variant of :func:`run_pipeline`.
 
@@ -558,6 +560,11 @@ def run_pipeline_dynamic(
             per-session close-gate can't see. A FAIL rewrites the
             offending results to errored (``error_count`` reflects it).
             ``None`` = no post-batch gate (parity).
+        context_assembler: Optional :class:`ContextAssembler`. When set,
+            each step's rendered prompt is bounded **fail-soft** (oversized
+            input truncates/windows + warns) instead of the crude
+            hard-cap validation error; warnings surface in the step's
+            response metadata. ``None`` = the hard-cap behaviour (parity).
 
     Returns:
         RunResult — byte-comparable to :func:`run_pipeline`'s (modulo the
@@ -644,6 +651,7 @@ def run_pipeline_dynamic(
             dry_run=dry_run,
             max_logic_retries=max_logic_retries,
             max_crash_recoveries=max_crash_recoveries,
+            context_assembler=context_assembler,
         )
 
         # Per-session close-gate. Only when a close_gate is

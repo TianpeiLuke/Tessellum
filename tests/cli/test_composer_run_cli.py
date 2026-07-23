@@ -658,6 +658,35 @@ def test_run_dynamic_wave_gate_clean_when_paths_distinct(tmp_path, capsys):
     assert payload["error_count"] == 0
 
 
+def test_run_dynamic_context_strategy_bounds_fail_soft(tmp_path, capsys):
+    """--context-strategy makes an oversized prompt degrade (truncate + warn)
+    instead of erroring — the run stays clean where the hard cap would fail."""
+    skill = _writer_skill_for_wave(tmp_path)
+    # Distinct paths so the (uninvolved) wave logic can't confound this;
+    # the leaf ids carry a large body via the prompt {{leaf.id}}.
+    responses = tmp_path / "resp.json"
+    responses.write_text(
+        json.dumps({"Write": json.dumps({"output_path": "notes/a.md", "body_markdown": "# A\n"})}),
+        encoding="utf-8",
+    )
+    leaves = tmp_path / "leaves.json"
+    leaves.write_text(json.dumps([{"id": "Z" * 5000}]), encoding="utf-8")
+    code = main(
+        [
+            "composer", "run", str(skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--mock-responses", str(responses),
+            "--dynamic", "--context-strategy", "full_source",
+            "--context-max-chars", "300",
+            "--format", "json",
+        ]
+    )
+    assert code == 0  # bounded fail-soft, not a hard-cap error
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_count"] == 0
+
+
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
     canonical = _CANONICAL.replace(
         "pipeline_metadata: ./skill_demo.pipeline.yaml",
