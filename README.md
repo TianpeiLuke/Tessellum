@@ -8,9 +8,16 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 
 ## Status
 
-**v0.0.27 — alpha, all v0.1 engine subsystems shipped.** Composer (capture → compile → execute → real LLM → batch → eval), Retrieval (BM25 + dense + hybrid RRF + best-first BFS + metadata filter), Format library (validator + parser + link checker), Capture (14 flavors), Indexer (unified SQLite + FTS5 + sqlite-vec), and Init (vault scaffold).
+**v1.0.0 — every engine subsystem shipped, headlined by the Composer v4 dynamic-workflow runtime.** Suite: **1152 tests**.
 
-What's still pending for v0.1.0 (no engine work remaining — content only): 20 essential authored skills, 8 BB-type worked examples, the conceptual primer term notes (Z + PARA + BB + EF + DKS + CQRS, all defined as term notes), and a how-to library. Engine plans complete: see [`plans/plan_composer_port.md`](plans/plan_composer_port.md), [`plans/plan_retrieval_port.md`](plans/plan_retrieval_port.md), [`plans/plan_v01_src_tessellum_layout.md`](plans/plan_v01_src_tessellum_layout.md), [`plans/plan_cqrs_repo_layout.md`](plans/plan_cqrs_repo_layout.md), [`plans/plan_code_artifacts_port.md`](plans/plan_code_artifacts_port.md). See [CHANGELOG](CHANGELOG.md) for the per-release ship list.
+- **Composer** — a typed-contract pipeline runtime. Skill canonical + `.pipeline.yaml` sidecar → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
+- **DKS** — a shipped closed-loop **Dialectic Knowledge System runtime engine** (`tessellum dks`): a 7-component cycle (observation → N arguments → contradicts edges → counter → pattern → revised warrant) over the Building-Block graph, multi-perspective Dung argumentation, confidence gating, warrant persistence, and a second-order **meta-DKS** that mutates the BB schema itself.
+- **Retrieval** — BM25 (FTS5) + dense (sqlite-vec) + hybrid RRF + best-first BFS + metadata filter, over the indexed vault.
+- **Indexer** — vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec, `all-MiniLM-L6-v2` 384-d).
+- **Format** — closed-enum YAML validator + parser + BB-graph-aware link checker. **BB** — the 8-type, versioned, event-sourced ontology (source of truth).
+- **Interfaces** — an 11-command CLI (`init / format / capture / index / search / filter / fz / bb / composer / dks / mcp`) and a **shipped MCP stdio server** (`tessellum mcp serve`, 7 tools).
+
+See [CHANGELOG](CHANGELOG.md) for the per-release ship list, and **[`docs/`](docs/)** for the architecture + per-module design reference.
 
 ## The Six Pillars
 
@@ -18,7 +25,7 @@ What's still pending for v0.1.0 (no engine work remaining — content only): 20 
 |---|---|---|---|
 | 1 | **Z** — Zettelkasten | Atomic notes, bidirectional links — Luhmann's method that scaled to ~90k connected ideas | [term_zettelkasten](vault/resources/term_dictionary/term_zettelkasten.md) |
 | 2 | **PARA** — Projects/Areas/Resources/Archives | Tiago Forte's organizational scheme; four-fold structure that survives growth | [term_para_method](vault/resources/term_dictionary/term_para_method.md) |
-| 3 | **BB** — Building Block | 8 typed atomic units with defining epistemic functions; 10 directed edges form the dialectic cycle | [term_building_block](vault/resources/term_dictionary/term_building_block.md) |
+| 3 | **BB** — Building Block | 8 typed atomic units with defining epistemic functions; a versioned, event-sourced schema graph (~16 typed edges) drives the dialectic cycle | [term_building_block](vault/resources/term_dictionary/term_building_block.md) |
 | 4 | **EF** — Epistemic Function | Each BB has a *function* — name / structure / predict / claim / refute / observe / act / index | [term_epistemic_function](vault/resources/term_dictionary/term_epistemic_function.md) |
 | 5 | **DKS** — Dialectic Knowledge System | Closed-loop protocol — arguments attract counters, counters absorbed by syntheses, warrants update from observed disagreement | [term_dialectic_knowledge_system](vault/resources/term_dictionary/term_dialectic_knowledge_system.md) |
 | 6 | **CQRS** — Read/Write Split | System P (typed substrate, prescriptive — what you author) ⊥ System D (retrieval, descriptive — what queries return) | [term_cqrs](vault/resources/term_dictionary/term_cqrs.md) |
@@ -37,7 +44,7 @@ What's still pending for v0.1.0 (no engine work remaining — content only): 20 
 | **Note app** (Obsidian / Notion / Roam) | Tessellum *constructs* knowledge — typed atomicity, dialectic, CQRS — not just stores it |
 | **Agent memory** (Mem0 / Letta / palinode) | Tessellum is a typed knowledge system. Memory tools focus on per-session recall; Tessellum focuses on **epistemic structure** |
 | **Knowledge graph** (Neo4j / Stardog) | The graph emerges from typed wikilinks and Folgezettel trails. You write atomic markdown, not Cypher |
-| **RAG framework** (LangChain / LlamaIndex) | Retrieval is hybrid BM25 + vector + PageRank + best-first BFS over a *typed* graph. Notes are typed atoms, not opaque chunks |
+| **RAG framework** (LangChain / LlamaIndex) | Retrieval is hybrid BM25 + vector (RRF) + best-first BFS + metadata filter over a *typed* graph. Notes are typed atoms, not opaque chunks |
 
 ## Quick Start
 
@@ -67,14 +74,24 @@ tessellum search --bm25 "PageRank"          # lexical only
 tessellum search --bfs term_page_rank.md    # graph traversal from a seed
 tessellum filter --tag concept --bb model   # direct metadata filter (tags / BB / status / dates)
 
-# 6. Compose — runtime for skill-driven workflows
+# 6. Compose — typed-contract runtime for skill-driven workflows
 tessellum composer validate vault/resources/skills/                          # all skills
-tessellum composer compile  vault/resources/skills/skill_my_skill.md         # to typed DAG
-tessellum composer scaffold-sidecar  skill_existing.md                       # generate sidecar from canonical's anchors
-tessellum composer run      vault/resources/skills/skill_my_skill.md         # mock backend
+tessellum composer compile  vault/resources/skills/skill_my_skill.md         # to typed DAG (zero LLM)
+tessellum composer run      skill_my_skill.md                                # serial, mock backend (default)
 tessellum composer run      skill_my_skill.md --backend anthropic            # real Claude (pip install tessellum[agent])
+tessellum composer run      skill_my_skill.md --backend bedrock              # Anthropic-on-Bedrock (AWS creds)
+tessellum composer run      skill_my_skill.md --dynamic --workers 8 \        # v4 self-claiming parallel scheduler
+    --manifest run.json --close-gate --wave-gate --max-invocations 200       #   + resume manifest, gates, budget
 tessellum composer batch    jobs.json --parallelism 8                        # parallel multi-skill
 tessellum composer eval     scenarios/  --judge-backend anthropic            # structural assertions + LLMJudge rubric
+
+# 7. DKS — run the Dialectic Knowledge System engine over observations
+tessellum dks observations.jsonl --perspectives a,b,c                        # multi-cycle dialectic (N>2 → Dung)
+tessellum dks --report                                                       # inter-cycle telemetry
+tessellum dks --meta --apply                                                 # second-order: mutate the BB schema
+
+# 8. Serve tools to an agent over MCP (pip install tessellum[mcp])
+tessellum mcp serve                                                          # stdio server, 7 tools
 ```
 
 `tessellum --version` prints the version + capability banner.
@@ -101,22 +118,23 @@ tessellum composer eval     scenarios/  --judge-backend anthropic            # s
                     │  src/tessellum/retrieval/            │
                     │  System D — descriptive retrieval    │
                     │   • Hybrid BM25 + vector via RRF     │
-                    │   • PPR / Best-First BFS             │
-                    │   • BB-aware re-ranking              │
+                    │   • Best-first BFS + metadata filter │
                     └──────────────────┬───────────────────┘
                                        │ exposed
                                        ▼
                     ┌──────────────────────────────────────┐
-                    │  Interfaces                          │
-                    │   • CLI: `tessellum {init,capture,   │
-                    │     format,index,search,filter,      │
-                    │     composer}` (shipped)             │
-                    │   • Composer runtime: typed-contract │
-                    │     skill canonicals → typed DAGs    │
-                    │     dispatched through Mock or       │
-                    │     Anthropic backend (shipped)      │
-                    │   • MCP server (deferred — add when  │
-                    │     a Tessellum user needs it)       │
+                    │  Interfaces + runtimes               │
+                    │   • CLI (11 cmds): init/format/      │
+                    │     capture/index/search/filter/fz/  │
+                    │     bb/composer/dks/mcp              │
+                    │   • Composer v4: skill canonicals →  │
+                    │     typed DAGs, serial or --dynamic  │
+                    │     self-claiming scheduler;         │
+                    │     backends Mock/Anthropic/Bedrock  │
+                    │   • DKS engine: closed-loop dialectic│
+                    │     over the BB graph (+ meta-DKS)   │
+                    │   • MCP stdio server (shipped, 7     │
+                    │     tools) + a composer-ts/ bridge   │
                     └──────────────────────────────────────┘
 ```
 
@@ -124,7 +142,7 @@ See [vault/resources/analysis_thoughts/thought_six_pillars_architecture.md](vaul
 
 ## The Building Block Ontology
 
-Every tessellum has a `building_block` field in YAML frontmatter — one of 8 typed roles, each with a defining epistemic function. The directed edges between types form a 10-edge epistemic ontology that drives the Dialectic Knowledge System. See [vault/resources/term_dictionary/term_building_block.md](vault/resources/term_dictionary/term_building_block.md).
+Every tessellum has a `building_block` field in YAML frontmatter — one of 8 typed roles, each with a defining epistemic function. The typed edges between roles form a versioned, event-sourced schema graph (~16 edges: 8 epistemic + 7 navigation-index + 1 DKS extension) — the source of truth is `src/tessellum/bb/`, and the second-order meta-DKS can mutate it. This ontology drives the Dialectic Knowledge System. See [vault/resources/term_dictionary/term_building_block.md](vault/resources/term_dictionary/term_building_block.md) and [docs/bb.md](docs/bb.md).
 
 ## Folgezettel Trails
 
@@ -136,17 +154,25 @@ The top-level layout maps each folder to a defined CQRS role — System P (captu
 
 ```
 Tessellum/
-├── src/tessellum/         Python code — engines for both System P (capture) and System D (retrieval)
-│   ├── format/            Validator + parser + link checker (closed-enum YAML spec)
-│   ├── indexer/           Vault → SQLite unified backend (notes + note_links + FTS5 + sqlite-vec)
-│   ├── retrieval/         BM25 + dense + hybrid RRF + best-first BFS + metadata filter + router
-│   ├── composer/          Loader + compiler + executor + scheduler + materializers + LLM (mock / Anthropic) + batch + eval
+├── src/tessellum/         Python code — engines for System P (capture) and System D (retrieval)
+│   ├── bb/                Building Block ontology — 8-type, versioned, event-sourced schema graph (source of truth)
+│   ├── format/            Validator + parser + BB-graph-aware link checker (closed-enum YAML spec)
+│   ├── indexer/           Vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec; all-MiniLM-L6-v2 384-d)
+│   ├── retrieval/         BM25 + dense + hybrid RRF + best-first BFS + metadata filter (+ heuristic router)
+│   ├── composer/          Composer v4 runtime — compiler + scheduler (serial run_pipeline + dynamic
+│   │                      run_pipeline_dynamic) + executor (retry ladder) + manifest + gates + fix +
+│   │                      credential_pool + context_assembler + planning + signoff + llm
+│   │                      (Mock/Anthropic/Bedrock/Pooled) + batch + eval
+│   ├── dks/               Dialectic Knowledge System engine — core + fsm + dung + confidence + persistence + meta/
 │   ├── capture.py         14-flavor capture registry (concept, procedure, skill, model, argument,
 │   │                      counter_argument, hypothesis, empirical_observation, experiment,
 │   │                      navigation, entry_point, acronym_glossary, code_snippet, code_repo)
 │   ├── init.py            tessellum init scaffold
-│   ├── cli/               Per-subcommand dispatchers wired into argparse
+│   ├── cli/               Per-subcommand dispatchers (11 commands) wired into argparse
+│   ├── mcp/               Shipped MCP stdio server (7 tools) — `tessellum mcp serve`
 │   └── data/              Force-included template directory + seed-vault content
+├── composer-ts/           TypeScript orchestration bridge (bridge-not-port; shells the Python CLI)
+├── docs/                  Architecture + per-module design reference
 ├── vault/                 Shared substrate — typed atomic notes (Tessellum dogfoods itself)
 │   ├── 0_entry_points/    Master TOC + 5 acronym glossaries (statistics, critical thinking,
 │   │                      cognitive science, network science, LLMs) + master glossary index
@@ -169,10 +195,10 @@ Tessellum/
 │   └── composer/          Composer chain run traces (wired by `tessellum composer run/batch`)
 ├── experiments/           Experiment outputs
 ├── scripts/               Operational utilities (one-off migrations; not in wheel)
-└── tests/                 Test suite (~468 passing as of v0.0.27)
+└── tests/                 Test suite (1152 passing as of v1.0.0)
 ```
 
-**No separate `docs/` directory** — Tessellum's own documentation IS a typed-knowledge vault. Start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.
+**Two documentation surfaces, by audience.** [`docs/`](docs/) is the **engineering reference** — the system architecture and a per-module design doc (composer, dks, retrieval, indexer, bb, format, cli, mcp) for contributors reading the code. [`vault/`](vault/) is the **knowledge documentation** — Tessellum dogfoods itself, so its concepts, how-tos, and design arguments live as typed atomic notes; start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.
 
 ## Compared to Adjacent Tools
 
@@ -183,7 +209,7 @@ Tessellum/
 | Dialectic / counters as first-class | ✅ | — | — | — |
 | CQRS read/write split | ✅ | — | — | — |
 | Hybrid BM25 + vector retrieval | ✅ | plugin | ✅ | proprietary |
-| MCP server | deferred | plugin | ✅ | — |
+| MCP server | ✅ (7 tools) | plugin | ✅ | — |
 | Closed-loop dialectic compaction | ✅ (DKS) | — | partial (5 ops) | — |
 | Typed-contract pipeline runtime | ✅ (Composer) | — | — | — |
 | Knowledge-construction (vs storage) | ✅ | — | — | — |

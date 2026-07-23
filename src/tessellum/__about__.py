@@ -1,9 +1,27 @@
 """Single source of version + status. Imported by ``tessellum.__init__`` and
 ``tessellum.cli`` so neither holds its own copy."""
 
-__version__ = "0.0.60"
+__version__ = "1.0.0"
 
 __status__ = (
+    "1.0.0 — Composer v4 dynamic-workflow runtime.\n"
+    "\n"
+    "The composer moves from a serial run_pipeline to a wave-parallel,\n"
+    "resumable, gated, self-claiming dynamic pipeline behind an opt-in\n"
+    "`tessellum composer run --dynamic`; the serial default path stays\n"
+    "byte-for-byte unchanged (IDENT-4). Adds the resume manifest +\n"
+    "error-class/full-jitter retry ladder, the self-claiming scheduler\n"
+    "(no wave barrier) + typed outcome, the plan/session/wave gate engine,\n"
+    "a revert-to-BEST fix loop with a real LLM fixer, a credential pool\n"
+    "(PooledBackend), a $0 change-detection pre-gate, the context assembler\n"
+    "(fail-soft prompt bounding), a pluggable sign-off approver, run-level\n"
+    "budgets, a Python skills-as-tools + capability registry, a composer-ts/\n"
+    "TypeScript orchestration bridge (bridge-not-port), and a production\n"
+    "Amazon Bedrock backend. Suite 912 -> 1152.\n"
+    "\n"
+    "See docs/ for the architecture + per-module design reference.\n"
+    "\n"
+    "--- 0.0.60 heritage: Composer + DKS robustness layer ---\n"
     "alpha — Composer + DKS robustness layer (plan_composer_dks_robustness).\n"
     "\n"
     "Four reliability-pattern-pattern ports close validated structural gaps in the\n"
