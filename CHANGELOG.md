@@ -101,6 +101,14 @@ Sixth and final phase: the input-side context seam (`composer/context_assembler.
 **Added — sign-off approver (`composer/signoff.py`, new).**
 - `run_sign_off` composes the `review → ready` gate cheapest-first: **program gate** (pure structural pre-filter — a fail rejects outright, never spending an agent) → **reviewer agent** (agent-as-judge returning an approve/reject + confidence) → **human interruption** (suspend/approve/resume), escalated to **only** on low agent confidence or high blast radius. A confident agent approval on a low-blast plan is terminal at the agent rung; when the human rung is required but disabled, the result is a surfaced `needs_human`. `SignOffPolicy` (which rungs run + thresholds) is chosen per run; the agent-judge and human-prompt callables are injected (the module owns the ladder logic, not the model/UI calls).
 
+### Composer v4 refactor — Phase 7 (wire the dynamic scheduler into the CLI) — 2026-07-22
+
+The keystone the as-built audit called out: Phases 1–6 built + tested every v4 primitive, but `run_pipeline_dynamic` had **no production caller** — the CLI `run`/`batch`/`eval` all invoked the serial `run_pipeline`, so the wave scheduler + close-gate + manifest + typed outcome + budget were reachable only from tests. This phase adds an **opt-in `--dynamic` route to `tessellum composer run`**, making the v4 path operational. **The serial `run_pipeline` remains the default (IDENT-4); `--dynamic` and its sub-flags all default off.** Suite `1075 → 1081 passing` (+6 CLI tests), 1 skipped.
+
+**Added — `tessellum composer run --dynamic` (`cli/composer.py`).**
+- `--dynamic` routes to `run_pipeline_dynamic` (same `RunResult`, same JSON/human output). Sub-flags assemble only the machinery requested: `--workers N` (leaf-pool size); `--manifest PATH` (per-leaf/per-attempt resume manifest — records claim/done rows, reloaded via `Manifest.load` and flushed on completion); `--close-gate` (per-session close-gate via `build_close_gate()` — a note that fails format/grounding closes `blocked`, not `done`); `--max-invocations` / `--max-cost` (a `RunBudget` — a refused spend halts the leaf with a typed `BUDGET_EXHAUSTED` outcome + non-zero exit); `--stats PATH` (a `statistics.json` per-stage rollup).
+- CLI-level tests: dynamic↔serial parity (same invocation + error counts + leaf ids), manifest written with all-`done` rows, `statistics.json` rollup, budget halts a runaway (4 leaves / budget 2 → 2 `BUDGET_EXHAUSTED`), and `--close-gate` blocks a format-clean-but-ungrounded note (grounding fails closed without an injected verifier).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

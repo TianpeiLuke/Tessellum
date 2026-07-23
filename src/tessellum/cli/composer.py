@@ -33,14 +33,18 @@ from tessellum.composer import (
     EvalError,
     LLMBackend,
     LLMJudge,
+    Manifest,
     MockBackend,
     PipelineValidationError,
+    RunBudget,
+    build_close_gate,
     compile_skill,
     load_pipeline,
     load_scenarios,
     run_batch,
     run_eval,
     run_pipeline,
+    run_pipeline_dynamic,
     to_dag_json,
 )
 
@@ -165,6 +169,55 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Emit per-step start/finish lines to stderr. Off by default. "
         "Useful for long multi-leaf runs where the user wants to see "
         "what step is currently running.",
+    )
+    # ── v4 dynamic scheduler (opt-in; serial run_pipeline stays the default) ──
+    run_cmd.add_argument(
+        "--dynamic",
+        action="store_true",
+        help="Use the wave-parallel v4 scheduler (run_pipeline_dynamic) instead "
+        "of the serial reference path. Opt-in; the serial run_pipeline stays "
+        "the default and is byte-identical. Enables --workers/--manifest/"
+        "--close-gate/--max-invocations/--max-cost/--stats below.",
+    )
+    run_cmd.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Leaf-level worker-pool size for --dynamic (default: 4). Ignored "
+        "without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--manifest",
+        type=Path,
+        help="Resume-manifest path for --dynamic. Records per-leaf/per-attempt "
+        "rows + claim/done state (crash-safe resume projection). Ignored "
+        "without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--close-gate",
+        action="store_true",
+        help="Enable the per-session close-gate for --dynamic: each note that a "
+        "session writes must pass format (+ grounding) before it closes "
+        "`done`, else `blocked`. Ignored without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--max-invocations",
+        type=int,
+        help="Global run-level invocation budget for --dynamic (the "
+        "runaway-fan-out breaker). A refused spend halts the leaf with a "
+        "typed BUDGET_EXHAUSTED outcome. Ignored without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--max-cost",
+        type=float,
+        help="Global run-level cost budget for --dynamic. Ignored without "
+        "--dynamic.",
+    )
+    run_cmd.add_argument(
+        "--stats",
+        type=Path,
+        help="Write a statistics.json rollup (per-stage counts + duration) for "
+        "--dynamic. Ignored without --dynamic.",
     )
     run_cmd.set_defaults(func=run_composer_run_cli)
 
@@ -600,15 +653,59 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
     vault_root = args.vault.expanduser().resolve()
     runs_dir = None if args.no_trace else args.runs_dir.expanduser().resolve()
 
-    run = run_pipeline(
-        compiled,
-        leaves=leaves,
-        backend=backend,
-        vault_root=vault_root,
-        dry_run=args.dry_run,
-        runs_dir=runs_dir,
-        progress=getattr(args, "progress", False),
-    )
+    if getattr(args, "dynamic", False):
+        # ── v4 wave-parallel path (opt-in) ──────────────────────────────────
+        # Assemble only the machinery the flags request; everything defaults
+        # off so `--dynamic` alone is a straight parallel run with parity to
+        # the serial path.
+        manifest = (
+            Manifest.load(args.manifest.expanduser().resolve())
+            if getattr(args, "manifest", None) is not None
+            else None
+        )
+        close_gate = build_close_gate() if getattr(args, "close_gate", False) else None
+        budget = None
+        if getattr(args, "max_invocations", None) is not None or getattr(
+            args, "max_cost", None
+        ) is not None:
+            budget = RunBudget(
+                max_invocations=args.max_invocations,
+                max_cost=args.max_cost,
+            )
+        stats_path = (
+            args.stats.expanduser().resolve()
+            if getattr(args, "stats", None) is not None
+            else None
+        )
+        run = run_pipeline_dynamic(
+            compiled,
+            leaves=leaves,
+            backend=backend,
+            vault_root=vault_root,
+            dry_run=args.dry_run,
+            runs_dir=runs_dir,
+            max_workers=getattr(args, "workers", 4),
+            manifest=manifest,
+            close_gate=close_gate,
+            budget=budget,
+            stats_path=stats_path,
+        )
+        # The manifest is a rebuildable projection; persist the final state so
+        # a later run can resume from it (the write-side already saved per-leaf
+        # when a manifest path was set, but a path-less Manifest.load with a
+        # real path also benefits from a final flush).
+        if manifest is not None and manifest.path is not None:
+            manifest.save()
+    else:
+        run = run_pipeline(
+            compiled,
+            leaves=leaves,
+            backend=backend,
+            vault_root=vault_root,
+            dry_run=args.dry_run,
+            runs_dir=runs_dir,
+            progress=getattr(args, "progress", False),
+        )
 
     if args.output_format == "json":
         payload = {

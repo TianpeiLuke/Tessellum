@@ -285,6 +285,266 @@ def test_run_backend_anthropic_without_sdk_returns_2(
     assert "[agent]" in err or "extras" in err
 
 
+# ── v4 dynamic scheduler path (`--dynamic`, opt-in) ─────────────────────────
+
+
+_PERLEAF_CANONICAL = textwrap.dedent(
+    """\
+    ---
+    tags:
+      - resource
+      - skill
+    keywords:
+      - alpha
+      - beta
+      - gamma
+    topics:
+      - X
+      - Y
+    language: markdown
+    date of note: 2026-05-10
+    status: active
+    building_block: procedure
+    pipeline_metadata: ./skill_pl.pipeline.yaml
+    ---
+
+    # Per-leaf
+
+    ## Step 1: rate <!-- :: section_id = step_1 :: -->
+
+    Rate leaf {{leaf.id}}.
+    """
+)
+
+_PERLEAF_SIDECAR = textwrap.dedent(
+    """\
+    version: "1.0"
+    pipeline:
+      - section_id: step_1
+        role: CORE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        prompt_template: "Rate."
+        output_key: rating
+    """
+)
+
+
+@pytest.fixture
+def perleaf_skill(tmp_path: Path) -> Path:
+    skill = tmp_path / "skill_pl.md"
+    skill.write_text(_PERLEAF_CANONICAL, encoding="utf-8")
+    (tmp_path / "skill_pl.pipeline.yaml").write_text(_PERLEAF_SIDECAR, encoding="utf-8")
+    return skill
+
+
+def _leaves_file(tmp_path: Path, ids: list[str]) -> Path:
+    p = tmp_path / "leaves.json"
+    p.write_text(json.dumps([{"id": i} for i in ids]), encoding="utf-8")
+    return p
+
+
+def test_run_dynamic_basic(perleaf_skill, tmp_path, capsys):
+    """`--dynamic` routes to run_pipeline_dynamic and runs every leaf."""
+    leaves = _leaves_file(tmp_path, ["a", "b", "c"])
+    code = main(
+        [
+            "composer", "run", str(perleaf_skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--dynamic", "--workers", "3",
+            "--format", "json",
+        ]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["step_invocation_count"] == 3
+    assert payload["error_count"] == 0
+
+
+def test_run_dynamic_matches_serial(perleaf_skill, tmp_path, capsys):
+    """Same skill/leaves through serial and --dynamic → same invocation count
+    + error count (parity at the CLI level)."""
+    leaves = _leaves_file(tmp_path, ["a", "b", "c"])
+    args = [
+        "composer", "run", str(perleaf_skill),
+        "--no-trace", "--leaves", str(leaves), "--format", "json",
+    ]
+    assert main(args + ["--vault", str(tmp_path / "v_serial")]) == 0
+    serial = json.loads(capsys.readouterr().out)
+    assert main(args + ["--vault", str(tmp_path / "v_dyn"), "--dynamic"]) == 0
+    dynamic = json.loads(capsys.readouterr().out)
+    assert serial["step_invocation_count"] == dynamic["step_invocation_count"]
+    assert serial["error_count"] == dynamic["error_count"] == 0
+    assert (
+        sorted(r["leaf_id"] for r in serial["step_results"])
+        == sorted(r["leaf_id"] for r in dynamic["step_results"])
+    )
+
+
+def test_run_dynamic_writes_manifest(perleaf_skill, tmp_path, capsys):
+    leaves = _leaves_file(tmp_path, ["a", "b"])
+    manifest = tmp_path / "manifest.json"
+    code = main(
+        [
+            "composer", "run", str(perleaf_skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--dynamic", "--manifest", str(manifest),
+        ]
+    )
+    assert code == 0
+    assert manifest.exists()
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert data["entries"]
+    assert all(e["status"] == "done" for e in data["entries"].values())
+
+
+def test_run_dynamic_writes_statistics(perleaf_skill, tmp_path, capsys):
+    leaves = _leaves_file(tmp_path, ["a", "b", "c"])
+    stats = tmp_path / "statistics.json"
+    code = main(
+        [
+            "composer", "run", str(perleaf_skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--dynamic", "--stats", str(stats),
+        ]
+    )
+    assert code == 0
+    payload = json.loads(stats.read_text(encoding="utf-8"))
+    assert payload["invocation_count"] == 3
+    assert payload["error_count"] == 0
+    assert payload["per_stage"]["step_1"]["succeeded"] == 3
+
+
+def test_run_dynamic_budget_halts_runaway(perleaf_skill, tmp_path, capsys):
+    """--max-invocations below the leaf count → some leaves halt with a typed
+    BUDGET_EXHAUSTED outcome, surfacing as errors + a non-zero exit."""
+    leaves = _leaves_file(tmp_path, ["a", "b", "c", "d"])
+    code = main(
+        [
+            "composer", "run", str(perleaf_skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--dynamic", "--workers", "1", "--max-invocations", "2",
+            "--format", "json",
+        ]
+    )
+    assert code == 1  # some leaves errored (budget-exhausted)
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_count"] == 2  # 4 leaves, budget 2 → 2 halted
+    budget_errs = [
+        r for r in payload["step_results"]
+        if r["error"] and "budget exhausted" in r["error"]
+    ]
+    assert len(budget_errs) == 2
+
+
+def test_run_dynamic_close_gate_blocks_ungrounded(tmp_path, capsys):
+    """--close-gate without a grounding verifier → grounding fails closed →
+    a format-clean written note still can't close (session blocked → error)."""
+    # A writer skill whose materializer actually writes a note file.
+    canonical = textwrap.dedent(
+        """\
+        ---
+        tags:
+          - resource
+          - skill
+        keywords:
+          - alpha
+          - beta
+          - gamma
+        topics:
+          - X
+          - Y
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: procedure
+        pipeline_metadata: ./skill_w.pipeline.yaml
+        ---
+
+        # W
+
+        ## Step 1: write <!-- :: section_id = step_1 :: -->
+
+        Write for {{leaf.id}}.
+        """
+    )
+    sidecar = textwrap.dedent(
+        """\
+        version: "1.0"
+        pipeline:
+          - section_id: step_1
+            role: CORE
+            aggregation: per_leaf
+            batchable: false
+            depends_on: []
+            materializer: body_markdown_to_file
+            expected_output_schema:
+              type: object
+              required: [output_path, body_markdown]
+            prompt_template: "Write."
+        """
+    )
+    skill = tmp_path / "skill_w.md"
+    skill.write_text(canonical, encoding="utf-8")
+    (tmp_path / "skill_w.pipeline.yaml").write_text(sidecar, encoding="utf-8")
+
+    note_body = textwrap.dedent(
+        """\
+        ---
+        tags:
+          - resource
+          - concept
+        keywords:
+          - alpha term
+          - beta term
+          - gamma term
+        topics:
+          - Topic One
+          - Topic Two
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: concept
+        ---
+
+        # Written Note
+
+        ## Purpose
+
+        A grounded body.
+        """
+    )
+    # The rendered prompt is "Write for leaf_0." — key on the "Write" substring.
+    responses = tmp_path / "resp.json"
+    responses.write_text(
+        json.dumps({"Write": json.dumps({"output_path": "notes/out.md", "body_markdown": note_body})}),
+        encoding="utf-8",
+    )
+    leaves = _leaves_file(tmp_path, ["a"])
+    code = main(
+        [
+            "composer", "run", str(skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--mock-responses", str(responses),
+            "--dynamic", "--close-gate",
+            "--format", "json",
+        ]
+    )
+    # Format passes but grounding fails closed (no verifier) → session blocked
+    # → the otherwise-clean capture is rewritten to an errored result.
+    assert code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_count"] == 1
+    assert "close-gate blocked (grounding)" in payload["step_results"][0]["error"]
+
+
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
     canonical = _CANONICAL.replace(
         "pipeline_metadata: ./skill_demo.pipeline.yaml",
