@@ -109,6 +109,14 @@ The keystone the as-built audit called out: Phases 1–6 built + tested every v4
 - `--dynamic` routes to `run_pipeline_dynamic` (same `RunResult`, same JSON/human output). Sub-flags assemble only the machinery requested: `--workers N` (leaf-pool size); `--manifest PATH` (per-leaf/per-attempt resume manifest — records claim/done rows, reloaded via `Manifest.load` and flushed on completion); `--close-gate` (per-session close-gate via `build_close_gate()` — a note that fails format/grounding closes `blocked`, not `done`); `--max-invocations` / `--max-cost` (a `RunBudget` — a refused spend halts the leaf with a typed `BUDGET_EXHAUSTED` outcome + non-zero exit); `--stats PATH` (a `statistics.json` per-stage rollup).
 - CLI-level tests: dynamic↔serial parity (same invocation + error counts + leaf ids), manifest written with all-`done` rows, `statistics.json` rollup, budget halts a runaway (4 leaves / budget 2 → 2 `BUDGET_EXHAUSTED`), and `--close-gate` blocks a format-clean-but-ungrounded note (grounding fails closed without an injected verifier).
 
+### Composer v4 refactor — skills-as-tools + capability registry — 2026-07-22
+
+The first of the two architecture bets the as-built audit flagged `not_started`, realized in **Python** (the settled conclusion: a full TypeScript port is feasible-but-not-worth-it; the substrate stays Python). Suite `1081 → 1089 passing` (+8 tests), 1 skipped.
+
+**Added — `composer/skill_tool.py` (new).**
+- `SkillTool` — a skill promoted from a prose SOP into a typed, invokable capability: a **read-only projection** over its already-compiled pipeline into `{input_schema, output_schema, side_effects, gates, mcp_deps}` + a routing key `{produces_bb, input_kind, domain}`. It never re-implements compilation or contract logic — `build_skill_tool` delegates to `compile_skill` (the single source of truth) and reads the sidecar only for the `mcp_dependencies` the compiler drops. `side_effects` (`produces_notes`/`applies_edits`/`read_only`) derive from materializer verbs; `gates` project the pure-program invariants (`compile_contract`, `tool_free_backend`, …); `input_kind` from the lead step's aggregation + skill name.
+- `CapabilityRegistry` — indexes SkillTools (`from_skill_dir` discovers every `skill_*.md` with a paired `.pipeline.yaml`) and answers "which skill produces X?" with **two-tier routing**: a deterministic filter over `{produces_bb, input_kind, domain}` (exactly one match → route to it) and, for the open set (0 or >1 matches), a `needs_llm_selector` signal with the candidate list. The module **never calls an LLM** — it hands the genuinely-ambiguous choice back to the caller (boundary doctrine: programs route deterministically where they can; agents decide only the ambiguous case). Verified against the real vault skills (6 SkillTools compiled from the shipped sidecars).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

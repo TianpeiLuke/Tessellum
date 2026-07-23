@@ -160,6 +160,14 @@ from tessellum.composer.signoff import (
     SignOffResult,
     run_sign_off,
 )
+from tessellum.composer.skill_tool import (
+    CapabilityRegistry,
+    McpDep,
+    RouteDecision,
+    RoutingKey,
+    SkillTool,
+    build_skill_tool,
+)
 from tessellum.composer.session_mcp import (
     SESSION_MCP_TOOLS,
     get_session_metadata,
@@ -269,6 +277,13 @@ __all__ = [
     "SignOffResult",
     "AgentVerdict",
     "run_sign_off",
+    # Skills-as-tools + capability registry
+    "SkillTool",
+    "build_skill_tool",
+    "CapabilityRegistry",
+    "RoutingKey",
+    "RouteDecision",
+    "McpDep",
     # Batch runner
     "BatchJob",
     "BatchJobResult",
