@@ -16,6 +16,19 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [1.0.1] — 2026-07-22
+
+Documentation + release-metadata patch (no code or behaviour change).
+
+### Fixed
+
+- `src/tessellum/__about__.py` shipped pinned at `0.0.60` in the 1.0.0 wheel, so `tessellum --version` misreported the version; synced to the real version.
+
+### Changed
+
+- README refreshed from the stale v0.0.27 content to the 1.0 architecture — Composer v4 runtime, the DKS engine, four LLM backends (Mock/Anthropic/Bedrock/Pooled), the 11-command CLI, and the shipped MCP server; corrected the factual gaps (no PageRank in retrieval, ~16 typed BB edges, test count 1152).
+- Added `docs/` — an engineering architecture + per-module design reference (architecture, composer, dks, retrieval, indexer, bb, format, cli, mcp) distinct from the `vault/` knowledge documentation.
+
 ## [1.0.0] — 2026-07-22
 
 **Composer v4 dynamic-workflow refactor (Phases 1–16)** — the 1.0 milestone. The composer moves from a serial `run_pipeline` to a wave-parallel, resumable, gated, self-claiming dynamic pipeline behind an opt-in `tessellum composer run --dynamic`; the serial default path stays byte-for-byte unchanged (IDENT-4). Adds the resume manifest + error-class/full-jitter retry ladder, the self-claiming scheduler (continuous completion-driven, no wave barrier) + typed discriminated-union outcome, the gate engine + per-session close-gate + per-wave post-batch gate, a revert-to-BEST fix loop with a real LLM fixer, a credential pool (`PooledBackend`), a `$0` change-detection pre-gate, the context assembler (fail-soft prompt bounding), a pluggable sign-off approver, run-level budgets, a Python skills-as-tools + capability registry, a `composer-ts/` TypeScript orchestration bridge (bridge-not-port), and a production Amazon Bedrock backend. Suite 912 → 1152. Per-phase detail below.
