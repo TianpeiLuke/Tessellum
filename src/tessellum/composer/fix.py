@@ -206,6 +206,109 @@ def run_fix_loop(
     )
 
 
+# ── A real LLM-backed informed fixer ────────────────────────────────────────
+
+
+DEFAULT_FIX_SYSTEM_PROMPT = (
+    "You are a note-repair assistant. You are given the FULL current text of "
+    "a note that FAILED its validation gates, plus the list of blocking "
+    "issues. Return the CORRECTED note text and NOTHING else — no preamble, "
+    "no code fences, no commentary. Fix every listed issue while preserving "
+    "the note's meaning, structure, and all correct content. Do not invent "
+    "facts; only repair format/structure/links the issues call out."
+)
+
+
+def _default_render_fix_prompt(current: str, ctx: "FixContext") -> str:
+    """Build the user prompt for the LLM fixer from the note + gate issues.
+
+    Includes the prior-attempt history so a repeated failure nudges a
+    different strategy (the *informed* part of the informed fixer).
+    """
+    lines: list[str] = []
+    lines.append("## Blocking issues to fix")
+    if ctx.issues:
+        for i in ctx.issues:
+            # Issue.__str__ renders "ERROR[field] RULE: message"; fall back
+            # to repr for any non-Issue entry.
+            lines.append(f"- {i}")
+    else:
+        lines.append("- (none reported — return the note unchanged)")
+    if ctx.prior_attempts:
+        lines.append("")
+        lines.append("## Prior repair attempts (did not fully pass)")
+        for a in ctx.prior_attempts:
+            causes = ", ".join(a.causes) if a.causes else "—"
+            lines.append(
+                f"- round {a.round_n}: {a.score} issue(s) remained "
+                f"(causes: {causes})"
+            )
+        lines.append("")
+        lines.append(
+            "Those attempts did not fully pass — try a different fix."
+        )
+    lines.append("")
+    lines.append("## Current note text")
+    lines.append(current)
+    lines.append("")
+    lines.append("Return the corrected note text only.")
+    return "\n".join(lines)
+
+
+def make_llm_fixer(
+    backend,
+    *,
+    system_prompt: str = DEFAULT_FIX_SYSTEM_PROMPT,
+    render_prompt: "Callable[[str, FixContext], str]" = _default_render_fix_prompt,
+    max_tokens: int = 8000,
+    encoding: str = "utf-8",
+) -> "InformedFixer":
+    """Build an informed fixer that repairs a note in place via ``backend``.
+
+    Returns a ``FixContext -> None`` callable (the shape
+    :func:`run_fix_loop` invokes). Each call reads the note's current text,
+    renders a repair prompt from it + the gate's blocking issues + the
+    prior-attempt history, asks ``backend`` for the corrected note, and
+    writes the response back to ``ctx.note_path``. The fix loop owns the
+    checkpoint-before-fix + revert-to-BEST safety, so a *worse* LLM repair
+    can never overwrite a better earlier version — this fixer only has to
+    attempt an improvement, not guarantee one.
+
+    Fail-soft: an empty backend response (or an unreadable/empty note) is a
+    no-op write — the loop re-gates, sees no improvement, and moves on
+    (never crashes the worker; a fixer crash is already caught by the loop).
+
+    Args:
+        backend: An object with ``call(LLMRequest) -> LLMResponse`` (any
+            :class:`~tessellum.composer.llm.LLMBackend`).
+        system_prompt: The repair system prompt.
+        render_prompt: ``(current_text, ctx) -> user_prompt`` — override to
+            customize the repair instructions.
+        max_tokens: Response cap (notes can be long — default 8000).
+        encoding: Note file encoding.
+    """
+    from tessellum.composer.llm import LLMRequest
+
+    def _fixer(ctx: FixContext) -> None:
+        current = _read_bytes(ctx.note_path).decode(encoding, errors="replace")
+        if not current:
+            return  # nothing to repair against — no-op
+        user_prompt = render_prompt(current, ctx)
+        response = backend.call(
+            LLMRequest(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                max_tokens=max_tokens,
+            )
+        )
+        corrected = (response.content or "").strip()
+        if not corrected:
+            return  # empty repair — leave the note as-is (no-op)
+        _write_bytes(ctx.note_path, corrected.encode(encoding))
+
+    return _fixer
+
+
 def _read_bytes(path: Path) -> bytes:
     try:
         return Path(path).read_bytes()
@@ -225,4 +328,6 @@ __all__ = [
     "InformedFixer",
     "score_issues",
     "run_fix_loop",
+    "make_llm_fixer",
+    "DEFAULT_FIX_SYSTEM_PROMPT",
 ]

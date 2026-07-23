@@ -128,6 +128,7 @@ from tessellum.composer.fix import (
     AttemptOutcome,
     FixContext,
     FixLoopResult,
+    make_llm_fixer,
     run_fix_loop,
     score_issues,
 )
@@ -261,6 +262,7 @@ __all__ = [
     "FixLoopResult",
     "AttemptOutcome",
     "run_fix_loop",
+    "make_llm_fixer",
     "score_issues",
     "LeafComplexity",
     "classify_planning_depth",

@@ -475,6 +475,7 @@ def run_pipeline_dynamic(
     grounding_verifier: "Callable[[CompiledStep, dict, StepResult], GroundingVerdict] | None" = None,
     max_fix_rounds: int = 0,
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None" = None,
+    informed_fixer: "Callable[[FixContext], object] | None" = None,
     budget: RunBudget | None = None,
     wave_gate: GateSuite | None = None,
     context_assembler: "ContextAssembler | None" = None,
@@ -546,9 +547,12 @@ def run_pipeline_dynamic(
             verifier makes grounding fail-closed.
         max_fix_rounds: Max close-gate fix retries per session (0 = no
             fix loop; a first FAIL closes ``blocked``).
-        fixer: Callable ``(step, leaf, issues) -> StepResult`` invoked on
-            a close-gate FAIL to repair the note in place. ``None`` skips
-            the fix loop.
+        fixer: Legacy ``(step, leaf, issues)`` fixer invoked on a
+            close-gate FAIL to repair the note in place. ``None`` skips it.
+        informed_fixer: A ``FixContext -> anything`` fixer (the richer
+            shape — gets note_path + gate issues + prior-attempt history).
+            Takes precedence over ``fixer``. The LLM fixer from
+            :func:`~tessellum.composer.fix.make_llm_fixer` plugs in here.
         budget: Optional global run-level :class:`RunBudget`. When set,
             each task charges one invocation (+ cost) before dispatch; a
             refused spend halts that leaf with a typed
@@ -669,6 +673,7 @@ def run_pipeline_dynamic(
                 close_gate=close_gate,
                 grounding_verifier=grounding_verifier,
                 fixer=fixer,
+                informed_fixer=informed_fixer,
                 max_fix_rounds=max_fix_rounds,
                 backend=backend,
                 vault_root=vault_root,
@@ -868,6 +873,7 @@ def _run_close_gate(
     close_gate: GateSuite,
     grounding_verifier: "Callable[[CompiledStep, dict, StepResult], GroundingVerdict] | None",
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None",
+    informed_fixer: "Callable[[FixContext], object] | None",
     max_fix_rounds: int,
     backend: LLMBackend,
     vault_root: Path,
@@ -905,21 +911,23 @@ def _run_close_gate(
         composite = close_gate.evaluate(note_path, verdict=verdict)
         return composite.passed, composite.first_failure_cause, composite.blocking_issues
 
-    # The scheduler's fixer contract is (step, leaf, issues) -> anything;
-    # adapt it to the informed-fix contract (FixContext) the fix loop uses.
-    # The fix loop owns the checkpoint-before-fix + revert-to-BEST safety;
-    # the fixer only repairs the note in place. Prior-attempt outcomes ride
-    # inside the FixContext so the fixer is informed, not blind.
-    informed_fixer = None
-    if fixer is not None:
+    # Two fixer shapes are supported. An ``informed_fixer`` (FixContext ->
+    # anything) gets the full context — note_path + gate issues +
+    # prior-attempt history — and is used directly (e.g. the LLM fixer from
+    # :func:`make_llm_fixer`). The legacy ``fixer`` (step, leaf, issues) is
+    # adapted for backward compatibility. ``informed_fixer`` takes
+    # precedence. The fix loop owns checkpoint-before-fix + revert-to-BEST,
+    # so the fixer only has to attempt an in-place repair.
+    loop_fixer = informed_fixer
+    if loop_fixer is None and fixer is not None:
 
-        def informed_fixer(ctx: FixContext) -> object:  # noqa: F811 — local closure
+        def loop_fixer(ctx: FixContext) -> object:  # noqa: F811 — local closure
             return fixer(step, leaf, ctx.issues)
 
     loop = run_fix_loop(
         note_path=Path(note_path),
         evaluate=_evaluate,
-        fixer=informed_fixer,
+        fixer=loop_fixer,
         max_rounds=max_fix_rounds,
     )
 

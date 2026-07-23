@@ -170,6 +170,15 @@ Activates the last planner-economics primitive the as-built audit found built-bu
 - `leaf_fingerprint(leaf, source_key=None)` — SHA-256 of a leaf's *content*, excluding the scheduler's positional `_id` (so re-ordering/re-id doesn't perturb it); `source_key` narrows it to one field. `partition_unchanged_leaves(leaves, prior_fingerprints, ...)` splits leaves into `(to_run, skipped)` + a fresh fingerprint map — a leaf is skipped only when its recorded fingerprint matches exactly (new/changed/unkeyed → always run, fail-open). Carries prior entries forward so a skipped leaf keeps its fingerprint.
 - CLI `--skip-unchanged <fingerprints.json>` (+ `--skip-unchanged-key`): loads the store, filters unchanged leaves before `run_pipeline_dynamic`, rewrites the store after, and reports the skip count. A corrupt/missing store fails open (runs everything). **Fix**: when the pre-gate filters *every* leaf out, the run short-circuits to a clean 0-invocation result instead of falling into the scheduler's empty-leaves `corpus`-fallback (which would re-run the step). Verified end-to-end: run→all execute; identical re-run→0 invocations; change one leaf→only that one runs.
 
+### Composer v4 — real LLM fixer for the close-gate loop — 2026-07-22
+
+The close-gate's revert-to-BEST fix loop was built but dormant — it only ran if a caller injected a fixer, and none existed. Now `make_llm_fixer` provides a real one. Suite `1138 → 1149 passing` (+11 tests).
+
+**Added — `make_llm_fixer` (`composer/fix.py`) + `informed_fixer` param + CLI `--fix-with-backend`.**
+- `make_llm_fixer(backend, ...)` returns a `FixContext -> None` informed fixer: it reads the failing note's current text, renders a repair prompt from it + the gate's blocking `Issue` findings + the prior-attempt history (so a repeated failure nudges a different strategy), asks the backend for the corrected note, and writes it back in place. Fail-soft — an empty note or empty response is a no-op. The fix loop still owns checkpoint-before-fix + revert-to-BEST, so a *worse* LLM repair can never overwrite a better earlier version (verified: a regressing repair reverts to the best snapshot).
+- `run_pipeline_dynamic` gains an `informed_fixer` param (`FixContext -> anything`) that takes precedence over the legacy 3-arg `fixer` — it gets the full context (note_path + issues + prior attempts), where the legacy adapter dropped all but issues.
+- CLI `--fix-with-backend` (+ `--max-fix-rounds`, default 1) builds the fixer from the run's `--backend` and requires `--close-gate` (guarded: a bare `--fix-with-backend` is an invocation error). Verified end-to-end: a format-failing captured note is repaired in place, re-gated, and the session closes clean; an unrepairable note still blocks (never silently done).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

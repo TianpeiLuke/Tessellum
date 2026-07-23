@@ -41,6 +41,7 @@ from tessellum.composer import (
     build_wave_gate,
     compile_skill,
     get_assembler,
+    make_llm_fixer,
     partition_unchanged_leaves,
     load_pipeline,
     load_scenarios,
@@ -209,6 +210,19 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Resume-manifest path for --dynamic. Records per-leaf/per-attempt "
         "rows + claim/done state (crash-safe resume projection). Ignored "
         "without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--fix-with-backend",
+        action="store_true",
+        help="On a close-gate FAIL, repair the note in place with an LLM fixer "
+        "(the same --backend), up to --max-fix-rounds, with checkpoint + "
+        "revert-to-BEST. Requires --dynamic + --close-gate.",
+    )
+    run_cmd.add_argument(
+        "--max-fix-rounds",
+        type=int,
+        default=1,
+        help="Max close-gate repair rounds for --fix-with-backend (default: 1).",
     )
     run_cmd.add_argument(
         "--close-gate",
@@ -809,6 +823,18 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             else None
         )
         close_gate = build_close_gate() if getattr(args, "close_gate", False) else None
+        informed_fixer = None
+        max_fix_rounds = 0
+        if getattr(args, "fix_with_backend", False):
+            if close_gate is None:
+                print(
+                    "tessellum composer run: --fix-with-backend requires "
+                    "--close-gate (there is no gate to repair against).",
+                    file=sys.stderr,
+                )
+                return 2
+            informed_fixer = make_llm_fixer(backend)
+            max_fix_rounds = getattr(args, "max_fix_rounds", 1)
         budget = None
         if getattr(args, "max_invocations", None) is not None or getattr(
             args, "max_cost", None
@@ -841,6 +867,8 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             max_workers=getattr(args, "workers", 4),
             manifest=manifest,
             close_gate=close_gate,
+            informed_fixer=informed_fixer,
+            max_fix_rounds=max_fix_rounds,
             budget=budget,
             stats_path=stats_path,
             wave_gate=wave_gate,

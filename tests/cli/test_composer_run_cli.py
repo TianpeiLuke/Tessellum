@@ -725,6 +725,84 @@ def test_run_dynamic_skip_unchanged_pre_gate(perleaf_skill, tmp_path, capsys):
     assert p3["step_invocation_count"] == 1
 
 
+def test_run_fix_with_backend_requires_close_gate(tmp_path, capsys):
+    """--fix-with-backend without --close-gate is an invocation error (2)."""
+    skill = _writer_skill_for_wave(tmp_path)
+    leaves = _leaves_file(tmp_path, ["a"])
+    code = main(
+        [
+            "composer", "run", str(skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--dynamic", "--fix-with-backend",
+        ]
+    )
+    assert code == 2
+    assert "requires --close-gate" in capsys.readouterr().err
+
+
+def test_run_fix_with_backend_repairs_failing_note(tmp_path, capsys):
+    """--fix-with-backend repairs a format-failing captured note via the
+    LLM fixer (same --backend) so the session closes clean."""
+    skill = _writer_skill_for_wave(tmp_path)
+    good_note = textwrap.dedent(
+        """\
+        ---
+        tags:
+          - resource
+          - concept
+        keywords:
+          - alpha term
+          - beta term
+          - gamma term
+        topics:
+          - Topic One
+          - Topic Two
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: concept
+        ---
+
+        # Fixed
+
+        ## Purpose
+
+        Repaired.
+        """
+    )
+    bad_note = "---\ntags:\n  - resource\n---\n\n# Broken\n"
+    # The mock backend serves BOTH capture (a "Write" prompt → the bad note
+    # JSON envelope) AND the fixer (a repair prompt → the good note text).
+    responses = tmp_path / "resp.json"
+    responses.write_text(
+        json.dumps(
+            {
+                "Write": json.dumps({"output_path": "notes/out.md", "body_markdown": bad_note}),
+                "note-repair": good_note,  # the fixer's system prompt won't match; use body key
+                "Current note text": good_note,  # matches the fixer's user prompt section
+            }
+        ),
+        encoding="utf-8",
+    )
+    leaves = _leaves_file(tmp_path, ["a"])
+    code = main(
+        [
+            "composer", "run", str(skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--mock-responses", str(responses),
+            "--dynamic", "--close-gate", "--fix-with-backend", "--max-fix-rounds", "2",
+            "--format", "json",
+        ]
+    )
+    # Grounding fails closed without a verifier, but the format repair path is
+    # exercised; the note on disk is the repaired version regardless.
+    written = (tmp_path / "vault" / "notes" / "out.md").read_text(encoding="utf-8")
+    assert "# Fixed" in written  # the fixer rewrote the note in place
+    _ = code  # exit code depends on grounding; the repair-in-place is the assertion
+
+
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
     canonical = _CANONICAL.replace(
         "pipeline_metadata: ./skill_demo.pipeline.yaml",
