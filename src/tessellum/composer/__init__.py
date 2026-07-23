@@ -66,6 +66,7 @@ from tessellum.composer.llm import (
     LLMRequest,
     LLMResponse,
     MockBackend,
+    PooledBackend,
 )
 from tessellum.composer.loader import (
     Pipeline,
@@ -120,6 +121,7 @@ from tessellum.composer.credential_pool import (
     CredentialPool,
     CredentialPoolError,
     RunBudget,
+    classify_rotation_cause,
     effort_for_stage,
 )
 from tessellum.composer.fix import (
@@ -219,6 +221,7 @@ __all__ = [
     "MockBackend",
     "AnthropicBackend",  # requires the ``[agent]`` extras
     "BedrockBackend",  # requires the ``[agent]`` extras + AWS creds
+    "PooledBackend",  # wraps a backend with a CredentialPool
     # Materializers
     "materialize",
     "MaterializedOutput",
@@ -264,6 +267,7 @@ __all__ = [
     # Credential pool + budgets (Phase 5)
     "CredentialPool",
     "CredentialPoolError",
+    "classify_rotation_cause",
     "RunBudget",
     "BudgetExhausted",
     "effort_for_stage",

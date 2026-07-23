@@ -154,6 +154,14 @@ Activates another standalone primitive the as-built audit found built-but-uncall
 - When a `ContextAssembler` is supplied, each step's rendered prompt is bounded **fail-soft** — an oversized prompt is truncated (`full_source`) or head+tail windowed (`windowed`) and *warned*, instead of the crude `HARD_PROMPT_CAP_CHARS` **validation error** that halts the step. The assembler's warnings surface in the step's response metadata (`context_warnings`) without mutating the backend's frozen response. When `context_assembler` is `None` (the default), the hard-cap behaviour is preserved byte-for-byte.
 - CLI: `--context-strategy full_source|windowed` (+ `--context-max-chars`) under `--dynamic`. Verified: an oversized prompt degrades to a clean truncated run with the assembler; without it, the hard-cap validation error is preserved.
 
+### Composer v4 — wire the credential pool into dispatch (PooledBackend) — 2026-07-22
+
+Activates the credential pool (the *which-key* dimension) the as-built audit found built-but-uncalled — `CredentialPool` was never instantiated in the live path. Now a `PooledBackend` wraps any backend with a pool, composing with the retry ladder. Suite `1107 → 1128 passing` (+21 tests).
+
+**Added — `PooledBackend` (`composer/llm.py`) + `classify_rotation_cause` (`composer/credential_pool.py`).**
+- `PooledBackend` wraps an inner backend + a `CredentialPool`: it leases the least-used available key per `call`, applies it via an injected `key_applier` (`(inner, key_id) -> None` — provider-specific key attachment stays out of this module), dispatches, releases on success, and tags the served key in `metadata["credential_key"]`. On a raised failure it classifies the cause and reports it to the pool — a persistent `rate_limit` benches the key briefly, `quota`/`auth` bench it long, a `transient` blip keeps it — then **re-raises** so the executor's retry ladder retries. **Composes cleanly with `execute_step_with_retry`**: a 429'd key benches, the retry lands on a *fresh* leased key (verified: `attempts=2`, second key wins). No scheduler change needed. Multi-worker safe via the pool's per-key leasing lock.
+- `classify_rotation_cause(msg)` — pure `transient|rate_limit|quota|auth` classifier, precedence quota > rate_limit > auth > transient. Lives in `credential_pool.py` (not `executor`) to keep `llm`/`credential_pool` free of an executor import cycle.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

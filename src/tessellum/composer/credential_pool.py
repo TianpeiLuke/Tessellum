@@ -38,6 +38,52 @@ RotationCause = Literal["transient", "rate_limit", "quota", "auth"]
 error classes; ``quota`` is the hard 402 variant of ``rate_limit``)."""
 
 
+def classify_rotation_cause(error_msg: str) -> RotationCause:
+    """Classify a backend error message into a key-rotation cause.
+
+    Pure, deterministic string heuristic — no I/O (lives here rather than
+    in ``executor`` to keep ``llm``/``credential_pool`` free of an executor
+    import cycle). Precedence, checked against the lower-cased message:
+
+    1. ``quota`` — a hard billing/quota exhaustion (``"402"`` /
+       ``"quota"`` / ``"insufficient"`` / ``"billing"``): bench the key a
+       long time.
+    2. ``rate_limit`` — a persistent throttle (``"429"`` / ``"rate limit"``
+       / ``"too many requests"`` / ``"throttl"``): bench the key briefly.
+    3. ``auth`` — a bad/expired credential (``"401"`` / ``"403"`` /
+       ``"expired"`` / ``"credential"`` / ``"forbidden"`` /
+       ``"unauthorized"`` / ``"accessdenied"``): bench (won't recover soon).
+    4. ``transient`` — anything else (a soft/first blip): keep the key,
+       let the retry ladder retry it.
+
+    A ``None``/empty message is ``transient`` (a blip, not a key fault).
+    """
+    if not error_msg:
+        return "transient"
+    msg = error_msg.lower()
+    if "402" in msg or "quota" in msg or "insufficient" in msg or "billing" in msg:
+        return "quota"
+    if (
+        "429" in msg
+        or "rate limit" in msg
+        or "ratelimit" in msg
+        or "too many requests" in msg
+        or "throttl" in msg
+    ):
+        return "rate_limit"
+    if (
+        "401" in msg
+        or "403" in msg
+        or "expired" in msg
+        or "credential" in msg
+        or "forbidden" in msg
+        or "unauthorized" in msg
+        or "accessdenied" in msg
+    ):
+        return "auth"
+    return "transient"
+
+
 class CredentialPoolError(Exception):
     """Raised when no key can be leased (all benched / none configured)."""
 
@@ -279,6 +325,7 @@ __all__ = [
     "COOLDOWN_RATE_LIMIT_SECS",
     "COOLDOWN_QUOTA_SECS",
     "RotationCause",
+    "classify_rotation_cause",
     "CredentialPoolError",
     "CredentialPool",
     "BudgetExhausted",

@@ -333,6 +333,99 @@ class BedrockBackend:
         )
 
 
+class PooledBackend:
+    """Wraps an inner backend with a :class:`CredentialPool` — leases a key
+    per call, rotates + benches a key that a provider rejects.
+
+    This is the *which-key* dimension complementing the retry ladder's
+    *when-to-retry* dimension. On each :meth:`call` it leases the
+    least-used available key from the pool, applies it to the inner
+    backend via the injected ``key_applier``, and dispatches. On a clean
+    return it releases the lease. On a raised exception it classifies the
+    cause (:func:`classify_rotation_cause`) and reports it to the pool —
+    a persistent rate-limit / quota / auth fault **benches + releases**
+    the key (so the next attempt leases a *different* one), while a
+    transient blip keeps the lease — then **re-raises** so the executor's
+    retry ladder handles the retry as usual. Multi-worker safe: the pool's
+    per-key leasing under a lock stops two workers from double-driving one
+    key onto a shared 429 wall.
+
+    ``key_applier`` is injected because *how* a key attaches is
+    provider-specific (an API-key env var vs an AWS profile) and must not
+    leak into this module. It receives ``(inner_backend, key_id)`` and
+    mutates/configures the inner backend to use that key before the call.
+
+    Attributes:
+        backend_id: ``"pooled:<inner.backend_id>"``.
+        inner: The wrapped backend that actually calls the provider.
+        pool: The :class:`CredentialPool` of key ids.
+        worker_id: This worker's id (for lease ownership). Defaults to a
+            per-instance uuid.
+
+    Example::
+
+        pool = CredentialPool(key_ids=("k1", "k2", "k3"))
+        def apply(inner, key_id):        # deployment-specific
+            inner.client = anthropic.Anthropic(api_key=SECRETS[key_id])
+        backend = PooledBackend(AnthropicBackend(client=...), pool, apply)
+    """
+
+    def __init__(
+        self,
+        inner: "LLMBackend",
+        pool,
+        key_applier,
+        *,
+        worker_id: str | None = None,
+        clock=None,
+    ) -> None:
+        """Construct a pooled backend.
+
+        Args:
+            inner: The backend that performs the actual provider call.
+            pool: A :class:`tessellum.composer.credential_pool.CredentialPool`.
+            key_applier: ``(inner, key_id) -> None`` — attaches the leased
+                key to ``inner`` before the call (provider-specific).
+            worker_id: Lease-ownership id. Defaults to a fresh uuid.
+            clock: Zero-arg ``() -> float`` epoch-seconds source (for the
+                pool's cooldown timestamps). Defaults to ``time.monotonic``.
+        """
+        import uuid as _uuid
+
+        self.inner = inner
+        self.pool = pool
+        self._apply = key_applier
+        self.worker_id = worker_id or _uuid.uuid4().hex
+        self._clock = clock or time.monotonic
+        self.backend_id = f"pooled:{getattr(inner, 'backend_id', 'inner')}"
+
+    def call(self, request: LLMRequest) -> LLMResponse:
+        from tessellum.composer.credential_pool import classify_rotation_cause
+
+        now = self._clock()
+        key_id = self.pool.lease(self.worker_id, now)
+        self._apply(self.inner, key_id)
+        try:
+            response = self.inner.call(request)
+        except Exception as e:  # noqa: BLE001 — rotate/bench then re-raise
+            cause = classify_rotation_cause(f"{type(e).__name__}: {e}")
+            # report_failure benches+releases on a hard cause; on a transient
+            # cause it keeps the lease, so release it explicitly to return
+            # the key to the pool for the retry.
+            benched = self.pool.report_failure(key_id, self.worker_id, cause, self._clock())
+            if not benched:
+                self.pool.release(key_id, self.worker_id)
+            raise
+        self.pool.release(key_id, self.worker_id)
+        # Tag which key served the call (diagnostics; key ids are not secrets).
+        return LLMResponse(
+            content=response.content,
+            elapsed_ms=response.elapsed_ms,
+            backend_id=self.backend_id,
+            metadata={**response.metadata, "credential_key": key_id},
+        )
+
+
 def _extract_text(response: object) -> str:
     """Pull the text out of an Anthropic Messages API response.
 
@@ -366,4 +459,5 @@ __all__ = [
     "MockBackend",
     "AnthropicBackend",
     "BedrockBackend",
+    "PooledBackend",
 ]
