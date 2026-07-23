@@ -7,7 +7,7 @@ prompt + user prompt + max_tokens), return an :class:`LLMResponse`
 this shape; the compiler validates the contract; the executor invokes
 the ``call`` method.
 
-Two backends ship:
+Three backends ship:
 
 - :class:`MockBackend` — canned responses, no network. Makes the
   executor + scheduler testable end-to-end without API keys.
@@ -17,6 +17,10 @@ Two backends ship:
       pip install tessellum[agent]
 
   and ``ANTHROPIC_API_KEY`` in the environment.
+- :class:`BedrockBackend` — the same Claude Messages surface via Amazon
+  Bedrock (``anthropic.AnthropicBedrock``), authenticated by the ambient
+  AWS credential chain (``AWS_PROFILE``) rather than an API key. The right
+  choice for AWS-internal deployments.
 """
 
 from __future__ import annotations
@@ -212,6 +216,123 @@ class AnthropicBackend:
         )
 
 
+class BedrockBackend:
+    """Amazon Bedrock backend for Claude models (AWS-authenticated).
+
+    A sibling of :class:`AnthropicBackend` that talks to Bedrock instead
+    of the Anthropic API. It uses ``anthropic.AnthropicBedrock``, which
+    exposes the **identical** ``messages.create`` surface — so the
+    ``call`` body + :func:`_extract_text` are shared behaviour, only the
+    client and authentication differ. Authentication is via the ambient
+    AWS credential chain (``AWS_PROFILE`` / env / instance role) rather
+    than an API key, so no secret is passed or stored here.
+
+    Lazily imports ``anthropic`` so importing this module doesn't require
+    the ``[agent]`` extras; instantiation triggers the dependency check.
+
+    Attributes:
+        backend_id: Always ``"bedrock"``.
+        model: A Bedrock model ID. **Use a cross-region inference-profile
+            id** (prefixed ``us.`` / ``eu.`` / ``apac.``, e.g.
+            ``"us.anthropic.claude-sonnet-4-6"``) — bare foundation-model
+            ids reject on-demand invocation with a 400. The default is the
+            ``us.`` Sonnet profile.
+        region: AWS region for the Bedrock endpoint.
+        client: The ``anthropic.AnthropicBedrock`` instance.
+
+    Auth: the backend reads the ambient AWS credential chain — no account
+    id, role, or secret is embedded here. Point ``AWS_PROFILE`` at a
+    profile that can invoke Bedrock (e.g. refreshed via your org's
+    federated-credential tool into a named profile) before running::
+
+        export AWS_PROFILE=<your-bedrock-profile>
+
+    Example::
+
+        from tessellum.composer import BedrockBackend, run_pipeline
+        backend = BedrockBackend(model="us.anthropic.claude-sonnet-4-6",
+                                 region="us-east-1")
+        run = run_pipeline(compiled, leaves=leaves, backend=backend, ...)
+    """
+
+    backend_id: str = "bedrock"
+
+    def __init__(
+        self,
+        *,
+        model: str = "us.anthropic.claude-sonnet-4-6",
+        region: str = "us-east-1",
+        aws_profile: str | None = None,
+        default_max_tokens: int = 4000,
+        client: object | None = None,
+    ) -> None:
+        """Construct a Bedrock-backed LLM backend.
+
+        Args:
+            model: Bedrock model / inference-profile id. Prefer the
+                cross-region profile form (``us.anthropic.…``) — the bare
+                foundation-model id fails on-demand invocation with a 400.
+            region: AWS region (default ``us-east-1``).
+            aws_profile: If set, selects a specific credentials profile by
+                setting ``AWS_PROFILE`` before the client reads the chain
+                (a convenience for the ``ada ... --profile X`` workflow).
+                When ``None``, the ambient credential chain is used as-is.
+            default_max_tokens: Caps response length when the request
+                leaves it at the default.
+            client: Optional pre-built ``anthropic.AnthropicBedrock`` (or a
+                fake) — used by tests. When ``None``, one is constructed.
+
+        Raises:
+            ImportError: If the ``anthropic`` package isn't installed
+                (``pip install tessellum[agent]``).
+        """
+        if client is None:
+            if aws_profile is not None:
+                import os
+
+                os.environ["AWS_PROFILE"] = aws_profile
+            try:
+                from anthropic import AnthropicBedrock  # type: ignore[import-not-found]
+            except ImportError as e:  # pragma: no cover — environment-dep
+                raise ImportError(
+                    "BedrockBackend requires the `anthropic` package. "
+                    "Install with: pip install tessellum[agent]"
+                ) from e
+            self.client = AnthropicBedrock(aws_region=region)
+        else:
+            self.client = client
+        self.model = model
+        self.region = region
+        self.default_max_tokens = default_max_tokens
+
+    def call(self, request: LLMRequest) -> LLMResponse:
+        start = time.monotonic()
+        max_tokens = request.max_tokens or self.default_max_tokens
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            system=request.system_prompt,
+            messages=[{"role": "user", "content": request.user_prompt}],
+        )
+        elapsed_ms = (time.monotonic() - start) * 1000.0
+        content = _extract_text(response)
+        metadata = {
+            "model": getattr(response, "model", self.model),
+            "region": self.region,
+            "stop_reason": getattr(response, "stop_reason", None),
+        }
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            metadata["input_tokens"] = getattr(usage, "input_tokens", None)
+            metadata["output_tokens"] = getattr(usage, "output_tokens", None)
+        return LLMResponse(
+            content=content,
+            elapsed_ms=elapsed_ms,
+            backend_id=self.backend_id,
+            metadata=metadata,
+        )
+
+
 def _extract_text(response: object) -> str:
     """Pull the text out of an Anthropic Messages API response.
 
@@ -244,4 +365,5 @@ __all__ = [
     "LLMBackend",
     "MockBackend",
     "AnthropicBackend",
+    "BedrockBackend",
 ]

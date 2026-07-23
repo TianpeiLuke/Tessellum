@@ -127,6 +127,17 @@ The second of the two architecture bets the as-built audit flagged `not_started`
 - **No build toolchain, no npm dependencies**: runs under Node's native TypeScript type-stripping (Node ≥ 22.6). `npm test` runs the suite; `npm run test:unit` runs the pure DAG tests (no CLI required). Integration tests spawn the real `tessellum` CLI end-to-end (compile + v4 `--dynamic` run + manifest/stats sidecars + a budget-halt case) and skip gracefully when the CLI is absent.
 - `README.md` documents the bridge-don't-port doctrine + the TS/Python ownership split.
 
+### Composer — Amazon Bedrock LLM backend — 2026-07-22
+
+A third production LLM backend: Claude via Amazon Bedrock, for AWS-internal deployments where the credential model is an AWS profile rather than an API key. Suite `1089 → 1101 passing` (+12 tests). **No credentials, account ids, or internal identifiers are embedded** — the backend reads the ambient AWS credential chain.
+
+**Added — `BedrockBackend` (`composer/llm.py`).**
+- Uses `anthropic.AnthropicBedrock`, which exposes the identical `messages.create` surface as `AnthropicBackend` — so the `call` body + `_extract_text` are shared; only the client + auth differ. Authenticated by `AWS_PROFILE` (optionally selected via the `aws_profile=` arg), never an embedded secret. Lazy SDK import (behind `[agent]` extras).
+- Default model is the **cross-region inference profile** `us.anthropic.claude-sonnet-4-6` (`us.`/`eu.`/`apac.` prefix) — a bare foundation-model id rejects on-demand Bedrock invocation with a 400, so the default + docs steer to the profile form. Metadata records model/region/stop_reason/token counts.
+
+**Added — `tessellum composer run --backend bedrock`.**
+- New `--backend bedrock` choice + `--region` / `--aws-profile` flags; `--model` now defaults per-backend (`claude-sonnet-4-6` for anthropic, the `us.` profile for bedrock). Works with `--dynamic` (shares the backend). +12 fake-client unit tests (default profile-model, region metadata, shared extraction) — plus a manual live run verified end-to-end against a real Bedrock account.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

@@ -61,6 +61,7 @@ from tessellum.composer.executor import (
 )
 from tessellum.composer.llm import (
     AnthropicBackend,
+    BedrockBackend,
     LLMBackend,
     LLMRequest,
     LLMResponse,
@@ -217,6 +218,7 @@ __all__ = [
     "LLMResponse",
     "MockBackend",
     "AnthropicBackend",  # requires the ``[agent]`` extras
+    "BedrockBackend",  # requires the ``[agent]`` extras + AWS creds
     # Materializers
     "materialize",
     "MaterializedOutput",

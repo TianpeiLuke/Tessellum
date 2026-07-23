@@ -128,17 +128,31 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     run_cmd.add_argument(
         "--backend",
-        choices=["mock", "anthropic"],
+        choices=["mock", "anthropic", "bedrock"],
         default="mock",
         help="LLM backend (default: mock — no network). `anthropic` requires "
-        "the [agent] extras (`pip install tessellum[agent]`) and the "
-        "ANTHROPIC_API_KEY environment variable.",
+        "the [agent] extras + ANTHROPIC_API_KEY. `bedrock` requires the "
+        "[agent] extras + an AWS_PROFILE that can invoke Bedrock (set "
+        "AWS_PROFILE before running; the backend embeds no credentials).",
+    )
+    run_cmd.add_argument(
+        "--region",
+        default="us-east-1",
+        help="AWS region for --backend=bedrock (default: us-east-1).",
+    )
+    run_cmd.add_argument(
+        "--aws-profile",
+        default=None,
+        help="AWS_PROFILE to select for --backend=bedrock. When omitted, "
+        "the ambient credential chain is used as-is.",
     )
     run_cmd.add_argument(
         "--model",
-        default="claude-sonnet-4-6",
-        help="Anthropic model ID (only used when --backend=anthropic). "
-        "Default: claude-sonnet-4-6.",
+        default=None,
+        help="Model ID for --backend=anthropic|bedrock. Default: "
+        "claude-sonnet-4-6 for anthropic; us.anthropic.claude-sonnet-4-6 "
+        "(the cross-region inference profile) for bedrock — a bare "
+        "foundation-model id fails on-demand Bedrock invocation.",
     )
     run_cmd.add_argument(
         "--dry-run",
@@ -639,10 +653,32 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             )
         try:
             from tessellum.composer import AnthropicBackend
-            backend = AnthropicBackend(model=args.model)
+            backend = AnthropicBackend(model=args.model or "claude-sonnet-4-6")
         except ImportError as e:
             print(
                 "tessellum composer run: --backend=anthropic requires the "
+                "[agent] extras: pip install tessellum[agent]",
+                file=sys.stderr,
+            )
+            print(f"  ({e})", file=sys.stderr)
+            return 2
+    elif args.backend == "bedrock":
+        if args.mock_responses is not None:
+            print(
+                "tessellum composer run: --mock-responses is ignored when "
+                "--backend=bedrock",
+                file=sys.stderr,
+            )
+        try:
+            from tessellum.composer import BedrockBackend
+            backend = BedrockBackend(
+                model=args.model or "us.anthropic.claude-sonnet-4-6",
+                region=args.region,
+                aws_profile=args.aws_profile,
+            )
+        except ImportError as e:
+            print(
+                "tessellum composer run: --backend=bedrock requires the "
                 "[agent] extras: pip install tessellum[agent]",
                 file=sys.stderr,
             )
