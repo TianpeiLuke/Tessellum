@@ -238,41 +238,34 @@ _CANON_PL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_pl.pipeline.yaml
     ---
 
     # Per-leaf
 
     ## Step 1: rate <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: rating
+    ```
+
     Rate leaf {{leaf.id}}.
 
     ## Step 2: consume <!-- :: section_id = step_2 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_1]
+    materializer: no_op
+    ```
+
     CONSUME {{upstream.rating}}.
-    """
-)
-
-
-_SIDE_PL = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Rate."
-        output_key: rating
-      - section_id: step_2
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: [step_1]
-        materializer: no_op
-        prompt_template: "Consume."
     """
 )
 
@@ -280,7 +273,6 @@ _SIDE_PL = textwrap.dedent(
 def _compile_pl(tmp_path: Path):
     sk = tmp_path / "skill_pl.md"
     sk.write_text(_CANON_PL, encoding="utf-8")
-    (tmp_path / "skill_pl.pipeline.yaml").write_text(_SIDE_PL, encoding="utf-8")
     return compile_skill(sk)
 
 
@@ -332,33 +324,26 @@ def test_dynamic_matches_serial_on_written_files(tmp_path: Path) -> None:
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_w.pipeline.yaml
         ---
 
         # W
 
         ## Step 1: emit <!-- :: section_id = step_1 :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        output_key: emitted
+        ```
+
         Emit for {{leaf.id}}.
-        """
-    )
-    side = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: CORE
-            aggregation: per_leaf
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            prompt_template: "Emit."
-            output_key: emitted
         """
     )
     sk = tmp_path / "skill_w.md"
     sk.write_text(canon, encoding="utf-8")
-    (tmp_path / "skill_w.pipeline.yaml").write_text(side, encoding="utf-8")
     compiled = compile_skill(sk)
 
     serial = run_pipeline(
@@ -402,43 +387,37 @@ def test_dynamic_skips_infra(tmp_path: Path) -> None:
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_i.pipeline.yaml
         ---
 
         # Mixed
 
         ## Step 1: setup <!-- :: section_id = step_1 :: -->
 
+        ```yaml
+        role: INFRA
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        ```
+
         INFRA.
 
         ## Step 2: real <!-- :: section_id = step_2 :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        ```
+
         Real.
-        """
-    )
-    side = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: INFRA
-            aggregation: corpus_wide
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            prompt_template: "Setup."
-          - section_id: step_2
-            role: CORE
-            aggregation: corpus_wide
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            prompt_template: "Work."
         """
     )
     sk = tmp_path / "skill_i.md"
     sk.write_text(canon, encoding="utf-8")
-    (tmp_path / "skill_i.pipeline.yaml").write_text(side, encoding="utf-8")
     compiled = compile_skill(sk)
     run = run_pipeline_dynamic(
         compiled, leaves=None, backend=MockBackend(default="{}"),
@@ -517,38 +496,31 @@ def test_dynamic_surfaces_errors_in_outcome(tmp_path: Path) -> None:
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_s.pipeline.yaml
         ---
 
         # S
 
         ## Step 1: strict <!-- :: section_id = step_1 :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        expected_output_schema:
+          type: object
+          required: [must_have]
+          properties:
+            must_have:
+              type: string
+        ```
+
         Strict {{leaf.id}}.
-        """
-    )
-    side = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: CORE
-            aggregation: per_leaf
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            expected_output_schema:
-              type: object
-              required: [must_have]
-              properties:
-                must_have:
-                  type: string
-            prompt_template: "Strict."
         """
     )
     sk = tmp_path / "skill_s.md"
     sk.write_text(canon, encoding="utf-8")
-    (tmp_path / "skill_s.pipeline.yaml").write_text(side, encoding="utf-8")
     compiled = compile_skill(sk)
 
     leaves = [{"id": "a"}]
@@ -582,64 +554,60 @@ _DIAMOND_CANON = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_d.pipeline.yaml
     ---
 
     # Diamond
 
     ## Step a <!-- :: section_id = a :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: a_out
+    ```
+
     A.
 
     ## Step b <!-- :: section_id = b :: -->
+
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [a]
+    materializer: no_op
+    output_key: b_out
+    ```
 
     B reads {{upstream.a_out}}.
 
     ## Step c <!-- :: section_id = c :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [a]
+    materializer: no_op
+    output_key: c_out
+    ```
+
     C reads {{upstream.a_out}}.
 
     ## Step d <!-- :: section_id = d :: -->
 
-    D reads {{upstream.b_out}} and {{upstream.c_out}}.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [b, c]
+    materializer: no_op
+    ```
 
-_DIAMOND_SIDE = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: a
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "A."
-        output_key: a_out
-      - section_id: b
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: [a]
-        materializer: no_op
-        prompt_template: "B."
-        output_key: b_out
-      - section_id: c
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: [a]
-        materializer: no_op
-        prompt_template: "C."
-        output_key: c_out
-      - section_id: d
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: [b, c]
-        materializer: no_op
-        prompt_template: "D."
+    D reads {{upstream.b_out}} and {{upstream.c_out}}.
     """
 )
 
@@ -650,7 +618,6 @@ def test_dynamic_diamond_dependency_ordering(tmp_path: Path) -> None:
     accumulates across the (now barrier-free) loop."""
     sk = tmp_path / "skill_d.md"
     sk.write_text(_DIAMOND_CANON, encoding="utf-8")
-    (tmp_path / "skill_d.pipeline.yaml").write_text(_DIAMOND_SIDE, encoding="utf-8")
     compiled = compile_skill(sk)
     backend = MockBackend(default='{"v": 1}')
     run = run_pipeline_dynamic(compiled, leaves=None, backend=backend, vault_root=tmp_path / "v")
@@ -674,7 +641,6 @@ def test_dynamic_diamond_matches_serial(tmp_path: Path) -> None:
     ordered step_results + error count."""
     sk = tmp_path / "skill_d.md"
     sk.write_text(_DIAMOND_CANON, encoding="utf-8")
-    (tmp_path / "skill_d.pipeline.yaml").write_text(_DIAMOND_SIDE, encoding="utf-8")
     compiled = compile_skill(sk)
     serial = run_pipeline(compiled, leaves=None, backend=MockBackend(default='{"v": 1}'), vault_root=tmp_path / "vs")
     dynamic = run_pipeline_dynamic(compiled, leaves=None, backend=MockBackend(default='{"v": 1}'), vault_root=tmp_path / "vd")
@@ -703,43 +669,37 @@ def test_dynamic_straggler_does_not_block_independent_step(tmp_path: Path) -> No
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_s.pipeline.yaml
         ---
 
         # S
 
         ## Step fast <!-- :: section_id = fast :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        ```
+
         FAST.
 
         ## Step slow <!-- :: section_id = slow :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        ```
+
         SLOW.
-        """
-    )
-    side = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: fast
-            role: CORE
-            aggregation: corpus_wide
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            prompt_template: "FAST."
-          - section_id: slow
-            role: CORE
-            aggregation: corpus_wide
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            prompt_template: "SLOW."
         """
     )
     sk = tmp_path / "skill_s.md"
     sk.write_text(canon, encoding="utf-8")
-    (tmp_path / "skill_s.pipeline.yaml").write_text(side, encoding="utf-8")
     compiled = compile_skill(sk)
 
     completed: list[str] = []

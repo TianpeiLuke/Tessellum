@@ -132,33 +132,25 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-07-22
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_ladder.pipeline.yaml
     ---
 
     # Demo
 
     ## Step 1: extract <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: facets
+    expected_output_schema:
+      type: object
+      required: [facets]
+    ```
+
     Extract from {{leaf.id}}. Attempt {{retry.attempt}}. Prior: {{retry.error}}.
-    """
-)
-
-
-_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        expected_output_schema:
-          type: object
-          required: [facets]
-        prompt_template: "Extract."
-        output_key: facets
     """
 )
 
@@ -167,7 +159,6 @@ _SIDECAR = textwrap.dedent(
 def compiled(tmp_path: Path):
     skill = tmp_path / "skill_ladder.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_ladder.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
     return compile_skill(skill)
 
 

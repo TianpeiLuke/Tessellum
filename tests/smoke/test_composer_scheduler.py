@@ -8,6 +8,12 @@ Covers:
   - Synthetic single leaf when leaves=None.
   - Trace JSON written to runs_dir with expected fields.
   - error_count surfaces step failures.
+
+Single-file skill format: each pipeline step is an H2 section carrying a
+``<!-- :: section_id = X :: -->`` anchor and a leading ```yaml``` contract
+block (the typed step declaration); the prose after the block is the step's
+prompt. There is no ``.pipeline.yaml`` sidecar and no ``pipeline_metadata``
+frontmatter field.
 """
 
 from __future__ import annotations
@@ -42,41 +48,34 @@ _CANONICAL_CORPUS = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_corpus.pipeline.yaml
     ---
 
     # Corpus
 
     ## Step 1: produce <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: produced
+    ```
+
     PRODUCE step.
 
     ## Step 2: consume <!-- :: section_id = step_2 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_1]
+    materializer: no_op
+    ```
+
     CONSUME upstream {{upstream.produced}}.
-    """
-)
-
-
-_SIDECAR_CORPUS = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "PRODUCE."
-        output_key: produced
-      - section_id: step_2
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: [step_1]
-        materializer: no_op
-        prompt_template: "CONSUME."
     """
 )
 
@@ -98,30 +97,22 @@ _CANONICAL_PER_LEAF = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_perleaf.pipeline.yaml
     ---
 
     # Per-leaf
 
     ## Step 1: rate <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: rating
+    ```
+
     Rate leaf {{leaf.id}}.
-    """
-)
-
-
-_SIDECAR_PER_LEAF = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Rate."
-        output_key: rating
     """
 )
 
@@ -143,53 +134,45 @@ _CANONICAL_INFRA = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_infra.pipeline.yaml
     ---
 
     # Mixed
 
     ## Step 1: setup <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: INFRA
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    ```
+
     INFRA setup.
 
     ## Step 2: real <!-- :: section_id = step_2 :: -->
+
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    ```
 
     Real CORE work.
     """
 )
 
 
-_SIDECAR_INFRA = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: INFRA
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Setup."
-      - section_id: step_2
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Work."
-    """
-)
-
-
-def _compile(tmp_path: Path, name: str, canonical: str, sidecar: str):
+def _compile(tmp_path: Path, name: str, canonical: str):
     skill = tmp_path / f"{name}.md"
     skill.write_text(canonical, encoding="utf-8")
-    (tmp_path / f"{name}.pipeline.yaml").write_text(sidecar, encoding="utf-8")
     return compile_skill(skill)
 
 
 def test_run_pipeline_corpus_wide(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS, _SIDECAR_CORPUS)
+    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS)
     backend = MockBackend(
         responses={
             "PRODUCE": '{"produced": [1, 2, 3]}',
@@ -209,7 +192,7 @@ def test_run_pipeline_corpus_wide(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_corpus_wide_upstream_flow(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS, _SIDECAR_CORPUS)
+    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS)
     backend = MockBackend(
         responses={
             "PRODUCE": '{"produced": [1, 2, 3]}',
@@ -230,9 +213,7 @@ def test_run_pipeline_corpus_wide_upstream_flow(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_per_leaf_runs_per_leaf(tmp_path: Path) -> None:
-    compiled = _compile(
-        tmp_path, "skill_perleaf", _CANONICAL_PER_LEAF, _SIDECAR_PER_LEAF
-    )
+    compiled = _compile(tmp_path, "skill_perleaf", _CANONICAL_PER_LEAF)
     backend = MockBackend(default='{"rating": 5}')
     run = run_pipeline(
         compiled,
@@ -251,7 +232,7 @@ def test_run_pipeline_per_leaf_runs_per_leaf(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_synthetic_leaf_when_none(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS, _SIDECAR_CORPUS)
+    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS)
     backend = MockBackend(default='{"x": 1}')
     run = run_pipeline(
         compiled,
@@ -264,7 +245,7 @@ def test_run_pipeline_synthetic_leaf_when_none(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_skips_infra(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_infra", _CANONICAL_INFRA, _SIDECAR_INFRA)
+    compiled = _compile(tmp_path, "skill_infra", _CANONICAL_INFRA)
     backend = MockBackend(default="{}")
     run = run_pipeline(
         compiled,
@@ -280,7 +261,7 @@ def test_run_pipeline_skips_infra(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_writes_trace(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS, _SIDECAR_CORPUS)
+    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS)
     backend = MockBackend(default='{"produced": []}')
     runs_dir = tmp_path / "runs"
     run = run_pipeline(
@@ -302,7 +283,7 @@ def test_run_pipeline_writes_trace(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_no_trace_when_runs_dir_none(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS, _SIDECAR_CORPUS)
+    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS)
     backend = MockBackend(default='{"produced": []}')
     run = run_pipeline(
         compiled,
@@ -315,7 +296,7 @@ def test_run_pipeline_no_trace_when_runs_dir_none(tmp_path: Path) -> None:
 
 
 def test_run_pipeline_dry_run_no_files_written(tmp_path: Path) -> None:
-    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS, _SIDECAR_CORPUS)
+    compiled = _compile(tmp_path, "skill_corpus", _CANONICAL_CORPUS)
     backend = MockBackend(default='{"produced": []}')
     run = run_pipeline(
         compiled,

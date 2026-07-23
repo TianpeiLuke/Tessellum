@@ -1,4 +1,12 @@
-"""Smoke tests for the ``tessellum composer validate`` CLI subcommand."""
+"""Smoke tests for the ``tessellum composer validate`` CLI subcommand.
+
+Single-file skill format: a skill is ONE markdown note. Each pipeline step is
+an H2 section carrying a ``<!-- :: section_id = X :: -->`` anchor plus a
+leading fenced ``​```yaml`` **contract block**; the prompt prose follows. There
+is no ``.pipeline.yaml`` sidecar and no ``pipeline_metadata`` frontmatter
+field. A skill with zero contract-block sections compiles to an empty pipeline
+(the ``pipeline_metadata: none`` equivalent).
+"""
 
 from __future__ import annotations
 
@@ -10,7 +18,9 @@ import pytest
 
 from tessellum.cli.main import main
 
-_SKILL_CANONICAL = textwrap.dedent(
+# Frontmatter shared by every fixture skill. No ``pipeline_metadata`` field —
+# the pipeline lives in per-section contract blocks now.
+_FRONTMATTER = textwrap.dedent(
     """\
     ---
     tags:
@@ -27,8 +37,39 @@ _SKILL_CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_demo.pipeline.yaml
     ---
+    """
+)
+
+# One valid step section: the anchor supplies section_id, the leading
+# ```yaml``` block supplies the contract, and the prose after it is the
+# prompt (the old sidecar's ``prompt_template: "Do something."``).
+_SKILL_CANONICAL = _FRONTMATTER + textwrap.dedent(
+    """\
+
+    # Demo
+
+    ## Step 1 <!-- :: section_id = step_1 :: -->
+
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: step_1_out
+    ```
+
+    Do something.
+    """
+)
+
+# Same skill, but the section is prose-only (no contract block), so the loader
+# finds zero pipeline steps → ``load_pipeline`` returns None → the CLI prints
+# the ``pipeline_metadata: none`` label. This is the single-file equivalent of
+# the old ``pipeline_metadata: none``.
+_SKILL_NO_PIPELINE = _FRONTMATTER + textwrap.dedent(
+    """\
 
     # Demo
 
@@ -38,33 +79,35 @@ _SKILL_CANONICAL = textwrap.dedent(
     """
 )
 
-_SKILL_NO_PIPELINE = _SKILL_CANONICAL.replace(
-    "pipeline_metadata: ./skill_demo.pipeline.yaml",
-    "pipeline_metadata: none",
-)
+# A step whose inline contract block has a bad ``role`` enum value — a schema
+# violation surfaced by ``load_pipeline`` as PipelineValidationError.
+_SKILL_BAD_ROLE = _SKILL_CANONICAL.replace("role: CORE", "role: INVENTED_ROLE")
 
-_VALID_SIDECAR = textwrap.dedent(
+# A step whose inline contract block is not valid YAML (unclosed flow list).
+# ``split_contract_and_prompt`` raises before schema validation.
+_SKILL_MALFORMED_CONTRACT = _FRONTMATTER + textwrap.dedent(
     """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Do something."
+
+    # Demo
+
+    ## Step 1 <!-- :: section_id = step_1 :: -->
+
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    depends_on: [a, b, c
+    ```
+
+    Do something.
     """
 )
 
 
 @pytest.fixture
 def skill_dir(tmp_path):
-    """A directory with one valid skill (canonical + sidecar pair)."""
+    """A directory with one valid single-file skill."""
     skill = tmp_path / "skill_demo.md"
     skill.write_text(_SKILL_CANONICAL, encoding="utf-8")
-    sidecar = tmp_path / "skill_demo.pipeline.yaml"
-    sidecar.write_text(_VALID_SIDECAR, encoding="utf-8")
     return tmp_path
 
 
@@ -90,35 +133,40 @@ def test_validate_skill_with_pipeline_none(tmp_path, capsys):
     assert "pipeline_metadata: none" in out
 
 
-def test_validate_orphan_section_id_returns_1(tmp_path, capsys):
-    skill = tmp_path / "skill_orphan.md"
-    skill.write_text(_SKILL_CANONICAL.replace("step_1", "step_real"), encoding="utf-8")
-    sidecar = tmp_path / "skill_orphan.pipeline.yaml"
-    sidecar.write_text(_VALID_SIDECAR, encoding="utf-8")  # references step_1, no anchor
-    skill_text = skill.read_text(encoding="utf-8").replace(
-        "skill_demo.pipeline.yaml", "skill_orphan.pipeline.yaml"
-    )
-    skill.write_text(skill_text, encoding="utf-8")
+def test_validate_bad_role_enum_returns_1(tmp_path, capsys):
+    """A step's inline contract block with an invalid ``role`` enum fails.
+
+    (Single-file equivalent of the old orphan-section_id test: section_id now
+    comes from the anchor so it can never orphan — but a malformed inline
+    contract still fails validation with a non-zero exit.)
+    """
+    skill = tmp_path / "skill_bad_role.md"
+    skill.write_text(_SKILL_BAD_ROLE, encoding="utf-8")
     code = main(["composer", "validate", str(skill)])
     assert code == 1
     out = capsys.readouterr().out
     assert "FAIL" in out
-    assert "no matching anchor" in out
+    assert "schema validation" in out
 
 
-def test_validate_missing_sidecar_returns_1(tmp_path, capsys):
-    skill = tmp_path / "skill_demo.md"
-    skill.write_text(_SKILL_CANONICAL, encoding="utf-8")
-    # Don't write the sidecar.
+def test_validate_malformed_contract_block_returns_1(tmp_path, capsys):
+    """A step whose inline contract block is not valid YAML fails.
+
+    (Single-file equivalent of the old missing-sidecar test: there is no
+    sidecar to be missing anymore, so the failure now comes from a malformed
+    inline contract block instead.)
+    """
+    skill = tmp_path / "skill_malformed.md"
+    skill.write_text(_SKILL_MALFORMED_CONTRACT, encoding="utf-8")
     code = main(["composer", "validate", str(skill)])
     assert code == 1
     out = capsys.readouterr().out
     assert "FAIL" in out
-    assert "does not exist" in out
+    assert "not valid YAML" in out
 
 
 def test_validate_directory_recurses(skill_dir, capsys):
-    # Add a second clean skill in a subdir to exercise recursion through
+    # Add a second clean skill in the dir to exercise recursion through
     # ``glob("skill_*.md")`` (the loader takes a single dir, no rglob).
     skill_2 = skill_dir / "skill_other.md"
     skill_2.write_text(_SKILL_NO_PIPELINE, encoding="utf-8")
@@ -150,9 +198,9 @@ def test_validate_json_output_clean(skill_pair, capsys):
 
 
 def test_validate_json_output_dirty(tmp_path, capsys):
-    skill = tmp_path / "skill_demo.md"
-    skill.write_text(_SKILL_CANONICAL, encoding="utf-8")
-    # No sidecar — will fail with missing-file error.
+    skill = tmp_path / "skill_malformed.md"
+    # A malformed inline contract block → validation failure.
+    skill.write_text(_SKILL_MALFORMED_CONTRACT, encoding="utf-8")
     code = main(["composer", "validate", "--format", "json", str(skill)])
     assert code == 1
     out = capsys.readouterr().out
@@ -163,7 +211,8 @@ def test_validate_json_output_dirty(tmp_path, capsys):
 
 
 def test_validate_real_skill_canonical():
-    """The shipped skill_tessellum_format_check.md uses pipeline_metadata: none."""
+    """The shipped skill_tessellum_format_check.md has no contract-block
+    sections, so it validates as a no-pipeline skill (exit 0)."""
     skill = (
         Path(__file__).resolve().parents[2]
         / "vault"

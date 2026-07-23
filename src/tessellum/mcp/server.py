@@ -427,11 +427,20 @@ def _tool_list_skills() -> dict:
             if line.startswith("# "):
                 title = line[2:].strip()
                 break
+        # Single-file skills: a skill "has a pipeline" iff its step sections
+        # carry contract blocks (compile to ≥1 step).
+        step_count = 0
+        try:
+            from tessellum.composer import compile_skill
+
+            step_count = len(compile_skill(p).steps)
+        except Exception:
+            step_count = 0
         skills.append(
             {
                 "name": p.stem,
                 "title": title,
-                "has_sidecar": (p.parent / f"{p.stem}.pipeline.yaml").is_file(),
+                "pipeline_step_count": step_count,
             }
         )
     return {"skills_dir": str(skills_dir), "skills": skills, "count": len(skills)}
@@ -446,17 +455,21 @@ def _tool_get_skill(skill_name: str) -> dict:
     path = skills_dir / f"{stem}.md"
     if not path.is_file():
         return {"error": f"skill not found: {skill_name} (looked for {path.name})"}
-    sidecar_path = skills_dir / f"{stem}.pipeline.yaml"
+    # Single-file skills: the typed contract lives in per-section ```yaml```
+    # blocks inside the canonical, not a separate sidecar. Surface the compiled
+    # step count so callers can see whether the skill has Composer dispatch.
+    step_count: int | None = None
+    try:
+        from tessellum.composer import compile_skill
+
+        step_count = len(compile_skill(path).steps)
+    except Exception:
+        step_count = None
     return {
         "skill_name": skill_name,
         "canonical_path": str(path),
         "canonical_body": path.read_text(encoding="utf-8"),
-        "sidecar_path": str(sidecar_path) if sidecar_path.is_file() else None,
-        "sidecar_body": (
-            sidecar_path.read_text(encoding="utf-8")
-            if sidecar_path.is_file()
-            else None
-        ),
+        "pipeline_step_count": step_count,
     }
 
 

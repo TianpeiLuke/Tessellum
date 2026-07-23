@@ -4,6 +4,24 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Single-file skills — fold the `.pipeline.yaml` sidecar into the canonical — 2026-07-23
+
+**A skill is now ONE self-contained markdown file.** The typed-contract sidecar (`skill_<name>.pipeline.yaml`) is gone; each pipeline step's contract lives in a leading fenced ```yaml``` block inside its `<!-- :: section_id = X :: -->` H2 section, followed by the step's prompt prose. Suite `1164 → 1171 passing`.
+
+**Why.** The two-file split had a latent, widespread bug: the compiler only ever read the *canonical section body* as the prompt (`compiler.py: _compile_step` → `load_skill_section`) and **never read the sidecar's `prompt_template`** — so the placeholders (`{{leaf.X}}`/`{{upstream.Y}}`) and output-contract that authors wrote in the sidecar never reached the model. 9 of 13 skills had their entire rich prompt stranded in the inert sidecar (e.g. `capture_code_repo_note`: 0 canonical placeholders vs 24 in the sidecar). Folding the contract block and the prompt into the *same section* fixes this at the root — one is never dispatched without the other — and keeps a skill a first-class typed vault note (a `.pipeline.yaml` was not a note; it couldn't be indexed, linked, or retrieved).
+
+**Changed — the format + the loader/compiler.**
+- **`skill_extractor.py`**: new `split_contract_and_prompt(section_body) → (contract|None, prompt)` (splits a section's leading ```yaml``` block from its prompt prose) and `iter_step_sections(skill_path) → list[StepSection]` (the step sections in document order). Removed `load_pipeline_metadata` (no sidecar to resolve). A section with no leading ```yaml``` block is prose, not a pipeline step.
+- **`loader.py`**: `load_pipeline` now assembles the `Pipeline` from the canonical's per-section contract blocks (each validated against the schema's `Step` definition; `section_id` comes from the anchor, so section-id/contract mismatch is structurally impossible). Returns `None` when a skill has zero step sections.
+- **`compiler.py`**: `compile_skill` reads one file; a step's `prompt_section_text` is the section body **minus** its contract block.
+- **`skill_tool.py`**: `CapabilityRegistry.from_skill_dir` now gates on "compiles to ≥1 step" instead of "has a `.pipeline.yaml`" — so it discovers all 13 pipeline skills (previously it found **zero** after the fold).
+
+**Changed — the 17 shipped skills + tooling.**
+- Migrated all 13 sidecar-bearing skills to single-file (contract block + composed prompt: the sidecar's data-wiring + the canonical's SOP prose inlined where the old "apply section X" reference stood). One-shot migrator at `scripts/migrate_skill_to_single_md.py`.
+- Repaired 3 skills (`classify_content`, `meta_dks_cycle`, `route_content`) that had **never compiled** in either format — they declared fictional materializers (`deterministic_no_llm`, `json_segments`, `json_to_dataclass`); mapped to the real `no_op`.
+- **Platform-neutral scrub** (Tessellum is a public repo): generalized the few internal-platform references in the shipped skills (`BuilderHub`/`Quip`/`internal wiki`/`MTR`) to neutral language (`docs portal`/`shared doc`/`report notes`).
+- `template_skill.md` shows the contract-block-per-step pattern (dropped `pipeline_metadata`); `tessellum composer scaffold-sidecar` now prints per-section contract blocks to paste in rather than writing a sidecar file; `tessellum capture skill` emits a single file; the MCP `get-skill`/`list-skills` tools return a `pipeline_step_count` instead of sidecar paths. Docs updated across README + `docs/`.
+
 ## [1.1.0] — 2026-07-23
 
 New feature: a composer-native **digestion pipeline** — `tessellum composer digest` runs plan → augment → review → execute as one native flow, with the graduated sign-off gate between review and execute, and the four digestion skills shipped as compilable `CapabilityRegistry` SkillTools. Backward-compatible; the existing `run`/`batch`/`eval` paths are unchanged. Suite 1152 → 1164.

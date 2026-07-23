@@ -95,15 +95,18 @@ def test_dispatch_get_skill_unknown_returns_error():
     assert "error" in result
 
 
-def test_dispatch_get_skill_includes_sidecar_when_present():
+def test_dispatch_get_skill_reports_pipeline_step_count():
     result = _dispatch(
         "tessellum_get_skill",
         {"skill_name": "tessellum_dks_cycle"},
     )
-    # The DKS cycle skill has a sidecar
-    assert result["sidecar_path"] is not None
-    assert result["sidecar_body"] is not None
-    assert "version:" in result["sidecar_body"]
+    # The DKS cycle skill is a single-file skill whose Composer contract lives
+    # in per-section ```yaml``` blocks inside the canonical (no sidecar). The
+    # tool surfaces the compiled step count so callers can see the skill has
+    # Composer dispatch, and the inline contract blocks appear in the body.
+    assert result["pipeline_step_count"] is not None
+    assert result["pipeline_step_count"] > 0
+    assert "```yaml" in result["canonical_body"]
 
 
 # ── Format check tool ──────────────────────────────────────────────────────

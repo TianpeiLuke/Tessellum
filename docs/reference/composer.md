@@ -6,8 +6,8 @@ API, symbols, and signatures for the typed-contract pipeline runtime. For the me
 
 | File | Role |
 |------|------|
-| `loader.py` | Resolves the canonical's `pipeline_metadata:` field, reads the sidecar YAML, validates in three stages — (1) jsonschema against `schemas/pipeline.schema.json`, (2) Pydantic V2 model construction, (3) cross-file `section_id`↔anchor consistency. Returns `Pipeline` or `None` (`pipeline_metadata: none`). |
-| `skill_extractor.py` | `load_pipeline_metadata` (reads the canonical frontmatter field) + `load_skill_section(skill_path, section_id)` (pulls a step's prompt body from the canonical). Raises `SkillExtractionError`. |
+| `loader.py` | Reads every step section's contract block from the single-file canonical (via `skill_extractor.iter_step_sections`), validates each in two stages — (1) jsonschema against `schemas/pipeline.schema.json`, (2) Pydantic V2 model construction. Returns `Pipeline` or `None` (no step sections → no pipeline). Each step's `section_id` comes from its anchor, so contract↔section mismatch is structurally impossible. |
+| `skill_extractor.py` | `iter_step_sections(skill_path)` (the step sections in document order, each a `(section_id, contract, prompt)` triple; prose-only sections skipped) + `split_contract_and_prompt(section_body)` (splits a section's leading ` ```yaml ` contract block from its prompt prose) + `load_skill_section(skill_path, section_id)` (the section's full body) + `list_section_ids`. Raises `SkillExtractionError`. |
 | `compiler.py` | `compile_skill` — the zero-LLM compile. `_topological_sort` (cycle + forward-ref + duplicate-id), `_compile_step` (contract resolution + `required_output_fields` check + prompt extraction), `_validate_context_budgets`. Emits `CompiledPipeline`/`CompiledStep`; `to_dag_json` serializes it. |
 | `contracts.py` | Three frozen-Pydantic contract families + registries: `MaterializerContract` (`MATERIALIZER_CONTRACTS`, 5 subclasses), `LLMBackendContract` (`BACKEND_CONTRACTS`), `MCPContract` (`MCP_CONTRACTS`, ships `session-mcp`). `ContractViolation` with typed `KIND_*` tags. |
 | `materializer.py` | `materialize` dispatch → 5 concrete materializers, one per contract. Parses the wire format, writes/applies files under `vault_root`, returns `MaterializedOutput`. |
@@ -25,19 +25,21 @@ API, symbols, and signatures for the typed-contract pipeline runtime. For the me
 | `batch.py` | `run_batch` — many `(skill, leaves)` jobs in parallel with file-based resume, over the *serial* `run_pipeline`. |
 | `eval.py` | Scenario framework: structural `Assertion`s + `LLMJudge` 6-dim rubric. |
 | `session_mcp.py` | Read-only tools over the active Claude Code transcript (`SESSION_MCP_TOOLS` + accessors). |
-| `schemas/pipeline.schema.json` | JSON Schema for the sidecar (loader stage 1). |
+| `schemas/pipeline.schema.json` | JSON Schema for a step's contract block (loader stage 1). |
 
 ## Loader (`loader.py`)
 
-- `load_pipeline(skill_path: Path | str) -> Pipeline | None` — three-stage validated load; `None` when `pipeline_metadata: none`.
+- `load_pipeline(skill_path: Path | str) -> Pipeline | None` — reads every step section's contract block from the canonical, two-stage validated load; `None` when the canonical has no step sections (no contract blocks).
 - `Pipeline`, `PipelineStep` — Pydantic V2 models (also `MCPDependency`, `Query`).
 - `PipelineValidationError` — raised on any stage failure.
 
 ## Skill extractor (`skill_extractor.py`)
 
-- `load_pipeline_metadata(skill_path) -> str | None` — the canonical's `pipeline_metadata:` field.
-- `load_skill_section(skill_path, section_id: str) -> str` — the prompt body for one step; miss raises `SkillExtractionError`.
-- `SkillExtractionError(Exception)`.
+- `iter_step_sections(skill_path) -> list[StepSection]` — the pipeline step sections in document order; each `StepSection` is a `(section_id, contract, prompt)` triple. Sections with no leading contract block (prose) are skipped.
+- `split_contract_and_prompt(section_body) -> tuple[dict | None, str]` — split a section body into its parsed leading ` ```yaml ` contract block (`None` if absent) and the remaining prompt prose.
+- `load_skill_section(skill_path, section_id: str) -> str` — the full body text for one section (heading excluded, contract block included); miss raises `SkillExtractionError`.
+- `list_section_ids(skill_path) -> list[str]` — every `section_id` anchor in document order (steps and prose).
+- `StepSection`, `SkillExtractionError(Exception)`.
 
 ## Compiler (`compiler.py`)
 
@@ -199,7 +201,7 @@ Read-only tools over the active Claude Code transcript: `SESSION_MCP_TOOLS`, `ge
 
 ## Package exports (`from tessellum.composer import …`)
 
-`compile_skill`, `to_dag_json`, `CompiledPipeline`, `CompiledStep`, `CompilerError`; `load_pipeline`, `Pipeline`, `PipelineStep`, `PipelineValidationError`; `load_skill_section`, `load_pipeline_metadata`, `SkillExtractionError`; the contract families + registries + `ContractViolation`; `materialize`, `MaterializedOutput`, `MaterializerError`; the four backends + `LLMBackend`/`LLMRequest`/`LLMResponse`; `execute_step`, `execute_step_with_retry`, `classify_error`, `full_jitter_backoff`, `ErrorClass`, `StepResult`, `ExecutorError`, `MAX_LOGIC_RETRIES`, `MAX_CRASH_RECOVERIES`; `run_pipeline`, `run_pipeline_dynamic`, `RunResult`, `compute_ready_set`, `ReadySetState`, `SkipReason`, `StepOutcome`, `classify_outcome`; `Gate`, `GateResult`, `GateSuite`, `CompositeGateResult`, `GroundingVerdict`, `build_close_gate`, `build_wave_gate`, `DIGEST_GATES`; `run_fix_loop`, `make_llm_fixer`, `score_issues`, `FixContext`, `FixLoopResult`, `AttemptOutcome`; `partition_unchanged_leaves`, `should_skip_unchanged`, `content_fingerprint`, `leaf_fingerprint`, `classify_planning_depth`, `LeafComplexity`; `CredentialPool`, `RunBudget`, `classify_rotation_cause`, `effort_for_stage`, `DEFAULT_STAGE_EFFORT`, `CredentialPoolError`, `BudgetExhausted`; `ContextAssembler`, `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`, `get_assembler`, `is_safe_read_path`; `run_sign_off`, `SignOffPolicy`, `SignOffResult`, `AgentVerdict`; `build_skill_tool`, `SkillTool`, `CapabilityRegistry`, `RoutingKey`, `RouteDecision`, `McpDep`; `run_batch`, `BatchJob`, `BatchJobResult`, `BatchResult`; `Manifest`, `ManifestEntry`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`; `run_eval`, `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS`, and the rest of the eval framework; the session-MCP surface.
+`compile_skill`, `to_dag_json`, `CompiledPipeline`, `CompiledStep`, `CompilerError`; `load_pipeline`, `Pipeline`, `PipelineStep`, `PipelineValidationError`; `iter_step_sections`, `split_contract_and_prompt`, `load_skill_section`, `list_section_ids`, `StepSection`, `SkillExtractionError`; the contract families + registries + `ContractViolation`; `materialize`, `MaterializedOutput`, `MaterializerError`; the four backends + `LLMBackend`/`LLMRequest`/`LLMResponse`; `execute_step`, `execute_step_with_retry`, `classify_error`, `full_jitter_backoff`, `ErrorClass`, `StepResult`, `ExecutorError`, `MAX_LOGIC_RETRIES`, `MAX_CRASH_RECOVERIES`; `run_pipeline`, `run_pipeline_dynamic`, `RunResult`, `compute_ready_set`, `ReadySetState`, `SkipReason`, `StepOutcome`, `classify_outcome`; `Gate`, `GateResult`, `GateSuite`, `CompositeGateResult`, `GroundingVerdict`, `build_close_gate`, `build_wave_gate`, `DIGEST_GATES`; `run_fix_loop`, `make_llm_fixer`, `score_issues`, `FixContext`, `FixLoopResult`, `AttemptOutcome`; `partition_unchanged_leaves`, `should_skip_unchanged`, `content_fingerprint`, `leaf_fingerprint`, `classify_planning_depth`, `LeafComplexity`; `CredentialPool`, `RunBudget`, `classify_rotation_cause`, `effort_for_stage`, `DEFAULT_STAGE_EFFORT`, `CredentialPoolError`, `BudgetExhausted`; `ContextAssembler`, `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`, `get_assembler`, `is_safe_read_path`; `run_sign_off`, `SignOffPolicy`, `SignOffResult`, `AgentVerdict`; `build_skill_tool`, `SkillTool`, `CapabilityRegistry`, `RoutingKey`, `RouteDecision`, `McpDep`; `run_batch`, `BatchJob`, `BatchJobResult`, `BatchResult`; `Manifest`, `ManifestEntry`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`; `run_eval`, `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS`, and the rest of the eval framework; the session-MCP surface.
 
 The DKS runtime is a **peer** module (`tessellum.dks`), not part of Composer, though it reuses Composer's `LLMBackend` abstractions.
 
@@ -209,12 +211,12 @@ Six subcommands (a subset of Tessellum's 11 top-level CLI commands; `dks` is a p
 
 | Command | Purpose | Flags |
 |---------|---------|-------|
-| `validate <skill\|dir>` | Sidecar schema + cross-file consistency. | `--format human\|json` |
+| `validate <skill\|dir>` | Validate each step section's contract block against the schema. | `--format human\|json` |
 | `compile <skill>` | Compile to typed DAG, zero LLM. | `--output`, `--format`, `--no-prompts` |
 | `run <skill>` | Execute against leaves. | see below |
 | `batch <jobs.json>` | Many `(skill, leaves)` jobs in parallel with resume. | `--parallelism`, `--no-resume` |
 | `eval <scenarios_dir>` | Assertions + `LLMJudge` rubric. | `--backend`, `--judge-backend` |
-| `scaffold-sidecar <skill>` | Generate a starter `.pipeline.yaml` from section anchors. | `--output`, `--force`, `--stdout` |
+| `scaffold-sidecar <skill>` | Print a starter contract block per section anchor, to paste into the canonical. | `--output`, `--force`, `--stdout` |
 
 ### `run` flags
 

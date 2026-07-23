@@ -24,6 +24,10 @@ from tessellum.composer import (
 )
 
 
+# Single-file skill: each pipeline step is an H2 section carrying a
+# <!-- :: section_id = X :: --> anchor, a leading ```yaml``` contract block
+# (the typed step declaration), and the prompt prose after it. There is no
+# separate .pipeline.yaml sidecar and no pipeline_metadata frontmatter field.
 _CANONICAL = textwrap.dedent(
     """\
     ---
@@ -41,45 +45,38 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_demo.pipeline.yaml
     ---
 
     # Demo
 
     ## Step 1: load <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: loaded
+    ```
+
     Loading {{leaf.id}} for upstream {{upstream.prev}}.
 
     ## Step 2: extract <!-- :: section_id = step_2 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_1]
+    materializer: no_op
+    output_key: facets
+    expected_output_schema:
+      type: object
+      required: [facets]
+    ```
+
     Extract.
-    """
-)
-
-
-_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Load."
-        output_key: loaded
-      - section_id: step_2
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: [step_1]
-        materializer: no_op
-        expected_output_schema:
-          type: object
-          required: [facets]
-        prompt_template: "Extract."
-        output_key: facets
     """
 )
 
@@ -88,7 +85,6 @@ _SIDECAR = textwrap.dedent(
 def compiled(tmp_path: Path):
     skill = tmp_path / "skill_demo.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_demo.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
     return compile_skill(skill)
 
 

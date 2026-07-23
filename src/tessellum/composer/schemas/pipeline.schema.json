@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://tessellum/composer/schemas/pipeline.schema.json",
-  "title": "Tessellum Composer Pipeline Sidecar",
-  "description": "Per-step pipeline declarations for a Tessellum capture/digest skill. Loaded by `tessellum.composer.skill_extractor.load_pipeline_metadata` when a skill canonical's frontmatter declares `pipeline_metadata: ./<skill>.pipeline.yaml`. The sidecar is the typed contract; the canonical is the human-readable procedure. Both are authoritative — Composer pairs them via section_id anchors.",
+  "title": "Tessellum Composer Pipeline",
+  "description": "Per-step pipeline declarations for a Tessellum capture/digest skill. Each step's contract lives in a leading ```yaml``` block inside its `<!-- :: section_id = X :: -->` H2 section in the single-file skill canonical; `tessellum.composer.loader.load_pipeline` reads and validates each block against the `Step` definition here. The `Step` definition is the authoritative per-step schema; the top-level `pipeline` array shape is retained for the assembled in-memory model.",
   "type": "object",
   "required": ["pipeline"],
   "properties": {

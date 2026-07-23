@@ -220,7 +220,11 @@ def test_wave_gate_uses_dedup() -> None:
 
 def _writer_skill(tmp_path: Path):
     """A skill whose single per-leaf step writes a note via the frontmatter
-    materializer, so the close-gate has a real file to check."""
+    materializer, so the close-gate has a real file to check.
+
+    Single-file format: the step's contract lives in a leading ```yaml`` block
+    under the ``section_id = step_1`` heading, and the prompt prose (the old
+    sidecar ``prompt_template``) follows it. No ``.pipeline.yaml`` sidecar."""
     canon = textwrap.dedent(
         """\
         ---
@@ -238,35 +242,28 @@ def _writer_skill(tmp_path: Path):
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_writer.pipeline.yaml
         ---
 
         # Writer
 
         ## Step 1: write <!-- :: section_id = step_1 :: -->
 
-        Write for {{leaf.id}}.
-        """
-    )
-    side = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: CORE
-            aggregation: per_leaf
-            batchable: false
-            depends_on: []
-            materializer: body_markdown_to_file
-            expected_output_schema:
-              type: object
-              required: [output_path, body_markdown]
-            prompt_template: "Write."
+        ```yaml
+        role: CORE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: body_markdown_to_file
+        expected_output_schema:
+          type: object
+          required: [output_path, body_markdown]
+        ```
+
+        Write.
         """
     )
     sk = tmp_path / "skill_writer.md"
     sk.write_text(canon, encoding="utf-8")
-    (tmp_path / "skill_writer.pipeline.yaml").write_text(side, encoding="utf-8")
     return compile_skill(sk)
 
 

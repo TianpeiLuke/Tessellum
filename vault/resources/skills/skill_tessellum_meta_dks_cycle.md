@@ -21,7 +21,6 @@ language: markdown
 date of note: 2026-05-10
 status: active
 building_block: procedure
-pipeline_metadata: ./skill_tessellum_meta_dks_cycle.pipeline.yaml
 ---
 
 # Procedure: tessellum-meta-dks-cycle (Canonical Body)
@@ -73,6 +72,105 @@ Unlike `tessellum-dks-cycle`, the meta-cycle does **not** materialise vault note
 
 ## Step 1: Propose <!-- :: section_id = step_1_propose :: -->
 
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: proposals
+expected_output_schema:
+  type: object
+  required:
+  - proposals
+  properties:
+    proposals:
+      type: array
+      items:
+        type: object
+        required:
+        - kind
+        - edge
+        - motivating_observation
+        - expected_impact
+        - input_bias_risk
+        properties:
+          kind:
+            type: string
+            enum:
+            - add
+            - retract
+            - refine
+          edge:
+            type: object
+            required:
+            - source
+            - target
+            - label
+            properties:
+              source:
+                type: string
+                enum:
+                - empirical_observation
+                - concept
+                - model
+                - hypothesis
+                - argument
+                - counter_argument
+                - procedure
+                - navigation
+              target:
+                type: string
+                enum:
+                - empirical_observation
+                - concept
+                - model
+                - hypothesis
+                - argument
+                - counter_argument
+                - procedure
+                - navigation
+              label:
+                type: string
+          motivating_observation:
+            type: string
+          expected_impact:
+            type: string
+          input_bias_risk:
+            type: string
+            enum:
+            - low
+            - medium
+            - high
+          supersedes:
+            type:
+            - object
+            - 'null'
+            properties:
+              source:
+                type: string
+              target:
+                type: string
+              label:
+                type: string
+```
+
+You are running step 1 of the meta-DKS cycle: Propose.
+
+META-OBSERVATION (aggregated cycle-level telemetry)
+cycles_examined: {{leaf.cycles_examined}}
+toulmin_failure_counts: {{leaf.toulmin_failure_counts_json}}
+counter_strength_breakdown: {{leaf.counter_strength_breakdown_json}}
+top_attacked_warrants: {{leaf.top_attacked_warrants_json}}
+unrealised_schema_edges: {{leaf.unrealised_schema_edges_json}}
+sample_counter_quotes: {{leaf.sample_counter_quotes_json}}
+observation_source_metadata: {{leaf.observation_source_metadata_json}}
+
+ACTIVE BB_SCHEMA (do not propose edges already present)
+{{leaf.active_schema_json}}
+
+Follow this procedure:
+
 Read the `MetaObservation` and emit zero or more `SchemaEditProposal`s. Each proposal names one schema edit (add / retract / refine) the proposer believes will close a gap surfaced by the telemetry.
 
 **Required output schema** (matches `SchemaEditProposal`):
@@ -96,7 +194,83 @@ Read the `MetaObservation` and emit zero or more `SchemaEditProposal`s. Each pro
 
 **No-proposal rule**: when telemetry surfaces no actionable gap, return an empty array. Better than fabricating proposals; the meta-cycle is allowed to do nothing.
 
+Authoring rules:
+  - All four Toulmin components are first-class — do not privilege
+    warrant over premise, counter-example, or undercutting.
+    (Phase V constraint C2.)
+  - Counter strengths weight the signal; one `strong` counter
+    outweighs two `weak`. (C3.)
+  - Quote sample counters when justifying proposals; aggregates
+    alone are not sufficient. (C1.)
+  - Self-report `input_bias_risk` on every proposal — if the
+    observation source has structural skew (e.g., open-architectural
+    questions mechanically invite warrant attacks), set "high"
+    and qualify motivating_observation accordingly. (C4.)
+  - Return an empty `proposals` array if no actionable schema gap
+    is surfaced. Better than fabricating proposals.
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
 ## Step 2: Attack <!-- :: section_id = step_2_attack :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on:
+- step_1_propose
+materializer: no_op
+output_key: attacks
+expected_output_schema:
+  type: object
+  required:
+  - attacks
+  properties:
+    attacks:
+      type: array
+      items:
+        type: object
+        required:
+        - attacked_proposal_index
+        - attack_kind
+        - reason
+        - strength
+        properties:
+          attacked_proposal_index:
+            type: integer
+            minimum: 0
+          attack_kind:
+            type: string
+            enum:
+            - insufficient_evidence
+            - input_bias
+            - overgeneralisation
+            - collides_with_existing
+            - weak_signal
+          reason:
+            type: string
+          strength:
+            type: string
+            enum:
+            - weak
+            - moderate
+            - strong
+```
+
+You are running step 2 of the meta-DKS cycle: Attack.
+
+PROPOSALS (from step 1)
+{{upstream.proposals}}
+
+META-OBSERVATION (same as step 1)
+cycles_examined: {{leaf.cycles_examined}}
+toulmin_failure_counts: {{leaf.toulmin_failure_counts_json}}
+counter_strength_breakdown: {{leaf.counter_strength_breakdown_json}}
+sample_counter_quotes: {{leaf.sample_counter_quotes_json}}
+observation_source_metadata: {{leaf.observation_source_metadata_json}}
+
+Follow this procedure:
 
 For each proposal from step 1, produce zero or more `MetaCounterArgument`s naming a weakness. The attacker plays the dialectical role: every well-formed proposal deserves an attempt to refute it.
 
@@ -119,7 +293,52 @@ For each proposal from step 1, produce zero or more `MetaCounterArgument`s namin
 3. **Use `"input_bias"` when warranted.** If the proposer flagged `input_bias_risk: "medium"` or `"high"`, the attacker SHOULD fire an `"input_bias"` counter to make the risk explicit in the dialectic.
 4. **Empty array is valid.** If a proposal has no defensible attack, return an empty array for it; the aggregator will survive it. The attacker is allowed to find nothing wrong.
 
+Authoring rules:
+  - For each proposal, decide whether one or more attack_kind
+    values apply. Multiple attacks against the same proposal are
+    allowed if and only if each names a distinct attack_kind.
+  - Attack the proposal's logic, not the proposer's competence.
+    Cite specific telemetry counts or sample quotes.
+  - If a proposal flagged `input_bias_risk` "medium" or "high",
+    you SHOULD fire an `input_bias` counter to make the risk
+    explicit. (Phase V constraint C5.)
+  - Empty `attacks` array is valid — if no proposal has a
+    defensible attack, return [].
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
 ## Step 3: Aggregate <!-- :: section_id = step_3_aggregate :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_2_attack
+materializer: no_op
+output_key: survival_decisions
+expected_output_schema:
+  type: object
+  required:
+  - decisions
+  properties:
+    decisions:
+      type: array
+      items:
+        type: object
+        required:
+        - proposal_index
+        - survives
+        - surviving_reason
+        properties:
+          proposal_index:
+            type: integer
+          survives:
+            type: boolean
+          surviving_reason:
+            type: string
+```
 
 For each proposal, decide whether it *survives*. Survival is determined by the attack distribution; the default rule is **majority**: a proposal survives iff `len(strong_attacks) <= 1 and len(moderate_attacks) <= 2`. Configurable via `--survive-threshold {strict|majority|permissive}`.
 
@@ -132,6 +351,33 @@ For each proposal, decide whether it *survives*. Survival is determined by the a
 - `surviving_reason` (string) — short prose: "1 strong attack outweighed; proposal stands" / "3 attacks all of kind input_bias; proposal rejected"
 
 ## Step 4: Land <!-- :: section_id = step_4_land :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on:
+- step_3_aggregate
+materializer: no_op
+output_key: landed_events
+expected_output_schema:
+  type: object
+  required:
+  - events_landed_count
+  - events_path
+  - migration_note_path
+  properties:
+    events_landed_count:
+      type: integer
+    events_path:
+      type:
+      - string
+      - 'null'
+    migration_note_path:
+      type:
+      - string
+      - 'null'
+```
 
 For each surviving proposal, materialise it as a `SchemaEditEvent` and append to the event log. Author one migration note per cycle documenting the landed events.
 

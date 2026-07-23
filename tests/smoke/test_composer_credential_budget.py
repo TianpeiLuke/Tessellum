@@ -195,28 +195,21 @@ _CANON = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./s.pipeline.yaml
     ---
 
     # S
 
     ## Step 1: rate <!-- :: section_id = step_1 :: -->
 
-    Rate {{leaf.id}}.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    ```
 
-_SIDE = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Rate."
+    Rate.
     """
 )
 
@@ -224,7 +217,6 @@ _SIDE = textwrap.dedent(
 def _compile(tmp_path: Path):
     sk = tmp_path / "s.md"
     sk.write_text(_CANON, encoding="utf-8")
-    (tmp_path / "s.pipeline.yaml").write_text(_SIDE, encoding="utf-8")
     return compile_skill(sk)
 
 

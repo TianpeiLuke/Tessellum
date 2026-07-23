@@ -47,6 +47,7 @@ from tessellum.composer.loader import (
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
     load_skill_section,
+    split_contract_and_prompt,
 )
 
 
@@ -181,12 +182,14 @@ class CompiledPipeline:
 
 
 def compile_skill(skill_path: Path | str) -> CompiledPipeline:
-    """Compile a skill+sidecar pair into a typed DAG.
+    """Compile a single-file skill canonical into a typed DAG.
 
     Args:
         skill_path: Path to a skill canonical (``vault/resources/skills/skill_*.md``).
-            Must declare ``pipeline_metadata: ./<skill>.pipeline.yaml`` in
-            its frontmatter; the sidecar must exist and be schema-valid.
+            Each pipeline step is an H2 section with a
+            ``<!-- :: section_id = X :: -->`` anchor and a leading
+            ``​```yaml`` contract block; the prose after the block is the
+            step's prompt. No separate ``.pipeline.yaml`` sidecar.
 
     Returns:
         CompiledPipeline with steps in topological order.
@@ -197,14 +200,15 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
             output field, etc.).
         CompilerError: DAG-level errors — cycles, forward references,
             missing prompt-section text.
-        PipelineValidationError: Sidecar missing, schema invalid, or
-            an orphan section_id (raised by the loader).
+        PipelineValidationError: A contract block is schema-invalid or
+            malformed (raised by the loader).
     """
     skill = Path(skill_path)
     pipeline = load_pipeline(skill)
 
     if pipeline is None:
-        # ``pipeline_metadata: none`` — skill has no Composer dispatch.
+        # No step sections (no ``​```yaml`` contract blocks) — the skill has
+        # no Composer dispatch.
         return CompiledPipeline(
             skill_path=skill,
             skill_name=skill.stem,
@@ -433,14 +437,18 @@ def _compile_step(step: PipelineStep, skill_path: Path) -> CompiledStep:
                     ),
                 )
 
-    # Extract the prompt-section text from the canonical.
+    # Extract the step's PROMPT from the canonical section — the section body
+    # with its leading ``​```yaml`` contract block stripped off. The contract
+    # block became `step` (via the loader); what remains is the prompt prose
+    # (with {{leaf.X}} / {{upstream.Y}} placeholders resolved at run time).
     try:
-        prompt_text = load_skill_section(skill_path, step.section_id)
+        section_body = load_skill_section(skill_path, step.section_id)
     except SkillExtractionError as e:
         raise CompilerError(
             f"step {step.section_id!r}: cannot extract prompt section from "
             f"{skill_path}: {e}"
         ) from e
+    _, prompt_text = split_contract_and_prompt(section_body)
 
     return CompiledStep(
         section_id=step.section_id,

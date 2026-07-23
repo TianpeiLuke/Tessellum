@@ -35,13 +35,13 @@ Each returns a plain `dict`. On a missing resource each returns `{"error": ...}`
 | `_tool_fz_traverse` | `(fz, direction, db_path="data/tessellum.db")` | `tessellum.bb.BBGraph.from_db` | `{starting_fz, direction, results:[{fz, note_id}]}` sorted by `fz`; error if DB missing or no note at `fz`. |
 | `_tool_capture` | `(flavor, slug, vault_root="vault", destination=None, filename_prefix=None)` | `tessellum.capture.capture` | `{path, flavor, slug, sidecar_path}`; error if vault root missing. |
 | `_tool_list_skills` | `()` | `_skills_dir` + file read | `{skills_dir, skills:[{name, title, has_sidecar}], count}`; error if skills dir not found. |
-| `_tool_get_skill` | `(skill_name)` | `_skills_dir` + file read | `{skill_name, canonical_path, canonical_body, sidecar_path, sidecar_body}`; error if skills dir or skill file not found. |
+| `_tool_get_skill` | `(skill_name)` | `_skills_dir` + `compile_skill` | `{skill_name, canonical_path, canonical_body, pipeline_step_count}`; the single-file canonical carries its per-step contract blocks inline, so there is no separate sidecar body; `pipeline_step_count` is `None` if the skill does not compile. Error if skills dir or skill file not found. |
 
 `_tool_fz_traverse` matching (linear scan over the in-memory graph, excluding the start node): `ancestors` = nodes whose `folgezettel` is a strict prefix of `fz`; `descendants` = nodes whose `folgezettel` is strictly prefixed by `fz`; `siblings` = nodes sharing the start's non-empty `folgezettel_parent`.
 
 `_tool_list_skills` globs `skill_tessellum_*.md`; `title` = the first `# ` H1 line; `has_sidecar` = a `<stem>.pipeline.yaml` exists beside it.
 
-`_tool_get_skill` accepts `skill_name` with or without the `skill_` prefix (normalizes to `skill_<name>.md`); sidecar fields are `null` when no `<stem>.pipeline.yaml` exists.
+`_tool_get_skill` accepts `skill_name` with or without the `skill_` prefix (normalizes to `skill_<name>.md`); it returns the whole single-file canonical body (per-step contract blocks included) plus the compiled `pipeline_step_count` (`null` if the skill does not compile).
 
 ## Tool inventory
 
@@ -55,7 +55,7 @@ Seven tools, advertised as `types.Tool` descriptors.
 | `tessellum_fz_traverse` | `fz`, `direction` | `db_path` (`data/tessellum.db`) | Walk a Folgezettel trail; `direction` ∈ `ancestors` / `descendants` / `siblings`. |
 | `tessellum_capture` | `flavor`, `slug` | `vault_root` (`vault`), `destination`, `filename_prefix` | Create a new typed note from a template; overrides steer the write. |
 | `tessellum_list_skills` | — | — | Enumerate shipped skill canonicals (name + 1-line title). |
-| `tessellum_get_skill` | `skill_name` | — | Return one skill canonical's body (+ sidecar) as text. |
+| `tessellum_get_skill` | `skill_name` | — | Return one skill canonical's body (per-step contract blocks inline) as text, plus its compiled pipeline step count. |
 
 ## CLI — `tessellum mcp`
 

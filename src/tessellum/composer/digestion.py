@@ -147,7 +147,7 @@ def run_digestion_pipeline(
 
     Args:
         skills_dir: Directory holding the four ``skill_tessellum_*`` phase
-            skills (canonical ``.md`` + ``.pipeline.yaml`` pairs).
+            skills (single-file canonicals with per-section contract blocks).
         source_leaf: The initial leaf context for ``plan`` (the source
             description / payload). Its keys plus each phase's structured
             output accumulate into the ``plan_doc`` threaded downstream.

@@ -50,33 +50,25 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-05-11
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_retry.pipeline.yaml
     ---
 
     # Demo
 
     ## Step 1: extract <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [facets]
+    output_key: facets
+    ```
+
     Extract from {{leaf.id}}. Attempt {{retry.attempt}}. Prior: {{retry.error}}.
-    """
-)
-
-
-_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        expected_output_schema:
-          type: object
-          required: [facets]
-        prompt_template: "Extract."
-        output_key: facets
     """
 )
 
@@ -85,7 +77,6 @@ _SIDECAR = textwrap.dedent(
 def compiled(tmp_path: Path):
     skill = tmp_path / "skill_retry.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_retry.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
     return compile_skill(skill)
 
 
@@ -291,45 +282,38 @@ _TWO_STEP_CANONICAL = textwrap.dedent(
     date of note: 2026-05-11
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_chained.pipeline.yaml
     ---
 
     # Chained
 
     ## Step 1: produce <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    expected_output_schema:
+      type: object
+      required: [produced]
+    output_key: produced
+    ```
+
     Produce data for {{leaf.id}}.
 
     ## Step 2: consume <!-- :: section_id = step_2 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_1]
+    materializer: no_op
+    output_key: consumed
+    ```
+
     Consume upstream: {{upstream.produced}}.
-    """
-)
-
-
-_TWO_STEP_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        expected_output_schema:
-          type: object
-          required: [produced]
-        prompt_template: "Produce."
-        output_key: produced
-      - section_id: step_2
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: [step_1]
-        materializer: no_op
-        prompt_template: "Consume."
-        output_key: consumed
     """
 )
 
@@ -341,9 +325,6 @@ def test_scheduler_failed_step_does_not_crash_downstream(tmp_path: Path) -> None
     crash."""
     skill = tmp_path / "skill_chained.md"
     skill.write_text(_TWO_STEP_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_chained.pipeline.yaml").write_text(
-        _TWO_STEP_SIDECAR, encoding="utf-8"
-    )
     compiled = compile_skill(skill)
     # step_1 always returns invalid JSON; step_2 returns ok.
     backend = MockBackend(

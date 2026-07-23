@@ -155,6 +155,8 @@ def test_llm_fixer_revert_to_best_protects_regression(tmp_path: Path) -> None:
 # ── End-to-end: LLM fixer wired into run_pipeline_dynamic ───────────────────
 
 
+# Single-file skill: the step's contract block lives under the anchored H2,
+# with the prompt prose after it (no .pipeline.yaml sidecar).
 _CANON = textwrap.dedent(
     """\
     ---
@@ -165,31 +167,24 @@ _CANON = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./s.pipeline.yaml
     ---
 
     # S
 
     ## Step 1: write <!-- :: section_id = step_1 :: -->
 
-    Write {{leaf.id}}.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: body_markdown_to_file
+    expected_output_schema:
+      type: object
+      required: [output_path, body_markdown]
+    ```
 
-_SIDE = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: body_markdown_to_file
-        expected_output_schema:
-          type: object
-          required: [output_path, body_markdown]
-        prompt_template: "Write."
+    Write.
     """
 )
 
@@ -226,7 +221,6 @@ _GOOD_NOTE = textwrap.dedent(
 def test_dynamic_llm_fixer_repairs_failing_note(tmp_path: Path) -> None:
     sk = tmp_path / "s.md"
     sk.write_text(_CANON, encoding="utf-8")
-    (tmp_path / "s.pipeline.yaml").write_text(_SIDE, encoding="utf-8")
     compiled = compile_skill(sk)
 
     # Capture writes the format-FAILING note.
@@ -257,7 +251,6 @@ def test_dynamic_llm_fixer_blocks_when_repair_fails(tmp_path: Path) -> None:
     (never silently closes done)."""
     sk = tmp_path / "s.md"
     sk.write_text(_CANON, encoding="utf-8")
-    (tmp_path / "s.pipeline.yaml").write_text(_SIDE, encoding="utf-8")
     compiled = compile_skill(sk)
 
     capture_backend = MockBackend(

@@ -42,11 +42,25 @@ def test_scaffold_copies_all_templates(tmp_path):
     assert len(templates) >= 13, f"expected ≥ 13 templates, got {len(templates)}"
 
 
-def test_scaffold_copies_starter_sidecar_template(tmp_path):
+def test_scaffold_copies_single_file_skill_template(tmp_path):
+    """The scaffolded vault ships the single-file skill template, and that
+    template carries its pipeline scaffolding inline: a step section with a
+    ``section_id`` anchor + a leading ```yaml``` contract block. This is the
+    single-file replacement for the old ``template_skill.pipeline.yaml``
+    starter sidecar (which no longer exists)."""
     target = tmp_path / "v"
     scaffold(target)
-    sidecar = target / "resources/templates/template_skill.pipeline.yaml"
-    assert sidecar.is_file()
+    tmpl = target / "resources/templates/template_skill.md"
+    assert tmpl.is_file()
+    text = tmpl.read_text(encoding="utf-8")
+    # A pipeline-step section carries a section_id anchor ...
+    assert "<!-- :: section_id =" in text
+    # ... followed by a leading ```yaml``` contract block whose required
+    # fields (role / depends_on) declare the typed step contract inline.
+    assert "role: CORE" in text
+    assert "depends_on:" in text
+    # No separate sidecar file is shipped any more.
+    assert not (target / "resources/templates/template_skill.pipeline.yaml").exists()
 
 
 def test_scaffold_copies_seed_term_building_block(tmp_path):
@@ -145,12 +159,23 @@ def test_capture_works_against_scaffolded_vault(tmp_path):
 
 
 def test_capture_skill_works_against_scaffolded_vault(tmp_path):
-    """Paired-sidecar emission works against a scaffolded vault."""
+    """Single-file skill emission works against a scaffolded vault: capture
+    writes ONE canonical ``.md`` (no ``.pipeline.yaml`` sidecar) whose inline
+    contract blocks compile to a valid pipeline."""
+    from tessellum.composer import load_pipeline
+
     target = tmp_path / "v"
     scaffold(target)
     result = capture("skill", "test_skill", vault_root=target)
     canonical = target / "resources/skills/skill_test_skill.md"
     sidecar = target / "resources/skills/skill_test_skill.pipeline.yaml"
     assert canonical.is_file()
-    assert sidecar.is_file()
-    assert result.sidecar_path == sidecar
+    assert result.path == canonical
+    # Single-file format: no sidecar file, and sidecar_path stays None.
+    assert not sidecar.exists()
+    assert result.sidecar_path is None
+    # The inline contract block(s) compile to a valid pipeline.
+    pipeline = load_pipeline(canonical)
+    assert pipeline is not None
+    assert len(pipeline.pipeline) >= 1
+    assert pipeline.pipeline[0].section_id == "step_1_first_action"

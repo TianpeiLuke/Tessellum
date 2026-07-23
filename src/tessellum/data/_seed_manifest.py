@@ -63,7 +63,6 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     # ── COE (Correction of Errors) review-and-reflect surface ────────────
     "resources/term_dictionary/term_coe.md",                           # method + 9-section shape
     "resources/skills/skill_tessellum_write_coe.md",                   # 6-step Composer skill canonical
-    "resources/skills/skill_tessellum_write_coe.pipeline.yaml",        # sidecar (Composer-compatible)
 
     # ── FZ trail tooling (skills used with `tessellum fz` CLI) ───────────
     "resources/skills/skill_tessellum_traverse_folgezettel.md",        # ancestors / descendants / siblings
@@ -72,15 +71,11 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
 
     # ── DKS composer skills — the agent-invocable surface ───────────────
     "resources/skills/skill_tessellum_dks_cycle.md",                   # 7-component closed-loop canonical
-    "resources/skills/skill_tessellum_dks_cycle.pipeline.yaml",        # sidecar (Composer-compatible)
     "resources/skills/skill_tessellum_meta_dks_cycle.md",              # 4-step meta-cycle canonical
-    "resources/skills/skill_tessellum_meta_dks_cycle.pipeline.yaml",   # meta-cycle sidecar
 
     # ── Capture-side helpers — classification + routing ──────────────────
     "resources/skills/skill_tessellum_classify_content.md",            # 5-step BB classification
-    "resources/skills/skill_tessellum_classify_content.pipeline.yaml", # classify sidecar
     "resources/skills/skill_tessellum_route_content.md",               # 6-step routing + 3-criterion novelty
-    "resources/skills/skill_tessellum_route_content.pipeline.yaml",    # route sidecar
 
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",

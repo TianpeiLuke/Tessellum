@@ -21,7 +21,6 @@ date of note: 2026-05-10
 status: active
 building_block: procedure
 related_skill_headers: []
-pipeline_metadata: ./skill_tessellum_answer_query.pipeline.yaml
 ---
 
 # Procedure: tessellum-answer-query (Canonical Body)
@@ -75,6 +74,44 @@ tessellum index build --vault vault --db data/tessellum.db  # FTS5 + sqlite-vec
 
 ## Step 1: query expansion <!-- :: section_id = step_1_query_expansion :: -->
 
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: expansion
+expected_output_schema:
+  type: object
+  required:
+  - original
+  - variants
+  - seeds
+  properties:
+    original:
+      type: string
+    variants:
+      type: array
+      items:
+        type: string
+    seeds:
+      type: array
+      items:
+        type: string
+```
+
+Expand the user question for retrieval.
+
+  - Detect acronyms (^[A-Z]{2,8}$) → look up term-dictionary entries.
+  - Generate 2-3 semantic variants for dense matching.
+  - Promote any verbatim term-note names as retrieval seeds.
+
+Return: { original, variants, seeds }.
+
+User question: {{leaf.question}}
+
+---
+
 Expand the raw user question into retrieval-friendly variants:
 
 1. **Acronym detection**: identify tokens that match the pattern `^[A-Z]{2,8}$` (CQRS, DKS, BB, BM25, RRF, FZ, ...). For each, look up its expansion in the vault's term dictionary (filter by `note_second_category=terminology` + name match).
@@ -84,6 +121,40 @@ Expand the raw user question into retrieval-friendly variants:
 Output: `{ original: str, variants: list[str], seeds: list[note_id] }`.
 
 ## Step 2: multi-strategy retrieval <!-- :: section_id = step_2_retrieval :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_1_query_expansion
+materializer: no_op
+output_key: candidates
+expected_output_schema:
+  type: object
+  required:
+  - candidates
+  properties:
+    candidates:
+      type: array
+      items:
+        type: object
+        required:
+        - note_id
+        - score
+        - strategies
+```
+
+For each variant in {{upstream.expansion.variants}}, run the
+tessellum-search-notes skill (via tessellum.retrieval.route).
+For each seed in {{upstream.expansion.seeds}}, run BFS (max_depth=2).
+
+Aggregate hits by note_id; record which strategies surfaced each.
+Return: { candidates: [{ note_id, score, strategies: [...] }, ...] }.
+
+Question: {{leaf.question}}
+
+---
 
 For each query variant, dispatch via `skill_tessellum_search_notes`. Combine results:
 
@@ -96,6 +167,33 @@ Aggregate hits by `note_id`; deduplicate; carry per-strategy diagnostics for the
 
 ## Step 3: working-memory scoring <!-- :: section_id = step_3_working_memory :: -->
 
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_2_retrieval
+materializer: no_op
+output_key: ranked
+expected_output_schema:
+  type: object
+  required:
+  - top_n
+  - scores
+```
+
+Score each candidate by combining:
+  - strategy presence (notes in N strategies → higher confidence)
+  - in_degree from links_to(note_id)
+  - note_creation_date recency (configurable)
+  - BB priority (argument > concept > navigation for explanatory)
+
+Truncate to top 20. Return: { top_n: [...], scores: { note_id: score, ... } }.
+
+Candidates: {{upstream.candidates}}
+
+---
+
 Score each candidate note by combining:
 
 - **Strategy presence** — note appearing in N strategies' top-K is more confident.
@@ -106,6 +204,37 @@ Score each candidate note by combining:
 Sort by combined score; truncate to ~20 candidates.
 
 ## Step 4: context assembly <!-- :: section_id = step_4_context_assembly :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_3_working_memory
+materializer: no_op
+output_key: context
+expected_output_schema:
+  type: object
+  required:
+  - context_md
+  - tokens_used
+  - included_note_ids
+```
+
+Build a token-budgeted context (default 6000 tokens):
+  - grounded terms (~1000 tokens): full body of any term note for
+    acronyms/terms in the question.
+  - primary sources (~4000): top 5-8 ranked candidates, full body.
+  - supporting (~1000): excerpts from the next 5-10 candidates.
+
+Use tiktoken for accurate token counting. If over budget,
+truncate supporting first, then primary.
+
+Return: { context_md, tokens_used, included_note_ids }.
+
+Top-N: {{upstream.ranked.top_n}}
+
+---
 
 Build a token-budgeted context (default ~6K tokens):
 
@@ -118,6 +247,37 @@ Use `tiktoken` (already in deps) for token counting. If the budget is exceeded, 
 Output: `{ tokens_used: int, included_note_ids: list[str], context_md: str }`.
 
 ## Step 5: synthesis with citations <!-- :: section_id = step_5_synthesis :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_4_context_assembly
+materializer: no_op
+output_key: response
+expected_output_schema:
+  type: object
+  required:
+  - answer_md
+  - cited_note_ids
+```
+
+Compose a grounded answer to the user's question. Rules:
+
+  1. Every load-bearing claim cites a note: [note_name](relative_path.md).
+  2. Structure the answer based on question intent (definition /
+     procedure / comparison / etc.).
+  3. End with a "See also" listing related notes not in the answer.
+  4. If the context is insufficient, say so explicitly — don't
+     hallucinate to fill gaps.
+
+Return: { answer_md, cited_note_ids, strategies_used }.
+
+Question: {{leaf.question}}
+Context: {{upstream.context.context_md}}
+
+---
 
 Compose the answer:
 

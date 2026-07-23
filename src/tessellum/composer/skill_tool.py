@@ -295,17 +295,19 @@ class CapabilityRegistry:
     @classmethod
     def from_skill_dir(cls, skills_dir: Path | str) -> "CapabilityRegistry":
         """Build a registry from every ``skill_*.md`` in a directory that
-        has a paired ``.pipeline.yaml`` sidecar (Bucket-A skills)."""
+        compiles to a non-empty pipeline (Bucket-A skills — those whose step
+        sections carry ``​```yaml`` contract blocks). Skills with no step
+        sections compile to an empty pipeline and are skipped."""
         skills_dir = Path(skills_dir)
         reg = cls()
         for md in sorted(skills_dir.glob("skill_*.md")):
-            sidecar = md.with_name(md.stem + ".pipeline.yaml")
-            if not sidecar.is_file():
-                continue  # not a pipeline skill (no typed contract)
             try:
-                reg.register(build_skill_tool(md))
+                tool = build_skill_tool(md)
             except Exception:  # noqa: BLE001 — skip a skill that won't compile
                 continue
+            if tool.step_count == 0:
+                continue  # no typed-contract pipeline steps
+            reg.register(tool)
         return reg
 
     def by_side_effect(self, effect: SideEffect) -> list[SkillTool]:

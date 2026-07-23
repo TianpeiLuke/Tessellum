@@ -19,7 +19,6 @@ date of note: 2026-05-11
 status: active
 building_block: procedure
 bb_schema_version: 1
-pipeline_metadata: ./skill_tessellum_classify_content.pipeline.yaml
 ---
 
 # Procedure: tessellum-classify-content (Canonical Body)
@@ -55,6 +54,32 @@ No DB or vault dependencies — the skill classifies content in-memory.
 
 ## Step 1: Ingest Content <!-- :: section_id = step_1_ingest_content :: -->
 
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on: []
+materializer: no_op
+output_key: ingested
+expected_output_schema:
+  type: object
+  required:
+  - source
+  - total_lines
+  - raw_text
+  properties:
+    source:
+      type: string
+    total_lines:
+      type: integer
+    existing_frontmatter:
+      type:
+      - object
+      - 'null'
+    raw_text:
+      type: string
+```
+
 Accept from one of:
 
 - `--note <path>` — read an existing vault note (relative to vault root)
@@ -64,6 +89,61 @@ Accept from one of:
 Record: source identifier, total line count, and any existing YAML frontmatter (the existing `building_block:` field, if present, is the **declared** classification — useful as a tie-breaker but not authoritative).
 
 ## Step 2: Segment by Topic Boundaries <!-- :: section_id = step_2_segment_by_topic_boundaries :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_1_ingest_content
+materializer: no_op
+output_key: segments
+expected_output_schema:
+  type: object
+  required:
+  - segments
+  properties:
+    segments:
+      type: array
+      items:
+        type: object
+        required:
+        - id
+        - start_line
+        - end_line
+        - heading
+        - line_count
+        properties:
+          id:
+            type: integer
+          start_line:
+            type: integer
+          end_line:
+            type: integer
+          heading:
+            type:
+            - string
+            - 'null'
+          line_count:
+            type: integer
+          raw_text:
+            type: string
+```
+
+You are running step 2 of tessellum-classify-content: Segment by
+Topic Boundaries.
+
+RAW CONTENT
+{{upstream.ingested.raw_text}}
+
+Apply the segmentation rules in section "step_2_segment_by_topic_boundaries"
+of skill_tessellum_classify_content (H2 strongest → H3 → blank+topic
+shift → list blocks).
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
 
 Split content into segments using boundary signals (priority order):
 
@@ -77,6 +157,80 @@ For each segment record: `id`, start/end lines, heading (if any), raw text, line
 **Preamble** (content before first H2) is always its own segment.
 
 ## Step 3: Classify Each Segment by Building Block <!-- :: section_id = step_3_classify_each_segment_by_building_block :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_2_segment_by_topic_boundaries
+materializer: no_op
+output_key: bb_labels
+expected_output_schema:
+  type: object
+  required:
+  - labels
+  properties:
+    labels:
+      type: array
+      items:
+        type: object
+        required:
+        - segment_id
+        - building_block
+        - confidence
+        properties:
+          segment_id:
+            type: integer
+          building_block:
+            type: string
+            enum:
+            - concept
+            - model
+            - procedure
+            - empirical_observation
+            - hypothesis
+            - argument
+            - counter_argument
+            - navigation
+            - mixed
+          confidence:
+            type: string
+            enum:
+            - low
+            - medium
+            - high
+          sub_blocks:
+            type:
+            - array
+            - 'null'
+            items:
+              type: string
+            description: Populated only when building_block='mixed'
+```
+
+You are running step 3 of tessellum-classify-content: Classify
+Each Segment by Building Block.
+
+SEGMENTS (from step 2)
+{{upstream.segments}}
+
+Apply the recognition criteria in section
+"step_3_classify_each_segment_by_building_block" of
+skill_tessellum_classify_content. Each BB type's question +
+recognition signals are in the table there.
+
+Rules:
+  - Label each segment with exactly one BB type (or "mixed" if
+    >=3 non-navigation types co-exist with no dominant block).
+  - For "mixed", populate sub_blocks with the BB types present.
+  - Assign confidence: high (>=75% match), medium (50-75%),
+    low (<50% — usually means mixed).
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
 
 Apply recognition criteria to label each segment with one of the 8 BB types. The criteria below mirror the question each BB type answers per [`term_building_block`](../term_dictionary/term_building_block.md):
 
@@ -96,6 +250,53 @@ Apply recognition criteria to label each segment with one of the 8 BB types. The
 **Tie-breaker**: when two BBs are equally plausible, prefer the one matching the segment's H2 heading's grammar — "How to X" → procedure; "What is X" → concept; "X causes Y" → argument; etc.
 
 ## Step 4: Identify Content Domain <!-- :: section_id = step_4_identify_content_domain :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_3_classify_each_segment_by_building_block
+materializer: no_op
+output_key: domain_labels
+expected_output_schema:
+  type: object
+  required:
+  - domains
+  properties:
+    domains:
+      type: array
+      items:
+        type: object
+        required:
+        - segment_id
+        - content_domain
+        properties:
+          segment_id:
+            type: integer
+          content_domain:
+            type: string
+            description: Open vocabulary; descriptive prose (e.g., 'knowledge management',
+              'retrieval', 'paper review')
+```
+
+You are running step 4 of tessellum-classify-content: Identify
+Content Domain.
+
+SEGMENTS WITH BB LABELS
+segments: {{upstream.segments}}
+bb_labels: {{upstream.bb_labels}}
+
+For each segment, identify its subject-matter domain. The
+Tessellum-flavored examples table in section
+"step_4_identify_content_domain" suggests common labels; free-form
+domain strings outside those examples are valid (the router
+decides downstream).
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
 
 For each segment, identify the subject matter domain from keywords + entities. This is **descriptive** — the classifier names the domain but does NOT map it to vault paths (that's [`tessellum-route-content`](skill_tessellum_route_content.md)'s job).
 
@@ -120,6 +321,67 @@ For each segment, identify the subject matter domain from keywords + entities. T
 For content outside these domains, free-form domain labels are valid — e.g., "personal finance", "music theory", "biology". The downstream router decides what to do with unfamiliar domains.
 
 ## Step 5: Output Classification Report <!-- :: section_id = step_5_output_classification_report :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on:
+- step_2_segment_by_topic_boundaries
+- step_3_classify_each_segment_by_building_block
+- step_4_identify_content_domain
+materializer: no_op
+output_key: classification_report
+expected_output_schema:
+  type: object
+  required:
+  - source
+  - total_segments
+  - total_lines
+  - primary_building_block
+  - unique_blocks
+  - block_mixing
+  - rows
+  properties:
+    source:
+      type: string
+    total_segments:
+      type: integer
+    total_lines:
+      type: integer
+    primary_building_block:
+      type: string
+    unique_blocks:
+      type: integer
+    block_mixing:
+      type: boolean
+    rows:
+      type: array
+      items:
+        type: object
+        required:
+        - segment_id
+        - lines
+        - heading
+        - building_block
+        - content_domain
+        - confidence
+        properties:
+          segment_id:
+            type: integer
+          lines:
+            type: string
+          heading:
+            type:
+            - string
+            - 'null'
+          building_block:
+            type: string
+          content_domain:
+            type: string
+          confidence:
+            type: string
+```
 
 Present as a structured table:
 

@@ -1,18 +1,19 @@
-"""Integration tests for the ``skill_tessellum_dks_cycle`` skill canonical
-and its Composer-pipeline sidecar.
+"""Integration tests for the ``skill_tessellum_dks_cycle`` single-file skill.
 
 DKS Phase 1 (v0.0.40) shipped the pure-Python API; v0.0.43 lifted it to
 ``tessellum.dks`` (its own top-level module, peer to ``tessellum.composer``).
 Phase 2 (v0.0.42) wraps the same 7-component closed loop into a Composer
-skill — canonical body + ``.pipeline.yaml`` sidecar that share section_id
-anchors. These tests confirm:
+skill — ONE markdown canonical whose pipeline steps are H2 sections, each
+carrying a ``<!-- :: section_id = X :: -->`` anchor plus a leading fenced
+``​```yaml`` contract block. There is no ``.pipeline.yaml`` sidecar. These
+tests confirm:
 
 1. The canonical's frontmatter, body, and link discipline pass
    ``tessellum format check``.
-2. The canonical + sidecar pair loads via ``tessellum.composer.loader`` and
-   declares exactly 7 steps in the right order.
-3. The pair compiles to a 7-node DAG via ``tessellum.composer.compiler``,
-   with the right dependency edges.
+2. The canonical loads via ``tessellum.composer.loader`` and declares
+   exactly 7 steps in the right order.
+3. The canonical compiles to a 7-node DAG via
+   ``tessellum.composer.compiler``, with the right dependency edges.
 4. The 7 expected_output_schemas match the field surface of the Phase 1
    dataclasses (so the skill's prompt contract stays in sync with
    ``dks.py``).
@@ -32,7 +33,11 @@ from tessellum.format import is_valid, validate
 SKILL_PATH = Path(__file__).resolve().parents[2] / (
     "vault/resources/skills/skill_tessellum_dks_cycle.md"
 )
-SIDECAR_PATH = SKILL_PATH.with_name("skill_tessellum_dks_cycle.pipeline.yaml")
+# Single-file format: the legacy ``.pipeline.yaml`` sidecar must NOT exist —
+# every step's contract now lives inline in the canonical.
+LEGACY_SIDECAR_PATH = SKILL_PATH.with_name(
+    "skill_tessellum_dks_cycle.pipeline.yaml"
+)
 
 
 EXPECTED_STEP_IDS = (
@@ -48,7 +53,14 @@ EXPECTED_STEP_IDS = (
 
 def test_skill_canonical_exists():
     assert SKILL_PATH.is_file(), f"missing {SKILL_PATH}"
-    assert SIDECAR_PATH.is_file(), f"missing {SIDECAR_PATH}"
+
+
+def test_no_legacy_sidecar():
+    """Single-file invariant: the old ``.pipeline.yaml`` sidecar is gone.
+    Every step's contract block now lives inline in the canonical."""
+    assert not LEGACY_SIDECAR_PATH.is_file(), (
+        f"single-file skills must not carry a sidecar; found {LEGACY_SIDECAR_PATH}"
+    )
 
 
 def test_skill_canonical_passes_format_check():
@@ -62,7 +74,7 @@ def test_skill_canonical_passes_format_check():
 
 
 def test_canonical_declares_all_7_step_anchors():
-    """Every sidecar section_id has a matching `<!-- :: section_id = X :: -->`
+    """Every expected step_id has a matching `<!-- :: section_id = X :: -->`
     anchor in the canonical body."""
     canonical_anchors = set(list_section_ids(SKILL_PATH))
     for step_id in EXPECTED_STEP_IDS:
@@ -73,9 +85,9 @@ def test_canonical_declares_all_7_step_anchors():
 
 
 def test_pipeline_loads_and_has_7_steps():
-    """The canonical + sidecar pair loads cleanly and produces 7 steps."""
+    """The single-file canonical loads cleanly and produces 7 steps."""
     pipeline = load_pipeline(SKILL_PATH)
-    assert pipeline is not None, "pipeline_metadata: none — expected sidecar"
+    assert pipeline is not None, "expected 7 inline contract-block steps, got none"
     assert len(pipeline.pipeline) == 7
     assert tuple(s.section_id for s in pipeline.pipeline) == EXPECTED_STEP_IDS
 
@@ -132,7 +144,7 @@ def test_step_4_is_no_op_other_steps_are_file_materializers():
 
 
 def test_skill_compiles_to_7_node_dag():
-    """End-to-end compile: skill canonical + sidecar → CompiledPipeline."""
+    """End-to-end compile: single-file skill canonical → CompiledPipeline."""
     compiled = compile_skill(SKILL_PATH)
     assert len(compiled.steps) == 7
     assert tuple(s.section_id for s in compiled.steps) == EXPECTED_STEP_IDS
@@ -207,7 +219,7 @@ def test_step_6_and_7_align_with_bb_routing():
     """Step 6 lands at areas/models/pattern_…; step 7 lands under
     resources/skills/procedure_… OR resources/term_dictionary/concept_….
     Confirms the BB-to-directory mapping documented in the canonical
-    matches the sidecar's output_path patterns."""
+    matches the inline contract blocks' output_path patterns."""
     pipeline = load_pipeline(SKILL_PATH)
     step_6 = next(
         s for s in pipeline.pipeline if s.section_id == "step_6_pattern_discovery"

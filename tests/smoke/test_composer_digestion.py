@@ -15,7 +15,6 @@ skills_dir — it never touches the shipped vault skills.
 from __future__ import annotations
 
 import json
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -29,7 +28,7 @@ from tessellum.composer import (
 from tessellum.composer.signoff import AgentVerdict
 
 
-# ── Synthetic phase skills (canonical + sidecar), one no_op step each ────────
+# ── Synthetic phase skills (single-file), one no_op step each ────────────────
 
 
 def _write_phase_skill(
@@ -41,8 +40,14 @@ def _write_phase_skill(
     materializer: str = "no_op",
     aggregation: str = "corpus_wide",
 ) -> None:
-    """Write a minimal 1-step skill the driver can compile + run."""
+    """Write a minimal 1-step single-file skill the driver can compile + run.
+
+    Each step is an H2 section carrying its ``section_id`` anchor, a leading
+    ``​```yaml`` contract block (role/aggregation/…), and the prompt prose
+    after it. No ``.pipeline.yaml`` sidecar, no ``pipeline_metadata``.
+    """
     sid = "step_1"
+    req_yaml = ", ".join(required)
     canonical = (
         "---\n"
         "tags:\n  - resource\n  - skill\n"
@@ -52,32 +57,24 @@ def _write_phase_skill(
         "date of note: 2026-07-23\n"
         "status: active\n"
         "building_block: procedure\n"
-        f"pipeline_metadata: ./{phase_skill_name}.pipeline.yaml\n"
         "access_control_group: [\"general\"]\n"
         "---\n\n"
         f"# {phase_skill_name}\n\n"
         f"## Do it <!-- :: section_id = {sid} :: -->\n\n"
-        "Run this phase. Return the JSON per the schema.\n"
-    )
-    req_yaml = ", ".join(required)
-    sidecar = textwrap.dedent(
-        f"""\
-        pipeline:
-          - section_id: {sid}
-            role: CORE
-            aggregation: {aggregation}
-            batchable: false
-            depends_on: []
-            materializer: {materializer}
-            output_key: {output_key}
-            expected_output_schema:
-              type: object
-              required: [{req_yaml}]
-            prompt_template: "phase"
-        """
+        "```yaml\n"
+        "role: CORE\n"
+        f"aggregation: {aggregation}\n"
+        "batchable: false\n"
+        "depends_on: []\n"
+        f"materializer: {materializer}\n"
+        f"output_key: {output_key}\n"
+        "expected_output_schema:\n"
+        "  type: object\n"
+        f"  required: [{req_yaml}]\n"
+        "```\n\n"
+        "phase\n"
     )
     (skills_dir / f"{phase_skill_name}.md").write_text(canonical, encoding="utf-8")
-    (skills_dir / f"{phase_skill_name}.pipeline.yaml").write_text(sidecar, encoding="utf-8")
 
 
 def _synthetic_pipeline(skills_dir: Path) -> None:

@@ -20,7 +20,6 @@ date of note: 2026-05-10
 status: active
 building_block: procedure
 related_skill_headers: []
-pipeline_metadata: ./skill_tessellum_search_notes.pipeline.yaml
 ---
 
 # Procedure: tessellum-search-notes (Canonical Body)
@@ -79,6 +78,44 @@ These are diagnostic-class rules, not validator-enforced (the search-notes skill
 
 ## Step 1: parse query intent <!-- :: section_id = step_1_parse_intent :: -->
 
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: decision
+expected_output_schema:
+  type: object
+  required:
+  - strategy
+  - reason
+  properties:
+    strategy:
+      type: string
+      enum:
+      - metadata
+      - bfs
+      - bm25
+      - dense
+      - hybrid
+    reason:
+      type: string
+```
+
+Classify the query intent for retrieval routing. Use these heuristics:
+
+  - vault-relative .md path → "bfs" (graph traversal from a seed)
+  - single short token (≤ 30 chars, no spaces) → "bm25" (lexical)
+  - question-shaped (ends with ?) or ≥ 4 tokens → "hybrid"
+  - empty / unrecognized → "hybrid" (default fallback)
+
+Return: { "strategy": "...", "reason": "..." }
+
+Query: {{leaf.query}}
+
+---
+
 Call `classify_query(query)` to get a `RouterDecision`. The classifier is heuristic:
 
 1. **Vault path with `.md`** → `bfs` (treat the query as a seed note_id and traverse the link graph).
@@ -89,6 +126,41 @@ Call `classify_query(query)` to get a `RouterDecision`. The classifier is heuris
 The agent can override by calling the primitive directly. The router's job is a sensible default, not a binding decision.
 
 ## Step 2: dispatch to the recommended primitive <!-- :: section_id = step_2_dispatch :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_1_parse_intent
+materializer: no_op
+output_key: hits
+expected_output_schema:
+  type: object
+  required:
+  - hits
+  properties:
+    hits:
+      type: array
+      items:
+        type: object
+        required:
+        - note_id
+        - note_name
+        - score
+```
+
+Run the recommended retrieval primitive against the index DB.
+
+Strategy: {{upstream.decision.strategy}}
+Query: {{leaf.query}}
+k: {{leaf.k}}
+
+Dispatch to the primitive (bm25_search / dense_search / hybrid_search /
+best_first_bfs / metadata_search) and return its results in the
+uniform shape: list of { note_id, note_name, score, ... }.
+
+---
 
 ```python
 from tessellum.retrieval import route
@@ -110,6 +182,32 @@ tessellum filter --tag cqrs       # for structured filtering
 ```
 
 ## Step 3: return ranked hits with diagnostics <!-- :: section_id = step_3_return_hits :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_2_dispatch
+materializer: no_op
+output_key: response
+expected_output_schema:
+  type: object
+  required:
+  - decision
+  - hits
+```
+
+Render the final response combining the router's decision and the
+ranked hits. Surface:
+  - decision.strategy + decision.reason
+  - top-N hits with note_name, score, and per-strategy diagnostics
+  - empty-result fallback hint (try alternate strategy / widen k)
+
+decision: {{upstream.decision}}
+hits: {{upstream.hits}}
+
+---
 
 The agent should surface:
 

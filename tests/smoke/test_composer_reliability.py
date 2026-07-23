@@ -3,7 +3,7 @@
 v0.0.60 of plan_composer_dks_robustness §B. Covers:
 
   - Watchdog: stalled backend → step result marked stalled (B.1)
-  - Per-step timeout override via sidecar (B.1)
+  - Per-step timeout override via contract block (B.1)
   - Compiler oversized prompt estimate → CompilerError (B.3)
   - Compiler 70% threshold → budget_warnings populated (B.3)
   - Runtime: actual prompt exceeds hard cap → refuses dispatch (B.3)
@@ -13,7 +13,6 @@ v0.0.60 of plan_composer_dks_robustness §B. Covers:
 from __future__ import annotations
 
 import json
-import textwrap
 import time
 from pathlib import Path
 
@@ -59,57 +58,57 @@ class _SlowBackend:
         )
 
 
-_TIMEOUT_CANONICAL = textwrap.dedent(
-    """\
-    ---
-    tags:
-      - resource
-      - skill
-    keywords:
-      - alpha
-      - beta
-      - gamma
-    topics:
-      - X
-      - Y
-    language: markdown
-    date of note: 2026-05-11
-    status: active
-    building_block: procedure
-    pipeline_metadata: ./skill_timeout.pipeline.yaml
-    ---
-
-    # Timeout
-
-    ## Step 1: do <!-- :: section_id = step_1 :: -->
-
-    Do for {{leaf.id}}.
-    """
-)
+_TIMEOUT_FRONTMATTER = [
+    "---",
+    "tags:",
+    "  - resource",
+    "  - skill",
+    "keywords:",
+    "  - alpha",
+    "  - beta",
+    "  - gamma",
+    "topics:",
+    "  - X",
+    "  - Y",
+    "language: markdown",
+    "date of note: 2026-05-11",
+    "status: active",
+    "building_block: procedure",
+    "---",
+    "",
+    "# Timeout",
+    "",
+]
 
 
 def _make_timeout_skill(tmp_path: Path, timeout_seconds: float | None = None):
-    """Helper: write a skill canonical + sidecar with an optional
-    per-step timeout_seconds field."""
-    skill = tmp_path / "skill_timeout.md"
-    skill.write_text(_TIMEOUT_CANONICAL, encoding="utf-8")
-    sidecar_lines = [
-        'version: "1.0"',
-        "pipeline:",
-        "  - section_id: step_1",
-        "    role: CORE",
-        "    aggregation: per_leaf",
-        "    batchable: false",
-        "    depends_on: []",
-        "    materializer: no_op",
-        '    prompt_template: "Do."',
-        "    output_key: done",
+    """Helper: write a single-file skill whose step_1 section carries an
+    inline ```yaml contract block with an optional per-step
+    timeout_seconds field, followed by the step's prompt prose."""
+    contract_lines = [
+        "```yaml",
+        "role: CORE",
+        "aggregation: per_leaf",
+        "batchable: false",
+        "depends_on: []",
+        "materializer: no_op",
+        "output_key: done",
     ]
     if timeout_seconds is not None:
-        sidecar_lines.append(f"    timeout_seconds: {timeout_seconds}")
-    (tmp_path / "skill_timeout.pipeline.yaml").write_text(
-        "\n".join(sidecar_lines) + "\n", encoding="utf-8"
-    )
+        contract_lines.append(f"timeout_seconds: {timeout_seconds}")
+    contract_lines.append("```")
+
+    lines = [
+        *_TIMEOUT_FRONTMATTER,
+        "## Step 1: do <!-- :: section_id = step_1 :: -->",
+        "",
+        *contract_lines,
+        "",
+        "Do for {{leaf.id}}.",
+        "",
+    ]
+    skill = tmp_path / "skill_timeout.md"
+    skill.write_text("\n".join(lines), encoding="utf-8")
     return compile_skill(skill)
 
 
@@ -171,11 +170,12 @@ def _make_budget_skill(
     upstream_max_chars: int | None = None,
     n_upstreams: int = 1,
 ):
-    """Helper: write a two-step skill where step_2 depends on step_1.
-    step_1's expected_output_schema declares max_chars (the soft cap);
-    step_2 consumes step_1's output and optionally has its own
-    max_prompt_chars."""
-    canonical_lines = [
+    """Helper: write a single-file skill where a consume step depends on
+    ``n_upstreams`` producer steps. Each producer's contract block
+    declares its ``expected_output_schema`` (optionally with ``max_chars``
+    — the soft cap); the consume step consumes their outputs and
+    optionally declares its own ``max_prompt_chars`` (hard cap)."""
+    lines = [
         "---",
         "tags:",
         "  - resource",
@@ -191,63 +191,65 @@ def _make_budget_skill(
         "date of note: 2026-05-11",
         "status: active",
         "building_block: procedure",
-        "pipeline_metadata: ./skill_budget.pipeline.yaml",
         "---",
         "",
         "# Budget",
         "",
     ]
-    # n upstream "producer" steps + one downstream "consumer"
+    # n upstream "producer" steps, each with a contract block + prompt prose.
     for i in range(1, n_upstreams + 1):
-        canonical_lines.append(f"## Step {i}: produce_{i} <!-- :: section_id = produce_{i} :: -->")
-        canonical_lines.append("")
-        canonical_lines.append(f"Produce output {i}.")
-        canonical_lines.append("")
-    canonical_lines.append(
+        lines.append(
+            f"## Step {i}: produce_{i} <!-- :: section_id = produce_{i} :: -->"
+        )
+        lines.append("")
+        lines.append("```yaml")
+        lines.append("role: CORE")
+        lines.append("aggregation: per_leaf")
+        lines.append("batchable: false")
+        lines.append("depends_on: []")
+        lines.append("materializer: no_op")
+        lines.append(f"output_key: out_{i}")
+        lines.append("expected_output_schema:")
+        lines.append("  type: object")
+        lines.append(f"  required: [out_{i}]")
+        if upstream_max_chars is not None:
+            lines.append(f"  max_chars: {upstream_max_chars}")
+        lines.append("```")
+        lines.append("")
+        lines.append(f"Produce output {i}.")
+        lines.append("")
+
+    # One downstream "consumer" step depending on every producer. The prose
+    # keeps the {{upstream.out_i}} placeholders so the runtime prompt-cap
+    # guard has something to substitute an oversized upstream into.
+    lines.append(
         f"## Step {n_upstreams + 1}: consume <!-- :: section_id = consume :: -->"
     )
-    canonical_lines.append("")
-    canonical_lines.append("Consume " + " ".join(f"{{{{upstream.out_{i}}}}}" for i in range(1, n_upstreams + 1)) + ".")
-    canonical_lines.append("")
-    (tmp_path / "skill_budget.md").write_text("\n".join(canonical_lines), encoding="utf-8")
-
-    sidecar_lines = ['version: "1.0"', "pipeline:"]
-    for i in range(1, n_upstreams + 1):
-        sidecar_lines.extend(
-            [
-                f"  - section_id: produce_{i}",
-                "    role: CORE",
-                "    aggregation: per_leaf",
-                "    batchable: false",
-                "    depends_on: []",
-                "    materializer: no_op",
-                f"    prompt_template: \"Produce {i}.\"",
-                f"    output_key: out_{i}",
-                "    expected_output_schema:",
-                "      type: object",
-                f"      required: [out_{i}]",
-            ]
-        )
-        if upstream_max_chars is not None:
-            sidecar_lines.append(f"      max_chars: {upstream_max_chars}")
-    sidecar_lines.extend(
-        [
-            "  - section_id: consume",
-            "    role: CORE",
-            "    aggregation: per_leaf",
-            "    batchable: false",
-            "    depends_on: " + json.dumps([f"produce_{i}" for i in range(1, n_upstreams + 1)]),
-            "    materializer: no_op",
-            '    prompt_template: "Consume."',
-            "    output_key: consumed",
-        ]
+    lines.append("")
+    lines.append("```yaml")
+    lines.append("role: CORE")
+    lines.append("aggregation: per_leaf")
+    lines.append("batchable: false")
+    lines.append(
+        "depends_on: "
+        + json.dumps([f"produce_{i}" for i in range(1, n_upstreams + 1)])
     )
+    lines.append("materializer: no_op")
+    lines.append("output_key: consumed")
     if step_max_prompt_chars is not None:
-        sidecar_lines.append(f"    max_prompt_chars: {step_max_prompt_chars}")
-    (tmp_path / "skill_budget.pipeline.yaml").write_text(
-        "\n".join(sidecar_lines) + "\n", encoding="utf-8"
+        lines.append(f"max_prompt_chars: {step_max_prompt_chars}")
+    lines.append("```")
+    lines.append("")
+    lines.append(
+        "Consume "
+        + " ".join(f"{{{{upstream.out_{i}}}}}" for i in range(1, n_upstreams + 1))
+        + "."
     )
-    return tmp_path / "skill_budget.md"
+    lines.append("")
+
+    skill = tmp_path / "skill_budget.md"
+    skill.write_text("\n".join(lines), encoding="utf-8")
+    return skill
 
 
 def test_compiler_default_budget_passes(tmp_path: Path):
@@ -329,10 +331,10 @@ def test_compiler_budget_constants_present():
 
 def test_progress_flag_emits_per_step_lines(tmp_path: Path, capsys):
     """--progress=True logs to stderr; off → no logging."""
-    skill = _make_timeout_skill(tmp_path)
+    compiled = _make_timeout_skill(tmp_path)
     backend = MockBackend(default=json.dumps({"done": True}))
     run_pipeline(
-        skill,
+        compiled,
         leaves=[{"_id": "leaf_0", "id": "x"}],
         backend=backend,
         vault_root=tmp_path,
@@ -346,10 +348,10 @@ def test_progress_flag_emits_per_step_lines(tmp_path: Path, capsys):
 
 
 def test_progress_off_by_default(tmp_path: Path, capsys):
-    skill = _make_timeout_skill(tmp_path)
+    compiled = _make_timeout_skill(tmp_path)
     backend = MockBackend(default=json.dumps({"done": True}))
     run_pipeline(
-        skill,
+        compiled,
         leaves=[{"_id": "leaf_0", "id": "x"}],
         backend=backend,
         vault_root=tmp_path,

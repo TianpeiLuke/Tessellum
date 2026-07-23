@@ -3,27 +3,29 @@
 ## The idea
 
 Composer turns a written procedure into a running one. A skill in Tessellum is a
-prose document — a standard operating procedure a human could read and follow.
-Composer takes that document, plus a small machine-readable sidecar, and compiles
-it into a typed dependency graph of LLM calls it can then execute against a batch
-of inputs, writing each result into the vault. It is the bridge between capture
-(System P, the markdown substrate) and retrieval (System D): everything Composer
-does ends in a note on disk.
+single self-contained markdown note — a standard operating procedure a human could
+read and follow. Each pipeline step is a section of that note: a typed contract
+block declaring the step's machine-readable facts, followed by the prompt prose the
+model actually runs. Composer compiles that one document into a typed dependency
+graph of LLM calls it can then execute against a batch of inputs, writing each
+result into the vault. It is the bridge between capture (System P, the markdown
+substrate) and retrieval (System D): everything Composer does ends in a note on
+disk.
 
 The deep move is a separation of *deciding* from *running*. Compilation is a pure
-program — it never calls a model. It reads the sidecar, checks every contract,
-sorts the steps, and estimates the prompt budget, and if anything is wrong it
-fails the build. Only after the shape is proven correct does any token get spent.
+program — it never calls a model. It reads each step's contract block, checks every
+contract, sorts the steps, and estimates the prompt budget, and if anything is wrong
+it fails the build. Only after the shape is proven correct does any token get spent.
 Structure is cheap and deterministic; inference is expensive and uncertain; keeping
 them apart is what makes the whole system testable in CI and honest about cost.
 
 ## The model
 
 ```
-skill_*.md (canonical: prose SOP + section anchors)
-   +  skill_*.pipeline.yaml (sidecar: per-step declarations)
+skill_*.md (one self-contained canonical:
+            per-step section = contract block + prompt prose)
         │
-        │  load  →  Pipeline (validated in 3 stages)
+        │  load  →  Pipeline (validated in 2 stages)
         ▼
    compile_skill   (ZERO LLM)
         │  · resolve + check materializer contracts
@@ -44,13 +46,15 @@ skill_*.md (canonical: prose SOP + section anchors)
    close-gate → fix loop → wave-gate → save manifest → statistics / trace
 ```
 
-Two files describe one skill. The canonical is the single prose source of truth,
-the procedure a person reads. The sidecar lifts the machine-readable facts out of
-it — each step's role, what it materializes, what it depends on, the schema of its
-output. The two are joined by a section id: every step in the sidecar must point
-at a matching anchor comment in the canonical, and loading fails if any anchor is
-missing. Neither file duplicates the other. The prose stays readable; the
-declarations stay checkable.
+One file describes one skill. The canonical is the single source of truth, the
+procedure a person reads. Each pipeline step is an H2 section marked by an anchor
+comment; directly under the heading sits a fenced contract block that carries the
+machine-readable facts — the step's role, what it materializes, what it depends on,
+the schema of its output — and after the block comes the prompt prose the step runs.
+The contract and the prompt live in the same section, joined by construction rather
+than by a cross-file pointer, so they can never drift apart. Sections without a
+contract block (setup, resources, the skill description) are prose, not steps. The
+prose stays readable; the declarations stay checkable.
 
 From there the pieces have clean roles. The compiler produces a typed object. The
 scheduler drives that object. The executor is the single unit of work the scheduler
@@ -67,10 +71,12 @@ path stay faithful to the slow one.
 
 ## How a run flows
 
-**Compile.** Loading validates the sidecar in three passes — its JSON shape, then
-its typed model, then cross-file consistency with the canonical's anchors — and
-returns a `Pipeline`, or nothing at all when the skill declares it has no pipeline.
-The compiler then walks each step and enforces its contracts. A step names a
+**Compile.** Loading reads every step section's contract block from the canonical
+in document order and validates each in two passes — its JSON shape, then its typed
+model — returning a `Pipeline`, or nothing at all when the canonical has no step
+sections and so declares no pipeline. Because each step's section id comes straight
+from its anchor rather than a separate file, a step can never name a section that
+does not exist. The compiler then walks each step and enforces its contracts. A step names a
 materializer; that name must be known, and the step's declared output must promise
 at least the fields that materializer requires. It sorts the steps by their
 dependencies, rejecting cycles and — pointedly — forward references, since a

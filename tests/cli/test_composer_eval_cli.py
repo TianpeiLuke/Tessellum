@@ -28,30 +28,22 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_demo.pipeline.yaml
     ---
 
     # Demo
 
     ## Step 1 <!-- :: section_id = step_1 :: -->
 
-    Body.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: out
+    ```
 
-
-_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Run."
-        output_key: out
+    Run.
     """
 )
 
@@ -61,7 +53,6 @@ def scenarios_dir(tmp_path: Path) -> Path:
     """Create a scenarios dir with one passing scenario."""
     skill = tmp_path / "skill_demo.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_demo.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
 
     scenarios = tmp_path / "scenarios"
     scenarios.mkdir()
@@ -131,7 +122,6 @@ def test_eval_with_default_mock_judge(scenarios_dir, capsys):
 def test_eval_failing_scenario_returns_1(tmp_path, capsys):
     skill = tmp_path / "skill_demo.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_demo.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
 
     scenarios = tmp_path / "scenarios"
     scenarios.mkdir()

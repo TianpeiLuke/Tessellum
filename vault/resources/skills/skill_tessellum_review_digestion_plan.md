@@ -21,7 +21,6 @@ date of note: 2026-07-23
 status: active
 building_block: procedure
 related_skill_headers: []
-pipeline_metadata: ./skill_tessellum_review_digestion_plan.pipeline.yaml
 access_control_group: ["general"]
 ---
 
@@ -37,13 +36,129 @@ Final review and sign-off for a digestion plan before execution begins. This ski
 
 ## Step 1: Read the Plan <!-- :: section_id = step_1_read_plan :: -->
 
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: plan_doc
+expected_output_schema:
+  type: object
+  required:
+  - plan_path
+  - status
+  - total_notes
+  - plan_text
+  properties:
+    plan_path:
+      type: string
+    status:
+      type: string
+    total_notes:
+      type: integer
+    plan_text:
+      type: string
+```
+
+Step 1 of tessellum-review-digestion-plan: Read the Plan.
+
+Load the augmented digestion plan file. Confirm status is `pending`
+(if `ready`/`completed`, report "Plan already reviewed" and stop).
+Emit the plan's identity plus full text as the through-line artifact
+that every checkpoint reads via {{upstream.plan_doc}}.
+
+Follow this procedure:
+
 Read the augmented plan file that augmentation produced. This step establishes the through-line artifact — the `plan_doc` — that every later checkpoint reads via `{{upstream.plan_doc}}`.
 
 Confirm the plan carries `status: pending` (not already `ready`, `in-progress`, or `completed`). If it is already `ready` or `completed`, report "Plan already reviewed" and skip the remaining checkpoints. Record the plan path and its declared total-note count so downstream size and entry-point checks have the number they need.
 
-This is a read-only load — no file is written. Emit the plan's identity (path, status, total planned notes) plus the full plan text so the structure and density passes can inspect it without re-reading from disk.
+This is a read-only load — no file is written. Emit the plan's identity (path, status, total planned notes) plus the full plan text so the structure and density passes can inspect it without re-reading from disk. This is read-only — write no file.
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+Plan file: {{leaf.plan_path}}
 
 ## Step 2: Check Structure & Gates (CP1–CP3) <!-- :: section_id = step_2_check_structure_and_gates :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_1_read_plan
+materializer: no_op
+output_key: structure_checks
+expected_output_schema:
+  type: object
+  required:
+  - cp1
+  - cp2
+  - cp3
+  properties:
+    cp1:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+    cp2:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+    cp3:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+```
+
+Step 2 of tessellum-review-digestion-plan: Check Structure & Gates.
+
+Read the plan via {{upstream.plan_doc}} and run the structural
+checkpoints per section "step_2_check_structure_and_gates":
+  - CP1: a Related Notes step exists with per-note link mapping.
+  - CP2: every execution phase has all 7 GATEs (G1-G6 incl. coverage).
+  - CP3: entry point specified, CREATE-vs-UPDATE matches size, and
+    every new note has a planned outside-folder inbound link (no
+    graph island).
+
+This is a READ-ONLY judgment — write no file. Report each checkpoint
+as PASS/FAIL with the specific gap.
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
 
 Read the `plan_doc` from `{{upstream.plan_doc}}` and run the three structural checkpoints. This step verifies the plan is wired for connectivity, validation, and discoverability. Report each checkpoint as PASS or FAIL with the specific gap.
 
@@ -54,6 +169,117 @@ Read the `plan_doc` from `{{upstream.plan_doc}}` and run the three structural ch
 - **CP3 — Entry point specified + discoverability.** Confirm the plan names at least one entry point to update (specific filename and the section to add/modify), and that the CREATE-vs-UPDATE decision matches the size threshold: UPDATE existing for small digests, CREATE a dedicated entry point plus UPDATE the parent hub for larger ones. Search the vault for additional related entry points a browsing user would expect to reach the new notes. Also confirm the plan's Inlink Mapping gives every new note at least one inbound link from an existing note OUTSIDE the digest folder, executed as a gated phase (not merely "recommended") so the cluster is not a graph island. FAIL with the specific gap (no entry point, size-mismatch, orphan CREATE, or notes with no planned inbound link).
 
 ## Step 3: Check Density & Terms (CP4–CP8) <!-- :: section_id = step_3_check_density_and_terms :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_2_check_structure_and_gates
+materializer: no_op
+output_key: density_checks
+expected_output_schema:
+  type: object
+  required:
+  - cp4
+  - cp5
+  - cp6
+  - cp7
+  - cp8
+  properties:
+    cp4:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+    cp5:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+    cp6:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+    cp7:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+          - DEFERRED
+        gap:
+          type:
+          - string
+          - 'null'
+    cp8:
+      type: object
+      required:
+      - result
+      properties:
+        result:
+          type: string
+          enum:
+          - PASS
+          - FAIL
+        gap:
+          type:
+          - string
+          - 'null'
+```
+
+Step 3 of tessellum-review-digestion-plan: Check Density & Terms.
+
+Read the plan via {{upstream.plan_doc}} and the structural findings via
+{{upstream.structure_checks}}, then run the checkpoints per section
+"step_3_check_density_and_terms":
+  - CP4: plan size within ceiling (or sub-plans defined).
+  - CP5: note format aligned AND derived from an existing target note.
+  - CP6: borderline notes promoted to splits (default is SPLIT).
+  - CP7: spot-check 2-3 source pages; word counts measured not guessed
+    (mark DEFERRED if pages are unreadable).
+  - CP8: Undigested Terms Plan + Term-Note Authoring Requirements
+    present, MUST-language, dedup/collision audit performed.
+
+This is a READ-ONLY judgment — write no file. Report each PASS/FAIL
+(CP7 may be DEFERRED) with the specific gap.
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
 
 Read the `plan_doc` from `{{upstream.plan_doc}}` and the structural findings from `{{upstream.structure_checks}}`, then run the density and term-coverage checkpoints. Report each as PASS or FAIL with the specific gap.
 
@@ -68,6 +294,49 @@ Read the `plan_doc` from `{{upstream.plan_doc}}` and the structural findings fro
 - **CP8 — Undigested Terms Plan + Term-Note Authoring Requirements.** Confirm the augmented plan carries both the `## Undigested Terms Plan` section (every row with a defined Capture Phase and best-fit glossary) and the `## Term-Note Authoring Requirements` section (YAML spec, required H1/H2 order, multi-source research mandate stated in MUST-language, the full-term-note mandate of enriched notes with the required related-terms floor plus external references, and per-term invocation of the term-note capture skill rather than inline authoring). Also confirm a term-slug specificity and all-notes collision/dedup audit was performed (renamed too-general slugs, removed duplicates that existing substantive notes already cover). FAIL if any section is missing, uses soft-language, ships thin stubs as final, or skipped the dedup audit — return to augmentation with the specific gap.
 
 ## Step 4: Report Verdict <!-- :: section_id = step_4_report_verdict :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_2_check_structure_and_gates
+- step_3_check_density_and_terms
+materializer: no_op
+output_key: verdict
+expected_output_schema:
+  type: object
+  required:
+  - ready
+  - failures
+  properties:
+    ready:
+      type: boolean
+      description: true only when EVERY checkpoint passed.
+    failures:
+      type: array
+      items:
+        type: string
+      description: One string per failed checkpoint; empty when ready.
+```
+
+Step 4 of tessellum-review-digestion-plan: Report Verdict.
+
+Read the structural findings via {{upstream.structure_checks}} and the
+density/term findings via {{upstream.density_checks}}. Aggregate every
+checkpoint per section "step_4_report_verdict".
+
+Set `ready` to true ONLY when all checkpoints passed (partial passes do
+not count). Populate `failures` with one string per failed checkpoint
+naming the checkpoint and what to fix; empty array when ready.
+
+This is the typed READY / NOT-READY verdict the sign-off approver
+consumes. This step JUDGES only — write no file, do not mutate the plan.
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
 
 Read the structural findings from `{{upstream.structure_checks}}` and the density/term findings from `{{upstream.density_checks}}`, then emit the consolidated typed verdict the sign-off approver consumes. This step judges only — it writes no files and does not change the plan's status.
 

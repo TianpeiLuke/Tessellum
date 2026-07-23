@@ -1,19 +1,26 @@
-"""Load + validate a skill's pipeline sidecar against the schema.
+"""Load + validate a skill's pipeline from its single-file canonical.
+
+A skill is one markdown note: each pipeline step is an H2 section carrying a
+``<!-- :: section_id = X :: -->`` anchor and a leading ``​```yaml`` contract
+block. This module reads those per-section contract blocks (via
+:mod:`tessellum.composer.skill_extractor`), assembles them into a
+``Pipeline``, and validates it. There is no separate ``.pipeline.yaml``
+sidecar.
 
 Public API:
 
     load_pipeline(skill_path) -> Pipeline | None
-        Resolves the skill canonical's ``pipeline_metadata:`` field, reads
-        the sidecar YAML, validates it against ``pipeline.schema.json`` and
-        the Pydantic models in this module, returns a parsed ``Pipeline``
-        object. Returns ``None`` if the skill declares
-        ``pipeline_metadata: none``.
+        Reads every step section's contract block from the canonical (in
+        document order), validates each against ``pipeline.schema.json`` and
+        the Pydantic models here, and returns a parsed ``Pipeline``. Returns
+        ``None`` if the canonical has no step sections (no ``​```yaml``
+        contract blocks) — the skill has no Composer dispatch.
 
-    Pipeline           — top-level sidecar model (version + steps).
-    PipelineStep       — one step entry in the sidecar's ``pipeline`` list.
+    Pipeline           — top-level model (version + steps).
+    PipelineStep       — one step entry, from a section's contract block.
     PipelineValidationError — raised on schema or model drift.
 
-Two-stage validation:
+Two-stage validation (per step):
 
     Stage 1: jsonschema (structural — required keys, enum membership,
              pattern match). Surfaces the broadest class of errors first.
@@ -29,19 +36,18 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
-import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
-    load_pipeline_metadata,
+    iter_step_sections,
 )
 
 _SCHEMA_PATH = Path(__file__).parent / "schemas" / "pipeline.schema.json"
 
 
 class PipelineValidationError(ValueError):
-    """Raised on any sidecar drift — schema, model, or skill-extraction."""
+    """Raised on any skill-pipeline drift — schema, model, or extraction."""
 
 
 # ── Pydantic models mirroring pipeline.schema.json ─────────────────────────
@@ -114,87 +120,71 @@ class Pipeline(BaseModel):
 
 
 def load_pipeline(skill_path: Path | str) -> Pipeline | None:
-    """Load + validate a skill's pipeline sidecar.
+    """Load + validate a skill's pipeline from its single-file canonical.
 
     Args:
         skill_path: Path to the skill canonical markdown.
 
     Returns:
-        Parsed ``Pipeline`` instance, OR ``None`` if the skill's frontmatter
-        declares ``pipeline_metadata: none`` (skill has no Composer dispatch).
+        Parsed ``Pipeline`` instance, OR ``None`` if the canonical has no
+        step sections (no ``​```yaml`` contract blocks) — the skill has no
+        Composer dispatch.
 
     Raises:
-        PipelineValidationError: any drift — missing sidecar file, malformed
-            YAML, schema violation, Pydantic validation failure, or a
-            sidecar step whose ``section_id`` has no matching anchor in the
-            canonical.
+        PipelineValidationError: any drift — malformed contract block,
+            schema violation, or Pydantic validation failure. The step's
+            ``section_id`` always comes from its anchor, so section_id /
+            contract mismatch is structurally impossible.
     """
     skill_path = Path(skill_path)
     try:
-        sidecar_path = load_pipeline_metadata(skill_path)
+        step_sections = iter_step_sections(skill_path)
     except SkillExtractionError as e:
         raise PipelineValidationError(str(e)) from e
 
-    if sidecar_path is None:
+    if not step_sections:
         return None
 
-    if not sidecar_path.is_file():
-        raise PipelineValidationError(
-            f"skill {skill_path.name} declares pipeline_metadata: "
-            f"{sidecar_path}, but that file does not exist."
-        )
-
-    try:
-        raw_yaml = sidecar_path.read_text(encoding="utf-8")
-    except OSError as e:
-        raise PipelineValidationError(
-            f"cannot read sidecar {sidecar_path}: {e}"
-        ) from e
-
-    try:
-        data = yaml.safe_load(raw_yaml)
-    except yaml.YAMLError as e:
-        raise PipelineValidationError(
-            f"sidecar {sidecar_path} is not valid YAML: {e}"
-        ) from e
-
-    if not isinstance(data, dict):
-        raise PipelineValidationError(
-            f"sidecar {sidecar_path} top-level must be a mapping; "
-            f"got {type(data).__name__}"
-        )
-
-    # Stage 1: JSON Schema validation.
     schema = _load_schema()
-    try:
-        jsonschema.validate(instance=data, schema=schema)
-    except jsonschema.ValidationError as e:
-        raise PipelineValidationError(
-            f"sidecar {sidecar_path} fails schema validation:\n  "
-            f"{e.message}\n  at path: /{'/'.join(str(p) for p in e.absolute_path)}"
-        ) from e
+    defs = schema.get("$defs") or schema.get("definitions") or {}
+    step_def = defs.get("Step")
+    # Validate each step against the Step definition, but keep the top-level
+    # ``definitions``/``$defs`` in scope so its internal ``$ref``s (Query,
+    # MCPDependency) still resolve.
+    step_schema = None
+    if step_def is not None:
+        step_schema = dict(step_def)
+        if "$defs" in schema:
+            step_schema["$defs"] = schema["$defs"]
+        if "definitions" in schema:
+            step_schema["definitions"] = schema["definitions"]
 
-    # Stage 2: Pydantic model construction.
+    steps: list[dict[str, Any]] = []
+    for sec in step_sections:
+        # The section_id comes from the anchor — never the contract block —
+        # so a step can never reference a section that doesn't exist.
+        step_data = dict(sec.contract)
+        step_data["section_id"] = sec.section_id
+
+        # Stage 1: JSON Schema validation (per step, against the Step def).
+        if step_schema is not None:
+            try:
+                jsonschema.validate(instance=step_data, schema=step_schema)
+            except jsonschema.ValidationError as e:
+                raise PipelineValidationError(
+                    f"{skill_path.name} step {sec.section_id!r} fails schema "
+                    f"validation:\n  {e.message}\n  at path: "
+                    f"/{'/'.join(str(p) for p in e.absolute_path)}"
+                ) from e
+        steps.append(step_data)
+
+    # Stage 2: Pydantic model construction (whole pipeline).
     try:
-        pipeline = Pipeline(**data)
+        pipeline = Pipeline(pipeline=steps)
     except Exception as e:  # ValidationError + others
         raise PipelineValidationError(
-            f"sidecar {sidecar_path} fails Pydantic validation: {e}"
+            f"{skill_path.name} fails Pydantic validation: {e}"
         ) from e
-
-    # Stage 3: cross-file consistency — every step.section_id must have a
-    # matching anchor in the skill canonical.
-    from tessellum.composer.skill_extractor import list_section_ids
-
-    canonical_section_ids = set(list_section_ids(skill_path))
-    sidecar_section_ids = {step.section_id for step in pipeline.pipeline}
-    orphans = sidecar_section_ids - canonical_section_ids
-    if orphans:
-        raise PipelineValidationError(
-            f"sidecar {sidecar_path} declares step section_ids with no "
-            f"matching anchor in {skill_path.name}: {sorted(orphans)}. "
-            f"Canonical anchors: {sorted(canonical_section_ids)}."
-        )
 
     return pipeline
 

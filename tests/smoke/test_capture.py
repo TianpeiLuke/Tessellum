@@ -169,30 +169,37 @@ def test_each_flavor_lands_at_registered_destination(flavor, vault_root):
     assert result.path.name == f"{spec.filename_prefix}x_dest.md"
 
 
-# ── Paired sidecar emission for skill flavor (Wave 1b) ────────────────────
+# ── Single-file skill emission for skill flavor ───────────────────────────
+# A skill is ONE self-contained markdown file: its typed-contract pipeline
+# steps live as inline ```yaml``` contract blocks under anchored H2 headings.
+# There is NO separate ``.pipeline.yaml`` sidecar and NO ``pipeline_metadata:``
+# frontmatter field, so ``CaptureResult.sidecar_path`` is always ``None``.
 
 
-def test_capture_skill_emits_paired_sidecar(vault_root):
+def test_capture_skill_emits_single_canonical_no_sidecar(vault_root):
     result = capture("skill", "my_skill", vault_root=vault_root)
     canonical = vault_root / "resources/skills/skill_my_skill.md"
     sidecar = vault_root / "resources/skills/skill_my_skill.pipeline.yaml"
     assert result.path == canonical
-    assert result.sidecar_path == sidecar
+    assert result.sidecar_path is None
     assert canonical.is_file()
-    assert sidecar.is_file()
+    # The single-file format emits NO ``.pipeline.yaml`` sidecar.
+    assert not sidecar.exists()
 
 
-def test_capture_skill_canonical_has_pipeline_metadata_pointing_at_sidecar(
-    vault_root,
-):
+def test_capture_skill_canonical_has_inline_contract_block(vault_root):
     result = capture("skill", "my_skill", vault_root=vault_root)
     text = result.path.read_text(encoding="utf-8")
-    assert "pipeline_metadata: ./skill_my_skill.pipeline.yaml" in text
-    assert "pipeline_metadata: none" not in text
+    # No sidecar-pointer frontmatter survives in the single-file format.
+    assert "pipeline_metadata:" not in text
+    # The first step section carries its anchor AND a leading contract block
+    # (the typed step declaration) directly under the heading.
+    assert "<!-- :: section_id = step_1_first_action :: -->" in text
+    assert "```yaml" in text
 
 
-def test_capture_skill_sidecar_is_schema_valid_pipeline(vault_root):
-    """The auto-emitted sidecar must validate clean against load_pipeline."""
+def test_capture_skill_canonical_is_schema_valid_pipeline(vault_root):
+    """The captured canonical's inline contract blocks must load + validate."""
     from tessellum.composer import load_pipeline
 
     result = capture("skill", "my_skill", vault_root=vault_root)
@@ -200,7 +207,7 @@ def test_capture_skill_sidecar_is_schema_valid_pipeline(vault_root):
     assert pipeline is not None
     assert len(pipeline.pipeline) >= 1
     # The starter declares step_1_first_action which matches template_skill.md's
-    # first anchored step.
+    # first anchored step (the first section carrying a ```yaml``` contract).
     assert pipeline.pipeline[0].section_id == "step_1_first_action"
     assert pipeline.pipeline[0].role == "CORE"
 
@@ -210,16 +217,16 @@ def test_capture_non_skill_flavor_has_no_sidecar(vault_root):
     assert result.sidecar_path is None
 
 
-def test_capture_skill_force_overwrites_both_files(vault_root):
+def test_capture_skill_force_overwrites_canonical(vault_root):
     first = capture("skill", "my_skill", vault_root=vault_root)
     first.path.write_text("garbage\n", encoding="utf-8")
-    first.sidecar_path.write_text("garbage\n", encoding="utf-8")  # type: ignore[union-attr]
     capture("skill", "my_skill", vault_root=vault_root, force=True)
     assert "garbage" not in first.path.read_text(encoding="utf-8")
-    assert "garbage" not in first.sidecar_path.read_text(encoding="utf-8")  # type: ignore[union-attr]
+    # No sidecar is emitted on a forced re-capture either.
+    assert first.sidecar_path is None
 
 
-def test_capture_skill_refuses_overwrite_when_sidecar_exists(vault_root):
+def test_capture_skill_refuses_overwrite_when_canonical_exists(vault_root):
     capture("skill", "my_skill", vault_root=vault_root)
     with pytest.raises(FileExistsError, match="already exists"):
         capture("skill", "my_skill", vault_root=vault_root)

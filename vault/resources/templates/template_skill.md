@@ -21,7 +21,6 @@ building_block: procedure
 related_skill_headers:
   - .claude/skills/<skill-name>/SKILL.md
   - .kiro/skills/<skill-name>/SKILL.md
-pipeline_metadata: none
 ---
 
 # Procedure: <skill-name> (Canonical Body)
@@ -32,16 +31,34 @@ HOW TO USE THIS TEMPLATE:
 2. The thin headers under `.claude/skills/<name>/SKILL.md` and
    `.kiro/skills/<name>/SKILL.md` will point at this canonical body — create
    them after authoring this file.
-3. If the skill has typed-contract pipeline steps, also create
-   `vault/resources/skills/skill_<name>.pipeline.yaml` and update
-   `pipeline_metadata:` field above to point at it; otherwise keep `none`.
+3. A skill is ONE self-contained markdown file. If the skill has typed-contract
+   pipeline steps, give each step section a leading ```yaml``` **contract
+   block** (see Step 1 below) directly under its heading; the compiler reads
+   the block as the step's typed declaration and the prose after it as the
+   step's prompt. Prose-only sections (Setup, Resources, description) have no
+   contract block and are not pipeline steps. There is NO separate
+   `.pipeline.yaml` sidecar.
 4. Update YAML frontmatter — `note_second_category: skill` (still used here for
    skill notes specifically; the parent vault relies on this field for skill
    discovery, so it's kept distinct from the tags-based convention).
-5. Fill the H2 sections below. Each H2 must include the
+5. Fill the H2 sections below. Each pipeline-step H2 must include the
    `<!-- :: section_id = X :: -->` marker — this is parsed by the composer
    pipeline for typed-contract validation.
-6. Remove this commentary block.
+6. Remove this commentary block.-->
+
+<!--
+CONTRACT-BLOCK FIELDS (the leading ```yaml``` under a step heading):
+  role: CORE | DEFERRED | INFRA
+  aggregation: per_leaf | cross_leaf | corpus_wide
+  batchable: true | false
+  depends_on: [<section_id>, ...]   # earlier steps this one consumes
+  materializer: no_op | body_markdown_to_file |
+                body_markdown_frontmatter_to_file | edits_apply_to_files |
+                edits_apply_xml_tags
+  output_key: <name>                # downstream steps read {{upstream.<name>}}
+  expected_output_schema: { ... }   # JSON Schema for the step's JSON output
+The prompt prose after the block may reference {{leaf.X}} (per-leaf metadata)
+and {{upstream.Y}} (a prior step's output_key).
 
 EPISTEMIC FUNCTION (Doing): a skill canonical body codifies an executable
 procedure that an agent can dispatch. It answers "How do we act on this?"
@@ -82,11 +99,23 @@ VAULT_PATH=$(python3 -c "import sys; sys.path.insert(0,'$SCRIPTS_DIR'); from con
 
 ## Step 1: <First action> <!-- :: section_id = step_1_first_action :: -->
 
-<What to do, with executable code or queries.>
-
-```bash
-# command or query
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: step_1_output
+expected_output_schema:
+  type: object
+  required: [result]
+  properties:
+    result: { type: string }
 ```
+
+<The step's PROMPT — what to do, referencing {{leaf.X}} per-leaf data. This
+prose (everything after the contract block) is what the LLM receives. State
+the SOP inline; the model cannot fetch other sections at runtime.>
 
 <Expected outcome / how the agent verifies this step succeeded.>
 

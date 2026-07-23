@@ -11,6 +11,10 @@ import pytest
 from tessellum.cli.main import main
 
 
+# Single-file skill: each pipeline step is an H2 section carrying a
+# ``<!-- :: section_id = X :: -->`` anchor AND a leading ```yaml``` contract
+# block (the typed step declaration), with the prompt prose after it. There
+# is no ``.pipeline.yaml`` sidecar and no ``pipeline_metadata`` frontmatter.
 _CANONICAL = textwrap.dedent(
     """\
     ---
@@ -28,41 +32,34 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_demo.pipeline.yaml
     ---
 
     # Demo
 
     ## Step 1: produce <!-- :: section_id = step_1 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: produced
+    ```
+
     PRODUCE.
 
     ## Step 2: consume <!-- :: section_id = step_2 :: -->
 
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: [step_1]
+    materializer: no_op
+    ```
+
     CONSUME {{upstream.produced}}.
-    """
-)
-
-
-_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "PRODUCE."
-        output_key: produced
-      - section_id: step_2
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: [step_1]
-        materializer: no_op
-        prompt_template: "CONSUME."
     """
 )
 
@@ -71,7 +68,6 @@ _SIDECAR = textwrap.dedent(
 def demo_skill(tmp_path: Path) -> Path:
     skill = tmp_path / "skill_demo.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_demo.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
     return skill
 
 
@@ -234,6 +230,82 @@ def test_run_invalid_leaves_json_returns_2(demo_skill, tmp_path, capsys):
     assert code == 2
 
 
+def test_run_malformed_contract_block_returns_1(tmp_path, capsys):
+    """Single-file equivalent of the old invalid-sidecar-YAML case: a step
+    section whose inline ```yaml``` contract block is not valid YAML →
+    PipelineValidationError at compile → exit 1 with a compile message."""
+    canonical = textwrap.dedent(
+        """\
+        ---
+        tags:
+          - resource
+          - skill
+        keywords:
+          - alpha
+          - beta
+          - gamma
+        topics:
+          - X
+          - Y
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: procedure
+        ---
+
+        # Bad
+
+        ## Step 1: produce <!-- :: section_id = step_1 :: -->
+
+        ```yaml
+        role: CORE
+        aggregation: [unterminated
+        ```
+
+        PRODUCE.
+        """
+    )
+    skill = tmp_path / "skill_bad.md"
+    skill.write_text(canonical, encoding="utf-8")
+    code = main(
+        [
+            "composer",
+            "run",
+            str(skill),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--no-trace",
+        ]
+    )
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "failed to compile" in err
+    assert "not valid YAML" in err
+
+
+def test_run_bad_role_enum_returns_1(tmp_path, capsys):
+    """Single-file equivalent of the old schema-violation case: an inline
+    contract block with a bad ``role`` enum → schema validation failure →
+    exit 1 at compile."""
+    canonical = _CANONICAL.replace("role: CORE", "role: INVENTED_ROLE", 1)
+    skill = tmp_path / "skill_badrole.md"
+    skill.write_text(canonical, encoding="utf-8")
+    code = main(
+        [
+            "composer",
+            "run",
+            str(skill),
+            "--vault",
+            str(tmp_path / "vault"),
+            "--no-trace",
+        ]
+    )
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "failed to compile" in err
+    assert "schema validation" in err
+
+
 def test_run_default_backend_is_mock(demo_skill, tmp_path, capsys):
     """No --backend flag → MockBackend."""
     code = main(
@@ -305,29 +377,22 @@ _PERLEAF_CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_pl.pipeline.yaml
     ---
 
     # Per-leaf
 
     ## Step 1: rate <!-- :: section_id = step_1 :: -->
 
-    Rate leaf {{leaf.id}}.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: rating
+    ```
 
-_PERLEAF_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Rate."
-        output_key: rating
+    Rate leaf {{leaf.id}}.
     """
 )
 
@@ -336,7 +401,6 @@ _PERLEAF_SIDECAR = textwrap.dedent(
 def perleaf_skill(tmp_path: Path) -> Path:
     skill = tmp_path / "skill_pl.md"
     skill.write_text(_PERLEAF_CANONICAL, encoding="utf-8")
-    (tmp_path / "skill_pl.pipeline.yaml").write_text(_PERLEAF_SIDECAR, encoding="utf-8")
     return skill
 
 
@@ -464,35 +528,28 @@ def test_run_dynamic_close_gate_blocks_ungrounded(tmp_path, capsys):
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_w.pipeline.yaml
         ---
 
         # W
 
         ## Step 1: write <!-- :: section_id = step_1 :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: body_markdown_to_file
+        expected_output_schema:
+          type: object
+          required: [output_path, body_markdown]
+        ```
+
         Write for {{leaf.id}}.
-        """
-    )
-    sidecar = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: CORE
-            aggregation: per_leaf
-            batchable: false
-            depends_on: []
-            materializer: body_markdown_to_file
-            expected_output_schema:
-              type: object
-              required: [output_path, body_markdown]
-            prompt_template: "Write."
         """
     )
     skill = tmp_path / "skill_w.md"
     skill.write_text(canonical, encoding="utf-8")
-    (tmp_path / "skill_w.pipeline.yaml").write_text(sidecar, encoding="utf-8")
 
     note_body = textwrap.dedent(
         """\
@@ -564,35 +621,28 @@ def _writer_skill_for_wave(tmp_path: Path) -> Path:
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./skill_ww.pipeline.yaml
         ---
 
         # WW
 
         ## Step 1: write <!-- :: section_id = step_1 :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: body_markdown_to_file
+        expected_output_schema:
+          type: object
+          required: [output_path, body_markdown]
+        ```
+
         Write for {{leaf.id}}.
-        """
-    )
-    sidecar = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: CORE
-            aggregation: per_leaf
-            batchable: false
-            depends_on: []
-            materializer: body_markdown_to_file
-            expected_output_schema:
-              type: object
-              required: [output_path, body_markdown]
-            prompt_template: "Write."
         """
     )
     skill = tmp_path / "skill_ww.md"
     skill.write_text(canonical, encoding="utf-8")
-    (tmp_path / "skill_ww.pipeline.yaml").write_text(sidecar, encoding="utf-8")
     return skill
 
 
@@ -804,9 +854,38 @@ def test_run_fix_with_backend_repairs_failing_note(tmp_path, capsys):
 
 
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
-    canonical = _CANONICAL.replace(
-        "pipeline_metadata: ./skill_demo.pipeline.yaml",
-        "pipeline_metadata: none",
+    """Single-file equivalent of the old ``pipeline_metadata: none``: a skill
+    whose sections carry NO ```yaml``` contract block compiles to an empty
+    pipeline (0 steps) → the CLI reports nothing to run and exits 0."""
+    canonical = textwrap.dedent(
+        """\
+        ---
+        tags:
+          - resource
+          - skill
+        keywords:
+          - alpha
+          - beta
+          - gamma
+        topics:
+          - X
+          - Y
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: procedure
+        ---
+
+        # Demo
+
+        ## Setup
+
+        Prose only — no contract block, so this is not a pipeline step.
+
+        ## Step 1: produce <!-- :: section_id = step_1 :: -->
+
+        PRODUCE (prose only, no contract block → not a dispatchable step).
+        """
     )
     skill = tmp_path / "skill_demo.md"
     skill.write_text(canonical, encoding="utf-8")

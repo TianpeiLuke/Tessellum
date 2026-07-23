@@ -18,7 +18,6 @@ language: markdown
 date of note: 2026-07-23
 status: active
 building_block: procedure
-pipeline_metadata: ./skill_tessellum_plan_digestion.pipeline.yaml
 access_control_group: ["general"]
 ---
 
@@ -28,21 +27,140 @@ This is the **single canonical body** for the `tessellum-plan-digestion` skill �
 
 ## Skill description <!-- :: section_id = skill_description :: -->
 
-Read a documentation source (wiki site, BuilderHub docs, Quip doc, PDF, or any multi-section document) and generate a structured digestion plan that decomposes the content into BB-atomic notes. Each planned note corresponds to exactly one building block type. The plan controls content density (split if a note would exceed ~400 lines, ~1800 words, or 6 code blocks), maps every source section to a note, plans cross-references and undigested-term capture, and defines the validation gates. Outputs a single plan file to `plans/`. Use when a source needs to be planned before it is digested into vault notes.
+Read a documentation source (a wiki site, a documentation portal, a shared design doc, a PDF, or any multi-section document) and generate a structured digestion plan that decomposes the content into BB-atomic notes. Each planned note corresponds to exactly one building block type. The plan controls content density (split if a note would exceed ~400 lines, ~1800 words, or 6 code blocks), maps every source section to a note, plans cross-references and undigested-term capture, and defines the validation gates. Outputs a single plan file to `plans/`. Use when a source needs to be planned before it is digested into vault notes.
 
 ## Step 1: Identify Source and Assess Density <!-- :: section_id = identify_source :: -->
 
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: source_assessment
+expected_output_schema:
+  type: object
+  required:
+  - source_type
+  - pages
+  - total_words
+  - estimated_note_count
+  - plan_shape
+  properties:
+    source_type:
+      type: string
+      description: wiki | docs_portal | shared_doc | code_repo_docs | external | local_file
+    pages:
+      type: array
+      description: One entry per page actually read + measured
+      items:
+        type: object
+        required:
+        - url
+        - measured_words
+        - code_blocks
+        properties:
+          url:
+            type: string
+          measured_words:
+            type: integer
+          code_blocks:
+            type: integer
+          headings:
+            type: array
+            items:
+              type: string
+    total_words:
+      type: integer
+      description: Sum of measured_words across all pages
+    estimated_note_count:
+      type: integer
+    plan_shape:
+      type: string
+      enum:
+      - single_plan
+      - single_plan_phased
+      - master_plus_subplans
+```
+
+You are running Phase 1, step 1 (identify_source) of tessellum-plan-digestion.
+
+LEAF METADATA
+- source_url: {{leaf.source_url}}
+- source_name: {{leaf.source_name}}
+
+Follow this procedure:
+
 Read the source end to end, then measure it — do NOT estimate from memory.
 
-- **Determine source type** and the right read path: internal wiki / BuilderHub / Quip / code-repo docs are read with the internal-website reader; external URLs with a web fetch; local files/PDFs with the file reader.
+- **Determine source type** and the right read path: authenticated internal sites (a wiki, a docs portal, a shared design doc, code-repo docs) are read with the appropriate authenticated-site reader; public URLs with a web fetch; local files/PDFs with the file reader.
 - **Read the root page and every leaf page.** Extract linked sub-pages and read each one; an unread page is an unmeasurable page.
 - **MEASURE content size per page — not estimate.** For each page record measured word count (from the actual tool output), code-block count (``` pairs / 2), and the list of H2/H3 headings. Record these in a Source table (Page, URL, Measured Words, Code Blocks, Headings).
 - **Watch the underestimation failure mode.** Agents routinely underestimate page size by 50–70% when working from training knowledge instead of a real read. If most pages read as <1500 words, or the whole multi-page source totals <5000 words, the measurements are almost certainly wrong — go back and actually read every page.
 - **Assess total volume to decide the plan shape.** ≤10,000 words (≤15 notes) → single plan. 10,000–30,000 words (15–30 notes) → single plan with phased execution. >30,000 words (>30 notes) → divide-and-conquer: a pure-index master plan plus self-contained sub-plans, each producing 4–10 notes.
 
-Emit a structured `source_assessment` (source type, per-page measured sizes, total words, estimated note count, and the plan-shape decision) for the downstream steps to build on.
+Emit a structured `source_assessment` (source type, per-page measured sizes, total words, estimated note count, and the plan-shape decision) for the downstream steps to build on. Read the root page AND every leaf page,
+MEASURE each page's word count / code-block count / headings from the
+actual tool output (never estimate from memory), then decide the plan
+shape by total volume.
+
+Return ONLY the JSON object specified by expected_output_schema; no
+prose, no code fences.
 
 ## Step 2: Route — Decide Where Notes Go <!-- :: section_id = route :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- identify_source
+materializer: no_op
+output_key: routing_decision
+expected_output_schema:
+  type: object
+  required:
+  - target_directory
+  - file_prefix
+  - note_format_definition
+  properties:
+    target_directory:
+      type: string
+    file_prefix:
+      type: string
+    existing_notes_to_not_duplicate:
+      type: array
+      items:
+        type: string
+    note_format_definition:
+      type: object
+      required:
+      - derived_from
+      - yaml_field_order
+      properties:
+        derived_from:
+          type: string
+          description: The example note the format was copied from
+        yaml_field_order:
+          type: array
+          items:
+            type: string
+        h2_conventions:
+          type: array
+          items:
+            type: string
+        forbidden_fields:
+          type: array
+          items:
+            type: string
+```
+
+You are running Phase 1, step 2 (route) of tessellum-plan-digestion.
+
+SOURCE_ASSESSMENT (from step 1)
+{{upstream.source_assessment}}
+
+Follow this procedure:
 
 Read `{{upstream.source_assessment}}` and decide where the planned notes will live, so nothing is duplicated and the format matches the neighbourhood.
 
@@ -51,8 +169,96 @@ Read `{{upstream.source_assessment}}` and decide where the planned notes will li
 - **Derive the Note Format Definition from ≥2 existing notes** in the routed directory (or the closest sibling folder) — do NOT invent a format. Copy the exact YAML field order, the dominant H2 conventions, and the forbidden-field list, and state which example note the format was derived from.
 
 Emit a `routing_decision` (target location, file prefix, existing notes to NOT duplicate, and the derived Note Format Definition).
+Check for existing notes to avoid duplication, choose the target
+directory + file prefix via the 3-Criterion Rule / Context Affinity /
+Content-TYPE-over-SOURCE, and DERIVE the Note Format Definition from >=2
+existing notes in the routed directory (do NOT invent it) — record which
+note it was derived from.
+
+Return ONLY the JSON object specified by expected_output_schema; no
+prose, no code fences.
 
 ## Step 3: Decompose into BB-Atomic Notes <!-- :: section_id = decompose :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- route
+materializer: no_op
+output_key: note_breakdown
+expected_output_schema:
+  type: object
+  required:
+  - planned_notes
+  - section_coverage_map
+  properties:
+    planned_notes:
+      type: array
+      items:
+        type: object
+        required:
+        - filename
+        - building_block
+        - approx_words
+        - description
+        properties:
+          filename:
+            type: string
+          building_block:
+            type: string
+            enum:
+            - concept
+            - procedure
+            - model
+            - argument
+            - empirical_observation
+            - hypothesis
+            - counter_argument
+            - navigation
+          approx_words:
+            type: integer
+          description:
+            type: string
+    section_coverage_map:
+      type: array
+      description: One row per source H1/H2/H3 mapped to a planned note
+      items:
+        type: object
+        required:
+        - source_section
+        - maps_to_note
+        properties:
+          source_section:
+            type: string
+          maps_to_note:
+            type: string
+    split_decisions:
+      type: array
+      items:
+        type: object
+        required:
+        - original
+        - split_into
+        - rationale
+        properties:
+          original:
+            type: string
+          split_into:
+            type: array
+            items:
+              type: string
+          rationale:
+            type: string
+```
+
+You are running Phase 1, step 3 (decompose) of tessellum-plan-digestion.
+
+ROUTING_DECISION (from step 2)
+{{upstream.routing_decision}}
+
+Follow this procedure:
 
 Read `{{upstream.routing_decision}}` and break the source into atomic notes, one building block per note.
 
@@ -62,9 +268,116 @@ Read `{{upstream.routing_decision}}` and break the source into atomic notes, one
 - **Write the Section Coverage Map**: for EVERY source H1/H2/H3, record which planned note it maps to — no section may be orphaned, no content compressed away.
 - **Document Split Decisions**: for any note split beyond the initial grouping, record the original, what it split into, and why (over a threshold or mixed BB).
 
-Emit a `note_breakdown` (the planned-notes table with filename, building block, ~words, and one-line description per note; the section coverage map; and the split-decisions table).
+Emit a `note_breakdown` (the planned-notes table with filename, building block, ~words, and one-line description per note; the section coverage map; and the split-decisions table). Classify each source section by building
+block, group adjacent same-BB sections into atomic notes (NEVER mix
+building blocks), apply the page-level and per-note density thresholds
+and split BEFORE writing, and produce a complete section coverage map in
+which EVERY source section maps to exactly one planned note.
+
+Return ONLY the JSON object specified by expected_output_schema; no
+prose, no code fences.
 
 ## Step 4: Plan Cross-References and Undigested Terms <!-- :: section_id = cross_references :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- decompose
+materializer: no_op
+output_key: cross_ref_plan
+expected_output_schema:
+  type: object
+  required:
+  - per_note_related_notes
+  - entry_point_action
+  - undigested_terms
+  - validation_gates
+  properties:
+    per_note_related_notes:
+      type: array
+      items:
+        type: object
+        required:
+        - note_filename
+        - term_notes
+        properties:
+          note_filename:
+            type: string
+          term_notes:
+            type: array
+            description: '>=8 relevant term-dictionary notes, relevancy-selected'
+            items:
+              type: string
+          other_related_notes:
+            type: array
+            items:
+              type: string
+    entry_point_action:
+      type: object
+      required:
+      - action
+      - entry_point
+      properties:
+        action:
+          type: string
+          enum:
+          - update
+          - create
+        entry_point:
+          type: string
+        parent_hub:
+          type:
+          - string
+          - 'null'
+    inlinks:
+      type: array
+      items:
+        type: object
+        required:
+        - from_note
+        - to_note
+        properties:
+          from_note:
+            type: string
+          to_note:
+            type: string
+    undigested_terms:
+      type: array
+      items:
+        type: object
+        required:
+        - term_slug
+        - best_fit_glossary
+        - capture_phase
+        - stub_or_full
+        properties:
+          term_slug:
+            type: string
+          best_fit_glossary:
+            type: string
+          capture_phase:
+            type: string
+          stub_or_full:
+            type: string
+            enum:
+            - full
+            - fill-stub
+            - existing-do-not-recapture
+    validation_gates:
+      type: array
+      items:
+        type: string
+```
+
+You are running Phase 1, step 4 (cross_references) of
+tessellum-plan-digestion.
+
+NOTE_BREAKDOWN (from step 3)
+{{upstream.note_breakdown}}
+
+Follow this procedure:
 
 Read `{{upstream.note_breakdown}}` and plan how each note connects to the rest of the vault.
 
@@ -74,9 +387,55 @@ Read `{{upstream.note_breakdown}}` and plan how each note connects to the rest o
 - **Undigested terms (three-way pre-flight)**: scan the source for acronyms, method/estimator names, and concepts on first use; for each candidate check the term dictionary and classify it — no matching note → capture as a full term note; a stub exists → fill the stub; a substantive note exists → do NOT re-capture, just link it. Assign each undigested term a best-fit acronym glossary and a capture phase (Pattern A pre-digest stubs when ≤10 terms; Pattern B interleaved per sub-plan when >10, with a corpus-wide ownership sweep so no cross-cutting term is unowned). No term may be captured AFTER the digest — that ships ghost references.
 - **Validation gates**: define the per-phase gate table (format, grounding, density, coverage, cross-ref, ghost-reference detection, broken-link repair, discoverability) that execution will enforce.
 
-Emit a `cross_ref_plan` (per-note related-notes mapping, entry-point action, inlink plan, the Undigested Terms Plan, and the gate table).
+Emit a `cross_ref_plan` (per-note related-notes mapping, entry-point action, inlink plan, the Undigested Terms Plan, and the gate table). For each planned note build a related-
+notes mapping with >=8 relevancy-selected term notes; decide the entry-
+point action by digest size (update <15, create 15-30, create required
+>30) with a parent-hub back-link when creating; plan inlinks; run the
+three-way undigested-term pre-flight and assign every term a best-fit
+glossary + capture phase (never capture AFTER the digest); and define
+the per-phase validation gate table.
+
+Return ONLY the JSON object specified by expected_output_schema; no
+prose, no code fences.
 
 ## Step 5: Write the Plan File <!-- :: section_id = write_plan :: -->
+
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- decompose
+- cross_references
+materializer: body_markdown_to_file
+output_key: plan_doc
+expected_output_schema:
+  type: object
+  required:
+  - output_path
+  - body_markdown
+  properties:
+    output_path:
+      type: string
+      pattern: ^plans/plan_digest_[a-z0-9_]+\.md$
+    body_markdown:
+      type: string
+      description: The complete digestion plan file body, including YAML frontmatter
+```
+
+You are running Phase 1, step 5 (write_plan) of tessellum-plan-digestion.
+This is the ONLY step that writes a file — it PRODUCEs the digestion plan.
+
+SOURCE_ASSESSMENT (from step 1)
+{{upstream.source_assessment}}
+
+NOTE_BREAKDOWN (from step 3)
+{{upstream.note_breakdown}}
+
+CROSS_REF_PLAN (from step 4)
+{{upstream.cross_ref_plan}}
+
+Follow this procedure:
 
 Assemble everything into the single digestion plan and write it to `plans/plan_digest_<source_slug>.md` (single plan ≤30 notes) or a master + sub-plan set (>30 notes). This is the ONLY step that writes a file — it PRODUCEs the plan `.md`.
 
@@ -84,7 +443,22 @@ Read `{{upstream.source_assessment}}`, `{{upstream.routing_decision}}`, `{{upstr
 
 Before finalizing, run the density re-assessment as a self-check: did any note compress too much and need a further split, was any source section omitted, does any note mix building blocks? Fix the plan before it is written.
 
-Output the plan as a JSON object with `output_path` (the `plans/plan_digest_<source_slug>.md` path) and `body_markdown` (the complete plan file body, including its own YAML frontmatter with `status: pending` and the source URL). Do NOT call a file-write tool; the materializer writes the file from these two fields.
+Output the plan as a JSON object with `output_path` (the `plans/plan_digest_<source_slug>.md` path) and `body_markdown` (the complete plan file body, including its own YAML frontmatter with `status: pending` and the source URL). Do NOT call a file-write tool; the materializer writes the file from these two fields. Assemble the through-line into the
+required plan sections (Objective, Routing Decision, Source measured
+word-count table, Content Strategy, Section Coverage Map, Split
+Decisions, Planned Notes, Content Size Assessment, Summary Statistics,
+Building Block Distribution, Cross-References to Add, Entry Point
+Decision, Undigested Terms Plan, Execution Phases with per-phase gates,
+Note Format Definition, Validation Scripts, Pacing Rules, Density
+Re-Assessment, Follow-up Recommendations). Run the density re-assessment
+self-check and fix the plan before writing.
+
+OUTPUT FORMAT — return ONLY a JSON object with two fields:
+  - output_path: "plans/plan_digest_<source_slug>.md"
+  - body_markdown: the COMPLETE plan file body, including its own YAML
+    frontmatter (status: pending, source_url). Do NOT call any file-write
+    tool; the materializer writes the file from these fields. No code
+    fences around the JSON.
 
 ## Important Constraints <!-- :: section_id = important_constraints :: -->
 

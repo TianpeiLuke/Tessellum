@@ -11,7 +11,12 @@ import pytest
 from tessellum.cli.main import main
 
 
-_CANONICAL = textwrap.dedent(
+# Shared frontmatter for the single-file demo skills. Note there is NO
+# ``pipeline_metadata`` field: a skill is one markdown note, and each pipeline
+# step is an H2 section carrying a ``<!-- :: section_id = X :: -->`` anchor
+# plus a leading fenced ```yaml``` contract block (the typed step declaration),
+# with the step's prompt prose after the block.
+_FRONTMATTER = textwrap.dedent(
     """\
     ---
     tags:
@@ -28,40 +33,44 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./skill_demo.pipeline.yaml
     ---
+    """
+)
+
+
+# Two step sections, each with its contract block folded in (formerly the
+# ``.pipeline.yaml`` sidecar) and the old sidecar ``prompt_template`` as the
+# prose after the block. step_2 depends on step_1.
+_CANONICAL = _FRONTMATTER + textwrap.dedent(
+    """\
 
     # Demo
 
     ## Step 1 <!-- :: section_id = step_1 :: -->
 
-    Body 1.
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: step_1_out
+    ```
+
+    Step 1.
 
     ## Step 2 <!-- :: section_id = step_2 :: -->
 
-    Body 2.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: per_leaf
+    batchable: false
+    depends_on: [step_1]
+    materializer: no_op
+    output_key: step_2_out
+    ```
 
-
-_VALID_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Step 1."
-      - section_id: step_2
-        role: CORE
-        aggregation: per_leaf
-        batchable: false
-        depends_on: [step_1]
-        materializer: no_op
-        prompt_template: "Step 2."
+    Step 2.
     """
 )
 
@@ -70,8 +79,6 @@ _VALID_SIDECAR = textwrap.dedent(
 def demo_skill(tmp_path):
     skill = tmp_path / "skill_demo.md"
     skill.write_text(_CANONICAL, encoding="utf-8")
-    sidecar = tmp_path / "skill_demo.pipeline.yaml"
-    sidecar.write_text(_VALID_SIDECAR, encoding="utf-8")
     return skill
 
 
@@ -142,21 +149,57 @@ def test_compile_non_md_returns_2(tmp_path, capsys):
 
 
 def test_compile_validation_failure_returns_1(tmp_path, capsys):
-    """A skill with a malformed sidecar fails to compile."""
+    """A skill whose inline contract block is schema-invalid fails to compile.
+
+    Single-file equivalent of the old malformed-sidecar case: a bad ``role``
+    enum in a step's leading ```yaml``` contract block makes ``load_pipeline``
+    raise ``PipelineValidationError`` ("fails schema validation"), which the
+    CLI surfaces as a compile failure (exit 1).
+    """
+    canonical = _FRONTMATTER + textwrap.dedent(
+        """\
+
+        # Demo
+
+        ## Step 1 <!-- :: section_id = step_1 :: -->
+
+        ```yaml
+        role: NOT_A_VALID_ROLE
+        aggregation: per_leaf
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        ```
+
+        Step 1.
+        """
+    )
     skill = tmp_path / "skill_demo.md"
-    skill.write_text(_CANONICAL, encoding="utf-8")
-    sidecar = tmp_path / "skill_demo.pipeline.yaml"
-    sidecar.write_text("pipeline: not-a-list-but-a-string", encoding="utf-8")
+    skill.write_text(canonical, encoding="utf-8")
     code = main(["composer", "compile", str(skill)])
     assert code == 1
-    err = capsys.readouterr().err
-    assert "FAILED" in capsys.readouterr().out or "validation" in err or err
+    captured = capsys.readouterr()
+    assert "validation FAILED" in captured.out
+    assert "schema validation" in captured.err
 
 
 def test_compile_pipeline_none_returns_0_with_empty_pipeline(tmp_path, capsys):
-    canonical = _CANONICAL.replace(
-        "pipeline_metadata: ./skill_demo.pipeline.yaml",
-        "pipeline_metadata: none",
+    # A skill with ZERO contract-block sections compiles to an empty pipeline
+    # (the single-file equivalent of the old ``pipeline_metadata: none``): the
+    # step sections are prose-only, so the loader finds no steps.
+    canonical = _FRONTMATTER + textwrap.dedent(
+        """\
+
+        # Demo
+
+        ## Step 1 <!-- :: section_id = step_1 :: -->
+
+        Body 1.
+
+        ## Step 2 <!-- :: section_id = step_2 :: -->
+
+        Body 2.
+        """
     )
     skill = tmp_path / "skill_demo.md"
     skill.write_text(canonical, encoding="utf-8")

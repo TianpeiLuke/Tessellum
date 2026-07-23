@@ -151,8 +151,8 @@ def scaffold(target_dir: Path | str, *, force: bool = False) -> ScaffoldResult:
             dest.mkdir(parents=True)
             dirs_created.append(dest)
 
-    # 3. Templates: copy every file (templates + sidecar + README) from
-    # the shipped templates directory into resources/templates/.
+    # 3. Templates: copy every file (templates + README) from the shipped
+    # templates directory into resources/templates/.
     templates_src = templates_dir()
     templates_target = target / "resources" / "templates"
     templates_target.mkdir(parents=True, exist_ok=True)
@@ -273,7 +273,7 @@ Every typed atomic note lives under one of the four PARA buckets — `resources/
 |---|---|---|
 | `concept` | `resources/term_dictionary/` | `term_<slug>.md` |
 | `procedure` | `resources/how_to/` | `howto_<slug>.md` |
-| `skill` | `resources/skills/` | `skill_<slug>.md` (+ `skill_<slug>.pipeline.yaml`) |
+| `skill` | `resources/skills/` | `skill_<slug>.md` (single-file: contract blocks inline) |
 | `argument` | `resources/analysis_thoughts/` | `thought_<slug>.md` |
 | `entry_point` | `0_entry_points/` | `entry_<slug>.md` |
 | ... | ... | (see `tessellum capture --help`) |
@@ -281,7 +281,7 @@ Every typed atomic note lives under one of the four PARA buckets — `resources/
 ## Next steps
 
 1. Add your first concept: `tessellum capture concept my_topic`
-2. Add a skill (with paired pipeline sidecar): `tessellum capture skill my_skill`
+2. Add a skill (single-file, contract blocks inline): `tessellum capture skill my_skill`
 3. Validate the vault: `tessellum format check .`
 
 ---
@@ -308,13 +308,13 @@ This is a [Tessellum](https://github.com/TianpeiLuke/Tessellum) vault: a typed-k
 # Create a new typed atomic note
 tessellum capture concept my_topic --vault {vault_name}
 
-# Create a skill with its paired pipeline sidecar
+# Create a skill (single-file: typed contract blocks inline)
 tessellum capture skill my_skill --vault {vault_name}
 
 # Validate format
 tessellum format check {vault_name}
 
-# Validate skill pipeline sidecars
+# Validate skill pipelines (compiles each skill's contract blocks)
 tessellum composer validate {vault_name}/resources/skills/
 ```
 

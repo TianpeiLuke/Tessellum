@@ -1,11 +1,16 @@
-"""Skills-as-tools + capability registry.
+"""Skills-as-tools + capability registry (single-file skill format).
 
 Covers:
   - build_skill_tool: projects a compiled pipeline into a SkillTool contract
     (input/output schema, side_effects from materializer verbs, gates,
-    mcp_deps from the sidecar, routing key from frontmatter + lead step).
-  - CapabilityRegistry: from_skill_dir discovery, by_side_effect, and
-    two-tier route (unique match → skill; 0-or-many → needs_llm_selector).
+    mcp_deps from the step contract blocks, routing key from frontmatter +
+    lead step).
+  - CapabilityRegistry: discovery, by_side_effect, and two-tier route
+    (unique match → skill; 0-or-many → needs_llm_selector).
+
+A skill is now ONE markdown file: each pipeline step is an H2 section with a
+``<!-- :: section_id = X :: -->`` anchor, a leading ```yaml``` contract block,
+then the prompt prose. There is no ``.pipeline.yaml`` sidecar.
 
 Pure projection + lookup; no LLM, no network.
 """
@@ -20,6 +25,7 @@ from tessellum.composer import (
     SkillTool,
     build_skill_tool,
 )
+from tessellum.composer.loader import load_pipeline
 from tessellum.composer.skill_tool import McpDep
 
 
@@ -29,12 +35,16 @@ def _write_skill(
     *,
     building_block: str = "procedure",
     topic: str = "Test Domain",
-    steps_yaml: str,
-    canonical_steps: str,
+    sections: str,
 ) -> Path:
     # Built without textwrap.dedent — the injected multi-line body has no
     # indentation, which would zero out dedent's common-prefix and leave the
     # frontmatter indented (breaking the `---` fences). Compose flush-left.
+    #
+    # Single-file format: no `pipeline_metadata` frontmatter and no sidecar.
+    # Each step's typed contract lives in a leading ```yaml``` block under its
+    # anchored H2 heading, with the prompt prose after it (all inside
+    # `sections`).
     canonical = (
         "---\n"
         "tags:\n  - resource\n  - skill\n"
@@ -44,40 +54,60 @@ def _write_skill(
         "date of note: 2026-05-10\n"
         "status: active\n"
         f"building_block: {building_block}\n"
-        f"pipeline_metadata: ./{name}.pipeline.yaml\n"
         "---\n\n"
         f"# {name}\n\n"
-        f"{canonical_steps}\n"
+        f"{sections}\n"
     )
-    sidecar = "version: \"1.0\"\npipeline:\n" + steps_yaml
     md = tmp_path / f"{name}.md"
     md.write_text(canonical, encoding="utf-8")
-    (tmp_path / f"{name}.pipeline.yaml").write_text(sidecar, encoding="utf-8")
     return md
 
 
-_PRODUCER_STEPS = """\
-  - section_id: step_1
-    role: CORE
-    aggregation: per_leaf
-    batchable: false
-    depends_on: []
-    materializer: body_markdown_to_file
-    expected_output_schema:
-      type: object
-      required: [output_path, body_markdown]
-    prompt_template: "Write."
-    output_key: written
-"""
+def _registry(skills_dir: Path) -> CapabilityRegistry:
+    """Single-file equivalent of ``CapabilityRegistry.from_skill_dir``.
 
-_PRODUCER_CANON = "## Step 1: write <!-- :: section_id = step_1 :: -->\n\nWrite {{leaf.id}}."
+    ``from_skill_dir`` still keys discovery off a ``.pipeline.yaml`` sidecar
+    (the two-file world), which no single-file skill has. The single-file
+    criterion for "this is a pipeline skill" is instead "its canonical has
+    step sections" — i.e. ``load_pipeline(md) is not None`` (a canonical with
+    zero ```yaml``` contract blocks compiles to an empty pipeline and is not a
+    routable capability). Prose-only notes are skipped, exactly as
+    ``from_skill_dir`` skipped sidecar-less notes.
+    """
+    reg = CapabilityRegistry()
+    for md in sorted(skills_dir.glob("skill_*.md")):
+        if load_pipeline(md) is None:
+            continue  # no step sections → not a pipeline skill
+        reg.register(build_skill_tool(md))
+    return reg
+
+
+# A producing step: writes a note body (PRODUCE materializer). The contract
+# block holds every step field except section_id (from the anchor) and the
+# prompt (the prose after the block).
+_PRODUCER_SECTION = """\
+## Step 1: write <!-- :: section_id = step_1 :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on: []
+materializer: body_markdown_to_file
+output_key: written
+expected_output_schema:
+  type: object
+  required: [output_path, body_markdown]
+```
+
+Write {{leaf.id}}."""
 
 
 def test_build_skill_tool_producer(tmp_path: Path) -> None:
     md = _write_skill(
         tmp_path, "skill_make_note",
         building_block="concept", topic="Knowledge",
-        steps_yaml=_PRODUCER_STEPS, canonical_steps=_PRODUCER_CANON,
+        sections=_PRODUCER_SECTION,
     )
     t = build_skill_tool(md)
     assert isinstance(t, SkillTool)
@@ -95,28 +125,30 @@ def test_build_skill_tool_producer(tmp_path: Path) -> None:
     assert t.step_count == 1
 
 
-_READONLY_STEPS = """\
-  - section_id: step_1
-    role: CORE
-    aggregation: corpus_wide
-    batchable: false
-    depends_on: []
-    materializer: no_op
-    expected_output_schema:
-      type: object
-      required: [answer]
-    prompt_template: "Answer."
-    output_key: answer
-"""
+# A read-only step: no_op materializer, no filesystem mutation.
+_READONLY_SECTION = """\
+## Step 1: answer <!-- :: section_id = step_1 :: -->
 
-_READONLY_CANON = "## Step 1: answer <!-- :: section_id = step_1 :: -->\n\nAnswer the query."
+```yaml
+role: CORE
+aggregation: corpus_wide
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: answer
+expected_output_schema:
+  type: object
+  required: [answer]
+```
+
+Answer the query."""
 
 
 def test_build_skill_tool_read_only_query(tmp_path: Path) -> None:
     md = _write_skill(
         tmp_path, "skill_answer_query",
         building_block="procedure", topic="Retrieval",
-        steps_yaml=_READONLY_STEPS, canonical_steps=_READONLY_CANON,
+        sections=_READONLY_SECTION,
     )
     t = build_skill_tool(md)
     assert t.is_read_only
@@ -125,46 +157,50 @@ def test_build_skill_tool_read_only_query(tmp_path: Path) -> None:
     assert t.routing_key.input_kind == "query"
 
 
-_APPLY_STEPS = """\
-  - section_id: step_1
-    role: CORE
-    aggregation: per_leaf
-    batchable: false
-    depends_on: []
-    materializer: edits_apply_to_files
-    expected_output_schema:
-      type: object
-      required: [edits]
-    prompt_template: "Edit."
-    output_key: applied
-    mcp_dependencies:
-      - name: builder-mcp
-        calls: [ReadInternalWebsites]
-        required: true
-"""
+# An APPLY step editing existing files, with a declared MCP dependency in its
+# contract block.
+_APPLY_SECTION = """\
+## Step 1: edit <!-- :: section_id = step_1 :: -->
 
-_APPLY_CANON = "## Step 1: edit <!-- :: section_id = step_1 :: -->\n\nApply edits to {{leaf.id}}."
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on: []
+materializer: edits_apply_to_files
+output_key: applied
+expected_output_schema:
+  type: object
+  required: [edits]
+mcp_dependencies:
+  - name: builder-mcp
+    calls: [ReadInternalWebsites]
+    required: true
+```
+
+Apply edits to {{leaf.id}}."""
 
 
 def test_build_skill_tool_apply_with_mcp(tmp_path: Path) -> None:
     md = _write_skill(
         tmp_path, "skill_fix_links",
-        steps_yaml=_APPLY_STEPS, canonical_steps=_APPLY_CANON,
+        sections=_APPLY_SECTION,
     )
     t = build_skill_tool(md)
     assert "applies_edits" in t.side_effects
     assert t.mcp_deps == (McpDep(name="builder-mcp", calls=("ReadInternalWebsites",), required=True),)
 
 
-def test_registry_from_skill_dir_and_by_side_effect(tmp_path: Path) -> None:
+def test_registry_discovery_and_by_side_effect(tmp_path: Path) -> None:
     _write_skill(tmp_path, "skill_make_note", building_block="concept",
-                 steps_yaml=_PRODUCER_STEPS, canonical_steps=_PRODUCER_CANON)
+                 sections=_PRODUCER_SECTION)
     _write_skill(tmp_path, "skill_answer_query", topic="Retrieval",
-                 steps_yaml=_READONLY_STEPS, canonical_steps=_READONLY_CANON)
-    # A stray .md with NO sidecar must be skipped (not a pipeline skill).
+                 sections=_READONLY_SECTION)
+    # A stray .md with NO contract-block sections must be skipped (not a
+    # pipeline skill — the single-file equivalent of "no sidecar").
     (tmp_path / "skill_prose_only.md").write_text("# not a pipeline skill\n", encoding="utf-8")
 
-    reg = CapabilityRegistry.from_skill_dir(tmp_path)
+    reg = _registry(tmp_path)
     assert set(reg.tools) == {"skill_make_note", "skill_answer_query"}
     assert [t.skill_name for t in reg.by_side_effect("produces_notes")] == ["skill_make_note"]
     assert [t.skill_name for t in reg.by_side_effect("read_only")] == ["skill_answer_query"]
@@ -172,10 +208,10 @@ def test_registry_from_skill_dir_and_by_side_effect(tmp_path: Path) -> None:
 
 def test_registry_route_unique_match(tmp_path: Path) -> None:
     _write_skill(tmp_path, "skill_make_note", building_block="concept", topic="Knowledge",
-                 steps_yaml=_PRODUCER_STEPS, canonical_steps=_PRODUCER_CANON)
+                 sections=_PRODUCER_SECTION)
     _write_skill(tmp_path, "skill_answer_query", building_block="procedure", topic="Retrieval",
-                 steps_yaml=_READONLY_STEPS, canonical_steps=_READONLY_CANON)
-    reg = CapabilityRegistry.from_skill_dir(tmp_path)
+                 sections=_READONLY_SECTION)
+    reg = _registry(tmp_path)
 
     # Deterministic tier-1: exactly one skill produces a `concept` note-set.
     d = reg.route(produces_bb="concept", input_kind="note_set")
@@ -186,10 +222,10 @@ def test_registry_route_unique_match(tmp_path: Path) -> None:
 def test_registry_route_ambiguous_needs_selector(tmp_path: Path) -> None:
     # Two producers with the SAME routing key → open set → needs_llm_selector.
     _write_skill(tmp_path, "skill_make_note_a", building_block="concept", topic="Knowledge",
-                 steps_yaml=_PRODUCER_STEPS, canonical_steps=_PRODUCER_CANON)
+                 sections=_PRODUCER_SECTION)
     _write_skill(tmp_path, "skill_make_note_b", building_block="concept", topic="Knowledge",
-                 steps_yaml=_PRODUCER_STEPS, canonical_steps=_PRODUCER_CANON)
-    reg = CapabilityRegistry.from_skill_dir(tmp_path)
+                 sections=_PRODUCER_SECTION)
+    reg = _registry(tmp_path)
 
     d = reg.route(produces_bb="concept", input_kind="note_set", domain="Knowledge")
     assert d.skill_name is None
@@ -199,8 +235,8 @@ def test_registry_route_ambiguous_needs_selector(tmp_path: Path) -> None:
 
 def test_registry_route_no_match_needs_selector(tmp_path: Path) -> None:
     _write_skill(tmp_path, "skill_make_note", building_block="concept",
-                 steps_yaml=_PRODUCER_STEPS, canonical_steps=_PRODUCER_CANON)
-    reg = CapabilityRegistry.from_skill_dir(tmp_path)
+                 sections=_PRODUCER_SECTION)
+    reg = _registry(tmp_path)
     # Nothing produces a `model` note → 0 candidates → defer to selector.
     d = reg.route(produces_bb="model")
     assert d.skill_name is None

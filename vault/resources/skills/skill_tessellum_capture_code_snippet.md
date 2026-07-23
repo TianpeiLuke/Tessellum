@@ -17,7 +17,6 @@ language: markdown
 date of note: 2026-04-28
 status: active
 building_block: procedure
-pipeline_metadata: ./skill_tessellum_capture_code_snippet.pipeline.yaml
 ---
 
 # Procedure: tessellum-capture-code-snippet (Canonical Body)
@@ -37,31 +36,211 @@ VAULT_PATH="."   # run from your vault root
 
 ## Step 1: Read Source Code <!-- :: section_id = step_1_read_source_code :: -->
 
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on: []
+materializer: no_op
+output_key: source_code_content
+expected_output_schema:
+  type: object
+  required:
+  - source_path
+  - source_text
+  - line_count
+  - key_symbols
+  properties:
+    source_path:
+      type: string
+    source_text:
+      type: string
+    line_count:
+      type: integer
+    key_symbols:
+      type: array
+      items:
+        type: object
+        required:
+        - name
+        - kind
+        - line_range
+        properties:
+          name:
+            type: string
+          kind:
+            enum:
+            - function
+            - class
+            - method
+            - constant
+            - variable
+          line_range:
+            type: string
+```
+
+You are reading the source code for snippet {{leaf.title}}.
+
+LEAF METADATA
+- title: {{leaf.title}}
+- source_path: {{leaf.enricher_inputs.source_path}}
+
+Follow this procedure:
+
 Read the target source file from GitHub:
 
 ```
 https://github.com/<owner>/REPO/blob/main/PATH/TO/FILE.py
 ```
 
-Identify the ONE component or algorithm to document. If the file has multiple independent classes, create separate snippets. NEVER merge two algorithms into one snippet.
+Identify the ONE component or algorithm to document. If the file has multiple independent classes, create separate snippets. NEVER merge two algorithms into one snippet. Return ONLY the JSON object
+specified by expected_output_schema; no prose.
 
 ## Step 2: Determine Building Block Type <!-- :: section_id = step_2_determine_building_block_type :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_1_read_source_code
+materializer: no_op
+output_key: bb_verdict
+expected_output_schema:
+  type: object
+  required:
+  - building_block
+  - format_branch
+  - rationale
+  properties:
+    building_block:
+      enum:
+      - concept
+      - procedure
+      - model
+      - empirical_observation
+      - hypothesis
+      - argument
+      - counter_argument
+      - navigation
+    format_branch:
+      enum:
+      - mathjax
+      - mermaid_pipeline
+      - architecture_diagram
+      - code_only
+      description: "Selected by BB \u2014 concept\u2192mathjax, procedure\u2192mermaid_pipeline,\
+        \ model\u2192architecture_diagram, others\u2192code_only"
+    rationale:
+      type: string
+```
+
+You are classifying the BB type for snippet {{leaf.title}} and selecting the format branch.
+
+LEAF METADATA
+- title: {{leaf.title}}
+- building_block (from leaf): {{leaf.building_block}}
+
+SOURCE_CODE_CONTENT (from step 1)
+{{upstream.source_code_content}}
+
+Follow this procedure:
 
 | Type | When to Use | Key Sections |
 |------|-------------|-------------|
 | `concept` | Defines a reusable abstraction (loss function, attention layer, metric) | MathJax formula required |
 | `procedure` | Step-by-step pipeline or workflow | Mermaid flowchart required |
-| `model` | Architecture definition or configurable system | Architecture diagram or class diagram required |
+| `model` | Architecture definition or configurable system | Architecture diagram or class diagram required | Return ONLY the JSON object
+specified by expected_output_schema; no prose.
 
 ## Step 3: Check for Duplicates <!-- :: section_id = step_3_check_for_duplicates :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_2_determine_building_block_type
+materializer: no_op
+output_key: duplicate_check
+expected_output_schema:
+  type: object
+  required:
+  - exists
+  - existing_note_id
+  - action
+  properties:
+    exists:
+      type: boolean
+    existing_note_id:
+      type:
+      - string
+      - 'null'
+    action:
+      enum:
+      - proceed
+      - skip
+      - merge
+    rationale:
+      type: string
+```
+
+You are checking whether snippet {{leaf.title}} already exists in the vault.
+
+LEAF METADATA
+- title: {{leaf.title}}
+
+Follow this procedure:
 
 ```bash
 ls "$SNIPPETS_DIR"/snippet_*COMPONENT_NAME*.md 2>/dev/null
 ```
 
-If a snippet already exists, ask user: update or skip?
+If a snippet already exists, ask user: update or skip? Return ONLY the JSON object
+specified by expected_output_schema; no prose.
 
 ## Step 4: Search Vault for Cross-References <!-- :: section_id = step_4_search_vault_for_cross_references :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_3_check_for_duplicates
+materializer: no_op
+output_key: cross_references
+expected_output_schema:
+  type: object
+  required:
+  - related_repo_notes
+  - related_terms
+  - related_models
+  - consumer_skills
+  properties:
+    related_repo_notes:
+      type: array
+      items:
+        type: string
+    related_terms:
+      type: array
+      items:
+        type: string
+    related_models:
+      type: array
+      items:
+        type: string
+    consumer_skills:
+      type: array
+      items:
+        type: string
+```
+
+You are querying the Tessellum unified DB for cross-references for snippet {{leaf.title}}.
+
+LEAF METADATA
+- title: {{leaf.title}}
+
+Follow this procedure:
 
 ```bash
 sqlite3 "$DB_PATH" "SELECT note_id FROM notes WHERE note_second_category='terminology' AND note_name LIKE '%KEY_TERM%' LIMIT 10"
@@ -70,9 +249,47 @@ sqlite3 "$DB_PATH" "SELECT note_id FROM notes WHERE note_name LIKE '%repo_REPO_S
 sqlite3 "$DB_PATH" "SELECT note_id FROM notes WHERE note_category='project' AND note_name LIKE '%PROJECT%' LIMIT 5"
 # Find related snippets
 ls "$SNIPPETS_DIR"/snippet_*RELATED*.md 2>/dev/null
-```
+``` Return ONLY the JSON object
+specified by expected_output_schema; no prose.
 
 ## Step 5: Write Snippet Note <!-- :: section_id = step_5_write_snippet_note :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on:
+- step_1_read_source_code
+- step_2_determine_building_block_type
+- step_4_search_vault_for_cross_references
+materializer: body_markdown_frontmatter_to_file
+output_key: snippet_note_body
+expected_output_schema:
+  type: object
+  required:
+  - output_path
+  properties:
+    output_path:
+      type: string
+      pattern: ^resources/code_snippets/snippet_[a-z0-9_]+\.md$
+```
+
+You are writing a code snippet note for {{leaf.title}}.
+
+LEAF METADATA
+- title: {{leaf.title}}
+- building_block: {{leaf.building_block}}
+
+SOURCE_CODE_CONTENT (from step 1)
+{{upstream.source_code_content}}
+
+BB_VERDICT (from step 2 — drives format_branch selection)
+{{upstream.bb_verdict}}
+
+CROSS_REFERENCES (from step 4)
+{{upstream.cross_references}}
+
+Follow this procedure:
 
 Create: `$SNIPPETS_DIR/snippet_REPO_COMPONENT.md`
 
@@ -297,7 +514,7 @@ Coverage rules:
 - Use `$$` for display math (centered, own line)
 - Use `$` for inline math
 - Define all variables after the formula
-- Use heredoc or fs_write (NOT Python f-strings) to avoid `\a`, `\t`, `\f` escape corruption
+- Use heredoc or fs_write (NOT Python f-strings) to avoid ``, `	`, `` escape corruption
 
 ### Mermaid Rules (procedure/model type) <!-- :: section_id = mermaid_rules_procedure_model_type :: -->
 
@@ -322,12 +539,64 @@ MUST include all applicable:
 - Project: Related Project → project_name.md
 - Model: Related Model → model_name.md
 - Paper: Related Paper → lit_paper.md
-- MTR: Related MTR → mtr_name.md
+- Report: Related Report → report_name.md
 ```
 
-Minimum: 1 repo link + 1 term link + 1 related snippet link.
+Minimum: 1 repo link + 1 term link + 1 related snippet link. Use the format_branch from
+step_2 to select the diagram style:
+  - concept → MathJax math block in the Math/Diagram section
+  - procedure → Mermaid pipeline diagram
+  - model → architecture diagram
+  - other → code-only (no diagram section)
+
+OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON).
+Frontmatter MUST contain exactly one key:
+  output_path: <vault-relative .md path under resources/code_snippets/>
+Everything after the closing `---` IS the file body, verbatim.
 
 ## Step 6: Update Per-Package Entry Point + Master TOC <!-- :: section_id = step_6_update_entry_point :: -->
+
+```yaml
+role: DEFERRED
+aggregation: cross_leaf
+batchable: false
+depends_on:
+- step_5_write_snippet_note
+materializer: edits_apply_xml_tags
+applies_to_files:
+- 0_entry_points/entry_code_snippets.md
+applies_to_files_query:
+  kind: related_notes_by_keywords
+  max_files: 4
+output_key: entry_code_snippets_edits
+expected_output_schema:
+  type: object
+  required:
+  - edits
+  empty_response_allowed: false
+```
+
+You are updating the code-snippets entry points for newly captured snippets.
+
+NEW_SNIPPETS (from per-leaf step_5 outputs)
+{{upstream.snippet_note_body}}
+
+MASTER TOC — CURRENT BODY OF
+`0_entry_points/entry_code_snippets.md`
+(this is the index of per-package entry points; only edit if creating
+a new per-package entry):
+---
+{{existing.0_entry_points/entry_code_snippets.md}}
+---
+
+RELATED PER-PACKAGE ENTRY POINTS (resolved via keyword query —
+the per-package entry for this snippet's package SHOULD appear here;
+if it does NOT, you are in Branch B and must CREATE it):
+---
+{{existing.related_notes_by_keywords}}
+---
+
+Follow this procedure:
 
 The vault uses a **TOC-of-entry-points** pattern (introduced in the 2026-05-09 refactor):
 
@@ -439,9 +708,27 @@ grep -F "$SNIPPET_NAME" "$PACKAGE_ENTRY" || echo "MISSING: snippet row not added
 # Branch B (new package): confirm both files exist + linked
 [ -f "$PACKAGE_ENTRY" ] || echo "MISSING: per-package entry point not created"
 grep -F "entry_code_snippets_${PACKAGE}.md" "$MASTER_TOC" || echo "MISSING: master TOC row for new package"
-```
+``` Determine the package slug from
+the snippet filename (first underscore segment after `snippet_`),
+then choose Branch A (per-package entry exists — add a table row to
+it) or Branch B (per-package entry missing — create it AND add a
+master-TOC row).
+
+OUTPUT FORMAT — XML tag list. APPLY mode — emit the COMPLETE new
+body for each file you touch. Do NOT emit edits for files you do
+not need to change.
 
 ## Step 7: Verify <!-- :: section_id = step_7_verify :: -->
+
+```yaml
+role: INFRA
+aggregation: corpus_wide
+batchable: false
+depends_on:
+- step_6_update_entry_point
+rationale: Verification step (lockstep + DB rebuild + format check); pure tooling, no LLM
+  call
+```
 
 ```bash
 NOTE="$SNIPPETS_DIR/snippet_NEW.md"

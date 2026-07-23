@@ -10,7 +10,7 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 
 **v1.0.0 — every engine subsystem shipped, headlined by the Composer v4 dynamic-workflow runtime.** Suite: **1152 tests**.
 
-- **Composer** — a typed-contract pipeline runtime. Skill canonical + `.pipeline.yaml` sidecar → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
+- **Composer** — a typed-contract pipeline runtime. Skill canonical (one self-contained markdown note — a typed contract block per step section) → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
 - **DKS** — a shipped closed-loop **Dialectic Knowledge System runtime engine** (`tessellum dks`): a 7-component cycle (observation → N arguments → contradicts edges → counter → pattern → revised warrant) over the Building-Block graph, multi-perspective Dung argumentation, confidence gating, warrant persistence, and a second-order **meta-DKS** that mutates the BB schema itself.
 - **Retrieval** — BM25 (FTS5) + dense (sqlite-vec) + hybrid RRF + best-first BFS + metadata filter, over the indexed vault.
 - **Indexer** — vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec, `all-MiniLM-L6-v2` 384-d).
@@ -57,7 +57,7 @@ cd ~/my-vault
 
 # 2. Capture your first typed atomic note — 14 flavors available
 tessellum capture concept page_rank        # creates resources/term_dictionary/term_page_rank.md
-tessellum capture skill my_skill           # creates skill_*.md + paired skill_*.pipeline.yaml
+tessellum capture skill my_skill           # creates a single self-contained skill_*.md
 tessellum capture code_snippet my_algo     # creates resources/code_snippets/snippet_*.md
 tessellum capture code_repo my_repo        # creates areas/code_repos/repo_*.md
 tessellum capture --help                   # full flavor list
@@ -181,7 +181,7 @@ Tessellum/
 │   │   ├── how_to/            How-to guides
 │   │   ├── analysis_thoughts/ Architecture arguments + FZ trails
 │   │   ├── templates/         15 copy-and-fill skeletons (executable spec exemplars)
-│   │   ├── skills/            Skill canonical bodies + pipeline sidecars
+│   │   ├── skills/            Self-contained skill canonicals (per-step contract blocks inline)
 │   │   ├── code_snippets/     `## Patterns`-format snippet notes (one component or algorithm)
 │   │   ├── code_repos/        Repo notes (main + sub-note structure)
 │   │   ├── teams/   tools/   faqs/   digest/   papers/

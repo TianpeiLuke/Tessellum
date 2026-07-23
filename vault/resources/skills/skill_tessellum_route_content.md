@@ -19,7 +19,6 @@ date of note: 2026-05-11
 status: active
 building_block: procedure
 bb_schema_version: 1
-pipeline_metadata: ./skill_tessellum_route_content.pipeline.yaml
 ---
 
 # Procedure: tessellum-route-content (Canonical Body)
@@ -132,11 +131,51 @@ tessellum index build       # so the source-signal lookup can query the corpus
 
 ## Step 1: Read Classification Report <!-- :: section_id = step_1_read_classification_report :: -->
 
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on: []
+materializer: no_op
+output_key: report
+expected_output_schema:
+  type: object
+  required:
+  - rows
+  properties:
+    rows:
+      type: array
+```
+
 Read the classification report from [`tessellum-classify-content`](skill_tessellum_classify_content.md) (in current context). Each row carries: `segment_id`, `lines`, `heading`, `building_block`, `content_domain`, `confidence`.
 
 If no classification report is available, run [`tessellum-classify-content`](skill_tessellum_classify_content.md) first.
 
 ## Step 2: Map (Building Block, Content Domain) → Routing Candidate <!-- :: section_id = step_2_map_to_routing_candidate :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_1_read_classification_report
+materializer: no_op
+output_key: candidates
+expected_output_schema:
+  type: object
+  required:
+  - candidates
+  properties:
+    candidates:
+      type: array
+      items:
+        type: object
+        required:
+        - segment_id
+        - default_destination
+        - default_prefix
+        - default_flavor
+```
 
 For each segment, derive a **starting-point routing candidate** from `tessellum.capture.REGISTRY` + the BB index's "default directory" column:
 
@@ -170,6 +209,106 @@ The flavor maps from `building_block` per the BB index's canonical convention:
 
 ## Step 3: Apply the 3-criterion Novelty Framework <!-- :: section_id = step_3_apply_novelty_framework :: -->
 
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on:
+- step_2_map_to_routing_candidate
+materializer: no_op
+output_key: novelty_decisions
+expected_output_schema:
+  type: object
+  required:
+  - decisions
+  properties:
+    decisions:
+      type: array
+      items:
+        type: object
+        required:
+        - segment_id
+        - subcategory_novelty
+        - subcategory_rationale
+        - proposed_subcategory_label
+        properties:
+          segment_id:
+            type: integer
+          subcategory_novelty:
+            type: string
+            enum:
+            - existing
+            - drift_candidate_one_of_three
+            - new_two_of_three
+            - new_three_of_three
+          subcategory_rationale:
+            type: object
+            required:
+            - source_signal
+            - operational_task_signal
+            - maintenance_signal
+            properties:
+              source_signal:
+                type: string
+                enum:
+                - existing
+                - novel
+                - n/a
+              operational_task_signal:
+                type: string
+                enum:
+                - existing
+                - novel
+                - n/a
+              maintenance_signal:
+                type: string
+                enum:
+                - existing
+                - novel
+                - n/a
+          proposed_subcategory_label:
+            type: string
+            description: Existing label OR proposed new label (snake_case)
+```
+
+You are running step 3 of tessellum-route-content: Apply the
+3-criterion Sub-Category Novelty Framework.
+
+CLASSIFICATION REPORT
+{{upstream.report}}
+
+ROUTING CANDIDATES (defaults from tessellum.capture.REGISTRY)
+{{upstream.candidates}}
+
+CORPUS STATE (existing sub-categories under (BB, PARA))
+{{leaf.existing_subcategories_under_bb_para}}
+
+SIBLING DECISIONS (already routed in this run; for coherence bias)
+{{leaf.sibling_decisions_json}}
+
+For each segment, apply the 3-criterion framework
+(source / operational task / maintenance — see section
+"sub_category_novelty_framework" of
+skill_tessellum_route_content). Each criterion yields
+`existing | novel | n/a`. Map the novel count to the decision
+per the decision rule:
+
+  - 0 of 3 → "existing"
+  - 1 of 3 → "existing" + emit drift_candidate_one_of_three
+  - 2 of 3 → "new_two_of_three"
+  - 3 of 3 → "new_three_of_three"
+
+For existing decisions, pick the closest-match existing
+sub-category from the BB index defaults + the corpus state.
+For new decisions, propose a lowercase snake_case label that:
+  - is specific enough to scope one (BB, PARA)
+  - encodes the maintenance contract if non-obvious
+
+Return ONLY the JSON object specified by expected_output_schema;
+no prose, no code fences.
+
+---
+
 For each segment, gather the three signals (source / operational_task / maintenance) per the section above. Determine the `subcategory_novelty` outcome from the decision rule.
 
 For `novel` outcomes (2-of-3 or 3-of-3), the agent proposes a new sub-category label. The label should:
@@ -182,11 +321,31 @@ For `existing` outcomes, pick the closest-match existing sub-category from the B
 
 ## Step 4: Apply Corpus Coherence Bias <!-- :: section_id = step_4_corpus_coherence_bias :: -->
 
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_3_apply_novelty_framework
+materializer: no_op
+output_key: bias_adjusted_decisions
+```
+
 When multiple segments in the same routing run already chose a sub-category, **prefer the majority** unless the new segment's source content strongly resists it. This prevents fragmenting a coherent multi-segment note across many one-off sub-categories.
 
 Heuristic: if ≥60% of sibling segments in the current report routed to sub-category X under the same `(BB, PARA)`, and the current segment has `confidence: medium` or lower, route it to X too.
 
 ## Step 5: Compute target_path <!-- :: section_id = step_5_compute_target_path :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: true
+depends_on:
+- step_4_corpus_coherence_bias
+materializer: no_op
+output_key: target_paths
+```
 
 Per segment, emit:
 
@@ -196,6 +355,67 @@ Per segment, emit:
 - Full `target_path` = `<destination>/<filename_prefix><slug>.md`.
 
 ## Step 6: Output Routing Plan <!-- :: section_id = step_6_output_routing_plan :: -->
+
+```yaml
+role: CORE
+aggregation: per_leaf
+batchable: false
+depends_on:
+- step_3_apply_novelty_framework
+- step_5_compute_target_path
+materializer: no_op
+output_key: routing_plan
+expected_output_schema:
+  type: object
+  required:
+  - plan
+  properties:
+    plan:
+      type: array
+      items:
+        type: object
+        required:
+        - segment_id
+        - building_block
+        - second_category
+        - subcategory_novelty
+        - subcategory_rationale
+        - destination
+        - filename_prefix
+        - slug
+        - target_path
+        properties:
+          segment_id:
+            type: integer
+          building_block:
+            type: string
+          second_category:
+            type: string
+          subcategory_novelty:
+            type: string
+            enum:
+            - existing
+            - drift_candidate_one_of_three
+            - new_two_of_three
+            - new_three_of_three
+          subcategory_rationale:
+            type: object
+          destination:
+            type: string
+          filename_prefix:
+            type: string
+          slug:
+            type: string
+          target_path:
+            type: string
+            pattern: ^[a-zA-Z0-9_/]+\.md$
+          rationale:
+            type: string
+          routing_warning:
+            type:
+            - string
+            - 'null'
+```
 
 Emit a structured per-segment routing plan. The plan is the input the caller passes to `tessellum capture` (with `--destination` + `--prefix` overrides) or to a multi-segment decomposer.
 

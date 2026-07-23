@@ -194,33 +194,26 @@ def test_pooled_composes_with_retry_ladder() -> None:
         date of note: 2026-05-10
         status: active
         building_block: procedure
-        pipeline_metadata: ./s.pipeline.yaml
         ---
 
         # S
 
         ## Step 1: go <!-- :: section_id = step_1 :: -->
 
+        ```yaml
+        role: CORE
+        aggregation: corpus_wide
+        batchable: false
+        depends_on: []
+        materializer: no_op
+        ```
+
         Go.
-        """
-    )
-    side = textwrap.dedent(
-        """\
-        version: "1.0"
-        pipeline:
-          - section_id: step_1
-            role: CORE
-            aggregation: corpus_wide
-            batchable: false
-            depends_on: []
-            materializer: no_op
-            prompt_template: "Go."
         """
     )
     with tempfile.TemporaryDirectory() as d:
         tp = Path(d)
         (tp / "s.md").write_text(canon)
-        (tp / "s.pipeline.yaml").write_text(side)
         compiled = compile_skill(tp / "s.md")
 
         now, _ = _clock()

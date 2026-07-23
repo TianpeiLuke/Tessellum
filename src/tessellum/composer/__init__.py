@@ -1,16 +1,18 @@
 """tessellum.composer — typed-contract pipeline runtime for skill-driven note construction.
 
 Composer is the bridge between System P (capture) and System D (retrieval) —
-a planner-centric orchestrator that compiles skill canonicals + pipeline.yaml
-sidecars into typed DAGs of LLM calls.
+a planner-centric orchestrator that compiles skill canonicals into typed DAGs
+of LLM calls.
 
-The pairing is **two files per skill**:
+A skill is **one self-contained markdown file**:
 
-- ``vault/resources/skills/skill_<name>.md``           — canonical procedure (markdown)
-- ``vault/resources/skills/skill_<name>.pipeline.yaml`` — typed contract (YAML)
-
-linked via ``<!-- :: section_id = X :: -->`` anchor comments and the
-canonical's frontmatter ``pipeline_metadata:`` field.
+- ``vault/resources/skills/skill_<name>.md`` — each pipeline step is an H2
+  section with a ``<!-- :: section_id = X :: -->`` anchor, a leading
+  ``​```yaml`` contract block (the typed step declaration), and the step's
+  prompt prose. Prose-only sections (Setup, Resources, description) carry no
+  contract block and are not pipeline steps. There is no separate
+  ``.pipeline.yaml`` sidecar — contract and prompt live together in the
+  section, so cross-file drift is structurally impossible.
 
 Public API surface:
 
@@ -191,8 +193,11 @@ from tessellum.composer.session_mcp import (
 )
 from tessellum.composer.skill_extractor import (
     SkillExtractionError,
-    load_pipeline_metadata,
+    StepSection,
+    iter_step_sections,
+    list_section_ids,
     load_skill_section,
+    split_contract_and_prompt,
 )
 
 __all__ = [
@@ -216,7 +221,10 @@ __all__ = [
     "PipelineValidationError",
     # Skill extractor
     "load_skill_section",
-    "load_pipeline_metadata",
+    "split_contract_and_prompt",
+    "iter_step_sections",
+    "list_section_ids",
+    "StepSection",
     "SkillExtractionError",
     # Compiler
     "compile_skill",

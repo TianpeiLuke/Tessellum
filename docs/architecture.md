@@ -101,7 +101,7 @@ The database is the obvious projection: drop it, rebuild it, lose nothing. The s
 
 ## 5. The Composer-v4 engine
 
-The composer turns a skill — a written procedure — into a running pipeline that materializes notes. Its governing principle is that all structure is resolved before any money is spent. Compilation is pure logic, zero LLM calls: it loads the skill and its sidecar, validates the step contracts, topologically sorts the steps by their dependencies, catches cycles and forward references, and emits a typed DAG. If the pipeline is structurally broken, it fails here — deterministically, cheaply, before a single model is invoked.
+The composer turns a skill — a written procedure — into a running pipeline that materializes notes. Its governing principle is that all structure is resolved before any money is spent. A skill is one self-contained markdown note: each pipeline step is an H2 section carrying a typed contract block and, right below it, the step's prompt prose. Compilation is pure logic, zero LLM calls: it reads those per-section contract blocks, validates the step contracts, topologically sorts the steps by their dependencies, catches cycles and forward references, and emits a typed DAG. If the pipeline is structurally broken, it fails here — deterministically, cheaply, before a single model is invoked.
 
 Execution then flows through five stages.
 
@@ -147,7 +147,7 @@ And underneath the reasoning ontology, one more invariant makes growth possible 
 | `indexer/build.py` | `build` — walk vault, parse notes, extract links w/ broken-path detection, write all four tables in one transaction. Drop+recreate (idempotent). |
 | `indexer/db.py` | `Database` — read-oriented typed query wrapper (`NoteRow`, `LinkRow`). |
 | `retrieval/{metadata,graph,bm25,dense,hybrid}.py` | The five retrieval surfaces (see §9). `router.py` = heuristic query→surface classifier. |
-| `composer/compiler.py` | Skill canonical+sidecar → typed `CompiledPipeline` DAG. Zero LLM. |
+| `composer/compiler.py` | Skill canonical (per-section contract blocks) → typed `CompiledPipeline` DAG. Zero LLM. |
 | `composer/contracts.py` | Typed registries: `MATERIALIZER_CONTRACTS`, `BACKEND_CONTRACTS`, `MCP_CONTRACTS`; `ContractViolation`. |
 | `composer/scheduler.py` | `run_pipeline` (serial reference) + `run_pipeline_dynamic` (wave-parallel, self-claiming). |
 | `composer/executor.py` | `execute_step` unit op: placeholder resolve → dispatch → schema-validate → materialize; retry ladders. |

@@ -1,13 +1,14 @@
 """``tessellum composer …`` — Composer pipeline operations.
 
-Six subcommands:
+Seven subcommands:
 
-    validate <skill>          Schema + cross-file consistency.
+    validate <skill>          Validate each step's contract block (schema).
     compile <skill>           Compile to a typed DAG with contract checks.
     run <skill>               Execute the compiled pipeline against leaves.
     batch <jobs.json>         Run many ``(skill, leaves)`` jobs in parallel.
     eval <scenarios>          Run scenario assertions + LLMJudge rubric.
-    scaffold-sidecar <skill>  Generate a starter pipeline sidecar from a canonical's section anchors.
+    scaffold-sidecar <skill>  Print starter ```yaml``` contract blocks to paste into a single-file canonical.
+    digest <source>           Run plan → augment → review →[sign-off]→ execute.
 
 The DKS runtime (Dialectic Knowledge System) is a peer subcommand at
 ``tessellum dks``. It uses Composer's LLMBackend abstractions but is
@@ -404,7 +405,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     scaffold_cmd = composer_sub.add_parser(
         "scaffold-sidecar",
-        help="Generate a starter pipeline sidecar from a canonical's section anchors.",
+        help="Print starter ```yaml``` contract blocks (one per section anchor) "
+        "to paste into a single-file skill canonical.",
     )
     scaffold_cmd.add_argument(
         "skill",
@@ -412,20 +414,10 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Skill canonical (markdown) with <!-- :: section_id = X :: --> anchors.",
     )
     scaffold_cmd.add_argument(
-        "--output",
-        "-o",
-        type=Path,
-        help="Where to write the sidecar (default: <skill>.pipeline.yaml).",
-    )
-    scaffold_cmd.add_argument(
-        "--force",
-        action="store_true",
-        help="Overwrite the sidecar if it already exists.",
-    )
-    scaffold_cmd.add_argument(
         "--stdout",
         action="store_true",
-        help="Print the sidecar to stdout instead of writing it.",
+        help="Print only the contract blocks (suppress the trailing guidance "
+        "note on stderr).",
     )
     scaffold_cmd.set_defaults(func=run_composer_scaffold_cli)
 
@@ -1402,13 +1394,13 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
 
 
 def run_composer_scaffold_cli(args: argparse.Namespace) -> int:
-    """Generate a starter pipeline sidecar from a canonical's anchors.
+    """Print starter ```yaml``` contract blocks for a single-file skill.
 
     Reads ``<!-- :: section_id = X :: -->`` markers in the canonical and
-    emits one CORE step per section, chained by ``depends_on`` (each step
-    waits on the previous one). Materializer defaults to ``no_op``;
-    aggregation defaults to ``per_leaf``. The author then fills in real
-    materializers, schemas, and prompt templates.
+    emits one CORE-step contract block per section, chained by ``depends_on``
+    (each step waits on the previous one). Materializer defaults to
+    ``no_op``; aggregation defaults to ``per_leaf``. The author pastes each
+    block beneath its section heading, then writes the step's prompt prose.
     """
     from tessellum.composer.skill_extractor import (
         SkillExtractionError,
@@ -1439,73 +1431,57 @@ def run_composer_scaffold_cli(args: argparse.Namespace) -> int:
         )
         return 1
 
-    sidecar_text = _render_sidecar(skill_path.stem, section_ids)
-
-    if args.stdout:
-        print(sidecar_text, end="")
-        return 0
-
-    output: Path = (
-        args.output.expanduser().resolve()
-        if args.output is not None
-        else skill_path.with_suffix(".pipeline.yaml")
-    )
-    if output.exists() and not args.force:
+    # Single-file world: there is no separate sidecar to write. Emit the
+    # per-section ```yaml``` contract blocks for the author to paste beneath
+    # each heading in the canonical.
+    blocks = _render_contract_blocks(skill_path.stem, section_ids)
+    print(blocks, end="" if blocks.endswith("\n") else "\n")
+    if not args.stdout:
         print(
-            f"tessellum composer scaffold-sidecar: {output} already exists. "
-            f"Pass --force to overwrite, or --stdout to print without writing.",
+            f"\n# {len(section_ids)} section(s) in {skill_path.name}: "
+            f"{', '.join(section_ids)}",
             file=sys.stderr,
         )
-        return 2
-
-    output.write_text(sidecar_text, encoding="utf-8")
-    print(f"scaffolded {output}")
-    print(f"  {len(section_ids)} step(s) from {len(section_ids)} section anchor(s):")
-    for sid in section_ids:
-        print(f"    - {sid}")
-    print()
-    print("  next: fill in materializer / expected_output_schema / prompt_template per step,")
-    print(f"        then `tessellum composer validate {skill_path}`")
+        print(
+            "# Paste each contract block beneath its heading, write the prompt "
+            f"prose, then `tessellum composer validate {skill_path.name}`.",
+            file=sys.stderr,
+        )
     return 0
 
 
-def _render_sidecar(skill_stem: str, section_ids: list[str]) -> str:
-    """Emit a placeholder pipeline.yaml body covering ``section_ids`` in order."""
-    lines = [
-        "# Scaffolded by `tessellum composer scaffold-sidecar`.",
-        "# One CORE step per `<!-- :: section_id = X :: -->` anchor in",
-        f"# the canonical {skill_stem}.md, chained linearly via depends_on.",
-        "#",
-        "# Next steps:",
-        "#   1. Pick a materializer per step (no_op / body_markdown_to_file /",
-        "#      body_markdown_frontmatter_to_file / edits_apply_to_files /",
-        "#      edits_apply_xml_tags).",
-        "#   2. Add `expected_output_schema:` for any step whose materializer",
-        "#      has required fields (the validator will tell you which).",
-        "#   3. Replace placeholder prompt_template content with your prompts.",
-        "#   4. Validate: `tessellum composer validate <this_skill.md>`",
-        '',
-        'version: "1.0"',
-        'pipeline:',
+def _render_contract_blocks(skill_stem: str, section_ids: list[str]) -> str:
+    """Emit one ```yaml``` contract block per section, to paste under each
+    anchor in the single-file canonical (one CORE step per section, chained
+    linearly via depends_on). This is authoring guidance printed to stdout;
+    the author pastes each block beneath its section heading.
+    """
+    out: list[str] = [
+        f"# Contract blocks for {skill_stem}.md — paste each ```yaml``` block",
+        "# directly beneath its matching `<!-- :: section_id = X :: -->`",
+        "# heading, then write the step's prompt prose after it.",
+        "",
     ]
-
     for i, sid in enumerate(section_ids):
         depends = f"[{section_ids[i - 1]}]" if i > 0 else "[]"
-        lines.extend(
+        out.extend(
             [
-                f"  - section_id: {sid}",
-                "    role: CORE                  # CORE | DEFERRED | INFRA",
-                "    aggregation: per_leaf       # per_leaf | cross_leaf | corpus_wide",
-                "    batchable: false",
-                f"    depends_on: {depends}",
-                "    materializer: no_op         # pick a wire format from MATERIALIZER_CONTRACTS",
-                f"    output_key: {sid}_output",
-                '    prompt_template: |',
-                f'      TODO: fill in the prompt for "{sid}".',
-                '      You may reference {{leaf.X}} per-leaf data and',
-                '      {{upstream.Y}} outputs from previous steps.',
+                f"## <heading> <!-- :: section_id = {sid} :: -->",
+                "",
+                "```yaml",
+                "role: CORE                  # CORE | DEFERRED | INFRA",
+                "aggregation: per_leaf       # per_leaf | cross_leaf | corpus_wide",
+                "batchable: false",
+                f"depends_on: {depends}",
+                "materializer: no_op         # a key from MATERIALIZER_CONTRACTS",
+                f"output_key: {sid}_output",
+                "```",
+                "",
+                f'TODO: write the prompt for "{sid}". Reference {{{{leaf.X}}}}'
+                " per-leaf data and {{upstream.Y}} outputs from previous steps.",
                 "",
             ]
         )
+    return "\n".join(out)
 
-    return "\n".join(lines)
+

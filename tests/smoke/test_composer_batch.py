@@ -23,6 +23,10 @@ from tessellum.composer import (
 )
 
 
+# Single-file skill: the one pipeline step is an H2 section carrying its
+# ``<!-- :: section_id = X :: -->`` anchor, a leading ```yaml``` contract
+# block (every step field except section_id + prompt_template), and the
+# prompt prose after it. No ``.pipeline.yaml`` sidecar, no ``pipeline_metadata``.
 _CANONICAL = textwrap.dedent(
     """\
     ---
@@ -40,30 +44,22 @@ _CANONICAL = textwrap.dedent(
     date of note: 2026-05-10
     status: active
     building_block: procedure
-    pipeline_metadata: ./{name}.pipeline.yaml
     ---
 
     # {name}
 
     ## Step 1 <!-- :: section_id = step_1 :: -->
 
-    Body.
-    """
-)
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: out
+    ```
 
-
-_SIDECAR = textwrap.dedent(
-    """\
-    version: "1.0"
-    pipeline:
-      - section_id: step_1
-        role: CORE
-        aggregation: corpus_wide
-        batchable: false
-        depends_on: []
-        materializer: no_op
-        prompt_template: "Hi."
-        output_key: out
+    Hi.
     """
 )
 
@@ -71,7 +67,6 @@ _SIDECAR = textwrap.dedent(
 def _make_skill(tmp_path: Path, name: str) -> Path:
     skill = tmp_path / f"{name}.md"
     skill.write_text(_CANONICAL.format(name=name), encoding="utf-8")
-    (tmp_path / f"{name}.pipeline.yaml").write_text(_SIDECAR, encoding="utf-8")
     return skill
 
 
