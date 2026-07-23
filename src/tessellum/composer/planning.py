@@ -24,6 +24,7 @@ don't themselves dispatch anything.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Mapping
@@ -152,6 +153,81 @@ def should_skip_unchanged(
     return (prior is not None and prior == fp), fp
 
 
+def leaf_fingerprint(leaf: dict, *, source_key: str | None = None) -> str:
+    """Fingerprint a leaf's *content* for the ``$0`` change-detection gate.
+
+    The scheduler assigns a positional ``_id`` (``leaf_0`` …) that changes
+    with ordering, so it is excluded — the fingerprint reflects only the
+    leaf's actual input:
+
+    - ``source_key`` given → fingerprint just that field (e.g. the source
+      document / payload), the most precise "did the input change?" signal.
+    - ``source_key`` ``None`` → fingerprint the whole leaf minus ``_id``,
+      serialized as canonical JSON (sorted keys) so key-order doesn't
+      perturb the hash.
+
+    Pure and deterministic.
+    """
+    if source_key is not None:
+        return content_fingerprint(_stringify_value(leaf.get(source_key)))
+    stable = {k: v for k, v in leaf.items() if k != "_id"}
+    return content_fingerprint(json.dumps(stable, sort_keys=True, ensure_ascii=False))
+
+
+def partition_unchanged_leaves(
+    leaves: list[dict],
+    prior_fingerprints: Mapping[str, str],
+    *,
+    id_key: str = "_id",
+    source_key: str | None = None,
+) -> tuple[list[dict], list[dict], dict[str, str]]:
+    """Split ``leaves`` into (to_run, skipped) by the ``$0`` change-detection
+    pre-gate, and return the fresh fingerprint map to persist.
+
+    A leaf is **skipped** iff its ``id_key`` has a recorded fingerprint AND
+    that fingerprint equals the leaf's current :func:`leaf_fingerprint` — a
+    new, changed, or unkeyed leaf is always run (fail-open toward doing the
+    work). This runs at the *leaf-admission* layer (before the scheduler),
+    so it never interferes with mid-DAG ``upstream`` accumulation.
+
+    Args:
+        leaves: The candidate leaf dicts.
+        prior_fingerprints: ``{leaf_id: fingerprint}`` from a prior run.
+        id_key: The leaf field holding its stable id (default ``"_id"``).
+            A leaf missing this key is always run (can't be matched).
+        source_key: Optional field to fingerprint instead of the whole
+            leaf (see :func:`leaf_fingerprint`).
+
+    Returns:
+        ``(to_run, skipped, fresh_fingerprints)``. ``fresh_fingerprints``
+        carries forward every prior entry and adds/updates one per leaf
+        that has an id — so a skipped leaf keeps its fingerprint and a run
+        leaf's fingerprint is refreshed. Persist it for the next run.
+    """
+    to_run: list[dict] = []
+    skipped: list[dict] = []
+    fresh: dict[str, str] = dict(prior_fingerprints)
+    for leaf in leaves:
+        leaf_id = leaf.get(id_key)
+        fp = leaf_fingerprint(leaf, source_key=source_key)
+        if leaf_id is None:
+            to_run.append(leaf)  # unkeyed → can't match → run
+            continue
+        prior = prior_fingerprints.get(leaf_id)
+        if prior is not None and prior == fp:
+            skipped.append(leaf)
+        else:
+            to_run.append(leaf)
+        fresh[leaf_id] = fp
+    return to_run, skipped, fresh
+
+
+def _stringify_value(value) -> str:
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, sort_keys=True, ensure_ascii=False)
+    return str(value)
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -164,4 +240,6 @@ __all__ = [
     "classify_planning_depth",
     "content_fingerprint",
     "should_skip_unchanged",
+    "leaf_fingerprint",
+    "partition_unchanged_leaves",
 ]

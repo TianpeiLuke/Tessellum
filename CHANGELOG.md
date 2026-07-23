@@ -162,6 +162,14 @@ Activates the credential pool (the *which-key* dimension) the as-built audit fou
 - `PooledBackend` wraps an inner backend + a `CredentialPool`: it leases the least-used available key per `call`, applies it via an injected `key_applier` (`(inner, key_id) -> None` — provider-specific key attachment stays out of this module), dispatches, releases on success, and tags the served key in `metadata["credential_key"]`. On a raised failure it classifies the cause and reports it to the pool — a persistent `rate_limit` benches the key briefly, `quota`/`auth` bench it long, a `transient` blip keeps it — then **re-raises** so the executor's retry ladder retries. **Composes cleanly with `execute_step_with_retry`**: a 429'd key benches, the retry lands on a *fresh* leased key (verified: `attempts=2`, second key wins). No scheduler change needed. Multi-worker safe via the pool's per-key leasing lock.
 - `classify_rotation_cause(msg)` — pure `transient|rate_limit|quota|auth` classifier, precedence quota > rate_limit > auth > transient. Lives in `credential_pool.py` (not `executor`) to keep `llm`/`credential_pool` free of an executor import cycle.
 
+### Composer v4 — wire the `$0` change-detection pre-gate (planner economics) — 2026-07-22
+
+Activates the last planner-economics primitive the as-built audit found built-but-uncalled: unchanged leaves are now skipped *before* dispatch. Suite `1128 → 1138 passing` (+10 tests). Opt-in; runs at the leaf-admission layer (never mid-DAG, so `upstream` accumulation is untouched).
+
+**Added — `partition_unchanged_leaves` / `leaf_fingerprint` (`composer/planning.py`) + `tessellum composer run --skip-unchanged`.**
+- `leaf_fingerprint(leaf, source_key=None)` — SHA-256 of a leaf's *content*, excluding the scheduler's positional `_id` (so re-ordering/re-id doesn't perturb it); `source_key` narrows it to one field. `partition_unchanged_leaves(leaves, prior_fingerprints, ...)` splits leaves into `(to_run, skipped)` + a fresh fingerprint map — a leaf is skipped only when its recorded fingerprint matches exactly (new/changed/unkeyed → always run, fail-open). Carries prior entries forward so a skipped leaf keeps its fingerprint.
+- CLI `--skip-unchanged <fingerprints.json>` (+ `--skip-unchanged-key`): loads the store, filters unchanged leaves before `run_pipeline_dynamic`, rewrites the store after, and reports the skip count. A corrupt/missing store fails open (runs everything). **Fix**: when the pre-gate filters *every* leaf out, the run short-circuits to a clean 0-invocation result instead of falling into the scheduler's empty-leaves `corpus`-fallback (which would re-run the step). Verified end-to-end: run→all execute; identical re-run→0 invocations; change one leaf→only that one runs.
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

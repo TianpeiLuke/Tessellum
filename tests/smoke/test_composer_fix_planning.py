@@ -29,6 +29,8 @@ from tessellum.composer.planning import (
     LeafComplexity,
     classify_planning_depth,
     content_fingerprint,
+    leaf_fingerprint,
+    partition_unchanged_leaves,
     should_skip_unchanged,
 )
 
@@ -252,3 +254,78 @@ def test_should_skip_unchanged_changed_source() -> None:
 def test_should_skip_unchanged_unknown_leaf() -> None:
     skip, _ = should_skip_unchanged("l1", "x", {})
     assert not skip  # never seen → do the work
+
+
+# ── leaf_fingerprint / partition_unchanged_leaves (the leaf-admission gate) ──
+
+
+def test_leaf_fingerprint_excludes_positional_id() -> None:
+    # The scheduler's positional _id must not perturb the fingerprint.
+    assert leaf_fingerprint({"_id": "leaf_0", "body": "X"}) == leaf_fingerprint(
+        {"_id": "leaf_9", "body": "X"}
+    )
+
+
+def test_leaf_fingerprint_reflects_content_change() -> None:
+    assert leaf_fingerprint({"_id": "a", "body": "X"}) != leaf_fingerprint(
+        {"_id": "a", "body": "Y"}
+    )
+
+
+def test_leaf_fingerprint_key_order_stable() -> None:
+    assert leaf_fingerprint({"_id": "a", "x": 1, "y": 2}) == leaf_fingerprint(
+        {"y": 2, "_id": "a", "x": 1}
+    )
+
+
+def test_leaf_fingerprint_source_key_isolates_field() -> None:
+    a = leaf_fingerprint({"_id": "a", "src": "same", "noise": "1"}, source_key="src")
+    b = leaf_fingerprint({"_id": "a", "src": "same", "noise": "2"}, source_key="src")
+    assert a == b  # only `src` matters
+    c = leaf_fingerprint({"_id": "a", "src": "diff"}, source_key="src")
+    assert c != a
+
+
+def test_partition_first_run_runs_all() -> None:
+    leaves = [{"_id": "a", "body": "X"}, {"_id": "b", "body": "Y"}]
+    to_run, skipped, fresh = partition_unchanged_leaves(leaves, {})
+    assert len(to_run) == 2
+    assert skipped == []
+    assert set(fresh) == {"a", "b"}
+
+
+def test_partition_skips_unchanged_runs_changed() -> None:
+    leaves = [{"_id": "a", "body": "X"}, {"_id": "b", "body": "Y"}, {"_id": "c", "body": "Z"}]
+    _, _, fresh = partition_unchanged_leaves(leaves, {})
+    # b changes; a + c unchanged.
+    leaves2 = [{"_id": "a", "body": "X"}, {"_id": "b", "body": "CHANGED"}, {"_id": "c", "body": "Z"}]
+    to_run, skipped, fresh2 = partition_unchanged_leaves(leaves2, fresh)
+    assert [x["_id"] for x in to_run] == ["b"]
+    assert [x["_id"] for x in skipped] == ["a", "c"]
+    # Fresh store refreshes b's fingerprint, keeps a/c.
+    assert fresh2["b"] == leaf_fingerprint(leaves2[1])
+    assert fresh2["a"] == fresh["a"]
+
+
+def test_partition_all_unchanged_skips_all() -> None:
+    leaves = [{"_id": "a", "body": "X"}, {"_id": "b", "body": "Y"}]
+    _, _, fresh = partition_unchanged_leaves(leaves, {})
+    to_run, skipped, _ = partition_unchanged_leaves(leaves, fresh)
+    assert to_run == []
+    assert len(skipped) == 2
+
+
+def test_partition_unkeyed_leaf_always_runs() -> None:
+    to_run, skipped, fresh = partition_unchanged_leaves(
+        [{"body": "X"}], {"anything": "fp"}
+    )
+    assert len(to_run) == 1
+    assert skipped == []
+    assert fresh == {"anything": "fp"}  # no id → no fingerprint recorded
+
+
+def test_partition_carries_forward_prior_entries() -> None:
+    # A prior fingerprint for a leaf NOT in this run's set is preserved.
+    fresh = partition_unchanged_leaves([{"_id": "a", "body": "X"}], {"old": "fp"})[2]
+    assert fresh["old"] == "fp"
+    assert "a" in fresh

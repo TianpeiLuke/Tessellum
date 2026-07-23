@@ -687,6 +687,44 @@ def test_run_dynamic_context_strategy_bounds_fail_soft(tmp_path, capsys):
     assert payload["error_count"] == 0
 
 
+def test_run_dynamic_skip_unchanged_pre_gate(perleaf_skill, tmp_path, capsys):
+    """--skip-unchanged: first run executes all leaves + writes the store;
+    an identical second run skips them all (0 invocations); changing a leaf
+    re-runs just that one."""
+    fps = tmp_path / "fp.json"
+
+    def _run(leaves_list):
+        leaves = tmp_path / "leaves.json"
+        leaves.write_text(json.dumps(leaves_list), encoding="utf-8")
+        code = main(
+            [
+                "composer", "run", str(perleaf_skill),
+                "--vault", str(tmp_path / "vault"),
+                "--no-trace", "--leaves", str(leaves),
+                "--dynamic", "--skip-unchanged", str(fps),
+                "--format", "json",
+            ]
+        )
+        return code, json.loads(capsys.readouterr().out)
+
+    # Run 1: fresh store → both leaves run.
+    code1, p1 = _run([{"_id": "a", "id": "a", "body": "X"}, {"_id": "b", "id": "b", "body": "Y"}])
+    assert code1 == 0
+    assert p1["step_invocation_count"] == 2
+    assert fps.is_file()
+
+    # Run 2: identical leaves → all skipped → 0 invocations (no corpus fallback).
+    code2, p2 = _run([{"_id": "a", "id": "a", "body": "X"}, {"_id": "b", "id": "b", "body": "Y"}])
+    assert code2 == 0
+    assert p2["step_invocation_count"] == 0
+    assert p2["step_results"] == []
+
+    # Run 3: leaf b changed → only b runs.
+    code3, p3 = _run([{"_id": "a", "id": "a", "body": "X"}, {"_id": "b", "id": "b", "body": "CHANGED"}])
+    assert code3 == 0
+    assert p3["step_invocation_count"] == 1
+
+
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
     canonical = _CANONICAL.replace(
         "pipeline_metadata: ./skill_demo.pipeline.yaml",

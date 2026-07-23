@@ -145,6 +145,8 @@ from tessellum.composer.planning import (
     LeafComplexity,
     classify_planning_depth,
     content_fingerprint,
+    leaf_fingerprint,
+    partition_unchanged_leaves,
     should_skip_unchanged,
 )
 from tessellum.composer.scheduler import (
@@ -264,6 +266,8 @@ __all__ = [
     "classify_planning_depth",
     "content_fingerprint",
     "should_skip_unchanged",
+    "leaf_fingerprint",
+    "partition_unchanged_leaves",
     # Credential pool + budgets (Phase 5)
     "CredentialPool",
     "CredentialPoolError",

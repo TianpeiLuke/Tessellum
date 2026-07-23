@@ -41,6 +41,7 @@ from tessellum.composer import (
     build_wave_gate,
     compile_skill,
     get_assembler,
+    partition_unchanged_leaves,
     load_pipeline,
     load_scenarios,
     run_batch,
@@ -258,6 +259,23 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="Char budget for --context-strategy (default: the assembler's "
         "built-in cap). Ignored without --context-strategy.",
+    )
+    run_cmd.add_argument(
+        "--skip-unchanged",
+        type=Path,
+        default=None,
+        help="`$0` change-detection pre-gate: a JSON fingerprint store "
+        "({leaf_id: fingerprint}). Before running, leaves whose content is "
+        "unchanged since the recorded fingerprint are skipped (not "
+        "dispatched); the store is rewritten with fresh fingerprints after. "
+        "A new/changed/unkeyed leaf always runs (fail-open). Ignored "
+        "without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--skip-unchanged-key",
+        default=None,
+        help="Leaf field to fingerprint for --skip-unchanged (default: the "
+        "whole leaf minus its positional id).",
     )
     run_cmd.set_defaults(func=run_composer_run_cli)
 
@@ -592,6 +610,32 @@ def run_composer_compile(args: argparse.Namespace) -> int:
 # ── tessellum composer run ─────────────────────────────────────────────────
 
 
+def _emit_empty_run(compiled, output_format: str) -> None:
+    """Emit a clean zero-invocation result (all leaves skipped by the
+    ``$0`` pre-gate). Mirrors the normal output shape with empty results."""
+    if output_format == "json":
+        print(
+            json.dumps(
+                {
+                    "skill_name": compiled.skill_name,
+                    "started_at": None,
+                    "duration_seconds": 0.0,
+                    "leaf_count": 0,
+                    "step_invocation_count": 0,
+                    "error_count": 0,
+                    "trace_path": None,
+                    "step_results": [],
+                },
+                indent=2,
+            )
+        )
+    else:
+        print(
+            f"ran {compiled.skill_name}  (0 step invocation(s); "
+            f"all leaves skipped by --skip-unchanged)"
+        )
+
+
 def run_composer_run_cli(args: argparse.Namespace) -> int:
     skill_path: Path = args.skill.expanduser().resolve()
 
@@ -720,6 +764,45 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
         # Assemble only the machinery the flags request; everything defaults
         # off so `--dynamic` alone is a straight parallel run with parity to
         # the serial path.
+
+        # `$0` change-detection pre-gate (leaf-admission layer): drop leaves
+        # whose content is unchanged since the recorded fingerprint BEFORE
+        # dispatch, then rewrite the store. Runs here (not mid-DAG) so it
+        # never interferes with upstream accumulation.
+        skip_store_path = getattr(args, "skip_unchanged", None)
+        if skip_store_path is not None:
+            store_path = skip_store_path.expanduser().resolve()
+            prior_fps: dict = {}
+            if store_path.is_file():
+                try:
+                    prior_fps = json.loads(store_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    prior_fps = {}  # fail-open: a bad store runs everything
+            leaves, skipped_leaves, fresh_fps = partition_unchanged_leaves(
+                leaves,
+                prior_fps,
+                source_key=getattr(args, "skip_unchanged_key", None),
+            )
+            store_path.parent.mkdir(parents=True, exist_ok=True)
+            store_path.write_text(
+                json.dumps(fresh_fps, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            if skipped_leaves:
+                print(
+                    f"tessellum composer run: --skip-unchanged skipped "
+                    f"{len(skipped_leaves)} unchanged leaf(s); running "
+                    f"{len(leaves)}.",
+                    file=sys.stderr,
+                )
+            # If the pre-gate filtered EVERY leaf out, there is nothing to
+            # run. Emit a clean zero-invocation result and return — do NOT
+            # fall through to run_pipeline_dynamic, whose empty-leaves path
+            # would synthesize a `corpus` leaf and re-run the step.
+            if skipped_leaves and not leaves:
+                _emit_empty_run(compiled, args.output_format)
+                return 0
+
         manifest = (
             Manifest.load(args.manifest.expanduser().resolve())
             if getattr(args, "manifest", None) is not None
