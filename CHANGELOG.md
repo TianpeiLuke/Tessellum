@@ -16,6 +16,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 - `tessellum init` / `capture` / `format check` / `search` CLI subcommands
 - Hatch `force-include` wiring so `vault/resources/templates/` ships in the wheel
 
+## [1.0.0] — 2026-07-22
+
+**Composer v4 dynamic-workflow refactor (Phases 1–16)** — the 1.0 milestone. The composer moves from a serial `run_pipeline` to a wave-parallel, resumable, gated, self-claiming dynamic pipeline behind an opt-in `tessellum composer run --dynamic`; the serial default path stays byte-for-byte unchanged (IDENT-4). Adds the resume manifest + error-class/full-jitter retry ladder, the self-claiming scheduler (continuous completion-driven, no wave barrier) + typed discriminated-union outcome, the gate engine + per-session close-gate + per-wave post-batch gate, a revert-to-BEST fix loop with a real LLM fixer, a credential pool (`PooledBackend`), a `$0` change-detection pre-gate, the context assembler (fail-soft prompt bounding), a pluggable sign-off approver, run-level budgets, a Python skills-as-tools + capability registry, a `composer-ts/` TypeScript orchestration bridge (bridge-not-port), and a production Amazon Bedrock backend. Suite 912 → 1152. Per-phase detail below.
+
 ### Composer v4 refactor — Phase 1 (manifest + retry hardening) — 2026-07-22
 
 First phase of the Composer v4 dynamic-workflow refactor. Turns the composer from a serial `run_pipeline` toward a wave-parallel, resumable, gated pipeline by hardening the resume manifest and the retry ladder. **All changes additive; `run_pipeline` (serial default path) byte-for-byte unchanged.** Suite `912 → 961 passing` (+49 tests), 1 skipped.
