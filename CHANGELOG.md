@@ -138,6 +138,14 @@ A third production LLM backend: Claude via Amazon Bedrock, for AWS-internal depl
 **Added — `tessellum composer run --backend bedrock`.**
 - New `--backend bedrock` choice + `--region` / `--aws-profile` flags; `--model` now defaults per-backend (`claude-sonnet-4-6` for anthropic, the `us.` profile for bedrock). Works with `--dynamic` (shares the backend). +12 fake-client unit tests (default profile-model, region metadata, shared extraction) — plus a manual live run verified end-to-end against a real Bedrock account.
 
+### Composer v4 — wire the per-wave post-batch gate into dispatch — 2026-07-22
+
+Activates a standalone Phase-3 primitive the as-built audit found built-but-uncalled: the per-wave cross-set gate now runs in the live pipeline. Suite `1101 → 1103 passing` (+2 CLI tests). Opt-in; default off preserves parity.
+
+**Added — `run_pipeline_dynamic(wave_gate=...)` + `tessellum composer run --wave-gate`.**
+- After the whole wave completes, an optional `GateSuite` runs once over every written note path — cross-set checks a per-session close-gate structurally can't see (e.g. two sessions writing the SAME target path, a dedup miss). On FAIL, the offending results are rewritten to errored (cause `wave_gate`), so `error_count` + `classify_outcome` (`CONTRACT_VIOLATION`) reflect the cross-set violation. Sessions that already errored or wrote no file are untouched.
+- CLI `--wave-gate` (under `--dynamic`) wires `build_wave_gate()` (the dedup sweep). Verified end-to-end: duplicate paths across sessions → both flagged; distinct paths → clean (no false positive).
+
 ## [0.0.60] — 2026-05-11
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)

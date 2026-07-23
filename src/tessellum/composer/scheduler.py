@@ -475,6 +475,7 @@ def run_pipeline_dynamic(
     max_fix_rounds: int = 0,
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None" = None,
     budget: RunBudget | None = None,
+    wave_gate: GateSuite | None = None,
 ) -> RunResult:
     """Wave-parallel, self-claiming variant of :func:`run_pipeline`.
 
@@ -551,6 +552,12 @@ def run_pipeline_dynamic(
             refused spend halts that leaf with a typed
             ``BUDGET_EXHAUSTED`` outcome (and a ``blocked`` manifest row)
             without calling the backend. ``None`` = unbounded (parity).
+        wave_gate: Optional per-wave post-batch :class:`GateSuite`. When
+            set, runs once after the whole wave over every written note
+            path — cross-set checks (e.g. duplicate target paths) a
+            per-session close-gate can't see. A FAIL rewrites the
+            offending results to errored (``error_count`` reflects it).
+            ``None`` = no post-batch gate (parity).
 
     Returns:
         RunResult — byte-comparable to :func:`run_pipeline`'s (modulo the
@@ -740,6 +747,17 @@ def run_pipeline_dynamic(
 
     # Rebuild ordered step_results to match the serial path exactly.
     step_results = [results[k] for k in sorted(results.keys())]
+
+    # Per-wave post-batch gate (opt-in): cross-set checks a per-session
+    # close-gate structurally can't see (e.g. two sessions writing the SAME
+    # target path — a dedup miss). Runs once, after the whole wave, over
+    # every note path written by a still-clean result. On FAIL, the
+    # offending results are rewritten to errored so the run's error_count +
+    # typed outcome reflect the cross-set violation. When ``wave_gate`` is
+    # None (the default) this is skipped — parity preserved.
+    if wave_gate is not None:
+        step_results = _apply_wave_gate(step_results, wave_gate)
+
     error_count = sum(1 for r in step_results if r.error is not None)
     duration = time.monotonic() - started
 
@@ -779,6 +797,59 @@ def run_pipeline_dynamic(
         error_count=error_count,
         trace_path=trace_path,
     )
+
+
+def _apply_wave_gate(
+    step_results: list[StepResult],
+    wave_gate: GateSuite,
+) -> list[StepResult]:
+    """Run the per-wave cross-set gate over all written note paths.
+
+    The gate's predicates take the *list* of every note path a clean
+    result wrote (``files_written`` + ``files_applied``). A blocking issue
+    names the offending path(s); every clean result that wrote such a path
+    is rewritten to an errored ``StepResult`` (cause ``wave_gate``), so the
+    cross-set violation surfaces in ``error_count`` and ``classify_outcome``
+    exactly like a per-session gate failure. Results that already errored,
+    or wrote no file, are untouched.
+    """
+    note_paths: list[str] = []
+    for r in step_results:
+        if r.error is not None:
+            continue
+        for p in list(r.materialized.files_written) + list(r.materialized.files_applied):
+            note_paths.append(str(p))
+    if not note_paths:
+        return step_results
+
+    composite = wave_gate.evaluate(note_paths)
+    if composite.passed:
+        return step_results
+
+    # Collect the offending paths named in the blocking issues (the dedup
+    # predicate puts the path in the issue message; match by substring).
+    offending_messages = [i.message for i in composite.blocking_issues]
+
+    def _wrote_offending(r: StepResult) -> bool:
+        for p in list(r.materialized.files_written) + list(r.materialized.files_applied):
+            if any(str(p) in msg for msg in offending_messages):
+                return True
+        return False
+
+    cause = composite.first_failure_cause or "wave_gate"
+    patched: list[StepResult] = []
+    for r in step_results:
+        if r.error is None and _wrote_offending(r):
+            patched.append(
+                dataclasses.replace(
+                    r,
+                    error=f"wave-gate blocked ({cause}): {r.section_id}",
+                    error_class="validation",
+                )
+            )
+        else:
+            patched.append(r)
+    return patched
 
 
 def _run_close_gate(

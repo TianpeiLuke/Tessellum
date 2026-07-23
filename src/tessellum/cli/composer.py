@@ -38,6 +38,7 @@ from tessellum.composer import (
     PipelineValidationError,
     RunBudget,
     build_close_gate,
+    build_wave_gate,
     compile_skill,
     load_pipeline,
     load_scenarios,
@@ -232,6 +233,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=Path,
         help="Write a statistics.json rollup (per-stage counts + duration) for "
         "--dynamic. Ignored without --dynamic.",
+    )
+    run_cmd.add_argument(
+        "--wave-gate",
+        action="store_true",
+        help="Enable the per-wave post-batch gate for --dynamic: a cross-set "
+        "sweep (e.g. duplicate target paths across sessions) run once after "
+        "the wave. Offending results are flagged errored. Ignored without "
+        "--dynamic.",
     )
     run_cmd.set_defaults(func=run_composer_run_cli)
 
@@ -713,6 +722,7 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             if getattr(args, "stats", None) is not None
             else None
         )
+        wave_gate = build_wave_gate() if getattr(args, "wave_gate", False) else None
         run = run_pipeline_dynamic(
             compiled,
             leaves=leaves,
@@ -725,6 +735,7 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             close_gate=close_gate,
             budget=budget,
             stats_path=stats_path,
+            wave_gate=wave_gate,
         )
         # The manifest is a rebuildable projection; persist the final state so
         # a later run can resume from it (the write-side already saved per-leaf

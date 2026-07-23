@@ -545,6 +545,119 @@ def test_run_dynamic_close_gate_blocks_ungrounded(tmp_path, capsys):
     assert "close-gate blocked (grounding)" in payload["step_results"][0]["error"]
 
 
+def _writer_skill_for_wave(tmp_path: Path) -> Path:
+    """A per-leaf writer skill for the --wave-gate test."""
+    canonical = textwrap.dedent(
+        """\
+        ---
+        tags:
+          - resource
+          - skill
+        keywords:
+          - alpha
+          - beta
+          - gamma
+        topics:
+          - X
+          - Y
+        language: markdown
+        date of note: 2026-05-10
+        status: active
+        building_block: procedure
+        pipeline_metadata: ./skill_ww.pipeline.yaml
+        ---
+
+        # WW
+
+        ## Step 1: write <!-- :: section_id = step_1 :: -->
+
+        Write for {{leaf.id}}.
+        """
+    )
+    sidecar = textwrap.dedent(
+        """\
+        version: "1.0"
+        pipeline:
+          - section_id: step_1
+            role: CORE
+            aggregation: per_leaf
+            batchable: false
+            depends_on: []
+            materializer: body_markdown_to_file
+            expected_output_schema:
+              type: object
+              required: [output_path, body_markdown]
+            prompt_template: "Write."
+        """
+    )
+    skill = tmp_path / "skill_ww.md"
+    skill.write_text(canonical, encoding="utf-8")
+    (tmp_path / "skill_ww.pipeline.yaml").write_text(sidecar, encoding="utf-8")
+    return skill
+
+
+def test_run_dynamic_wave_gate_flags_duplicate_paths(tmp_path, capsys):
+    """--wave-gate: two sessions writing the SAME output_path is a cross-set
+    dedup violation a per-session gate can't see → both flagged errored."""
+    skill = _writer_skill_for_wave(tmp_path)
+    # Both leaves get the SAME output_path via the default mock response.
+    responses = tmp_path / "resp.json"
+    responses.write_text(
+        json.dumps(
+            {"Write": json.dumps({"output_path": "notes/dup.md", "body_markdown": "# X\n"})}
+        ),
+        encoding="utf-8",
+    )
+    leaves = _leaves_file(tmp_path, ["a", "b"])
+    code = main(
+        [
+            "composer", "run", str(skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--mock-responses", str(responses),
+            "--dynamic", "--wave-gate",
+            "--format", "json",
+        ]
+    )
+    assert code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_count"] == 2
+    assert all(
+        "wave-gate blocked (dedup)" in r["error"] for r in payload["step_results"]
+    )
+
+
+def test_run_dynamic_wave_gate_clean_when_paths_distinct(tmp_path, capsys):
+    """--wave-gate passes when sessions write distinct paths (no false positive)."""
+    skill = _writer_skill_for_wave(tmp_path)
+    # Per-leaf distinct paths: the rendered prompt is "Write for <id>." where
+    # <id> is the leaf's `id` field (a / b) — key each response on that.
+    responses = tmp_path / "resp.json"
+    responses.write_text(
+        json.dumps(
+            {
+                "Write for a": json.dumps({"output_path": "notes/a.md", "body_markdown": "# A\n"}),
+                "Write for b": json.dumps({"output_path": "notes/b.md", "body_markdown": "# B\n"}),
+            }
+        ),
+        encoding="utf-8",
+    )
+    leaves = _leaves_file(tmp_path, ["a", "b"])
+    code = main(
+        [
+            "composer", "run", str(skill),
+            "--vault", str(tmp_path / "vault"),
+            "--no-trace", "--leaves", str(leaves),
+            "--mock-responses", str(responses),
+            "--dynamic", "--wave-gate",
+            "--format", "json",
+        ]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["error_count"] == 0
+
+
 def test_run_pipeline_none_returns_0(tmp_path, capsys):
     canonical = _CANONICAL.replace(
         "pipeline_metadata: ./skill_demo.pipeline.yaml",
