@@ -132,6 +132,10 @@ def _run_phase_linear(
     )
 
 
+# P1 seam: the typed, snapshot-pinned replacement for this last-writer-wins
+# fold is :func:`tessellum.composer.proposals.merge_proposals` (fed by
+# :func:`~tessellum.composer.proposals.collect_proposals`). P0 leaves this
+# fold byte-identical — the typed path is additive and not called here.
 def _collect_structured(run: RunResult) -> dict[str, Any]:
     """Merge every step's structured output into one dict (last-writer-wins
     per key) — the phase's contribution to the running ``plan_doc``."""
