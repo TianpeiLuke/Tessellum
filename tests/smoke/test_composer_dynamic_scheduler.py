@@ -16,7 +16,11 @@ from __future__ import annotations
 
 import json
 import textwrap
+import time
+from contextlib import contextmanager
 from pathlib import Path
+
+import pytest
 
 from tessellum.composer import (
     Manifest,
@@ -24,6 +28,7 @@ from tessellum.composer import (
     ReadySetState,
     RunResult,
     SkipReason,
+    build_wave_gate,
     classify_outcome,
     compile_skill,
     compute_ready_set,
@@ -32,7 +37,11 @@ from tessellum.composer import (
 )
 from tessellum.composer.executor import StepResult
 from tessellum.composer.llm import LLMResponse
-from tessellum.composer.materializer import MaterializedOutput
+from tessellum.composer.materializer import (
+    MaterializedOutput,
+    MaterializerError,
+    materialize,
+)
 
 
 # ── compute_ready_set (pure functional core) ────────────────────────────────
@@ -276,6 +285,44 @@ def _compile_pl(tmp_path: Path):
     return compile_skill(sk)
 
 
+def _compile_writer(tmp_path: Path, *, instruction: str = "Write") -> tuple:
+    skill = tmp_path / "skill_writer.md"
+    skill.write_text(
+        textwrap.dedent(
+            f"""\
+            ---
+            tags: [resource, skill]
+            keywords: [alpha, beta, gamma]
+            topics: [X]
+            language: markdown
+            date of note: 2026-05-10
+            status: active
+            building_block: procedure
+            ---
+
+            # Writer
+
+            ## Step 1: write <!-- :: section_id = write :: -->
+
+            ```yaml
+            role: CORE
+            aggregation: per_leaf
+            batchable: false
+            depends_on: []
+            materializer: body_markdown_to_file
+            expected_output_schema:
+              type: object
+              required: [output_path, body_markdown]
+            ```
+
+            {instruction} for {{{{leaf.id}}}}.
+            """
+        ),
+        encoding="utf-8",
+    )
+    return compile_skill(skill), skill
+
+
 def _sig(run: RunResult):
     return [
         (r.section_id, r.leaf_id, r.error, r.attempts,
@@ -303,6 +350,387 @@ def test_dynamic_matches_serial_step_results(tmp_path: Path) -> None:
     assert serial.error_count == dynamic.error_count == 0
     # Same leaves, same order.
     assert [leaf["_id"] for leaf in dynamic.leaves] == ["leaf_0", "leaf_1", "leaf_2"]
+
+
+def test_dynamic_resume_reconstructs_upstream_and_skips_verified_leaves(
+    tmp_path: Path,
+) -> None:
+    compiled = _compile_pl(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    first_backend = MockBackend(default='{"rating": 5}')
+    first = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}, {"id": "b"}],
+        backend=first_backend,
+        vault_root=tmp_path / "vault",
+        manifest=Manifest.load(manifest_path),
+        run_id="job:1",
+        generation=1,
+    )
+    assert first.error_count == 0
+    assert len(first_backend.calls) == 3
+
+    resumed_backend = MockBackend(default='{"rating": 999}')
+    resumed = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}, {"id": "b"}],
+        backend=resumed_backend,
+        vault_root=tmp_path / "vault",
+        manifest=Manifest.load(manifest_path),
+        run_id="job:1-restart",
+        generation=1,
+    )
+    assert resumed.error_count == 0
+    assert resumed_backend.calls == []
+    assert [result.attempts for result in resumed.step_results] == [0, 0, 0]
+    assert [result.materialized.structured for result in resumed.step_results] == [
+        {"rating": 5},
+        {"rating": 5},
+        {"rating": 5},
+    ]
+
+
+def test_dynamic_resume_reexecutes_tampered_artifact(tmp_path: Path) -> None:
+    compiled, _skill = _compile_writer(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    vault = tmp_path / "vault"
+    original = json.dumps(
+        {"output_path": "notes/a.md", "body_markdown": "original"}
+    )
+    run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=MockBackend(default=original),
+        vault_root=vault,
+        manifest=Manifest.load(manifest_path),
+        run_id="job:1",
+        generation=1,
+    )
+    note = vault / "notes/a.md"
+    note.write_text("tampered", encoding="utf-8")
+
+    retry_backend = MockBackend(
+        default=json.dumps(
+            {"output_path": "notes/a.md", "body_markdown": "repaired"}
+        )
+    )
+    retried = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=retry_backend,
+        vault_root=vault,
+        manifest=Manifest.load(manifest_path),
+        run_id="job:2",
+        generation=1,
+    )
+
+    assert retried.error_count == 0
+    assert len(retry_backend.calls) == 1
+    assert note.read_text(encoding="utf-8") == "repaired"
+    assert Manifest.load(manifest_path).entries["write::leaf_0"].status == "done"
+
+
+def test_dynamic_resume_reexecutes_changed_plan_identity(tmp_path: Path) -> None:
+    compiled, _skill = _compile_writer(tmp_path, instruction="Write")
+    manifest_path = tmp_path / "manifest.json"
+    vault = tmp_path / "vault"
+    run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=MockBackend(
+            default=json.dumps(
+                {"output_path": "notes/a.md", "body_markdown": "version one"}
+            )
+        ),
+        vault_root=vault,
+        manifest=Manifest.load(manifest_path),
+        run_id="job:1",
+        generation=1,
+    )
+    changed, _skill = _compile_writer(tmp_path, instruction="Rewrite")
+    retry_backend = MockBackend(
+        default=json.dumps(
+            {"output_path": "notes/a.md", "body_markdown": "version two"}
+        )
+    )
+
+    retried = run_pipeline_dynamic(
+        changed,
+        leaves=[{"id": "a"}],
+        backend=retry_backend,
+        vault_root=vault,
+        manifest=Manifest.load(manifest_path),
+        run_id="job:2",
+        generation=1,
+    )
+
+    assert retried.error_count == 0
+    assert len(retry_backend.calls) == 1
+    assert (vault / "notes/a.md").read_text(encoding="utf-8") == "version two"
+
+
+def test_dynamic_failed_leaf_releases_claim_for_next_run(tmp_path: Path) -> None:
+    compiled, _skill = _compile_writer(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    first = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=MockBackend(default='{"wrong": true}'),
+        vault_root=tmp_path / "vault",
+        manifest=Manifest.load(manifest_path),
+        run_id="job:1",
+        generation=1,
+        max_logic_retries=0,
+    )
+    assert first.error_count == 1
+    assert Manifest.load(manifest_path).entries["write::leaf_0"].status == "pending"
+
+    retry_backend = MockBackend(
+        default=json.dumps(
+            {"output_path": "notes/a.md", "body_markdown": "recovered"}
+        )
+    )
+    retried = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=retry_backend,
+        vault_root=tmp_path / "vault",
+        manifest=Manifest.load(manifest_path),
+        run_id="job:2",
+        generation=1,
+        max_logic_retries=0,
+    )
+
+    assert retried.error_count == 0
+    assert len(retry_backend.calls) == 1
+    assert Manifest.load(manifest_path).entries["write::leaf_0"].status == "done"
+
+
+def test_dynamic_retry_does_not_steal_live_foreign_claim(tmp_path: Path) -> None:
+    compiled, _skill = _compile_writer(tmp_path)
+    manifest = Manifest()
+    assert manifest.claim(
+        "write::leaf_0",
+        run_id="foreign",
+        now=time.time(),
+        generation=1,
+    )
+    backend = MockBackend(
+        default=json.dumps(
+            {"output_path": "notes/a.md", "body_markdown": "must not run"}
+        )
+    )
+
+    run = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=backend,
+        vault_root=tmp_path / "vault",
+        manifest=manifest,
+        run_id="job:2",
+        generation=1,
+    )
+
+    assert run.error_count == 1
+    assert backend.calls == []
+    assert manifest.entries["write::leaf_0"].status == "in_progress"
+    assert manifest.entries["write::leaf_0"].run_id == "foreign"
+
+
+def test_materializers_reject_outside_paths_before_any_write(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside.md"
+    cases = (
+        (
+            "body_markdown_to_file",
+            json.dumps(
+                {"output_path": str(outside), "body_markdown": "outside"}
+            ),
+        ),
+        (
+            "body_markdown_frontmatter_to_file",
+            "---\noutput_path: ../outside.md\n---\noutside",
+        ),
+        (
+            "edits_apply_to_files",
+            json.dumps(
+                {
+                    "edits": [
+                        {"file": "safe.md", "content": "must not be written"},
+                        {"file": "../outside.md", "content": "outside"},
+                    ]
+                }
+            ),
+        ),
+        (
+            "edits_apply_xml_tags",
+            (
+                "<edits><edit><file>safe.md</file><content>must not be written"
+                "</content></edit><edit><file>/outside.md</file>"
+                "<content>outside</content></edit></edits>"
+            ),
+        ),
+    )
+
+    for i, (materializer_key, payload) in enumerate(cases):
+        vault = tmp_path / f"vault-{i}"
+        with pytest.raises(MaterializerError, match="vault_root"):
+            materialize(materializer_key, payload, vault_root=vault)
+        assert not outside.exists()
+        assert not (vault / "safe.md").exists()
+
+
+def test_materializer_acquires_effect_guard_for_each_write(tmp_path: Path) -> None:
+    events: list[str] = []
+
+    @contextmanager
+    def guard():
+        events.append("enter")
+        try:
+            yield
+        finally:
+            events.append("exit")
+
+    materialize(
+        "edits_apply_to_files",
+        json.dumps(
+            {
+                "edits": [
+                    {"file": "a.md", "content": "a"},
+                    {"file": "b.md", "content": "b"},
+                ]
+            }
+        ),
+        vault_root=tmp_path / "vault",
+        effect_guard=guard,
+    )
+
+    assert events == ["enter", "exit", "enter", "exit"]
+
+
+def test_materializer_interrupted_replace_preserves_accepted_file(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    target = vault / "note.md"
+    target.write_text("accepted", encoding="utf-8")
+    real_replace = __import__("os").replace
+
+    def interrupt_target_replace(source, destination):
+        if Path(destination) == target:
+            raise OSError("simulated publication interruption")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(
+        "tessellum.composer.materializer.os.replace",
+        interrupt_target_replace,
+    )
+
+    with pytest.raises(OSError, match="publication interruption"):
+        materialize(
+            "body_markdown_to_file",
+            json.dumps(
+                {"output_path": "note.md", "body_markdown": "partial"}
+            ),
+            vault_root=vault,
+        )
+
+    assert target.read_text(encoding="utf-8") == "accepted"
+    assert list(vault.glob(".note.md.*.tmp")) == []
+
+
+@pytest.mark.parametrize("runner", [run_pipeline, run_pipeline_dynamic])
+def test_schedulers_forward_cancellation_and_effect_guard(
+    tmp_path: Path,
+    runner,
+) -> None:
+    compiled, _skill = _compile_writer(tmp_path)
+    guard_entries = 0
+
+    @contextmanager
+    def guard():
+        nonlocal guard_entries
+        guard_entries += 1
+        yield
+
+    run = runner(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=MockBackend(
+            default=json.dumps(
+                {"output_path": "notes/a.md", "body_markdown": "guarded"}
+            )
+        ),
+        vault_root=tmp_path / "vault",
+        cancellation_check=lambda: False,
+        effect_guard=guard,
+    )
+    assert run.error_count == 0
+    assert guard_entries == 1
+
+    with pytest.raises(InterruptedError, match="cancelled"):
+        runner(
+            compiled,
+            leaves=[{"id": "b"}],
+            backend=MockBackend(default="{}"),
+            vault_root=tmp_path / "cancelled-vault",
+            cancellation_check=lambda: True,
+            effect_guard=guard,
+        )
+
+
+def test_wave_gate_failure_is_recoverable_on_next_run(tmp_path: Path) -> None:
+    compiled, _skill = _compile_writer(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    vault = tmp_path / "vault"
+    duplicate = json.dumps(
+        {"output_path": "notes/duplicate.md", "body_markdown": "duplicate"}
+    )
+    failed = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}, {"id": "b"}],
+        backend=MockBackend(default=duplicate),
+        vault_root=vault,
+        manifest=Manifest.load(manifest_path),
+        run_id="job:1",
+        generation=1,
+        wave_gate=build_wave_gate(),
+    )
+
+    assert failed.error_count == 2
+    assert {
+        entry.status for entry in Manifest.load(manifest_path).entries.values()
+    } == {"pending"}
+
+    retry_backend = MockBackend(
+        responses={
+            "Write for a": json.dumps(
+                {"output_path": "notes/a.md", "body_markdown": "a"}
+            ),
+            "Write for b": json.dumps(
+                {"output_path": "notes/b.md", "body_markdown": "b"}
+            ),
+        }
+    )
+    recovered = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}, {"id": "b"}],
+        backend=retry_backend,
+        vault_root=vault,
+        manifest=Manifest.load(manifest_path),
+        run_id="job:2",
+        generation=1,
+        wave_gate=build_wave_gate(),
+    )
+
+    assert recovered.error_count == 0
+    assert len(retry_backend.calls) == 2
+    assert {
+        entry.status for entry in Manifest.load(manifest_path).entries.values()
+    } == {"done"}
 
 
 def test_dynamic_matches_serial_on_written_files(tmp_path: Path) -> None:

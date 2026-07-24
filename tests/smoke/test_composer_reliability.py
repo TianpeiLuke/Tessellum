@@ -116,6 +116,7 @@ def test_executor_stalls_on_slow_backend(tmp_path: Path):
     """Backend sleeps 2s with 0.5s timeout → StepResult.error contains stall marker."""
     compiled = _make_timeout_skill(tmp_path, timeout_seconds=0.5)
     backend = _SlowBackend(sleep_seconds=2.0)
+    started = time.monotonic()
     result = execute_step(
         compiled.steps[0],
         leaf={"_id": "leaf_0", "id": "x"},
@@ -125,6 +126,7 @@ def test_executor_stalls_on_slow_backend(tmp_path: Path):
     )
     assert result.error is not None
     assert "stalled" in result.error.lower()
+    assert time.monotonic() - started < 1.0
 
 
 def test_executor_default_timeout_does_not_fire_on_fast_call(tmp_path: Path):

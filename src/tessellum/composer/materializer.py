@@ -25,12 +25,66 @@ one bad step doesn't kill the whole pipeline.
 from __future__ import annotations
 
 import json
+import os
 import re
+import stat
+import uuid
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, ContextManager
 
 import yaml
+
+
+def _fsync_dir(path: Path) -> None:
+    try:
+        descriptor = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _ensure_directory_durable(path: Path) -> None:
+    missing: list[Path] = []
+    current = path
+    while not current.exists():
+        missing.append(current)
+        current = current.parent
+    for directory in reversed(missing):
+        directory.mkdir()
+        _fsync_dir(directory.parent)
+
+
+def _atomic_write_bytes(path: Path, content: bytes) -> None:
+    _ensure_directory_durable(path.parent)
+    mode = stat.S_IMODE(path.stat().st_mode) if path.is_file() else None
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with temporary.open("wb") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if mode is not None:
+            os.chmod(temporary, mode)
+        os.replace(temporary, path)
+        _fsync_dir(path.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _record_effect(
+    recorder: Callable[[Path], None],
+    path: Path,
+    content: bytes,
+) -> None:
+    recorder(path)
+    record_postimage = getattr(recorder, "record_postimage", None)
+    if record_postimage is not None:
+        record_postimage(path, content)
 
 
 class MaterializerError(Exception):
@@ -72,6 +126,8 @@ def materialize(
     *,
     vault_root: Path,
     dry_run: bool = False,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
 ) -> MaterializedOutput:
     """Dispatch ``response_text`` to the materializer for ``materializer_key``.
 
@@ -97,13 +153,39 @@ def materialize(
             f"unknown materializer key {materializer_key!r}. "
             f"Known: {sorted(_DISPATCH)}"
         )
-    return handler(response_text, vault_root, dry_run)
+    return handler(
+        response_text,
+        vault_root,
+        dry_run,
+        effect_guard or nullcontext,
+        effect_recorder or (lambda _path: None),
+    )
 
 
 # ── Concrete materializers ─────────────────────────────────────────────────
 
 
-def _no_op(text: str, vault_root: Path, dry_run: bool) -> MaterializedOutput:
+def _resolve_vault_path(vault_root: Path, value: object, *, field: str) -> Path:
+    """Resolve an agent-supplied relative path and confine it to the vault."""
+    root = Path(vault_root).resolve()
+    supplied = Path(str(value))
+    if supplied.is_absolute():
+        raise MaterializerError(f"{field} must be relative to vault_root")
+    target = (root / supplied).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise MaterializerError(f"{field} escapes vault_root: {value}") from exc
+    return target
+
+
+def _no_op(
+    text: str,
+    vault_root: Path,
+    dry_run: bool,
+    effect_guard: Callable[[], ContextManager[None]],
+    effect_recorder: Callable[[Path], None],
+) -> MaterializedOutput:
     """DESCRIBE materializer — parse JSON, no side effect."""
     if not text.strip():
         return MaterializedOutput(structured={}, notes="no_op (empty response)")
@@ -121,7 +203,11 @@ _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 
 
 def _body_markdown_frontmatter_to_file(
-    text: str, vault_root: Path, dry_run: bool
+    text: str,
+    vault_root: Path,
+    dry_run: bool,
+    effect_guard: Callable[[], ContextManager[None]],
+    effect_recorder: Callable[[Path], None],
 ) -> MaterializedOutput:
     """PRODUCE — agent emits markdown-with-frontmatter directly.
 
@@ -156,7 +242,9 @@ def _body_markdown_frontmatter_to_file(
     if not output_path:
         raise MaterializerError("frontmatter missing required `output_path` field")
 
-    target = (vault_root / str(output_path)).resolve()
+    target = _resolve_vault_path(
+        vault_root, output_path, field="frontmatter output_path"
+    )
 
     # Strip output_path from the frontmatter that gets written — it's a
     # coordination field, not vault content.
@@ -169,8 +257,10 @@ def _body_markdown_frontmatter_to_file(
         full_content = body
 
     if not dry_run:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(full_content, encoding="utf-8")
+        with effect_guard():
+            content = full_content.encode("utf-8")
+            _record_effect(effect_recorder, target, content)
+            _atomic_write_bytes(target, content)
 
     return MaterializedOutput(
         structured={"output_path": str(output_path), "body_markdown": body},
@@ -180,7 +270,11 @@ def _body_markdown_frontmatter_to_file(
 
 
 def _body_markdown_to_file(
-    text: str, vault_root: Path, dry_run: bool
+    text: str,
+    vault_root: Path,
+    dry_run: bool,
+    effect_guard: Callable[[], ContextManager[None]],
+    effect_recorder: Callable[[Path], None],
 ) -> MaterializedOutput:
     """Legacy v0.4 PRODUCE materializer — JSON envelope.
 
@@ -206,10 +300,12 @@ def _body_markdown_to_file(
     if body is None:
         raise MaterializerError("missing required field `body_markdown`")
 
-    target = (vault_root / str(output_path)).resolve()
+    target = _resolve_vault_path(vault_root, output_path, field="output_path")
     if not dry_run:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(str(body), encoding="utf-8")
+        with effect_guard():
+            content = str(body).encode("utf-8")
+            _record_effect(effect_recorder, target, content)
+            _atomic_write_bytes(target, content)
 
     return MaterializedOutput(
         structured=data,
@@ -219,7 +315,11 @@ def _body_markdown_to_file(
 
 
 def _edits_apply_to_files(
-    text: str, vault_root: Path, dry_run: bool
+    text: str,
+    vault_root: Path,
+    dry_run: bool,
+    effect_guard: Callable[[], ContextManager[None]],
+    effect_recorder: Callable[[Path], None],
 ) -> MaterializedOutput:
     """APPLY (legacy) — JSON edits envelope.
 
@@ -241,7 +341,7 @@ def _edits_apply_to_files(
     if not isinstance(edits, list):
         raise MaterializerError("missing or non-list `edits` field")
 
-    applied: list[Path] = []
+    pending: list[tuple[Path, str]] = []
     for i, edit in enumerate(edits):
         if not isinstance(edit, dict):
             raise MaterializerError(f"edits[{i}] must be a JSON object")
@@ -251,11 +351,18 @@ def _edits_apply_to_files(
             raise MaterializerError(f"edits[{i}] missing `file`")
         if content is None:
             raise MaterializerError(f"edits[{i}] missing `content`")
-        target = (vault_root / str(file_path)).resolve()
-        if not dry_run:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(str(content), encoding="utf-8")
-        applied.append(target)
+        target = _resolve_vault_path(
+            vault_root, file_path, field=f"edits[{i}].file"
+        )
+        pending.append((target, str(content)))
+
+    applied = [target for target, _content in pending]
+    if not dry_run:
+        for target, content in pending:
+            with effect_guard():
+                encoded = content.encode("utf-8")
+                _record_effect(effect_recorder, target, encoded)
+                _atomic_write_bytes(target, encoded)
 
     return MaterializedOutput(
         structured=data,
@@ -271,7 +378,11 @@ _XML_EDIT_RE = re.compile(
 
 
 def _edits_apply_xml_tags(
-    text: str, vault_root: Path, dry_run: bool
+    text: str,
+    vault_root: Path,
+    dry_run: bool,
+    effect_guard: Callable[[], ContextManager[None]],
+    effect_recorder: Callable[[Path], None],
 ) -> MaterializedOutput:
     """APPLY — XML wire format (preferred over the legacy JSON envelope).
 
@@ -295,18 +406,25 @@ def _edits_apply_xml_tags(
             "blocks found in response"
         )
 
-    applied: list[Path] = []
+    pending: list[tuple[Path, str]] = []
     edits_records: list[dict] = []
-    for file_path, content in matches:
+    for i, (file_path, content) in enumerate(matches):
         file_clean = file_path.strip()
         if not file_clean:
             raise MaterializerError("edit has empty <file> tag")
-        target = (vault_root / file_clean).resolve()
-        if not dry_run:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
-        applied.append(target)
+        target = _resolve_vault_path(
+            vault_root, file_clean, field=f"edits[{i}].file"
+        )
+        pending.append((target, content))
         edits_records.append({"file": file_clean, "content": content})
+
+    applied = [target for target, _content in pending]
+    if not dry_run:
+        for target, content in pending:
+            with effect_guard():
+                encoded = content.encode("utf-8")
+                _record_effect(effect_recorder, target, encoded)
+                _atomic_write_bytes(target, encoded)
 
     return MaterializedOutput(
         structured={"edits": edits_records},

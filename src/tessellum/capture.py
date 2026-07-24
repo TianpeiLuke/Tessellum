@@ -7,7 +7,7 @@ Public API:
     get_spec(flavor)        — TemplateSpec for a flavor
     capture(...)            — copy template, transform, write; returns CaptureResult
 
-Each ``flavor`` maps to one of the 12 templates under
+Each ``flavor`` maps to one of the 14 capture templates under
 ``vault/resources/templates/`` (excluding ``template_yaml_header`` which is a
 spec reference, not a copy-and-fill skeleton). The capture step:
 

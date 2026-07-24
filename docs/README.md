@@ -16,13 +16,15 @@ open the reference when you need an exact name.
 ## Start here
 
 **[architecture.md](architecture.md)** — the whole system as one picture. The CQRS wall between authorship
-(System P, the markdown vault) and computation (System D, the SQLite index and retrieval). How the two engines
-— Composer and DKS — sit on that substrate, and the invariants that keep them honest.
+(System P, the markdown vault) and computation (System D, the SQLite index and retrieval), the operational
+runtime that feeds Composer without becoming a knowledge authority, and the invariants that keep each layer
+honest.
 
 ## Modules
 
 | Module | Design | Reference |
 |---|---|---|
+| Automatic runtime — durable inbox admission and supervision | [runtime.md](runtime.md) | [reference/runtime.md](reference/runtime.md) |
 | Composer — the typed-contract pipeline runtime | [composer.md](composer.md) | [reference/composer.md](reference/composer.md) |
 | DKS — the dialectic knowledge engine | [dks.md](dks.md) | [reference/dks.md](reference/dks.md) |
 | Retrieval — the five read surfaces | [retrieval.md](retrieval.md) | [reference/retrieval.md](reference/retrieval.md) |

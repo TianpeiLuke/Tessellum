@@ -84,6 +84,17 @@ _BARE_PARA_DIRS: tuple[str, ...] = (
     "archives",
 )
 
+_INBOX_LANES: tuple[str, ...] = (
+    "manual_retrieved",
+    "papers",
+    "general",
+    "latex",
+    "flash",
+    "book",
+    "podcast",
+    "sops",
+)
+
 
 # The seed manifest is the canonical list of vault-relative paths
 # shipped with every install. It lives in ``tessellum.data._seed_manifest``
@@ -139,6 +150,13 @@ def scaffold(target_dir: Path | str, *, force: bool = False) -> ScaffoldResult:
     # 1. Bare PARA dirs at the top level.
     for d in _BARE_PARA_DIRS:
         path = target / d
+        if not path.exists():
+            path.mkdir(parents=True)
+            dirs_created.append(path)
+
+    # System-P input queue used by the automatic runtime.
+    for lane in _INBOX_LANES:
+        path = target / "inbox" / lane
         if not path.exists():
             path.mkdir(parents=True)
             dirs_created.append(path)

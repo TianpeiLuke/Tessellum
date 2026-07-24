@@ -18,7 +18,7 @@ MCP-protocol wrapper that exposes them over stdio JSON-RPC lives in
 ``scripts/tessellum_session_mcp_server.py`` and requires the ``mcp``
 SDK (``pip install tessellum[mcp]``).
 
-Composer wiring: a skill sidecar's step can declare
+Composer wiring: a skill's inline step contract can declare
 ``mcp_dependencies: [{name: session-mcp, calls: [...]}]`` and the
 compiler validates the call list against this module's
 :data:`SESSION_MCP_TOOLS` keys via the registered

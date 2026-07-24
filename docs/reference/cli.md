@@ -7,7 +7,7 @@ Lookup surface for the `tessellum` command. For the mental model and the reasons
 - Console script: `tessellum = "tessellum.cli:main"` (`pyproject.toml` `[project.scripts]`).
 - `cli/__init__.py` re-exports `main` from `cli.main`.
 - `tessellum` (no subcommand) → `main._print_banner()`, exit `0`.
-- `tessellum --version` → `tessellum 1.0.1` (from `tessellum.__about__.__version__`).
+- `tessellum --version` → `tessellum 1.2.0` (from `tessellum.__about__.__version__`).
 
 ## File → role
 
@@ -23,28 +23,32 @@ Lookup surface for the `tessellum` command. For the mental model and the reasons
 | `cli/filter.py` | `tessellum filter` → `tessellum.retrieval.metadata_search`. |
 | `cli/fz.py` | `tessellum fz {list,show,ancestors,descendants,path,all}`; in-Python Folgezettel traversal over `notes`. |
 | `cli/bb.py` | `tessellum bb {audit,migrate}` over `tessellum.bb`. |
-| `cli/composer.py` | `tessellum composer {validate,compile,run,batch,eval,scaffold-sidecar}` → `tessellum.composer`. |
+| `cli/composer.py` | `tessellum composer {validate,compile,run,batch,eval,scaffold-sidecar,digest}` → `tessellum.composer`. |
 | `cli/dks.py` | `tessellum dks <observations.jsonl>` → `tessellum.dks`. |
 | `cli/mcp.py` | `tessellum mcp serve` → `tessellum.mcp.run_stdio` (lazy `[mcp]` import). |
-| `tessellum/__about__.py` | `__version__` (`"1.0.1"`) + `__status__`; read by the version banner. |
+| `cli/runtime.py` | `tessellum runtime {init,submit,work,serve,get,list,cancel,retry,doctor}` → `tessellum.runtime`. |
+| `tessellum/__about__.py` | `__version__` (`"1.2.0"`) + `__status__`; read by the version banner. |
 
 ## Dispatcher (`cli/main.py`)
 
 | Symbol | Signature | Role |
 |--------|-----------|------|
 | `main` | `main(argv: list[str] \| None = None) -> int` | Parse args; run `args.func(args)` if present, else print banner and return `0`. |
-| `_build_parser` | `_build_parser() -> argparse.ArgumentParser` | Root parser; registers `--version`; calls each module's `add_subparser` in order: init, format, capture, index, search, filter, fz, bb, composer, dks, mcp. |
+| `_build_parser` | `_build_parser() -> argparse.ArgumentParser` | Root parser; registers `--version`; registers 12 top-level groups in order: init, format, capture, index, search, filter, fz, bb, composer, dks, mcp, runtime. |
 | `_print_banner` | `_print_banner() -> None` | Bare-command capability listing (Python API + CLI). |
 
-Every subcommand module exposes `add_subparser(subparsers)` and binds a handler via `set_defaults(func=...)`. There is no command registry; `args.func` is the whole dispatch. Optional-leaf groups (`fz`, `bb`, `mcp`) set `func` + a `None` sentinel (`_fz_op` / `_bb_op` / `_mcp_op`) on the group so the bare group prints usage and exits `2`. Groups with `required=True` sub-subparsers (`format`, `index`, `composer`) raise an argparse error on a missing sub-subcommand.
+Every subcommand module exposes `add_subparser(subparsers)` and binds a handler via `set_defaults(func=...)`. There is no command registry; `args.func` is the whole dispatch. Optional-leaf groups (`fz`, `bb`, `mcp`) set `func` + a `None` sentinel (`_fz_op` / `_bb_op` / `_mcp_op`) on the group so the bare group prints usage and exits `2`. Groups with `required=True` sub-subparsers (`format`, `index`, `composer`, `runtime`) raise an argparse error on a missing sub-subcommand.
 
 ## Exit-code contract
+
+These are the common handler-level meanings. Exceptions a command does not
+explicitly map may propagate and terminate the process nonzero.
 
 | Code | Meaning |
 |------|---------|
 | `0` | Success (results may be empty). |
 | `1` | Domain failure — validation error, target exists non-empty, a skill fails to compile/run, a note ERROR. |
-| `2` | Invocation error — missing path/DB, missing extras, bad args, missing sub-subcommand. |
+| `2` | Invocation error — missing path/DB, supported missing-extra case, bad args, missing sub-subcommand. |
 
 ## Commands and flags
 
@@ -82,9 +86,9 @@ Handler `_run` (dispatches on `_fz_op`). `list`/`all` take no positional; `show`
 Group handler defaults to `run_bb_audit`; bare `tessellum bb` exits `2` with usage.
 
 - `audit` (`run_bb_audit`, `_bb_op="audit"`): `BBGraph.from_db(db)` → `_build_audit_report`. Flags: `--db`, `--format`, `--show-untyped`. Reports node counts by BB type, edges by schema label, untyped corpus edges, orphan nodes, unrealised schema edges.
-- `migrate` (`run_bb_migrate`, `_bb_op="migrate"`): retroactive `bb_schema_version` classification. Flags: `--vault` (default `./vault`), `--target-version` (`current` | int), `--apply`, `--format`. `--apply` bumps only would-pass notes (`_bump_bb_schema_version`); would-fail notes reported, never rewritten.
+- `migrate` (`run_bb_migrate`, `_bb_op="migrate"`): retroactive `bb_schema_version` stamp classification. Flags: `--vault` (default `./vault`), `--target-version` (`current` | int), `--apply`, `--format`. The current warning-only check classifies every parseable lagging note as would-pass; `--apply` bumps those stamps but does not validate against the target schema.
 
-### `composer {validate,compile,run,batch,eval,scaffold-sidecar}` (`composer_command` `required=True`)
+### `composer {validate,compile,run,batch,eval,scaffold-sidecar,digest}` (`composer_command` `required=True`)
 
 | Sub | Handler | Positional | Notable flags |
 |-----|---------|-----------|---------------|
@@ -93,7 +97,8 @@ Group handler defaults to `run_bb_audit`; bare `tessellum bb` exits `2` with usa
 | `run` | `run_composer_run_cli` | `skill` (`.md`) | see below |
 | `batch` | `run_composer_batch_cli` | `jobs` (JSON list) | `--parallelism` (4), `--no-resume`, `--dry-run`, `--mock-responses`, `--backend {mock,anthropic}`, `--model`, `--format` |
 | `eval` | `run_composer_eval_cli` | `scenarios_dir` | `--backend {mock,anthropic}`, `--judge-backend {none,mock,anthropic}`, `--mock-responses`, `--judge-mock-responses`, `--model`, `--dry-run`, `--format` |
-| `scaffold-sidecar` | `run_composer_scaffold_cli` | `skill` (`.md`) | `--output/-o`, `--force`, `--stdout` |
+| `scaffold-sidecar` | `run_composer_scaffold_cli` | `skill` (`.md`) | `--stdout` |
+| `digest` | `run_composer_digest_cli` | `--source` (JSON object file) | `--skills-dir`, `--vault`, `--backend {mock,anthropic,bedrock}`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--format` |
 
 `composer run` base flags: `--leaves`, `--vault` (default `vault`), `--mock-responses`, `--backend {mock,anthropic,bedrock}` (default `mock`), `--region` (default `us-east-1`), `--aws-profile`, `--model`, `--dry-run`, `--no-trace`, `--runs-dir` (default `./runs/composer`), `--format`, `--progress`.
 
@@ -120,6 +125,50 @@ Three short-circuit modes (skip the observations run):
 | Calibrate | `--calibrate` | `--target-false-gate-rate` (default 0.10) |
 | Meta | `--meta` | `--apply`, `--min-cycles` (default `DEFAULT_MIN_CYCLES` = 20), `--target-failure {premise,warrant,counter-example,undercutting}`, `--proposer {heuristic,llm}`, `--attacker {none,llm}`, `--survive-threshold {strict,majority,permissive}` (default `majority`) |
 
+### `runtime {init,submit,work,serve,get,list,cancel,retry,doctor}` (`runtime_command` `required=True`)
+
+Durable automatic inbox ingestion and job control. Every non-service successful leaf prints JSON to stdout; `serve` runs silently. A bare `tessellum runtime` is an argparse invocation error and exits `2`. Every parser also has argparse's standard `-h/--help`; parse failures exit `2`. Exceptions not explicitly mapped below propagate from `main` (and terminate the console process nonzero).
+
+#### Paths and environment
+
+Every runtime leaf accepts:
+
+| Flag | Default | Resolution |
+|------|---------|------------|
+| `--root PATH` | current working directory | Passed to `RuntimePaths.discover`; `TESSELLUM_ROOT` takes precedence when set. Paths are expanded and made absolute. |
+| `--db PATH` | `<root>/runs/runtime/runtime.db` | Explicit CLI override for the runtime SQLite DB after discovery; otherwise `TESSELLUM_RUNTIME_DB` can override the default. |
+
+Other discovery overrides are `TESSELLUM_RUNS` (default `<root>/runs`), `TESSELLUM_VAULT`, `TESSELLUM_INBOX` (`<root>/inbox`), `TESSELLUM_SKILLS` (`<vault>/resources/skills`), and `TESSELLUM_INDEX_DB` (`<root>/data/tessellum.db`). Without `TESSELLUM_VAULT`, discovery uses `<root>` when `<root>/resources/skills` identifies a directly scaffolded vault, otherwise `<root>/vault`. Opening any command creates the runtime DB parent plus the spool, artifact, archive, and event directories and initializes/migrates the DB schema. It does not create the vault, skills, inbox, or index parent unless the specific command says so.
+
+`work` and `serve` also accept the execution/backend family:
+
+| Flag | Default | Behavior |
+|------|---------|----------|
+| `--backend {mock,anthropic,bedrock}` | `mock` | Composer backend used by native digestion. |
+| `--model MODEL` | backend default | Mock: no model; Anthropic: `claude-sonnet-4-6`; Bedrock: `us.anthropic.claude-sonnet-4-6`. |
+| `--region REGION` | `us-east-1` | Bedrock region; parsed but unused by other backends. |
+| `--aws-profile PROFILE` | unset | Bedrock AWS profile; parsed but unused by other backends. |
+| `--mock-responses PATH` | unset | UTF-8 JSON file loaded and passed to `MockBackend`; parsed for every backend. |
+| `--no-index` | false | Skip the commit-tail index rebuild. By default the index is replaced atomically without dense embeddings. |
+
+#### Runtime leaves
+
+| Subcommand | Arguments and flags | Behavior and output | Exit |
+|------------|---------------------|---------------------|------|
+| `init` | common paths only | Opens the DB, creates the resolved inbox directory, and creates lanes `papers`, `book`, `podcast`, `sops`, `manual_retrieved`, `general`, `latex`, `flash`. Prints `{db, inbox}`. Idempotent. | `0`; filesystem/SQLite errors propagate. |
+| `submit PATH` | `--settle-seconds FLOAT` (`0.0`), common paths | Resolves an existing stable regular file, requires the resolved target below a named inbox lane, and rejects hidden names and temporary suffixes `.tmp`, `.part`, `.swp`, `.crdownload`. Spools bytes by SHA-256 before idempotent admission. Prints the job payload plus `created` (`false` returns the existing job). | `0`; `2` for an admission or filesystem error. Argparse errors also exit `2`. |
+| `work` | backend family, common paths | Promotes due retries, claims at most one admitted/ready job for digestion or one committing job for commit-only resume, and runs under a heartbeat lease. Prints `{job_id, status, detail}`. Status is `idle`, `complete`, `cancelled`, `retry_wait`, `dead_letter`, or `lease_lost`. | `1` only for `dead_letter` or `lease_lost`; otherwise `0`, including `idle`, `cancelled`, and scheduled retry. Setup/backend errors propagate. |
+| `serve` | `--scan-seconds FLOAT` (`2.0`), `--settle-seconds FLOAT` (`1.0`), backend family, common paths | Foreground loop: recursively reconcile the eight known lanes, run one supervisor claim, and wait `scan-seconds` only when idle. Stable-file checks wait `settle-seconds`. SIGINT/SIGTERM requests a graceful stop. No normal JSON output. | `0` after graceful stop; setup/backend/service errors propagate. |
+| `get JOB_ID` | `--events` (false), common paths | Prints one job. With `--events`, adds its ordered event history (up to the store default of 500 events). | `0`; `1` and `job not found` on stderr if absent. |
+| `list` | repeatable `--state STATE`, `--limit INT` (`100`), common paths | Prints a newest-first JSON array. Repeated states OR together; no state selects all. State choices: `received`, `admitted`, `routed`, `planning`, `ready`, `running`, `validating`, `committing`, `retry_wait`, `paused`, `complete`, `cancelled`, `dead_letter`. | `0`; invalid state/flag exits `2` via argparse. |
+| `cancel JOB_ID` | common paths | Requests cancellation and prints the resulting job. An unleased cancellable job moves immediately to `cancelled`; an owned job sets `cancel_requested` for cooperative cancellation; a terminal job is returned unchanged. | `0`; `1` and `job not found` on stderr if absent. |
+| `retry JOB_ID` | common paths | Creates and prints a new admitted job whose `supersedes_job_id` points to the prior job. Only `cancelled` and `dead_letter` jobs are retryable; the source event gets a unique retry suffix, so the new generation does not deduplicate to the old job. | `0`; `1` for a missing job or an ineligible state. |
+| `doctor` | common paths | Prints all resolved paths and booleans for runtime DB, vault dir, inbox dir, skills dir, index-parent writability, and a jobs read. Note that opening the store makes the runtime DB/read check true; this is a readiness check, not a non-mutating probe. | `0` only when every check is true; otherwise `1`. |
+
+CLI job payloads contain `job_id`, `state`, `lane`, `source_event_id`, `payload_ref`, `capability`, `attempts`, `commit_attempts`, `cancel_requested`, `last_error`, `result_path`, `supersedes_job_id`, and either `lease: null` or `{owner_id, generation, expires_at}`.
+
+Lane execution is explicitly pinned to `native_digestion`; it requires the four digestion skill canonicals under the resolved skills directory. Text sources support `.md`, `.txt`, `.tex`, `.json`, `.jsonl`, and `.csv`; PDF requires `[ingest]`. Other suffixes fail the job. `serve` scans only the eight initialized lanes; manual `submit` can admit another named lane, but routing that job will fail closed as unsupported.
+
 ### `mcp serve` (group `mcp`, leaf `serve`)
 Handler `run_mcp_serve` (`_mcp_op="serve"`) → `tessellum.mcp.run_stdio` (lazy `[mcp]` import). Bare `tessellum mcp` exits `2` with usage; missing `[mcp]` extras exit `2` with an install hint.
 
@@ -130,10 +179,10 @@ Handler `run_mcp_serve` (`_mcp_op="serve"`) → `tessellum.mcp.run_stdio` (lazy 
 | `[mcp]` | `mcp>=1.0`, `fastapi`, `uvicorn` | `mcp serve` |
 | `[agent]` | `anthropic>=0.40` | `--backend anthropic` / `bedrock`; DKS `--backend anthropic`, `--proposer llm`, `--attacker llm` |
 | `[papers]` | `pyzotero`, `requests` | — |
-| `[ingest]` | `watchdog`, `beautifulsoup4`, `html2text`, `pdfplumber`, `PyPDF2`, `python-docx`, `python-pptx` | — |
+| `[ingest]` | `watchdog`, `beautifulsoup4`, `html2text`, `pdfplumber`, `PyPDF2`, `python-docx`, `python-pptx` | Automatic-runtime PDF source extraction (`pdfplumber`); other packages are ingest headroom. |
 | `[dev]` | `pytest`, `pytest-asyncio`, `pytest-cov`, `ruff`, `mypy`, `build`, `twine` | — |
 
-All extras are opt-in; the base CLI imports and runs without any of them. Optional dependencies are lazy-imported at the call site, returning exit `2` with an install hint on `ImportError`.
+All extras are opt-in; the base CLI imports and runs without any of them. Handlers that explicitly catch `ImportError` return exit `2` with an install hint. Runtime `work`/`serve` backend setup errors currently propagate.
 
 ## Extension points
 

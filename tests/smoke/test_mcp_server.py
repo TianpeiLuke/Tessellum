@@ -50,6 +50,23 @@ def test_dispatch_unknown_tool_raises():
         _dispatch("not_a_real_tool", {})
 
 
+def test_runtime_job_tools_share_durable_store(tmp_path):
+    (tmp_path / "inbox" / "papers").mkdir(parents=True)
+    source = tmp_path / "inbox" / "papers" / "paper.md"
+    source.write_text("evidence", encoding="utf-8")
+    submitted = _dispatch(
+        "tessellum_submit_job",
+        {"path": str(source), "root": str(tmp_path)},
+    )
+    fetched = _dispatch(
+        "tessellum_get_job",
+        {"job_id": submitted["job_id"], "root": str(tmp_path)},
+    )
+    assert submitted["created"] is True
+    assert fetched["state"] == "admitted"
+    assert fetched["events"][0]["event_type"] == "admitted"
+
+
 def test_dispatch_list_skills_returns_skill_inventory():
     result = _dispatch("tessellum_list_skills", {})
     assert "skills" in result

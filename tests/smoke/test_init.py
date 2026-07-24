@@ -26,6 +26,22 @@ def test_scaffold_creates_para_top_level_dirs(tmp_path):
         assert (target / d).is_dir(), f"missing top-level dir: {d}"
 
 
+def test_scaffold_creates_automatic_runtime_inbox_lanes(tmp_path):
+    target = tmp_path / "v"
+    scaffold(target)
+    for lane in (
+        "manual_retrieved",
+        "papers",
+        "general",
+        "latex",
+        "flash",
+        "book",
+        "podcast",
+        "sops",
+    ):
+        assert (target / "inbox" / lane).is_dir()
+
+
 def test_scaffold_creates_destination_dir_for_every_flavor(tmp_path):
     target = tmp_path / "v"
     scaffold(target)

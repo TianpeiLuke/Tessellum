@@ -24,9 +24,15 @@ callable is where any model call happens, injected by the caller.
 
 from __future__ import annotations
 
+import os
+import stat
+import uuid
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable, ContextManager, Sequence
+
+from tessellum.composer.credential_pool import RunBudget
 
 
 @dataclass(frozen=True)
@@ -113,6 +119,9 @@ def run_fix_loop(
     evaluate: GateEvaluator,
     fixer: InformedFixer | None,
     max_rounds: int,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
 ) -> FixLoopResult:
     """Run the informed, non-regressive fix loop with revert-to-BEST.
 
@@ -138,6 +147,11 @@ def run_fix_loop(
     Returns:
         A :class:`FixLoopResult`.
     """
+    def _check_cancelled() -> None:
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError("fix loop cancelled")
+
+    _check_cancelled()
     passed, cause, issues = evaluate()
     if passed:
         return FixLoopResult(
@@ -157,6 +171,7 @@ def run_fix_loop(
 
     rounds = 0
     while rounds < max_rounds:
+        _check_cancelled()
         rounds += 1
         ctx = FixContext(
             note_path=note_path,
@@ -166,9 +181,11 @@ def run_fix_loop(
         try:
             fixer(ctx)
         except Exception:  # noqa: BLE001 — a fixer crash is a dead round, not a raise
+            _check_cancelled()
             history.append(AttemptOutcome(rounds, best.score, (last_cause,) if last_cause else ()))
             break
 
+        _check_cancelled()
         passed, cause, issues = evaluate()
         last_cause = cause
         score = score_issues(issues)
@@ -193,7 +210,19 @@ def run_fix_loop(
     reverted = False
     current = _read_bytes(note_path)
     if current != best.content:
-        _write_bytes(note_path, best.content)
+        _check_cancelled()
+        guard = effect_guard or nullcontext
+        with guard():
+            if effect_recorder is not None:
+                effect_recorder(note_path)
+                record_postimage = getattr(
+                    effect_recorder,
+                    "record_postimage",
+                    None,
+                )
+                if record_postimage is not None:
+                    record_postimage(note_path, best.content)
+            _write_bytes(note_path, best.content)
         reverted = True
 
     return FixLoopResult(
@@ -262,6 +291,10 @@ def make_llm_fixer(
     render_prompt: "Callable[[str, FixContext], str]" = _default_render_fix_prompt,
     max_tokens: int = 8000,
     encoding: str = "utf-8",
+    budget: RunBudget | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
 ) -> "InformedFixer":
     """Build an informed fixer that repairs a note in place via ``backend``.
 
@@ -286,14 +319,20 @@ def make_llm_fixer(
             customize the repair instructions.
         max_tokens: Response cap (notes can be long — default 8000).
         encoding: Note file encoding.
+        budget: Shared run budget charged immediately before each repair
+            backend call. A refused charge leaves the note unchanged.
     """
     from tessellum.composer.llm import LLMRequest
 
     def _fixer(ctx: FixContext) -> None:
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError("fixer cancelled before backend dispatch")
         current = _read_bytes(ctx.note_path).decode(encoding, errors="replace")
         if not current:
             return  # nothing to repair against — no-op
         user_prompt = render_prompt(current, ctx)
+        if budget is not None and not budget.try_spend(cost=1.0):
+            return
         response = backend.call(
             LLMRequest(
                 system_prompt=system_prompt,
@@ -304,7 +343,21 @@ def make_llm_fixer(
         corrected = (response.content or "").strip()
         if not corrected:
             return  # empty repair — leave the note as-is (no-op)
-        _write_bytes(ctx.note_path, corrected.encode(encoding))
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError("fixer cancelled before repair publication")
+        guard = effect_guard or nullcontext
+        with guard():
+            content = corrected.encode(encoding)
+            if effect_recorder is not None:
+                effect_recorder(ctx.note_path)
+                record_postimage = getattr(
+                    effect_recorder,
+                    "record_postimage",
+                    None,
+                )
+                if record_postimage is not None:
+                    record_postimage(ctx.note_path, content)
+            _write_bytes(ctx.note_path, content)
 
     return _fixer
 
@@ -317,7 +370,29 @@ def _read_bytes(path: Path) -> bytes:
 
 
 def _write_bytes(path: Path, content: bytes) -> None:
-    Path(path).write_bytes(content)
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    mode = stat.S_IMODE(target.stat().st_mode) if target.is_file() else None
+    temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with temporary.open("wb") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if mode is not None:
+            os.chmod(temporary, mode)
+        os.replace(temporary, target)
+        try:
+            descriptor = os.open(target.parent, os.O_RDONLY)
+        except OSError:
+            descriptor = None
+        if descriptor is not None:
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 __all__ = [

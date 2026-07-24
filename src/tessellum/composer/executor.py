@@ -10,7 +10,7 @@ The executor is the unit operation that the scheduler iterates: given a
      - ``{{retry.attempt}}`` / ``{{retry.error}}`` — substituted on
        retries (see :func:`execute_step_with_retry`).
   2. Wraps :meth:`LLMBackend.call` with a per-step watchdog
-     (:data:`DEFAULT_TIMEOUT_SECONDS`, overridable per sidecar). On
+     (:data:`DEFAULT_TIMEOUT_SECONDS`, overridable by the inline contract). On
      timeout, returns a stalled :class:`StepResult` without cancelling
      the in-flight call.
   3. Enforces the rendered-prompt size cap
@@ -35,20 +35,21 @@ The scheduler calls the retry variant by default.
 
 from __future__ import annotations
 
-import concurrent.futures
 import hashlib
 import json
 import random
 import re
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable, ContextManager, Literal
 
 import jsonschema
 
 from tessellum.composer.compiler import CompiledStep
 from tessellum.composer.context_assembler import ContextAssembler
+from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.llm import LLMBackend, LLMRequest, LLMResponse
 from tessellum.composer.materializer import (
     MaterializedOutput,
@@ -87,17 +88,13 @@ shapes without overfitting to a specific line/column hint."""
 
 
 DEFAULT_TIMEOUT_SECONDS: float = 120.0
-"""Default per-step watchdog timeout. Overridable via the sidecar's
+"""Default per-step watchdog timeout. Overridable via the step contract's
 ``timeout_seconds`` field or the :func:`execute_step` /
 :func:`execute_step_with_retry` ``timeout_seconds`` kwarg.
 
-Implemented via ``concurrent.futures.ThreadPoolExecutor`` +
-``Future.result(timeout=N)`` rather than asyncio: thread-based
-timeout is simpler (no backend refactor required), portable (works
-under any Python), and achieves the same outcome — when the wait
-expires we mark the step stalled without trying to cancel the
-in-flight call (it completes in the background; its result is
-discarded).
+Implemented with a daemon worker thread so the caller returns at the
+deadline even though the synchronous backend protocol has no portable
+cancellation primitive. A late result is discarded.
 """
 
 
@@ -172,7 +169,11 @@ def execute_step(
     retry_attempt: int = 1,
     retry_last_error: str | None = None,
     timeout_seconds: float | None = None,
+    budget: RunBudget | None = None,
     context_assembler: ContextAssembler | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
 ) -> StepResult:
     """Run one step against one leaf with one upstream context.
 
@@ -203,11 +204,17 @@ def execute_step(
             exceeds the timeout, the call is *not* cancelled — the
             executor returns a stalled StepResult and the thread
             continues in the background.
+        budget: Shared run budget charged immediately before the backend
+            call. A refused charge returns ``run budget exhausted`` without
+            dispatching.
 
     Returns:
         StepResult.
     """
     start = time.monotonic()
+
+    if cancellation_check is not None and cancellation_check():
+        raise InterruptedError("pipeline cancelled before backend dispatch")
 
     if step.prompt_section_text is None:
         raise ExecutorError(
@@ -295,6 +302,28 @@ def execute_step(
         else (step.timeout_seconds if step.timeout_seconds is not None else DEFAULT_TIMEOUT_SECONDS)
     )
 
+    if budget is not None and not budget.try_spend(cost=1.0):
+        elapsed_ms = (time.monotonic() - start) * 1000.0
+        return StepResult(
+            section_id=step.section_id,
+            leaf_id=leaf.get("_id"),
+            response=LLMResponse(
+                content="",
+                elapsed_ms=0.0,
+                backend_id=getattr(backend, "backend_id", ""),
+                metadata={"budget_exhausted": True},
+            ),
+            materialized=MaterializedOutput(
+                structured={},
+                notes="run budget exhausted",
+            ),
+            elapsed_ms=elapsed_ms,
+            error="run budget exhausted",
+            attempts=0,
+            retry_kind_history=(),
+            error_class="crash",
+        )
+
     response = _call_backend_with_timeout(backend, request, effective_timeout)
     if response is None:
         # Timeout fired.
@@ -317,6 +346,9 @@ def execute_step(
             error_class="transient",
         )
 
+    if cancellation_check is not None and cancellation_check():
+        raise InterruptedError("pipeline cancelled before materialization")
+
     error: str | None = None
 
     # Schema validation — best effort.
@@ -336,6 +368,8 @@ def execute_step(
             response.content,
             vault_root=vault_root,
             dry_run=dry_run,
+            effect_guard=effect_guard,
+            effect_recorder=effect_recorder,
         )
     except MaterializerError as e:
         # Don't override an earlier schema-validation error message.
@@ -607,7 +641,11 @@ def execute_step_with_retry(
     backoff_base: float = 0.5,
     backoff_cap: float = 30.0,
     backoff_rng: random.Random | None = None,
+    budget: RunBudget | None = None,
     context_assembler: ContextAssembler | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
 ) -> StepResult:
     """Retry-budgeted wrapper around :func:`execute_step`.
 
@@ -618,6 +656,8 @@ def execute_step_with_retry(
     - **Same-error loop detection**: 3 consecutive failures sharing
       the same error-message hash → short-circuit before exhausting
       the budget.
+    - **Run budget**: every actual backend dispatch is atomically charged;
+      refusal returns immediately without consuming a retry slot.
 
     Each retry injects ``retry_attempt`` (1-indexed) and the previous
     attempt's normalised error message into the step's prompt + system
@@ -652,6 +692,7 @@ def execute_step_with_retry(
             :func:`full_jitter_backoff`.
         backoff_cap: Ceiling forwarded to :func:`full_jitter_backoff`.
         backoff_rng: Optional seeded RNG for deterministic jitter.
+        budget: Shared run-level budget passed to every backend attempt.
     """
     history: list[str] = []  # error-message hashes, in attempt order
     kind_history: list[str] = []
@@ -688,8 +729,14 @@ def execute_step_with_retry(
                 dry_run=dry_run,
                 retry_attempt=attempt_n,
                 retry_last_error=last_error,
+                budget=budget,
                 context_assembler=context_assembler,
+                cancellation_check=cancellation_check,
+                effect_guard=effect_guard,
+                effect_recorder=effect_recorder,
             )
+        except InterruptedError:
+            raise
         except Exception as e:  # noqa: BLE001 — crash path: any backend exception
             # Crash failure (backend.call raised, or some hard executor error).
             crash_recoveries += 1
@@ -740,6 +787,19 @@ def execute_step_with_retry(
                     error_class=classify_error(err),
                 )
             continue
+
+        if result.error == "run budget exhausted":
+            return StepResult(
+                section_id=result.section_id,
+                leaf_id=result.leaf_id,
+                response=result.response,
+                materialized=result.materialized,
+                elapsed_ms=result.elapsed_ms,
+                error=result.error,
+                attempts=len(kind_history),
+                retry_kind_history=tuple(kind_history),
+                error_class=result.error_class,
+            )
 
         if result.error is None:
             # Success — record the success attempt and return.
@@ -848,22 +908,32 @@ def _call_backend_with_timeout(
     Returns the :class:`LLMResponse` on success, or ``None`` if the
     call exceeded ``timeout_seconds``. The thread is not killed on
     timeout — it runs to completion in the background, but its
-    eventual result is discarded. The ThreadPoolExecutor's daemon
-    threads exit with the process.
+    eventual result is discarded. The daemon worker thread does not
+    keep the process alive.
     """
-    # max_workers=1 because we want this call to be serial per
-    # invocation; the scheduler handles parallelism at the leaf level.
-    # The pool is local so the threads don't accumulate across calls.
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=1, thread_name_prefix="composer-watchdog"
-    ) as pool:
-        future = pool.submit(backend.call, request)
+    responses: list[LLMResponse] = []
+    errors: list[BaseException] = []
+    finished = threading.Event()
+
+    def _invoke() -> None:
         try:
-            return future.result(timeout=timeout_seconds)
-        except concurrent.futures.TimeoutError:
-            return None
-        # Other exceptions propagate up — the retry layer handles them
-        # as crash failures.
+            responses.append(backend.call(request))
+        except BaseException as exc:  # re-raised on the calling thread
+            errors.append(exc)
+        finally:
+            finished.set()
+
+    thread = threading.Thread(
+        target=_invoke,
+        name="composer-watchdog",
+        daemon=True,
+    )
+    thread.start()
+    if not finished.wait(timeout_seconds):
+        return None
+    if errors:
+        raise errors[0]
+    return responses[0]
 
 
 __all__ = [

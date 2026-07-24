@@ -77,6 +77,12 @@ SEED_VAULT_MANIFEST: tuple[str, ...] = (
     "resources/skills/skill_tessellum_classify_content.md",            # 5-step BB classification
     "resources/skills/skill_tessellum_route_content.md",               # 6-step routing + 3-criterion novelty
 
+    # ── Automatic-runtime native digestion phases ─────────────────────────
+    "resources/skills/skill_tessellum_plan_digestion.md",
+    "resources/skills/skill_tessellum_augment_digestion_plan.md",
+    "resources/skills/skill_tessellum_review_digestion_plan.md",
+    "resources/skills/skill_tessellum_execute_digestion_plan.md",
+
     # ── Getting-started walkthrough ──────────────────────────────────────
     "resources/how_to/howto_first_vault.md",
     "resources/how_to/howto_note_format.md",                           # YAML frontmatter spec walkthrough

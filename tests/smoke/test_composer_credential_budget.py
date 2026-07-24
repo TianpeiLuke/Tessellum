@@ -33,6 +33,7 @@ from tessellum.composer.credential_pool import (
     COOLDOWN_RATE_LIMIT_SECS,
     DEFAULT_STAGE_EFFORT,
 )
+from tessellum.composer.llm import LLMRequest, LLMResponse
 
 
 # ── CredentialPool ──────────────────────────────────────────────────────────
@@ -235,6 +236,42 @@ def test_dynamic_budget_halts_runaway(tmp_path: Path) -> None:
     # The budget-halted sessions are blocked in the manifest.
     blocked = [e for e in manifest.entries.values() if e.status == "blocked"]
     assert len(blocked) == 2
+
+
+def test_dynamic_budget_charges_each_retry_backend_call(tmp_path: Path) -> None:
+    class _CrashThenSuccessBackend:
+        backend_id = "crash-then-success"
+
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def call(self, request: LLMRequest) -> LLMResponse:
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("transient disconnect")
+            return LLMResponse(
+                content="{}",
+                elapsed_ms=1.0,
+                backend_id=self.backend_id,
+            )
+
+    compiled = _compile(tmp_path)
+    backend = _CrashThenSuccessBackend()
+    budget = RunBudget(max_invocations=1)
+
+    run = run_pipeline_dynamic(
+        compiled,
+        leaves=[{"id": "a"}],
+        backend=backend,
+        vault_root=tmp_path / "v",
+        budget=budget,
+        max_workers=1,
+    )
+
+    assert backend.calls == 1
+    assert budget.invocations == 1
+    assert run.step_results[0].error == "run budget exhausted"
+    assert run.step_results[0].attempts == 1
 
 
 def test_dynamic_no_budget_runs_all(tmp_path: Path) -> None:

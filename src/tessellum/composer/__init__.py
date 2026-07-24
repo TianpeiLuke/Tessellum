@@ -79,6 +79,7 @@ from tessellum.composer.loader import (
 from tessellum.composer.manifest import (
     MANIFEST_VERSION,
     VALID_STATUSES,
+    ArtifactRecord,
     AttemptRecord,
     Manifest,
     ManifestEntry,
@@ -325,6 +326,7 @@ __all__ = [
     # Resume manifest (Composer v4, Phase 1)
     "Manifest",
     "ManifestEntry",
+    "ArtifactRecord",
     "AttemptRecord",
     "ManifestError",
     "MANIFEST_VERSION",

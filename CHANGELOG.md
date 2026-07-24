@@ -4,6 +4,31 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-07-23
+
+### Agentic runtime v5 — durable automatic inbox execution — 2026-07-23
+
+Tessellum can now run continuously as an unattended, recoverable agentic system. The new `tessellum runtime` surface scans the existing eight-lane inbox, durably admits stable files, routes them to the native Composer digestion pipeline, supervises execution under leases and policy budgets, commits resulting notes, rebuilds the index atomically, and archives acknowledged sources. Suite `1171 → 1241 passing`, 1 skipped.
+
+**Added — durable automatic runtime (`tessellum.runtime`).**
+- SQLite-backed schema v4 job and event state with legal transitions, priority ordering, idempotency keys, separate bounded execution/commit attempts, linked retries from cancelled/dead-letter jobs, cancellation requests, and dead-letter outcomes.
+- Verified content-addressed spool-before-admit prevents a database job from referring to bytes that were never made durable or whose content no longer matches its address. Existing directories and symlinks are rejected; temporary and archived copies are digest-checked before publication. Repeated scans and duplicate submissions converge on the same job.
+- Job leases carry owner ids, expiry, and monotonically increasing lease generations; heartbeats preserve live ownership and expired work is reclaimed. The runtime's execution generation remains separate from lease generation so Composer resume identity is stable across lease recovery.
+- Generation-scoped vault-effect journals fsync original bytes and every intended postimage hash before atomic materializer/fixer publication. Rejected or cancelled work rolls back immediately; after hard process death, the next worker restores only known journaled states and preserves unknown manual edits. Durable `committing` state resolves the crash window between acceptance and journal cleanup.
+- Explicit routing for `papers`, `book`, `podcast`, `sops`, `manual_retrieved`, `general`, `latex`, and `flash` pins every lane to the native plan → augment → review → execute digestion capability and records the digest of its four skills.
+- `RuntimeService` performs deterministic polling/rescan rather than treating filesystem events as authoritative state. `RuntimePolicy` bounds workers, backend calls including retries and repairs, context, attempts, and lease TTL; the standalone `ToolBroker` separately enforces allowlists, schemas, path confinement, timeouts, call budgets, and output limits while Composer backends remain tool-free.
+- Idempotent commit tail fsyncs and atomically replaces the derived SQLite index, archives the admitted spool bytes, and replays interrupted hidden source quarantines. A reclaimed `committing` job resumes only this tail, without rerunning planning or model calls. Runtime paths resolve independently of process cwd and are configurable through `TESSELLUM_*` environment variables.
+
+**Added — operator and agent surfaces.**
+- `tessellum runtime {init,submit,work,serve,get,list,cancel,retry,doctor}` initializes lanes, submits or supervises jobs, inspects state/events, requests cancellation, retries cancelled/dead-letter work, and checks runtime prerequisites.
+- Five MCP tools expose the durable job API: `tessellum_submit_job`, `tessellum_get_job`, `tessellum_list_jobs`, `tessellum_cancel_job`, and `tessellum_retry_job` (12 MCP tools total).
+- `tessellum init` now scaffolds all eight inbox lanes in a new vault.
+
+**Changed — Composer recovery is true resume, built on its existing primitives.**
+- Manifest schema 1.1 extends the existing CAS claim, owner-scoped reclaim, attempt ledger, and full-jitter retry ladder rather than replacing them. Successful leaves now commit through an owner- and generation-fenced compare-and-swap.
+- Each commit records plan/input/capability identity, structured output, and SHA-256/size metadata for materialized artifacts. A restart skips a leaf only after exact identity and artifact verification, reconstructing its `StepResult` and upstream output without another model call; unverifiable entries safely re-execute.
+- Digestion checks cooperative cancellation between phases and the dynamic scheduler checks before leaf dispatch. Runtime execution generation is intentionally distinct from job-lease generation.
+
 ### Single-file skills — fold the `.pipeline.yaml` sidecar into the canonical — 2026-07-23
 
 **A skill is now ONE self-contained markdown file.** The typed-contract sidecar (`skill_<name>.pipeline.yaml`) is gone; each pipeline step's contract lives in a leading fenced ```yaml``` block inside its `<!-- :: section_id = X :: -->` H2 section, followed by the step's prompt prose. Suite `1164 → 1171 passing`.
@@ -159,7 +184,7 @@ Fifth phase: a same-provider credential pool + run-level budgets (`composer/cred
 
 **Added — run-level budgets (`composer/credential_pool.py`).**
 - `RunBudget(max_invocations, max_cost)`: `try_spend(cost)` atomically checks + charges, refusing (and charging nothing — all-or-nothing) when a cap would be breached. The invocation cap is the runaway-fan-out breaker a static compile gate can't catch. `None` caps = unbounded.
-- `run_pipeline_dynamic` gains an opt-in `budget` param: each task charges one invocation before dispatch; a refused spend halts that leaf with a typed `BUDGET_EXHAUSTED` outcome (+ `blocked` manifest row) **without calling the backend**. `classify_outcome` now maps the run-budget marker to `BUDGET_EXHAUSTED` (distinct from a per-step retry-budget `RETRY_EXHAUSTED`). `budget=None` (default) preserves parity.
+- `run_pipeline_dynamic` gains an opt-in `budget` param: each actual backend call, including retries and informed-fixer repairs, charges one invocation before dispatch; a refused spend halts that leaf with a typed `BUDGET_EXHAUSTED` outcome (+ `blocked` manifest row) **without calling the backend**. `classify_outcome` now maps the run-budget marker to `BUDGET_EXHAUSTED` (distinct from a per-step retry-budget `RETRY_EXHAUSTED`). `budget=None` (default) preserves parity.
 
 ### Composer v4 refactor — Phase 6 (context assembler + sign-off approver) — 2026-07-22
 

@@ -1,8 +1,8 @@
-"""Compile a skill canonical + sidecar pair into a typed DAG.
+"""Compile a single-file skill canonical into a typed DAG.
 
 Zero LLM calls. The compiler is pure logic:
 
-    1. Load the skill canonical + sidecar.
+    1. Load inline step contracts from the skill canonical.
     2. Validate contract integrity — every materializer key resolves
        in :data:`tessellum.composer.contracts.MATERIALIZER_CONTRACTS`,
        and every CORE/DEFERRED step's ``expected_output_schema``
@@ -72,7 +72,7 @@ HARD_PROMPT_CAP_CHARS: int = 150_000
 Each step's rendered prompt (after `{{leaf.X}}` / `{{upstream.Y}}` /
 `{{retry.X}}` substitution) is checked against this cap at runtime;
 the compiler validates the *upper-bound estimate* against it at
-compile time. Override per-step via the sidecar's `max_prompt_chars`
+compile time. Override per-step via the contract's `max_prompt_chars`
 field.
 
 A global cap protects against pipeline composition error (e.g., 5
@@ -89,7 +89,7 @@ hard cap, emit a warning. Caller decides what to do with warnings
 
 
 DEFAULT_PER_UPSTREAM_SOFT_CAP_CHARS: int = 25_000
-"""Default soft cap per upstream output when the sidecar's
+"""Default soft cap per upstream output when the producer contract's
 `expected_output_schema.max_chars` is not declared. Picked so 5
 upstreams comfortably fit under HARD_PROMPT_CAP_CHARS with budget for
 leaf metadata + prompt boilerplate."""
@@ -149,12 +149,12 @@ class CompiledStep:
 
 @dataclass(frozen=True)
 class CompiledPipeline:
-    """A skill+sidecar pair compiled to a typed DAG.
+    """A single-file skill compiled to a typed DAG.
 
     Attributes:
         skill_path: Source canonical path.
         skill_name: Filename stem (e.g. ``"skill_tessellum_search_notes"``).
-        pipeline_version: Sidecar's ``version`` field.
+        pipeline_version: Assembled pipeline contract version.
         steps: Steps in topological order. ``steps[i].depends_on`` only
             references section_ids in ``steps[:i]``.
         compiled_at: ISO-8601 timestamp of when ``compile_skill`` ran.

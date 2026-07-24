@@ -21,6 +21,7 @@ import pytest
 
 from tessellum.composer import (
     MockBackend,
+    RunBudget,
     SignOffPolicy,
     build_plan_gate,
     run_digestion_pipeline,
@@ -126,6 +127,29 @@ def test_full_pipeline_runs_all_four_phases(tmp_path: Path) -> None:
     assert result.sign_off is not None and result.sign_off.decision == "approved"
     assert result.completed
     assert result.stopped_at is None
+
+
+def test_invocation_budget_covers_linear_phases(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    backend = _mock()
+
+    result = run_digestion_pipeline(
+        skills_dir=sd,
+        source_leaf=dict(_SOURCE),
+        backend=backend,
+        vault_root=tmp_path / "vault",
+        budget=RunBudget(max_invocations=1),
+    )
+
+    assert result.completed is False
+    assert result.stopped_at == "augment"
+    assert len(backend.calls) == 1
+    assert result.phases[-1].run is not None
+    assert "run budget exhausted" in (
+        result.phases[-1].run.step_results[0].error or ""
+    )
 
 
 def test_plan_doc_threads_through_phases(tmp_path: Path) -> None:

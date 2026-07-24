@@ -108,7 +108,7 @@ Re-exported from `bb/__init__.py`:
 
 ## CLI — `tessellum bb`
 
-One of Tessellum's 11 CLI commands. Two sub-subcommands. Exit codes: `0` completed (warnings are not failure), `2` invocation error (DB/vault missing, bad `--target-version`).
+One of Tessellum's 12 CLI commands. Two sub-subcommands. Exit codes: `0` completed (warnings are not failure), `2` invocation error (DB/vault missing, bad `--target-version`).
 
 ### `tessellum bb audit`
 
@@ -130,7 +130,13 @@ Retroactive `bb_schema_version` classification + passive migration. Walks `*.md`
 |------|---------|--------|
 | `--vault PATH` | `./vault` | Vault root to scan. Must be a directory (else exit 2). |
 | `--target-version {current,N}` | `current` | `current` = live `BB_SCHEMA_VERSION`; else an integer version. |
-| `--apply` | off | Bump `bb_schema_version` in frontmatter on would-pass notes only. Would-fail notes are reported, never auto-rewritten. |
+| `--apply` | off | Bump `bb_schema_version` on notes the current passive check classifies as would-pass. |
 | `--format {human,json}` | `human` | Output format. |
 
-For each note recorded below target, runs `format.validate` and classifies by whether any `TESS-005` ERROR surfaces (would-fail) or not (would-pass). `TESS-005` is WARNING-only today. `--apply` rewrites the `bb_schema_version:` frontmatter line on would-pass notes (idempotent; injects after `building_block:` if absent).
+For each note recorded below target, the current implementation runs
+`format.validate` against the note's recorded schema and looks for a
+`TESS-005` ERROR. `TESS-005` is WARNING-only today, so this is a passive stamp
+migration rather than validation against the target schema: every parseable
+lagging note is currently classified `would_pass`. `--apply` rewrites that
+note's `bb_schema_version:` line idempotently (injecting it after
+`building_block:` if absent).

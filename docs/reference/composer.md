@@ -13,8 +13,9 @@ API, symbols, and signatures for the typed-contract pipeline runtime. For the me
 | `materializer.py` | `materialize` dispatch → 5 concrete materializers, one per contract. Parses the wire format, writes/applies files under `vault_root`, returns `MaterializedOutput`. |
 | `llm.py` | `LLMBackend` protocol + `LLMRequest`/`LLMResponse`. Four backends: `MockBackend`, `AnthropicBackend`, `BedrockBackend`, `PooledBackend`. |
 | `executor.py` | `execute_step` (resolve → watchdog dispatch → schema-validate → materialize) + `execute_step_with_retry` (separate logic/crash budgets, same-error short-circuit, opt-in backoff). `classify_error` → `ErrorClass`; `full_jitter_backoff`. |
-| `scheduler.py` | `run_pipeline` (serial) + `run_pipeline_dynamic` (self-claiming parallel). Pure `compute_ready_set` core over `ReadySetState`/`SkipReason`. `StepOutcome` union + `classify_outcome`. Trace/statistics writers; wave-gate + close-gate drivers. |
-| `manifest.py` | `Manifest` — durable, atomically-written, rebuildable resume projection. 4-state lifecycle, CAS `claim`, `mark_done`-before-release, `rebuild_from_vault`, `.bak` rotation. |
+| `scheduler.py` | `run_pipeline` (serial) + `run_pipeline_dynamic` (self-claiming parallel). Pure `compute_ready_set` core over `ReadySetState`/`SkipReason`. Verified manifest resume reconstructs committed outputs. `StepOutcome` union + `classify_outcome`. Trace/statistics writers; cancellation, wave-gate, and close-gate drivers. |
+| `digestion.py` | Native plan → augment → review → sign-off → execute phase driver over four compiled skill canonicals. |
+| `manifest.py` | `Manifest` — durable, atomically-written resume projection. 4-state lifecycle, generation-aware CAS `claim`, owner-fenced `commit_success`, identity/artifact `verify_commit`, `rebuild_from_vault`, `.bak` rotation. |
 | `gates.py` | One `Gate` abstraction at three scopes (plan/session/wave). `GateSuite`, `build_close_gate` (format + grounding), `build_wave_gate` (dedup), `GroundingVerdict`. Reuses `tessellum.format.validate`. |
 | `fix.py` | `run_fix_loop` — checkpoint-before-fix + revert-to-BEST close-gate repair. `FixContext` (informed), `make_llm_fixer`, `score_issues`. |
 | `credential_pool.py` | `CredentialPool` (least-used lease, error-class rotation, differentiated cooldowns) + `RunBudget` (atomic `try_spend`) + per-stage `EffortLevel`. `classify_rotation_cause`. |
@@ -71,8 +72,16 @@ Contract check per step: unknown materializer key → `KIND_UNKNOWN_MATERIALIZER
 
 ## Materializer (`materializer.py`)
 
-- `materialize(step, output, *, vault_root) -> MaterializedOutput` — dispatch over `_DISPATCH` to one of 5 handlers: `no_op`, `body_markdown_to_file`, `body_markdown_frontmatter_to_file`, `edits_apply_to_files`, `edits_apply_xml_tags`.
+- `materialize(materializer_key, response_text, *, vault_root, dry_run=False, effect_guard=None, effect_recorder=None) -> MaterializedOutput` — dispatch over `_DISPATCH` to one of 5 handlers: `no_op`, `body_markdown_to_file`, `body_markdown_frontmatter_to_file`, `edits_apply_to_files`, `edits_apply_xml_tags`.
 - `MaterializedOutput`, `MaterializerError(Exception)`.
+
+All write/apply paths must be relative and resolve beneath `vault_root`; absolute
+and traversal paths raise `MaterializerError`. Multi-edit handlers validate all
+targets before writing any. The optional `effect_guard` context factory wraps
+each filesystem write; `effect_recorder(target)` runs inside that guard
+immediately before mutation. If the recorder also exposes
+`record_postimage(target, content)`, the intended SHA-256 state is recorded
+before atomic publication.
 
 ## LLM backends (`llm.py`)
 
@@ -89,8 +98,8 @@ Protocol: `LLMBackend` with `backend_id: str` and `call(request: LLMRequest) -> 
 
 ## Executor (`executor.py`)
 
-- `execute_step(step, leaf, upstream, *, backend, vault_root, …) -> StepResult` — resolve `{{leaf.X}}`/`{{upstream.Y}}`/`{{retry.X}}` → `LLMRequest`, watchdog dispatch, schema-validate, materialize.
-- `execute_step_with_retry(…, *, max_logic_retries=MAX_LOGIC_RETRIES, max_crash_recoveries=MAX_CRASH_RECOVERIES, backoff=False, sleep_fn=…) -> StepResult` — separate budgets, same-error short-circuit, opt-in backoff.
+- `execute_step(step, *, leaf, upstream, backend, vault_root, budget=None, …) -> StepResult` — resolve `{{leaf.X}}`/`{{upstream.Y}}`/`{{retry.X}}` → budgeted `LLMRequest`, watchdog dispatch, schema-validate, materialize.
+- `execute_step_with_retry(…, *, max_logic_retries=MAX_LOGIC_RETRIES, max_crash_recoveries=MAX_CRASH_RECOVERIES, budget=None, backoff=False, sleep_fn=…) -> StepResult` — separate retry budgets, shared per-dispatch run budget, same-error short-circuit, opt-in backoff.
 - `classify_error(error_msg: str) -> ErrorClass` — pure deterministic string heuristic; empty → `"crash"` (fail-closed).
 - `full_jitter_backoff(attempt: int) -> float` — backoff delay.
 - `StepResult`, `ExecutorError(Exception)`.
@@ -102,33 +111,39 @@ Protocol: `LLMBackend` with `backend_id: str` and `call(request: LLMRequest) -> 
 | `DEFAULT_TIMEOUT_SECONDS` | `120.0` | Watchdog timeout; overridable per step via `step.timeout_seconds`. |
 | `ErrorClass` | Literal | `"transient"`, `"validation"`, `"rate_limit"`, `"auth"`, `"crash"`. |
 
-Same-error short-circuit fires when the last 3 error hashes match (hash of the first 200 sanitized chars). Watchdog (`_call_backend_with_timeout`) runs `backend.call` in a 1-worker pool with `Future.result(timeout=N)`; on timeout returns a `stalled after Ns` result **without cancelling** the in-flight call.
+Same-error short-circuit fires when the last 3 error hashes match (hash of the first 200 sanitized chars). The shared `RunBudget`, when supplied, charges immediately before every backend attempt; refusal returns `run budget exhausted` without consuming a retry slot. Watchdog (`_call_backend_with_timeout`) runs `backend.call` on a daemon thread and waits on an event for `N` seconds; on timeout it returns a `stalled after Ns` result at the deadline **without cancelling** the in-flight call.
 
 ## Scheduler (`scheduler.py`)
 
-- `run_pipeline(pipeline, leaves, *, backend, vault_root, …) -> RunResult` — serial reference. Topological order, skips `INFRA`, one leaf at a time, accumulates each step's output into `upstream[output_key]`.
-- `run_pipeline_dynamic(pipeline, leaves, *, backend, vault_root, max_workers=4, manifest=None, close_gate=None, wave_gate=None, budget=None, context_assembler=None, informed_fixer=None, …) -> RunResult` — self-claiming parallel; every v4 arg defaults `None` (= serial parity).
+- `run_pipeline(pipeline, *, leaves=None, backend, vault_root, …) -> RunResult` — serial reference. Topological order, skips `INFRA`, one leaf at a time, accumulates each step's output into `upstream[output_key]`.
+- `run_pipeline_dynamic(pipeline, *, leaves=None, backend, vault_root, max_workers=4, manifest=None, run_id=None, generation=0, capability_version=None, manifest_stale_secs=300.0, close_gate=None, wave_gate=None, budget=None, context_assembler=None, informed_fixer=None, cancellation_check=None, effect_guard=None, effect_recorder=None, …) -> RunResult` — self-claiming parallel with verified resume, cooperative cancellation, and optional fenced effects; optional controls preserve serial behavior when omitted.
 - `compute_ready_set(state: ReadySetState) -> …` — pure functional core; promotes steps whose deps are all `done`, emits `SkipReason` (`deps_unmet`/`concurrency_capped`) for the rest. No I/O, clock, or LLM.
 - `ReadySetState`, `SkipReason`, `RunResult`.
 - `classify_outcome(result: StepResult) -> StepOutcome` — pure; maps terminal error → `StepOutcomeKind`.
 - `StepOutcome` — discriminated union; `.artifact` **raises `ValueError` unless `kind == "SUCCESS"`**.
 
-`StepOutcomeKind` (`scheduler.py:233`), with `classify_outcome` precedence high→low: `BUDGET_EXHAUSTED` (global; emitted by the budget layer, never by `classify_outcome`) → `SAME_ERROR_LOOP` → `WATCHDOG_KILLED` → `CONTRACT_VIOLATION` (checked before the retry-budget marker) → `RETRY_EXHAUSTED` → `SUCCESS`.
+`StepOutcomeKind` (`scheduler.py:233`), with `classify_outcome` precedence high→low: a `"run budget exhausted"` marker maps to `BUDGET_EXHAUSTED`, then `SAME_ERROR_LOOP` → `WATCHDOG_KILLED` → `CONTRACT_VIOLATION` (checked before the retry-budget marker) → `RETRY_EXHAUSTED` → `SUCCESS`.
 
-Dynamic-path mechanics: one shared `ThreadPoolExecutor` (default 4 workers), `wait(..., return_when=FIRST_COMPLETED)`, `_publish_and_finish` publishes an `output_key` and marks `done` on the **main thread only**; each promoted step's workers read a frozen `snapshot = dict(upstream)` taken at promotion. `results` keyed by `(topo_step_index, leaf_index)`, rebuilt via `sorted(results.keys())` for serial-order determinism. Budget charge is `cost=1.0` per task before dispatch; a refusal halts the leaf with `BUDGET_EXHAUSTED` without calling the backend.
+Dynamic-path mechanics: one shared `ThreadPoolExecutor` (default 4 workers), `wait(..., return_when=FIRST_COMPLETED)`, `_publish_and_finish` publishes an `output_key` and marks `done` on the **main thread only**; each promoted step's workers read a frozen `snapshot = dict(upstream)` taken at promotion. `results` keyed by `(topo_step_index, leaf_index)`, rebuilt via `sorted(results.keys())` for serial-order determinism. Budget charge is `cost=1.0` per task before dispatch; a refusal halts the leaf with `BUDGET_EXHAUSTED` without calling the backend. `cancellation_check` runs before dispatch and before materialization. `effect_guard`, when supplied, wraps materializer writes, fix-loop restoration, and manifest saves; arbitrary fixers and trace/event/statistics writers are not automatically fenced.
 
 ## Manifest (`manifest.py`)
 
 - `Manifest` — `{leaf_id: ManifestEntry}` ledger; 4-state lifecycle `pending`/`in_progress`/`done`/`blocked`.
-- `claim(leaf_id) -> bool` — CAS; succeeds only when absent/`pending`.
+- `claim(leaf_id, run_id, now, *, generation=None) -> bool` — CAS; succeeds only when absent/`pending`, recording owner, heartbeat, and optional execution generation.
 - `mark_done(leaf_id)` — durable-commit before claim release.
+- `commit_success(leaf_id, *, run_id, generation, plan_hash, input_hash, capability_version, structured_output, artifacts, now) -> bool` — owner- and generation-fenced successful commit; stale workers cannot close a reclaimed leaf.
+- `verify_commit(leaf_id, *, vault_root, generation, plan_hash, input_hash, capability_version) -> bool` — require exact execution identity and re-hash every recorded artifact before reuse.
+- `prepare_retry(leaf_id, *, run_id) -> bool` — clear invalid terminal or same-owner entries without stealing foreign live work.
+- `release_for_retry(leaf_id, *, run_id, generation) -> bool` — owner-fenced release after execution failure.
+- `invalidate_commit(...) -> bool` — clear exactly the committed identity rejected by a later wave gate.
 - `reclaim_stale(...)` — requeue only foreign, stale `in_progress` rows.
-- `rebuild_from_vault(...)` — reconstruct `done` from which target notes exist on disk (IDENT-2).
+- `rebuild_from_vault(...)` — reconstruct existence-only `done` entries from target notes on disk. Those entries lack verification identity and cannot produce resume skips.
 - `save()` — serialize to unique `.tmp`, `fsync`, `os.replace`, rotate `.bak`→`.bak.1`→`.bak.2`.
 - `load(...)` — sweep orphaned `.tmp`, integrity-check, fall back to newest good `.bak`, else start empty with a warning (fail-closed, IDENT-5).
-- `ManifestEntry`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`.
+- `ArtifactRecord.from_path(path, *, vault_root)` — store a vault-relative path plus byte size and SHA-256; paths outside `vault_root` raise `ManifestError`.
+- `ManifestEntry`, `ArtifactRecord`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION` (`"1.1"`), `VALID_STATUSES`.
 
-Resume output-skip (skip an already-`done` leaf) is DEFERRED — the manifest is crash-safety only; a fresh dynamic run re-executes every task.
+At promotion, the scheduler derives `plan_hash` from the skill bytes plus pipeline version and `input_hash` from the step id, leaf, and frozen upstream snapshot. A `done` entry is skipped only when generation, plan, input, capability version, commit timestamp, and every artifact hash verify. It then reconstructs `StepResult.materialized.structured` and artifact paths from the manifest so downstream steps receive the original upstream value. Verification failure returns terminal/same-owner state to `pending`; a foreign live claim remains fenced. With a wave gate, clean entries stay `in_progress` until the wave passes.
 
 ## Gates (`gates.py`)
 
@@ -142,9 +157,9 @@ Gate-then-commit: the manifest row flips `done` and the `StepResult` is treated 
 
 ## Fix loop (`fix.py`)
 
-- `run_fix_loop(..., *, max_rounds, informed_fixer, …) -> FixLoopResult` — evaluate as-written (early-out if passing), checkpoint bytes+score before each fix, keep BEST snapshot (score = blocking-issue count, lower better), restore BEST on regression (`reverted=True`). Fixer crash = dead round, not a raise.
+- `run_fix_loop(*, note_path, evaluate, fixer, max_rounds, cancellation_check=None, effect_guard=None, effect_recorder=None) -> FixLoopResult` — evaluate as-written (early-out if passing), checkpoint bytes+score before each fix, keep BEST snapshot (score = blocking-issue count, lower better), restore BEST on regression (`reverted=True`). Fixer crash = dead round, not a raise.
 - `score_issues(issues) -> int` — blocking-issue count.
-- `make_llm_fixer(backend) -> Callable[[FixContext], None]` — reference in-place LLM repairer.
+- `make_llm_fixer(backend, *, system_prompt=…, render_prompt=…, max_tokens=8000, encoding="utf-8", budget=None, cancellation_check=None, effect_guard=None, effect_recorder=None) -> InformedFixer` — reference in-place LLM repairer; the optional shared budget charges each repair call.
 - `FixContext` (current issues + prior `AttemptOutcome`s), `FixLoopResult`, `AttemptOutcome`.
 
 ## Credential pool + budgets (`credential_pool.py`)
@@ -163,15 +178,16 @@ Gate-then-commit: the manifest row flips `done` and the `StepResult` is treated 
 
 - `ContextAssembler` (ABC) — implement `strategy` + `_assemble_raw`; inherits fail-soft percentage-scaled bounds + preflight estimate.
 - `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`.
-- `get_assembler(strategy: str) -> ContextAssembler` — selects from `ASSEMBLER_REGISTRY`.
-- `is_safe_read_path(path) -> bool` — read-path hardening.
+- `get_assembler(strategy: str = "full_source", *, max_chars=DEFAULT_MAX_CONTEXT_CHARS) -> ContextAssembler` — selects from `ASSEMBLER_REGISTRY`.
+- `is_safe_read_path(path, *, workspace_root) -> bool` — fail-closed workspace confinement, secret-path rejection, and binary sniffing.
 
 ## Planning (`planning.py`)
 
-- `content_fingerprint(...)`, `leaf_fingerprint(...)` — positional `_id` excluded.
-- `partition_unchanged_leaves(leaves, …) -> (to_run, skipped)` — skip only on exact fingerprint match; new/changed/unkeyed always run (fail-open). Runs at the leaf-admission layer, before the scheduler.
-- `should_skip_unchanged(...) -> bool`.
-- `classify_planning_depth(leaf) -> LeafComplexity` — `fast`|`full`, defaults `full`.
+- `content_fingerprint(source: str | bytes | Path) -> str`.
+- `leaf_fingerprint(leaf: dict, *, source_key: str | None = None) -> str` — positional `_id` excluded.
+- `partition_unchanged_leaves(leaves, prior_fingerprints, *, id_key="_id", source_key=None) -> (to_run, skipped, fresh_fingerprints)` — skip only on exact fingerprint match; new/changed/unkeyed always run.
+- `should_skip_unchanged(leaf_id, source, prior_fingerprints) -> (skip, fingerprint)`.
+- `classify_planning_depth(complexity: LeafComplexity) -> PlanningDepth` — returns `fast` or `full`, defaulting conservatively to `full`.
 
 ## Sign-off (`signoff.py`)
 
@@ -191,7 +207,7 @@ Gate-then-commit: the manifest row flips `done` and the `StepResult` is treated 
 
 ## Eval (`eval.py`)
 
-- `run_eval(scenarios_dir, *, backend, judge_backend, …) -> EvalResult` — structural assertions + `LLMJudge` 6-dim rubric.
+- `run_eval(scenarios: list[EvalScenario], *, backend, judge=None, dry_run=False) -> EvalResult` — structural assertions plus an optional `LLMJudge` rubric.
 - `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS` (6-dim, overridable per scenario via `rubric_dimensions`).
 - `Assertion`, `AssertionResult`, `EvalScenario`, `ScenarioResult`, `EvalError`, `load_scenario`, `load_scenarios`.
 
@@ -201,13 +217,13 @@ Read-only tools over the active Claude Code transcript: `SESSION_MCP_TOOLS`, `ge
 
 ## Package exports (`from tessellum.composer import …`)
 
-`compile_skill`, `to_dag_json`, `CompiledPipeline`, `CompiledStep`, `CompilerError`; `load_pipeline`, `Pipeline`, `PipelineStep`, `PipelineValidationError`; `iter_step_sections`, `split_contract_and_prompt`, `load_skill_section`, `list_section_ids`, `StepSection`, `SkillExtractionError`; the contract families + registries + `ContractViolation`; `materialize`, `MaterializedOutput`, `MaterializerError`; the four backends + `LLMBackend`/`LLMRequest`/`LLMResponse`; `execute_step`, `execute_step_with_retry`, `classify_error`, `full_jitter_backoff`, `ErrorClass`, `StepResult`, `ExecutorError`, `MAX_LOGIC_RETRIES`, `MAX_CRASH_RECOVERIES`; `run_pipeline`, `run_pipeline_dynamic`, `RunResult`, `compute_ready_set`, `ReadySetState`, `SkipReason`, `StepOutcome`, `classify_outcome`; `Gate`, `GateResult`, `GateSuite`, `CompositeGateResult`, `GroundingVerdict`, `build_close_gate`, `build_wave_gate`, `DIGEST_GATES`; `run_fix_loop`, `make_llm_fixer`, `score_issues`, `FixContext`, `FixLoopResult`, `AttemptOutcome`; `partition_unchanged_leaves`, `should_skip_unchanged`, `content_fingerprint`, `leaf_fingerprint`, `classify_planning_depth`, `LeafComplexity`; `CredentialPool`, `RunBudget`, `classify_rotation_cause`, `effort_for_stage`, `DEFAULT_STAGE_EFFORT`, `CredentialPoolError`, `BudgetExhausted`; `ContextAssembler`, `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`, `get_assembler`, `is_safe_read_path`; `run_sign_off`, `SignOffPolicy`, `SignOffResult`, `AgentVerdict`; `build_skill_tool`, `SkillTool`, `CapabilityRegistry`, `RoutingKey`, `RouteDecision`, `McpDep`; `run_batch`, `BatchJob`, `BatchJobResult`, `BatchResult`; `Manifest`, `ManifestEntry`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`; `run_eval`, `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS`, and the rest of the eval framework; the session-MCP surface.
+`compile_skill`, `to_dag_json`, `CompiledPipeline`, `CompiledStep`, `CompilerError`; `load_pipeline`, `Pipeline`, `PipelineStep`, `PipelineValidationError`; `iter_step_sections`, `split_contract_and_prompt`, `load_skill_section`, `list_section_ids`, `StepSection`, `SkillExtractionError`; the contract families + registries + `ContractViolation`; `materialize`, `MaterializedOutput`, `MaterializerError`; the four backends + `LLMBackend`/`LLMRequest`/`LLMResponse`; `execute_step`, `execute_step_with_retry`, `classify_error`, `full_jitter_backoff`, `ErrorClass`, `StepResult`, `ExecutorError`, `MAX_LOGIC_RETRIES`, `MAX_CRASH_RECOVERIES`; `run_pipeline`, `run_pipeline_dynamic`, `RunResult`, `compute_ready_set`, `ReadySetState`, `SkipReason`, `StepOutcome`, `classify_outcome`; `Gate`, `GateResult`, `GateSuite`, `CompositeGateResult`, `GroundingVerdict`, `build_plan_gate`, `build_close_gate`, `build_wave_gate`, `DIGEST_GATES`; `run_digestion_pipeline`, `DigestionResult`, `PhaseOutcome`, `PHASE_SKILLS`; `run_fix_loop`, `make_llm_fixer`, `score_issues`, `FixContext`, `FixLoopResult`, `AttemptOutcome`; `partition_unchanged_leaves`, `should_skip_unchanged`, `content_fingerprint`, `leaf_fingerprint`, `classify_planning_depth`, `LeafComplexity`; `CredentialPool`, `RunBudget`, `classify_rotation_cause`, `effort_for_stage`, `DEFAULT_STAGE_EFFORT`, `CredentialPoolError`, `BudgetExhausted`; `ContextAssembler`, `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`, `get_assembler`, `is_safe_read_path`; `run_sign_off`, `SignOffPolicy`, `SignOffResult`, `AgentVerdict`; `build_skill_tool`, `SkillTool`, `CapabilityRegistry`, `RoutingKey`, `RouteDecision`, `McpDep`; `run_batch`, `BatchJob`, `BatchJobResult`, `BatchResult`; `Manifest`, `ManifestEntry`, `ArtifactRecord`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`; `run_eval`, `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS`, and the rest of the eval framework; the session-MCP surface.
 
 The DKS runtime is a **peer** module (`tessellum.dks`), not part of Composer, though it reuses Composer's `LLMBackend` abstractions.
 
 ## CLI — `tessellum composer <cmd>` (`cli/composer.py`)
 
-Six subcommands (a subset of Tessellum's 11 top-level CLI commands; `dks` is a peer subcommand reusing Composer's `LLMBackend`):
+Seven subcommands under one of Tessellum's 12 top-level CLI groups; `dks` is a peer group reusing Composer's `LLMBackend`:
 
 | Command | Purpose | Flags |
 |---------|---------|-------|
@@ -216,7 +232,8 @@ Six subcommands (a subset of Tessellum's 11 top-level CLI commands; `dks` is a p
 | `run <skill>` | Execute against leaves. | see below |
 | `batch <jobs.json>` | Many `(skill, leaves)` jobs in parallel with resume. | `--parallelism`, `--no-resume` |
 | `eval <scenarios_dir>` | Assertions + `LLMJudge` rubric. | `--backend`, `--judge-backend` |
-| `scaffold-sidecar <skill>` | Print a starter contract block per section anchor, to paste into the canonical. | `--output`, `--force`, `--stdout` |
+| `scaffold-sidecar <skill>` | Print a starter contract block per section anchor, to paste into the canonical. | `--stdout` |
+| `digest --source <json>` | Run plan → augment → review → sign-off → execute. | `--skills-dir`, `--vault`, `--backend`, `--require-agent-signoff`, `--dry-run`, `--format` |
 
 ### `run` flags
 
@@ -230,14 +247,13 @@ Dynamic path behind `--dynamic` (all ignored without it): `--workers` (default 4
 - **New backend** — implement the `LLMBackend` protocol (`backend_id` + `call`); optionally register an `LLMBackendContract` in `BACKEND_CONTRACTS` for compile-time tool-leakage/argv-overflow checks.
 - **MCP contracts** — mutate `MCP_CONTRACTS` before compiling (ships `session-mcp` only). Compile-time `MCPContract` validation is data-only for now.
 - **Context strategy** — subclass `ContextAssembler` (`strategy` + `_assemble_raw`), add to `ASSEMBLER_REGISTRY`; selected via `get_assembler`.
-- **Gates** — add a pure `GatePredicate` + a `Gate` at the right scope; extend `build_close_gate`/`build_wave_gate` or the `DIGEST_GATES` registry. `plan`-scope is a placeholder (sign-off is the plan-time gate).
+- **Gates** — add a pure `GatePredicate` + a `Gate` at the right scope; extend `build_plan_gate`/`build_close_gate`/`build_wave_gate` or the `DIGEST_GATES` registry.
 - **Fixer** — provide any `FixContext -> object` callable to `run_fix_loop` / `run_pipeline_dynamic(informed_fixer=…)`; `make_llm_fixer` is the reference. The legacy `(step, leaf, issues)` `fixer` shape is still accepted (`informed_fixer` takes precedence).
 - **Sign-off rungs** — inject `program_gate`/`agent_judge`/`human_prompt` + a `SignOffPolicy`.
 - **Eval rubric** — override `DEFAULT_RUBRIC_DIMENSIONS` per scenario via `rubric_dimensions`; new assertion kinds slot into `_check_assertion`.
 
 ## Deferred / unwired
 
-- **Resume output-skip** — manifest is crash-safety only; a fresh dynamic run re-executes every task.
 - **Cross-leaf scoping** — treated as `corpus_wide` in the scheduler.
 - **APPLY-mode `{{existing.Z}}` pre-fetch** — not wired; the materializer reads existing files at write time.
 - **Column-oriented batching** — deferred until backend pricing motivates it.

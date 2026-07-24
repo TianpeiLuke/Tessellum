@@ -18,6 +18,7 @@ from tessellum.composer import (
     FixContext,
     GroundingVerdict,
     MockBackend,
+    RunBudget,
     build_close_gate,
     compile_skill,
     make_llm_fixer,
@@ -93,6 +94,21 @@ def test_llm_fixer_missing_note_is_noop(tmp_path: Path) -> None:
     fixer(FixContext(note_path=note, issues=(), prior_attempts=()))
     assert not note.exists()          # not created
     assert backend.prompts == []      # backend never called (nothing to repair)
+
+
+def test_llm_fixer_respects_shared_run_budget(tmp_path: Path) -> None:
+    note = tmp_path / "n.md"
+    note.write_text("keep me", encoding="utf-8")
+    backend = _RecordingBackend("would-be fix")
+    fixer = make_llm_fixer(
+        backend,
+        budget=RunBudget(max_invocations=0),
+    )
+
+    fixer(FixContext(note_path=note, issues=(), prior_attempts=()))
+
+    assert backend.prompts == []
+    assert note.read_text(encoding="utf-8") == "keep me"
 
 
 def test_llm_fixer_in_run_fix_loop_repairs_and_passes(tmp_path: Path) -> None:

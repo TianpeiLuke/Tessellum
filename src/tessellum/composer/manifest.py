@@ -52,18 +52,19 @@ deterministic and unit-testable.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 import logging
 import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Any, Iterable, Mapping
 
 logger = logging.getLogger(__name__)
 
 
-MANIFEST_VERSION: str = "1.0"
+MANIFEST_VERSION: str = "1.1"
 """On-disk schema version. Bumped only on a breaking payload change."""
 
 
@@ -112,6 +113,32 @@ class AttemptRecord:
 
 
 @dataclass(frozen=True)
+class ArtifactRecord:
+    """One verified filesystem effect committed by a leaf."""
+
+    path: str
+    sha256: str
+    size: int
+
+    @classmethod
+    def from_path(cls, path: Path, *, vault_root: Path) -> "ArtifactRecord":
+        resolved = path.resolve()
+        root = vault_root.resolve()
+        try:
+            stored = str(resolved.relative_to(root))
+        except ValueError as exc:
+            raise ManifestError(
+                f"artifact path escapes vault_root: {resolved}"
+            ) from exc
+        data = resolved.read_bytes()
+        return cls(
+            path=stored,
+            sha256=hashlib.sha256(data).hexdigest(),
+            size=len(data),
+        )
+
+
+@dataclass(frozen=True)
 class ManifestEntry:
     """The durable state of a single leaf.
 
@@ -138,6 +165,13 @@ class ManifestEntry:
     blocked_by: tuple[str, ...] = ()
     run_id: str | None = None
     heartbeat: float | None = None
+    generation: int | None = None
+    plan_hash: str | None = None
+    input_hash: str | None = None
+    capability_version: str | None = None
+    structured_output: dict[str, Any] = field(default_factory=dict)
+    artifacts: tuple[ArtifactRecord, ...] = ()
+    committed_at: float | None = None
 
 
 @dataclass
@@ -216,6 +250,81 @@ class Manifest:
         """
         return self._patch(leaf_id, status="done", heartbeat=None)
 
+    def commit_success(
+        self,
+        leaf_id: str,
+        *,
+        run_id: str,
+        generation: int,
+        plan_hash: str,
+        input_hash: str,
+        capability_version: str,
+        structured_output: dict[str, Any],
+        artifacts: Iterable[ArtifactRecord],
+        now: float,
+    ) -> bool:
+        """Owner-fenced successful commit; stale workers cannot mark done."""
+        entry = self.entries.get(leaf_id)
+        if (
+            entry is None
+            or entry.status != "in_progress"
+            or entry.run_id != run_id
+            or entry.generation != generation
+        ):
+            return False
+        self._patch(
+            leaf_id,
+            status="done",
+            heartbeat=None,
+            plan_hash=plan_hash,
+            input_hash=input_hash,
+            capability_version=capability_version,
+            structured_output=dict(structured_output),
+            artifacts=tuple(artifacts),
+            committed_at=now,
+        )
+        return True
+
+    def verify_commit(
+        self,
+        leaf_id: str,
+        *,
+        vault_root: Path,
+        generation: int,
+        plan_hash: str,
+        input_hash: str,
+        capability_version: str,
+    ) -> bool:
+        entry = self.entries.get(leaf_id)
+        if (
+            entry is None
+            or entry.status != "done"
+            or entry.generation != generation
+            or entry.plan_hash != plan_hash
+            or entry.input_hash != input_hash
+            or entry.capability_version != capability_version
+            or entry.committed_at is None
+        ):
+            return False
+        root = Path(vault_root).resolve()
+        for artifact in entry.artifacts:
+            path = Path(artifact.path)
+            if path.is_absolute():
+                return False
+            path = (root / path).resolve()
+            try:
+                path.relative_to(root)
+            except ValueError:
+                return False
+            if not path.is_file():
+                return False
+            data = path.read_bytes()
+            if len(data) != artifact.size:
+                return False
+            if hashlib.sha256(data).hexdigest() != artifact.sha256:
+                return False
+        return True
+
     def mark_blocked(
         self, leaf_id: str, blocked_by: Iterable[str]
     ) -> ManifestEntry:
@@ -227,9 +336,91 @@ class Manifest:
             heartbeat=None,
         )
 
+    def _clear_for_retry(self, leaf_id: str) -> ManifestEntry:
+        """Clear ownership and stale commit data while retaining attempts."""
+        return self._patch(
+            leaf_id,
+            status="pending",
+            blocked_by=(),
+            run_id=None,
+            heartbeat=None,
+            generation=None,
+            plan_hash=None,
+            input_hash=None,
+            capability_version=None,
+            structured_output={},
+            artifacts=(),
+            committed_at=None,
+        )
+
+    def prepare_retry(self, leaf_id: str, *, run_id: str) -> bool:
+        """Make an invalid entry claimable without stealing foreign live work.
+
+        Terminal entries are safe to invalidate because they have no live
+        owner. An ``in_progress`` entry may only be reset by its current
+        owner; foreign ownership remains fenced until ``reclaim_stale`` has
+        independently established abandonment.
+        """
+        entry = self.entries.get(leaf_id)
+        if entry is None or entry.status == "pending":
+            return True
+        if entry.status == "in_progress" and entry.run_id != run_id:
+            return False
+        self._clear_for_retry(leaf_id)
+        return True
+
+    def release_for_retry(
+        self,
+        leaf_id: str,
+        *,
+        run_id: str,
+        generation: int,
+    ) -> bool:
+        """Owner-fenced release after an execution failure."""
+        entry = self.entries.get(leaf_id)
+        if (
+            entry is None
+            or entry.status != "in_progress"
+            or entry.run_id != run_id
+            or entry.generation != generation
+        ):
+            return False
+        self._clear_for_retry(leaf_id)
+        return True
+
+    def invalidate_commit(
+        self,
+        leaf_id: str,
+        *,
+        generation: int,
+        plan_hash: str,
+        input_hash: str,
+        capability_version: str,
+    ) -> bool:
+        """Invalidate exactly the verified commit rejected by a wave gate."""
+        entry = self.entries.get(leaf_id)
+        if (
+            entry is None
+            or entry.status != "done"
+            or entry.generation != generation
+            or entry.plan_hash != plan_hash
+            or entry.input_hash != input_hash
+            or entry.capability_version != capability_version
+        ):
+            return False
+        self._clear_for_retry(leaf_id)
+        return True
+
     # ── Atomic claim + owner-scoped reclaim (1.2) ────────────────────────
 
-    def claim(self, leaf_id: str, run_id: str, now: float) -> bool:
+    def claim(
+        self,
+        leaf_id: str,
+        run_id: str,
+        now: float,
+        *,
+        generation: int | None = None,
+    ) -> bool:
         """Atomically acquire a leaf for ``run_id`` (compare-and-swap).
 
         Succeeds *only* when the leaf is absent or ``pending``. Returns
@@ -252,6 +443,8 @@ class Manifest:
         entry = self.entries.get(leaf_id)
         if entry is None or entry.status == "pending":
             self.mark_in_progress(leaf_id, run_id=run_id, now=now)
+            if generation is not None:
+                self._patch(leaf_id, generation=generation)
             return True
         return False
 
@@ -317,14 +510,15 @@ class Manifest:
         *,
         path: Path | None = None,
     ) -> "Manifest":
-        """Rebuild done-status from the vault — proving it's a projection.
+        """Rebuild existence-only status from the vault.
 
         For each ``leaf_id -> target_path`` mapping, the leaf is ``done``
         iff its target note file exists on disk (relative paths resolve
         under ``vault_root``; absolute paths are used as-is). Everything
-        else is ``pending``. Because this derives state solely from the
-        vault (the source of truth per IDENT-2), a lost manifest can
-        always be regenerated.
+        else is ``pending``. These entries do not contain computation
+        identity, structured output, or artifact hashes, so verified resume
+        will re-execute them. This helper reconstructs an inventory, not the
+        proof carried by a surviving successful manifest.
 
         Args:
             vault_root: Root the relative target paths resolve against.
@@ -450,6 +644,20 @@ class Manifest:
                     "status": e.status,
                     "run_id": e.run_id,
                     "heartbeat": e.heartbeat,
+                    "generation": e.generation,
+                    "plan_hash": e.plan_hash,
+                    "input_hash": e.input_hash,
+                    "capability_version": e.capability_version,
+                    "structured_output": e.structured_output,
+                    "artifacts": [
+                        {
+                            "path": artifact.path,
+                            "sha256": artifact.sha256,
+                            "size": artifact.size,
+                        }
+                        for artifact in e.artifacts
+                    ],
+                    "committed_at": e.committed_at,
                     "blocked_by": list(e.blocked_by),
                     "attempts": [
                         {
@@ -487,6 +695,20 @@ class Manifest:
                 blocked_by=tuple(ed.get("blocked_by", ())),
                 run_id=ed.get("run_id"),
                 heartbeat=ed.get("heartbeat"),
+                generation=ed.get("generation"),
+                plan_hash=ed.get("plan_hash"),
+                input_hash=ed.get("input_hash"),
+                capability_version=ed.get("capability_version"),
+                structured_output=dict(ed.get("structured_output") or {}),
+                artifacts=tuple(
+                    ArtifactRecord(
+                        path=artifact["path"],
+                        sha256=artifact["sha256"],
+                        size=artifact["size"],
+                    )
+                    for artifact in ed.get("artifacts", [])
+                ),
+                committed_at=ed.get("committed_at"),
             )
         return cls(path=path, entries=entries)
 
@@ -580,6 +802,22 @@ def _payload_shape_ok(payload: object) -> bool:
         heartbeat = ed.get("heartbeat")
         if heartbeat is not None and not isinstance(heartbeat, (int, float)):
             return False
+        generation = ed.get("generation")
+        if generation is not None and not isinstance(generation, int):
+            return False
+        if not isinstance(ed.get("structured_output", {}), dict):
+            return False
+        artifacts = ed.get("artifacts", [])
+        if not isinstance(artifacts, list):
+            return False
+        for artifact in artifacts:
+            if (
+                not isinstance(artifact, dict)
+                or not isinstance(artifact.get("path"), str)
+                or not isinstance(artifact.get("sha256"), str)
+                or not isinstance(artifact.get("size"), int)
+            ):
+                return False
     return True
 
 
@@ -588,6 +826,7 @@ __all__ = [
     "VALID_STATUSES",
     "ManifestError",
     "AttemptRecord",
+    "ArtifactRecord",
     "ManifestEntry",
     "Manifest",
 ]

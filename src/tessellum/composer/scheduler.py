@@ -29,14 +29,16 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as dt
+import hashlib
 import json
 import threading
 import time
 import uuid
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal, Sequence
+from typing import Any, Callable, ContextManager, Literal, Sequence
 
 from tessellum.composer.compiler import CompiledPipeline, CompiledStep
 from tessellum.composer.executor import (
@@ -50,7 +52,7 @@ from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.fix import FixContext, run_fix_loop
 from tessellum.composer.gates import GateSuite, GroundingVerdict
 from tessellum.composer.llm import LLMBackend, LLMResponse
-from tessellum.composer.manifest import AttemptRecord, Manifest
+from tessellum.composer.manifest import ArtifactRecord, AttemptRecord, Manifest
 from tessellum.composer.materializer import MaterializedOutput
 
 
@@ -94,6 +96,11 @@ def run_pipeline(
     max_logic_retries: int = MAX_LOGIC_RETRIES,
     max_crash_recoveries: int = MAX_CRASH_RECOVERIES,
     progress: bool = False,
+    budget: RunBudget | None = None,
+    context_assembler: ContextAssembler | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
 ) -> RunResult:
     """Execute a compiled pipeline against ``leaves``.
 
@@ -172,6 +179,11 @@ def run_pipeline(
                 dry_run=dry_run,
                 max_logic_retries=max_logic_retries,
                 max_crash_recoveries=max_crash_recoveries,
+                budget=budget,
+                context_assembler=context_assembler,
+                cancellation_check=cancellation_check,
+                effect_guard=effect_guard,
+                effect_recorder=effect_recorder,
             )
             step_results.append(result)
             if result.error is not None:
@@ -469,6 +481,9 @@ def run_pipeline_dynamic(
     max_workers: int = 4,
     manifest: Manifest | None = None,
     run_id: str | None = None,
+    generation: int = 0,
+    capability_version: str | None = None,
+    manifest_stale_secs: float = 300.0,
     events_path: Path | None = None,
     stats_path: Path | None = None,
     close_gate: GateSuite | None = None,
@@ -479,6 +494,9 @@ def run_pipeline_dynamic(
     budget: RunBudget | None = None,
     wave_gate: GateSuite | None = None,
     context_assembler: "ContextAssembler | None" = None,
+    cancellation_check: "Callable[[], bool] | None" = None,
+    effect_guard: "Callable[[], ContextManager[None]] | None" = None,
+    effect_recorder: "Callable[[Path], None] | None" = None,
 ) -> RunResult:
     """Self-claiming, dependency-gated parallel variant of :func:`run_pipeline`.
 
@@ -508,11 +526,11 @@ def run_pipeline_dynamic(
     - **Manifest claim (optional).** When a ``manifest`` is supplied, each
       task ``claim``s its ``"{section_id}::{leaf_id}"`` key (compare-and-
       swap, double-dispatch safe) and, on success, records an
-      :class:`~tessellum.composer.manifest.AttemptRecord` + ``mark_done``
-      *before* releasing — the durable-commit-before-release ordering. The
-      manifest is a crash-safety projection here; output-reconstruction on
-      resume (skip-a-done-leaf) is deferred to a later phase, so a fresh
-      run always executes every task (identical to serial).
+      :class:`~tessellum.composer.manifest.AttemptRecord` plus an owner-
+      fenced commit containing computation identity, structured output,
+      and artifact hashes. On resume, an exact verified commit is
+      reconstructed without dispatch; any identity or artifact mismatch
+      executes normally.
     - **Observability.** When ``events_path`` is set, a
       machine-readable per-leaf lifecycle event is appended per task; when
       ``stats_path`` is set, a final ``statistics.json`` rollup is written.
@@ -558,8 +576,8 @@ def run_pipeline_dynamic(
             Takes precedence over ``fixer``. The LLM fixer from
             :func:`~tessellum.composer.fix.make_llm_fixer` plugs in here.
         budget: Optional global run-level :class:`RunBudget`. When set,
-            each task charges one invocation (+ cost) before dispatch; a
-            refused spend halts that leaf with a typed
+            every actual backend call, including retries, charges one
+            invocation (+ cost); a refused spend halts that leaf with a typed
             ``BUDGET_EXHAUSTED`` outcome (and a ``blocked`` manifest row)
             without calling the backend. ``None`` = unbounded (parity).
         wave_gate: Optional per-wave post-batch :class:`GateSuite`. When
@@ -579,8 +597,23 @@ def run_pipeline_dynamic(
         wall-clock ``started_at`` / ``duration_seconds`` / ``trace_path``).
     """
     started = time.monotonic()
+    started_epoch = time.time()
     started_iso = dt.datetime.now(dt.UTC).isoformat()
     run_id = run_id or uuid.uuid4().hex
+    capability_version = capability_version or pipeline.pipeline_version
+    try:
+        skill_bytes = pipeline.skill_path.read_bytes()
+    except OSError:
+        skill_bytes = str(pipeline.skill_path).encode("utf-8")
+    plan_hash = hashlib.sha256(
+        skill_bytes + b"\0" + pipeline.pipeline_version.encode("utf-8")
+    ).hexdigest()
+    if manifest is not None:
+        manifest.reclaim_stale(
+            current_run_id=run_id,
+            now=started_epoch,
+            stale_secs=manifest_stale_secs,
+        )
 
     if leaves is None or not leaves:
         leaves = [{"_id": "corpus"}]
@@ -598,62 +631,113 @@ def run_pipeline_dynamic(
     upstream: dict[str, Any] = {}
     # results keyed by (topo_step_index, leaf_index) → StepResult
     results: dict[tuple[int, int], StepResult] = {}
+    manifest_tasks: dict[tuple[int, int], tuple[str, str]] = {}
     events: list[dict] = []
     lock = threading.Lock()
 
+    def _save_manifest() -> None:
+        if manifest is None or manifest.path is None:
+            return
+        guard = effect_guard or nullcontext
+        with guard():
+            manifest.save()
+
+    def _stable_hash(value: Any) -> str:
+        return hashlib.sha256(
+            json.dumps(value, sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()
+
+    def _task_identity(
+        step: CompiledStep,
+        leaf: dict,
+        upstream_snapshot: dict[str, Any],
+    ) -> tuple[str, str]:
+        return (
+            f"{step.section_id}::{leaf.get('_id')}",
+            _stable_hash(
+                {
+                    "leaf": leaf,
+                    "upstream": upstream_snapshot,
+                    "section_id": step.section_id,
+                }
+            ),
+        )
+
     def _scope_leaves(step: CompiledStep) -> list[dict]:
         return leaves if step.aggregation == "per_leaf" else [{"_id": "corpus"}]
+
+    def _commit_result(
+        key: str,
+        input_hash: str,
+        result: StepResult,
+    ) -> StepResult:
+        """Commit one clean result while the caller holds ``lock``."""
+        if manifest is None:
+            return result
+        artifacts = tuple(
+            ArtifactRecord.from_path(Path(path), vault_root=vault_root)
+            for path in (
+                tuple(result.materialized.files_written)
+                + tuple(result.materialized.files_applied)
+            )
+            if Path(path).is_file()
+        )
+        committed = manifest.commit_success(
+            key,
+            run_id=run_id,
+            generation=generation,
+            plan_hash=plan_hash,
+            input_hash=input_hash,
+            capability_version=capability_version,
+            structured_output=result.materialized.structured,
+            artifacts=artifacts,
+            now=time.time(),
+        )
+        if committed:
+            return result
+        return dataclasses.replace(
+            result,
+            error="leaf ownership lost before commit",
+            error_class="crash",
+        )
 
     def _run_task(
         step: CompiledStep,
         leaf: dict,
         leaf_index: int,
         upstream_snapshot: dict[str, Any],
+        input_hash: str,
     ) -> None:
         key = f"{step.section_id}::{leaf.get('_id')}"
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError("pipeline cancelled before leaf dispatch")
         if manifest is not None:
             with lock:
-                manifest.claim(key, run_id=run_id, now=started)
-
-        # Global run-level budget gate (opt-in). A refused spend halts this
-        # leaf with a typed BUDGET_EXHAUSTED result *before* dispatch — the
-        # runaway-fan-out breaker a static compile gate can't catch. When
-        # ``budget`` is None the dispatch always proceeds (parity).
-        if budget is not None and not budget.try_spend(cost=1.0):
-            budget_result = StepResult(
-                section_id=step.section_id,
-                leaf_id=leaf.get("_id"),
-                response=LLMResponse(
-                    content="",
-                    elapsed_ms=0.0,
-                    backend_id=getattr(backend, "backend_id", ""),
-                    metadata={"budget_exhausted": True},
-                ),
-                materialized=MaterializedOutput(
-                    structured={}, notes="run budget exhausted"
-                ),
-                elapsed_ms=0.0,
-                error="run budget exhausted",
-                error_class="crash",
-            )
-            with lock:
-                results[(topo_index[step.section_id], leaf_index)] = budget_result
-                if manifest is not None:
-                    manifest.mark_blocked(key, blocked_by=())
-                    if manifest.path is not None:
-                        manifest.save()
-                if events_path is not None:
-                    events.append(
-                        {
-                            "section_id": step.section_id,
-                            "leaf_id": leaf.get("_id"),
-                            "outcome": "BUDGET_EXHAUSTED",
-                            "attempts": 0,
-                            "elapsed_ms": 0.0,
-                            "error_class": "crash",
-                        }
+                claimed = manifest.claim(
+                    key,
+                    run_id=run_id,
+                    now=time.time(),
+                    generation=generation,
+                )
+                if not claimed:
+                    results[(topo_index[step.section_id], leaf_index)] = StepResult(
+                        section_id=step.section_id,
+                        leaf_id=leaf.get("_id"),
+                        response=LLMResponse(
+                            content="",
+                            elapsed_ms=0.0,
+                            backend_id=getattr(backend, "backend_id", ""),
+                            metadata={"claim_refused": True},
+                        ),
+                        materialized=MaterializedOutput(
+                            structured={},
+                            notes="leaf claim refused; work was not dispatched",
+                        ),
+                        elapsed_ms=0.0,
+                        error="leaf claim refused",
+                        error_class="crash",
                     )
-            return
+                    return
 
         result = execute_step_with_retry(
             step,
@@ -664,7 +748,11 @@ def run_pipeline_dynamic(
             dry_run=dry_run,
             max_logic_retries=max_logic_retries,
             max_crash_recoveries=max_crash_recoveries,
+            budget=budget,
             context_assembler=context_assembler,
+            cancellation_check=cancellation_check,
+            effect_guard=effect_guard,
+            effect_recorder=effect_recorder,
         )
 
         # Per-session close-gate. Only when a close_gate is
@@ -687,11 +775,12 @@ def run_pipeline_dynamic(
                 backend=backend,
                 vault_root=vault_root,
                 dry_run=dry_run,
+                cancellation_check=cancellation_check,
+                effect_guard=effect_guard,
+                effect_recorder=effect_recorder,
             )
 
-        outcome = classify_outcome(result)
         with lock:
-            results[(topo_index[step.section_id], leaf_index)] = result
             if manifest is not None:
                 manifest.add_attempt(
                     key,
@@ -702,19 +791,34 @@ def run_pipeline_dynamic(
                             if result.error is None
                             else (gate_cause or result.error_class or "crash")
                         ),
-                        at=started,
+                        at=time.time(),
                     ),
                 )
                 # Gate-then-commit: mark done only on a clean (gate-passed)
                 # result; a gate FAIL closes the session ``blocked``, never
                 # silently ``done`` (lifecycle-terminator invariant).
                 if result.error is None:
-                    manifest.mark_done(key)
-                elif gate_cause is not None:
+                    if wave_gate is None:
+                        result = _commit_result(
+                            key,
+                            input_hash,
+                            result,
+                        )
+                elif (
+                    gate_cause is not None
+                    or result.error == "run budget exhausted"
+                ):
                     manifest.mark_blocked(key, blocked_by=())
-                if manifest.path is not None:
-                    manifest.save()
+                else:
+                    manifest.release_for_retry(
+                        key,
+                        run_id=run_id,
+                        generation=generation,
+                    )
+                _save_manifest()
+            results[(topo_index[step.section_id], leaf_index)] = result
             if events_path is not None:
+                outcome = classify_outcome(result)
                 events.append(
                     {
                         "section_id": step.section_id,
@@ -780,12 +884,68 @@ def run_pipeline_dynamic(
                 # Freeze the upstream context this step sees at promotion.
                 snapshot = dict(upstream)
                 in_flight_steps.add(sid)
-                remaining[sid] = len(scope)
+                missing: list[tuple[int, dict, str]] = []
                 for leaf_index, leaf in enumerate(scope):
-                    fut = pool.submit(_run_task, step, leaf, leaf_index, snapshot)
+                    key, input_hash = _task_identity(step, leaf, snapshot)
+                    result_key = (topo_index[sid], leaf_index)
+                    verified = False
+                    if manifest is not None:
+                        with lock:
+                            verified = manifest.verify_commit(
+                                key,
+                                vault_root=vault_root,
+                                generation=generation,
+                                plan_hash=plan_hash,
+                                input_hash=input_hash,
+                                capability_version=capability_version,
+                            )
+                            if not verified:
+                                manifest.prepare_retry(key, run_id=run_id)
+                            manifest_tasks[result_key] = (key, input_hash)
+                    if verified:
+                        entry = manifest.entries[key]
+                        artifact_paths = tuple(
+                            vault_root / artifact.path
+                            for artifact in entry.artifacts
+                        )
+                        results[result_key] = StepResult(
+                            section_id=sid,
+                            leaf_id=leaf.get("_id"),
+                            response=LLMResponse(
+                                content="",
+                                elapsed_ms=0.0,
+                                backend_id="manifest-resume",
+                                metadata={"resumed": True},
+                            ),
+                            materialized=MaterializedOutput(
+                                structured=dict(entry.structured_output),
+                                files_written=artifact_paths,
+                                notes="reconstructed from verified manifest commit",
+                            ),
+                            elapsed_ms=0.0,
+                            attempts=0,
+                            retry_kind_history=(),
+                        )
+                    else:
+                        missing.append((leaf_index, leaf, input_hash))
+                remaining[sid] = len(missing)
+                if not missing:
+                    _publish_and_finish(sid)
+                    continue
+                for leaf_index, leaf, input_hash in missing:
+                    fut = pool.submit(
+                        _run_task,
+                        step,
+                        leaf,
+                        leaf_index,
+                        snapshot,
+                        input_hash,
+                    )
                     fut_to_step[fut] = sid
 
             if not fut_to_step:
+                if promoted:
+                    continue
                 break  # pragma: no cover — compiler guarantees a runnable DAG
 
             done_futs, _pending = wait(
@@ -799,7 +959,8 @@ def run_pipeline_dynamic(
                     _publish_and_finish(sid)
 
     # Rebuild ordered step_results to match the serial path exactly.
-    step_results = [results[k] for k in sorted(results.keys())]
+    ordered_result_keys = sorted(results.keys())
+    step_results = [results[k] for k in ordered_result_keys]
 
     # Per-wave post-batch gate (opt-in): cross-set checks a per-session
     # close-gate structurally can't see (e.g. two sessions writing the SAME
@@ -809,7 +970,58 @@ def run_pipeline_dynamic(
     # typed outcome reflect the cross-set violation. When ``wave_gate`` is
     # None (the default) this is skipped — parity preserved.
     if wave_gate is not None:
-        step_results = _apply_wave_gate(step_results, wave_gate)
+        pre_wave_results = step_results
+        step_results = _apply_wave_gate(pre_wave_results, wave_gate)
+        if manifest is not None:
+            finalized = list(step_results)
+            with lock:
+                for i, (result_key, before, after) in enumerate(
+                    zip(
+                        ordered_result_keys,
+                        pre_wave_results,
+                        step_results,
+                        strict=True,
+                    )
+                ):
+                    identity = manifest_tasks.get(result_key)
+                    if identity is None or before.error is not None:
+                        continue
+                    key, input_hash = identity
+                    if after.error is not None:
+                        released = manifest.release_for_retry(
+                            key,
+                            run_id=run_id,
+                            generation=generation,
+                        )
+                        if not released:
+                            manifest.invalidate_commit(
+                                key,
+                                generation=generation,
+                                plan_hash=plan_hash,
+                                input_hash=input_hash,
+                                capability_version=capability_version,
+                            )
+                        continue
+
+                    entry = manifest.entries.get(key)
+                    if entry is not None and entry.status == "in_progress":
+                        finalized[i] = _commit_result(key, input_hash, after)
+                    elif not manifest.verify_commit(
+                        key,
+                        vault_root=vault_root,
+                        generation=generation,
+                        plan_hash=plan_hash,
+                        input_hash=input_hash,
+                        capability_version=capability_version,
+                    ):
+                        manifest.prepare_retry(key, run_id=run_id)
+                        finalized[i] = dataclasses.replace(
+                            after,
+                            error="manifest commit changed before wave acceptance",
+                            error_class="crash",
+                        )
+                _save_manifest()
+            step_results = finalized
 
     error_count = sum(1 for r in step_results if r.error is not None)
     duration = time.monotonic() - started
@@ -918,6 +1130,9 @@ def _run_close_gate(
     backend: LLMBackend,
     vault_root: Path,
     dry_run: bool,
+    cancellation_check: "Callable[[], bool] | None",
+    effect_guard: "Callable[[], ContextManager[None]] | None",
+    effect_recorder: "Callable[[Path], None] | None",
 ) -> tuple[StepResult, str | None]:
     """Gate a materialized note; fix-loop on FAIL; return (result, cause).
 
@@ -969,6 +1184,9 @@ def _run_close_gate(
         evaluate=_evaluate,
         fixer=loop_fixer,
         max_rounds=max_fix_rounds,
+        cancellation_check=cancellation_check,
+        effect_guard=effect_guard,
+        effect_recorder=effect_recorder,
     )
 
     if loop.passed:

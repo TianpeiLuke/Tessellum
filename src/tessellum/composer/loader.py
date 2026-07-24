@@ -67,7 +67,7 @@ class Query(BaseModel):
     """A declarative query for ``applies_to_files_query`` resolution.
 
     Resolved by the compiler against the unified index DB at compile
-    time. Sidecars may declare the field even when the index is
+    time. Step contracts may declare the field even when the index is
     unavailable — the loader accepts it; resolution happens later in
     the compiler.
     """
@@ -80,8 +80,7 @@ class Query(BaseModel):
 
 
 class PipelineStep(BaseModel):
-    """One step in a sidecar's ``pipeline`` list. Mirrors the JSON schema's
-    ``Step`` definition with typed access."""
+    """One inline step contract with typed access to the ``Step`` schema."""
 
     model_config = ConfigDict(frozen=True, extra="allow")
 
@@ -108,7 +107,7 @@ class PipelineStep(BaseModel):
 
 
 class Pipeline(BaseModel):
-    """Top-level sidecar model: version + ordered list of steps."""
+    """Assembled pipeline model: version plus ordered inline steps."""
 
     model_config = ConfigDict(frozen=True, extra="allow")
 

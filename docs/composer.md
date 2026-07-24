@@ -58,9 +58,10 @@ prose stays readable; the declarations stay checkable.
 
 From there the pieces have clean roles. The compiler produces a typed object. The
 scheduler drives that object. The executor is the single unit of work the scheduler
-repeats — one step against one input. And the materializer is the only sanctioned
-way anything reaches the filesystem. That last constraint is deliberate: if writes
-can only happen through one channel, every write is audited by construction.
+repeats — one step against one input. Model-authored step output reaches the
+filesystem only through the materializer; the explicit close-gate fixer may later
+rewrite that same note in place. Keeping ordinary publication behind one channel
+makes paths, contracts, and effects auditable by construction.
 
 The unit the pipeline runs against is a *leaf* — one input item, such as one
 section of a document to digest. A step is either per-leaf (it runs once per leaf)
@@ -144,15 +145,33 @@ the reported cause is the one a fix loop can actually act on.
 
 Across a whole run, the resume manifest is the crash-safety ledger. Its guiding
 principle is that it is never the source of truth — the vault is. The manifest can
-always be rebuilt from which notes exist on disk, so a lost or corrupt one is never
-fatal; it can be regenerated. It is written atomically, replacing the old file in
-one step and rotating a few backups, and on a bad read it falls back to the newest
-good backup or starts empty with a warning rather than trusting garbage. Two workers
-never own the same leaf, because claiming a leaf is a compare-and-swap that only one
-can win, and a worker records a leaf *done* durably before it releases its claim, so
-the leaf leaves the claimable set the moment the write lands. (Skipping already-done
-leaves on resume is deliberately not wired yet — today a fresh run re-executes every
-task, which keeps it identical to the serial path.)
+always be discarded safely: a missing or invalid entry causes re-execution, never
+trust in unproven output. It is written atomically, replacing the old file in one
+step and rotating a few backups, and on a bad read it falls back to the newest good
+backup or starts empty with a warning rather than trusting garbage.
+
+Resume now skips real work, but only after proving that the prior commit is still
+the same computation. Each successful entry records the execution generation,
+pipeline and capability identity, a hash of the leaf plus its frozen upstream
+inputs, the structured output needed by downstream steps, and every filesystem
+artifact's path, size, and SHA-256. On restart, the scheduler verifies all of those
+fields and re-hashes every artifact. A verified entry is reconstructed as a normal
+successful `StepResult`, including its structured output, so dependent steps receive
+the same upstream context without another model call. Any mismatch, missing file, or
+old manifest entry simply runs again.
+
+Two fences keep this safe under concurrency. Claiming a leaf is a compare-and-swap
+that only one worker can win, and a successful commit must still match the claim's
+owner and generation. A reclaimed or stale worker therefore cannot mark its output
+done after a newer worker has taken ownership. The dynamic scheduler also accepts a
+cooperative cancellation check and evaluates it before each leaf dispatch; the
+executor checks again before materialization, and the digestion driver checks the
+same signal between phases. Callers may also supply an effect guard around
+materializer writes, fix-loop restoration, and manifest saves. An arbitrary
+user-supplied fixer is responsible for its own fencing; the automatic runtime
+constructs its LLM fixer with the job's lease guard. Diagnostic trace, event,
+statistics, source-leaf, and plan files are run artifacts rather than vault effects
+and are not lease-fenced by Composer.
 
 ## Gates: the note only counts when it passes
 
@@ -171,7 +190,12 @@ during capture, but the leaf is only marked done — and the result only treated
 clean — *after* the gate passes. A gate failure turns an otherwise-clean capture
 into an errored, blocked result. A note that failed its gate is never silently
 recorded as done. The wave-gate adds one check a per-session gate structurally
-cannot make: catching two leaves that resolved to the same target path.
+cannot make: catching two leaves that resolved to the same target path. When a
+wave gate is active, manifest success commits are deferred until that gate accepts
+the whole wave; rejected leaves return to claimable work. Standalone Composer may
+leave an inspected but rejected note on disk. The automatic runtime adds a durable
+per-job effect journal and restores every touched vault path when digestion is
+rejected, cancelled, or killed before acceptance.
 
 When the close-gate fails, the fix loop repairs the note without ever making it
 worse. It scores the note by its count of blocking issues — fewer is better — and
@@ -194,15 +218,16 @@ from cheap signals, defaulting to full when unsure, because a mis-planned novel 
 costs more than an over-planned trivial one.
 
 The budget is the runaway-fan-out breaker a static compile check cannot provide.
-Before dispatching each task the dynamic scheduler charges one unit against a run
-budget, atomically and all-or-nothing; a refused leaf halts with a
-budget-exhausted outcome and the backend is never called. Credentials are pooled
-alongside: the pool leases the least-used key per call, and when a call fails it
-classifies the cause. A hard rate-limit, quota, or auth failure benches that key
-for an absolute cooldown that survives a restart and releases the lease so the next
-attempt draws a different key; a transient blip keeps the lease. Crucially the pool
-holds key *ids*, never secrets — the caller maps id to secret out of band, so this
-layer never touches a credential.
+Immediately before every backend call, including retry and informed-fixer calls,
+the executor charges one unit against the shared run budget atomically and
+all-or-nothing. A refused call halts the leaf with a budget-exhausted outcome
+without dispatching. Credentials are pooled alongside: the pool leases the
+least-used key per call, and when a call fails it classifies the cause. A hard
+rate-limit, quota, or auth failure benches that key for an absolute cooldown
+that survives a restart and releases the lease so the next attempt draws a
+different key; a transient blip keeps the lease. Crucially the pool holds key
+*ids*, never secrets — the caller maps id to secret out of band, so this layer
+never touches a credential.
 
 Sign-off is the approval ladder from plan to execute, climbed cheapest-first. A
 program gate is a pure structural pre-filter that can reject outright; an agent
@@ -244,15 +269,17 @@ records the rest.
   correct.** Manifest, gates, budget, fixer, context strategy all default to off,
   and parity with the serial output is the acceptance test for every one of them.
   A new capability must never silently change existing output.
-- **The materializer is the only write channel.** Contracts default to demanding a
-  tool-free backend so a model cannot smuggle out an undocumented write; one audited
-  path or none.
+- **Model-authored step output uses one write channel.** Contracts default to
+  demanding a tool-free backend so a model cannot smuggle out an undocumented
+  write. Agent paths must be relative and resolve beneath `vault_root`, and
+  multi-edit payloads preflight every path before writing the first file. The
+  explicit fixer can only repair the note path already selected by materialization.
 - **Gates are pure programs and fail closed.** The agent gathers evidence; the
   program decides. An unverifiable source is a failure, never a pass, so fabrication
   cannot pass as plausible.
 - **The vault is the source of truth, not the manifest.** A lost or half-written
-  ledger is regenerated from disk or falls back to a good backup — a resume can
-  never be corrupted by manifest state.
+  ledger falls back to a good backup or causes safe re-execution. Resume only trusts
+  entries whose computation identity and artifact hashes still verify.
 - **Composer writes; it does not rank.** Ranking notes is retrieval's job in a
   separate subsystem. Composer's output is always a note on disk.
 

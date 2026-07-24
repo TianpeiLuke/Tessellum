@@ -197,7 +197,7 @@ def iter_step_sections(skill_path: Path | str) -> list[StepSection]:
 def list_section_ids(skill_path: Path | str) -> list[str]:
     """Return all section_ids declared in a skill canonical, in document order.
 
-    Useful for verifying every sidecar step's ``section_id`` matches an
+    Useful for verifying every inline step contract's ``section_id`` matches an
     anchor in the canonical.
     """
     skill_path = Path(skill_path)

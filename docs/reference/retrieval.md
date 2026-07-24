@@ -12,7 +12,7 @@ API, symbols, and signatures for the read layer. For the mental model and how wo
 | `graph.py` | Best-first BFS over the `note_links` graph. `GraphHit` + `best_first_bfs`. Builds a NetworkX `DiGraph` (`_load_graph`), traverses the undirected view, uses directed in-degree as the hub signal, hub-skips popular nodes. |
 | `metadata.py` | Structured metadata filtering via direct SQL on `notes` columns. `MetadataHit` + `metadata_search`. AND-combines filters; JSON-array fields matched via `json_each`. |
 | `router.py` | Heuristic query classifier + dispatcher. `Strategy`, `RouterDecision`, `classify_query`, `route`. Not wired into any CLI command. |
-| `__init__.py` | Public surface: re-exports every hit type, search function, and the router symbols. (Its own docstring documents the deliberate "No PageRank" decision; the genuinely stale `ppr` token lives in the package-root `tessellum/__init__.py`, listing a surface that has no function, flag, or column.) |
+| `__init__.py` | Public surface: re-exports every hit type, search function, and the router symbols; its docstring records the deliberate no-PageRank decision. |
 
 ## Public API — `tessellum.retrieval`
 

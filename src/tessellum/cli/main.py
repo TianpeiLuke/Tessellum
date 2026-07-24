@@ -22,6 +22,7 @@ from tessellum.cli.fz import add_subparser as add_fz_subparser
 from tessellum.cli.index import add_subparser as add_index_subparser
 from tessellum.cli.init import add_subparser as add_init_subparser
 from tessellum.cli.search import add_subparser as add_search_subparser
+from tessellum.cli.runtime import add_subparser as add_runtime_subparser
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -46,6 +47,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_composer_subparser(subparsers)
     add_dks_subparser(subparsers)
     add_mcp_subparser(subparsers)
+    add_runtime_subparser(subparsers)
     return parser
 
 
@@ -61,6 +63,7 @@ def _print_banner() -> None:
     print("  from tessellum.indexer import build, Database")
     print("  from tessellum.retrieval import bm25_search, dense_search, hybrid_search,")
     print("                                  best_first_bfs, metadata_search")
+    print("  from tessellum.runtime import RuntimePaths, RuntimeStore, Job, JobState")
     print("  from tessellum.init import scaffold")
     print("  from tessellum.data import templates_dir, seed_vault_dir")
     print()
@@ -70,21 +73,24 @@ def _print_banner() -> None:
     print("  tessellum capture <flavor> <slug>   — create a new note from a template")
     print("  tessellum index build               — build the unified SQLite index")
     print("  tessellum search <query>            — content retrieval (--bm25/--dense/--hybrid/--bfs)")
-    print("  tessellum filter --tag <t> [--bb …] — metadata filter (tags, BB, status, dates, ...)")
+    print("  tessellum filter --tag <t> [--building-block …] — metadata filter")
     print("  tessellum fz {list|show|ancestors|descendants|path|all} — Folgezettel trail explorer")
     print("  tessellum bb audit                  — vault-wide BB graph telemetry (corpus counts + untyped edges)")
     print("  tessellum dks <observations.jsonl> — run a multi-cycle DKS session")
-    print("  tessellum composer validate <skill> — validate a skill's pipeline sidecar")
+    print("  tessellum composer validate <skill> — validate a skill's typed contracts")
+    print("  tessellum runtime serve             — run durable automatic inbox digestion")
+    print("  tessellum mcp serve                 — expose 12 deterministic agent tools")
     print()
     print("  tessellum composer compile <skill>  — compile to a typed DAG")
-    print("  tessellum composer run <skill>      — execute the compiled DAG (mock or anthropic backend)")
+    print("  tessellum composer run <skill>      — execute the compiled DAG")
     print("  tessellum composer run --backend=anthropic  — real Claude calls (requires [agent] extras)")
     print("  tessellum composer batch <jobs.json>  — run many jobs in parallel with resume")
     print("  tessellum composer eval <scenarios/>  — scenario assertions + LLMJudge rubric")
+    print("  tessellum composer digest --source <json> — run native automatic digestion")
     print()
-    print("Composer port complete: capture → compile → execute → batch → eval.")
+    print("Composer and automatic runtime are available for serial, dynamic, and inbox work.")
     print()
-    print("See https://github.com/TianpeiLuke/Tessellum for the v0.1 plan.")
+    print("See https://github.com/TianpeiLuke/Tessellum and docs/ for current guidance.")
 
 
 def main(argv: list[str] | None = None) -> int:

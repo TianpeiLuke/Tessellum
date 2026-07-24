@@ -9,9 +9,9 @@ Top-level subcommand group for everything related to the BB ontology
   inbound/outbound corpus edges), and unrealised schema edges (0
   instances in the corpus).
 - ``tessellum bb migrate`` — retroactive ``bb_schema_version``
-  classification across the vault. Walks every note, computes which
-  schema version's edge palette its outbound BB edges fit under, and
-  optionally writes the result into frontmatter.
+  stamp classification across the vault. The current TESS-005 check is
+  warning-only and uses each note's recorded schema, so this is a passive
+  stamp migration rather than target-schema compatibility validation.
 
 Exit codes:
     0  command completed (warnings are not failure)
@@ -71,10 +71,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     # ── migrate ────────────────────────────────────────────────────────────
     migrate = sub.add_parser(
         "migrate",
-        help="Retroactive bb_schema_version validation (Phase B.5). "
+        help="Retroactive bb_schema_version stamp migration (Phase B.5). "
         "Scan a vault for notes whose recorded version is below the "
-        "current BB_SCHEMA_VERSION; report which would pass TESS-005 "
-        "today and which would fail.",
+        "current BB_SCHEMA_VERSION using the current warning-only check.",
     )
     migrate.add_argument(
         "--vault",
@@ -91,10 +90,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     migrate.add_argument(
         "--apply",
         action="store_true",
-        help="Bump the recorded bb_schema_version on notes that would "
-        "pass TESS-005 under the target version (passive migration). "
-        "Notes that would fail are reported but never auto-rewritten — "
-        "manual review required.",
+        help="Bump the recorded bb_schema_version on notes classified "
+        "would-pass by the current passive check. This does not validate "
+        "against the target schema.",
     )
     migrate.add_argument(
         "--format",
@@ -359,10 +357,8 @@ def run_bb_migrate(args: argparse.Namespace) -> int:
         if recorded >= target:
             continue  # already at-or-above target
 
-        # Run validation against the live schema (which reflects target_version
-        # only when target == current; for past targets the live schema is a
-        # superset, but reporting errors against current is the conservative
-        # behavior — would_fail under current implies would_fail under target).
+        # Validation uses each note's recorded schema. TESS-005 is warning-only,
+        # so this currently classifies every parseable lagging note would-pass.
         issues = validate(path)
         tess005_errors = [
             i for i in issues if i.rule_id == "TESS-005" and i.severity == Severity.ERROR
@@ -426,8 +422,8 @@ def run_bb_migrate(args: argparse.Namespace) -> int:
         print(f"  current version: {BB_SCHEMA_VERSION}")
         print(f"  total .md files: {len(md_files)}")
         print(f"  notes behind target: {len(behind)}")
-        print(f"    would pass under target: {len(would_pass)}")
-        print(f"    would fail under target: {len(would_fail)}")
+        print(f"    passive would-pass: {len(would_pass)}")
+        print(f"    passive would-fail: {len(would_fail)}")
         if skipped:
             print(f"  skipped (parse errors): {len(skipped)}")
         if args.apply:

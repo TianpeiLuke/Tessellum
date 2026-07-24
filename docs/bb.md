@@ -41,7 +41,12 @@ The corpus view is assembled on demand by `BBGraph.from_db`. It opens the built 
 
 From that graph, `tessellum bb audit` produces the vault's structural telemetry. It counts nodes by type and edges by transition label, surfaces the untyped edges (the ones a validator or a schema author should examine), flags orphan nodes with no connections at all, and lists the schema transitions the corpus has never once realised. The last of these matters more than it looks: a schema with a "challenging" edge and zero challenges in the corpus is telling you something about the health of the thinking, not just the data.
 
-The second command, `tessellum bb migrate`, exists because the schema is allowed to grow, and a growing schema would otherwise silently invalidate old notes. Every note records the schema version it was born under. Migrate walks the vault, finds notes recorded below a target version, re-validates each to see whether it would still pass under the new schema, and — only when asked, and only for the notes that would pass — bumps the recorded version. Notes that would fail are reported for a human to look at and are never rewritten automatically.
+The second command, `tessellum bb migrate`, advances recorded schema-version
+stamps. Today it is deliberately passive: it walks lagging notes and runs the
+current validator, but `TESS-005` is warning-only and validation still uses
+each note's recorded schema rather than the target schema. Consequently every
+parseable lagging note is currently eligible for `--apply`; this command
+should not be read as proof that a note conforms to the target schema.
 
 ## Design decisions and why
 

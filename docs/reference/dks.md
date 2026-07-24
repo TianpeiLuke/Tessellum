@@ -176,7 +176,7 @@ Re-exported from `__init__.py:36-201`:
 
 ## CLI (`cli/dks.py`)
 
-`tessellum dks` is one of Tessellum's 11 CLI commands, with four mutually-short-circuiting modes (`run_dks_cli`, `cli/dks.py:267-278`, checked in order: `--report` → `--calibrate` → `--meta` → run). Exit codes: `0` success (zero cycles allowed), `2` invocation error.
+`tessellum dks` is one of Tessellum's 12 CLI commands, with four mutually-short-circuiting modes (`run_dks_cli`, `cli/dks.py:267-278`, checked in order: `--report` → `--calibrate` → `--meta` → run). Exit codes: `0` success (zero cycles allowed), `2` invocation error.
 
 ### Run (default)
 

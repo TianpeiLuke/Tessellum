@@ -1,4 +1,4 @@
-"""Tessellum MCP server — 7 tools exposing the runtime + skill canonicals.
+"""Tessellum MCP server — 12 tools exposing the runtime + skill canonicals.
 
 The server registers its tools via the MCP Python SDK's decorator API
 (``@server.list_tools()``, ``@server.call_tool()``) and runs over the
@@ -8,7 +8,7 @@ standard stdio transport. Build the ``Server`` instance with
 
 Tool inventory:
 
-1. ``tessellum_search`` — hybrid BM25 + dense + graph retrieval
+1. ``tessellum_search`` — hybrid BM25 + dense retrieval fused by RRF
 2. ``tessellum_format_check`` — TESS-001..005 validators against a note
 3. ``tessellum_bb_audit`` — corpus BBGraph telemetry (node + edge counts,
    untyped edges, unrealised schema edges)
@@ -18,6 +18,11 @@ Tool inventory:
 6. ``tessellum_get_skill`` — return a skill canonical's body so the
    calling agent can apply the procedure itself
 7. ``tessellum_list_skills`` — enumerate available skill canonicals
+8. ``tessellum_submit_job`` — durably admit one inbox source
+9. ``tessellum_get_job`` — inspect one job and its event history
+10. ``tessellum_list_jobs`` — list durable runtime jobs
+11. ``tessellum_cancel_job`` — request cooperative cancellation
+12. ``tessellum_retry_job`` — retry a cancelled or dead-letter job
 
 The runtime tools are deterministic Python-API wrappers; no LLM call
 on the server side. The skill-canonical tools let the calling agent
@@ -56,8 +61,8 @@ def build_server():
         {
             "name": "tessellum_search",
             "description": (
-                "Hybrid retrieval (BM25 + dense + graph) over the vault. "
-                "Returns ranked note paths with snippets."
+                "Hybrid BM25 + dense RRF retrieval over the vault. "
+                "Returns note ids/names, fused scores, and per-signal ranks."
             ),
             "inputSchema": {
                 "type": "object",
@@ -133,7 +138,7 @@ def build_server():
             "name": "tessellum_capture",
             "description": (
                 "Create a new typed note from a template. Returns the "
-                "created file path. Optional --destination + --prefix "
+                "created file path. Optional destination + filename_prefix "
                 "overrides let the caller override the flavor's defaults."
             ),
             "inputSchema": {
@@ -168,7 +173,7 @@ def build_server():
             "name": "tessellum_list_skills",
             "description": (
                 "Enumerate available skill canonicals from the seed vault. "
-                "Returns each skill's name + 1-line description."
+                "Returns each skill's name + H1 title."
             ),
             "inputSchema": {"type": "object", "properties": {}},
         },
@@ -187,6 +192,69 @@ def build_server():
                         "type": "string",
                         "description": "Skill stem (e.g., 'tessellum_dks_cycle')",
                     },
+                },
+            },
+        },
+        {
+            "name": "tessellum_submit_job",
+            "description": "Durably admit one file already inside a Tessellum inbox lane.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["path"],
+                "properties": {
+                    "path": {"type": "string"},
+                    "root": {"type": "string", "default": "."},
+                },
+            },
+        },
+        {
+            "name": "tessellum_get_job",
+            "description": "Return durable runtime state and event history for one job.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["job_id"],
+                "properties": {
+                    "job_id": {"type": "string"},
+                    "root": {"type": "string", "default": "."},
+                },
+            },
+        },
+        {
+            "name": "tessellum_list_jobs",
+            "description": "List durable automatic-runtime jobs.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "root": {"type": "string", "default": "."},
+                    "state": {"type": ["string", "null"]},
+                    "limit": {"type": "integer", "default": 100},
+                },
+            },
+        },
+        {
+            "name": "tessellum_cancel_job",
+            "description": "Request cooperative cancellation of a durable job.",
+            "inputSchema": {
+                "type": "object",
+                "required": ["job_id"],
+                "properties": {
+                    "job_id": {"type": "string"},
+                    "root": {"type": "string", "default": "."},
+                },
+            },
+        },
+        {
+            "name": "tessellum_retry_job",
+            "description": (
+                "Create a linked retry generation for a cancelled or "
+                "dead-letter job."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "required": ["job_id"],
+                "properties": {
+                    "job_id": {"type": "string"},
+                    "root": {"type": "string", "default": "."},
                 },
             },
         },
@@ -235,6 +303,16 @@ def _dispatch(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return _tool_list_skills(**arguments)
     if name == "tessellum_get_skill":
         return _tool_get_skill(**arguments)
+    if name == "tessellum_submit_job":
+        return _tool_submit_job(**arguments)
+    if name == "tessellum_get_job":
+        return _tool_get_job(**arguments)
+    if name == "tessellum_list_jobs":
+        return _tool_list_jobs(**arguments)
+    if name == "tessellum_cancel_job":
+        return _tool_cancel_job(**arguments)
+    if name == "tessellum_retry_job":
+        return _tool_retry_job(**arguments)
     raise ValueError(f"unknown tool: {name}")
 
 
@@ -390,6 +468,79 @@ def _tool_capture(
         "slug": result.slug,
         "sidecar_path": str(result.sidecar_path) if result.sidecar_path else None,
     }
+
+
+def _runtime(root: str):
+    from tessellum.runtime import RuntimePaths, RuntimeStore
+
+    paths = RuntimePaths.discover(root)
+    paths.ensure_runtime_dirs()
+    return paths, RuntimeStore.open(paths.db)
+
+
+def _job_dict(job) -> dict[str, Any]:
+    return {
+        "job_id": job.job_id,
+        "state": job.state.value,
+        "lane": job.request.lane,
+        "source_event_id": job.request.source_event_id,
+        "capability": job.capability,
+        "attempts": job.attempts,
+        "commit_attempts": job.commit_attempts,
+        "cancel_requested": job.cancel_requested,
+        "last_error": job.last_error,
+        "result_path": job.result_path,
+        "supersedes_job_id": job.supersedes_job_id,
+    }
+
+
+def _tool_submit_job(path: str, root: str = ".") -> dict:
+    from tessellum.runtime import admit_path
+
+    paths, store = _runtime(root)
+    job, created = admit_path(path, paths=paths, store=store)
+    return {**_job_dict(job), "created": created}
+
+
+def _tool_get_job(job_id: str, root: str = ".") -> dict:
+    _paths, store = _runtime(root)
+    job = store.get(job_id)
+    if job is None:
+        return {"error": f"job not found: {job_id}"}
+    return {
+        **_job_dict(job),
+        "events": [
+            {
+                "sequence": event.sequence,
+                "event_type": event.event_type,
+                "at": event.at,
+                "detail": event.detail,
+            }
+            for event in store.events(job_id)
+        ],
+    }
+
+
+def _tool_list_jobs(
+    root: str = ".",
+    state: str | None = None,
+    limit: int = 100,
+) -> dict:
+    from tessellum.runtime.models import JobState
+
+    _paths, store = _runtime(root)
+    states = None if state is None else [JobState(state)]
+    return {"jobs": [_job_dict(job) for job in store.list(states=states, limit=limit)]}
+
+
+def _tool_cancel_job(job_id: str, root: str = ".") -> dict:
+    _paths, store = _runtime(root)
+    return _job_dict(store.request_cancel(job_id))
+
+
+def _tool_retry_job(job_id: str, root: str = ".") -> dict:
+    _paths, store = _runtime(root)
+    return _job_dict(store.retry_terminal(job_id))
 
 
 def _skills_dir() -> Path | None:

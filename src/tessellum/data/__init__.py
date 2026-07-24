@@ -13,8 +13,8 @@ any caller-side branching.
 Public API:
 
     templates_dir() -> Path
-        Returns the directory holding the 13 BB-type templates plus the
-        YAML-header reference and the starter pipeline sidecar.
+        Returns the directory holding 14 capture templates, the YAML-header
+        reference, and the template README.
 
     seed_vault_dir() -> Path
         Returns the root of the seed-vault tree shipped with the package.

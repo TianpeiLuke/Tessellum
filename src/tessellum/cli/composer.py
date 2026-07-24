@@ -8,7 +8,7 @@ Seven subcommands:
     batch <jobs.json>         Run many ``(skill, leaves)`` jobs in parallel.
     eval <scenarios>          Run scenario assertions + LLMJudge rubric.
     scaffold-sidecar <skill>  Print starter ```yaml``` contract blocks to paste into a single-file canonical.
-    digest <source>           Run plan → augment → review →[sign-off]→ execute.
+    digest --source <json>    Run plan → augment → review →[sign-off]→ execute.
 
 The DKS runtime (Dialectic Knowledge System) is a peer subcommand at
 ``tessellum dks``. It uses Composer's LLMBackend abstractions but is
@@ -66,7 +66,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
     validate = composer_sub.add_parser(
         "validate",
-        help="Validate a skill canonical's pipeline sidecar against the spec.",
+        help="Validate a skill canonical's inline contract blocks.",
     )
     validate.add_argument(
         "skill",
@@ -863,6 +863,14 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             else None
         )
         close_gate = build_close_gate() if getattr(args, "close_gate", False) else None
+        budget = None
+        if getattr(args, "max_invocations", None) is not None or getattr(
+            args, "max_cost", None
+        ) is not None:
+            budget = RunBudget(
+                max_invocations=args.max_invocations,
+                max_cost=args.max_cost,
+            )
         informed_fixer = None
         max_fix_rounds = 0
         if getattr(args, "fix_with_backend", False):
@@ -873,16 +881,8 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 2
-            informed_fixer = make_llm_fixer(backend)
+            informed_fixer = make_llm_fixer(backend, budget=budget)
             max_fix_rounds = getattr(args, "max_fix_rounds", 1)
-        budget = None
-        if getattr(args, "max_invocations", None) is not None or getattr(
-            args, "max_cost", None
-        ) is not None:
-            budget = RunBudget(
-                max_invocations=args.max_invocations,
-                max_cost=args.max_cost,
-            )
         stats_path = (
             args.stats.expanduser().resolve()
             if getattr(args, "stats", None) is not None
@@ -1483,5 +1483,3 @@ def _render_contract_blocks(skill_stem: str, section_ids: list[str]) -> str:
             ]
         )
     return "\n".join(out)
-
-

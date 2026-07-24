@@ -4,7 +4,7 @@ Lets MCP-compatible agents (Claude Desktop, IDEs, etc.) invoke
 Tessellum's deterministic runtime APIs as tools, and fetch any of the
 shipped skill canonicals as prompts to execute themselves.
 
-Two classes of tool:
+Three classes of tool:
 
 - **Runtime tools** (deterministic Python-API wrappers): search,
   format-check, bb-audit, fz-traverse, capture. Pure code; no LLM
@@ -12,6 +12,8 @@ Two classes of tool:
 - **Prompt tools** (skill canonical retrievers): get-skill returns
   the canonical body of a named skill so the calling agent can apply
   the procedure step-by-step in its own context.
+- **Job tools**: submit, inspect, list, cancel, and retry durable
+  automatic-runtime work. A separate runtime worker executes jobs.
 
 Entry point: ``tessellum mcp serve`` (stdio transport — the default
 for Claude Desktop integration).

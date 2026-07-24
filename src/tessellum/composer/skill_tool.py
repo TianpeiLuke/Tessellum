@@ -8,8 +8,8 @@ may call it later — so the capability model lives here, not in TS).
 Two artifacts:
 
 - **:class:`SkillTool`** — a skill promoted from a prose SOP into a typed,
-  invokable capability. Compiled from the skill's canonical + pipeline
-  sidecar into a stable ``{input_schema, output_schema, side_effects,
+  invokable capability. Compiled from the skill's inline contracts into a
+  stable ``{input_schema, output_schema, side_effects,
   gates, mcp_deps}`` contract plus a routing key
   ``{produces_bb, input_kind, domain}``. It is a *projection* over the
   already-compiled pipeline — it never re-implements compilation or
@@ -51,7 +51,7 @@ aggregation + role. Part of the routing key."""
 
 @dataclass(frozen=True)
 class McpDep:
-    """A skill's declared MCP dependency (projected from the sidecar)."""
+    """A skill's declared MCP dependency from an inline step contract."""
 
     name: str
     calls: tuple[str, ...] = ()
@@ -83,7 +83,7 @@ class SkillTool:
     Attributes:
         skill_name: Filename stem (e.g. ``skill_tessellum_capture_term_note``).
         skill_path: Source canonical path.
-        pipeline_version: Sidecar ``version``.
+        pipeline_version: Assembled pipeline contract version.
         input_schema: JSON Schema the skill's first CORE step expects (its
             entry contract), or ``None`` if unschematized.
         output_schema: JSON Schema the skill's last CORE step produces (its
@@ -215,8 +215,8 @@ def build_skill_tool(skill_path: Path | str) -> SkillTool:
     """Compile a skill and project it into a :class:`SkillTool` contract.
 
     Delegates ALL compilation to :func:`compile_skill` (single source of
-    truth) and reads the sidecar via :func:`load_pipeline` only for the
-    ``mcp_dependencies`` the compiler drops. Everything else is a
+    truth) and reads the loaded inline contracts only for the
+    ``mcp_dependencies`` that the compiler drops. Everything else is a
     read-only projection over the compiled pipeline + canonical
     frontmatter.
     """

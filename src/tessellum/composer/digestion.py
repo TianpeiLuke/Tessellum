@@ -32,9 +32,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, ContextManager
 
 from tessellum.composer.compiler import compile_skill
+from tessellum.composer.context_assembler import ContextAssembler
+from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.gates import build_plan_gate
 from tessellum.composer.llm import LLMBackend
 from tessellum.composer.scheduler import (
@@ -108,6 +110,11 @@ def _run_phase_linear(
     backend: LLMBackend,
     vault_root: Path,
     dry_run: bool,
+    budget: RunBudget | None,
+    context_assembler: ContextAssembler | None,
+    cancellation_check: Callable[[], bool] | None,
+    effect_guard: Callable[[], ContextManager[None]] | None,
+    effect_recorder: Callable[[Path], None] | None,
 ) -> RunResult:
     """Compile + run one skill as a single linear phase over ``leaf``."""
     compiled = compile_skill(skills_dir / f"{skill_name}.md")
@@ -117,6 +124,11 @@ def _run_phase_linear(
         backend=backend,
         vault_root=vault_root,
         dry_run=dry_run,
+        budget=budget,
+        context_assembler=context_assembler,
+        cancellation_check=cancellation_check,
+        effect_guard=effect_guard,
+        effect_recorder=effect_recorder,
     )
 
 
@@ -141,6 +153,11 @@ def run_digestion_pipeline(
     agent_judge: AgentJudge | None = None,
     human_prompt: HumanPrompt | None = None,
     execute_max_workers: int = 4,
+    budget: RunBudget | None = None,
+    context_assembler: ContextAssembler | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -176,6 +193,8 @@ def run_digestion_pipeline(
 
     # ── Linear phases: plan → augment → review ──────────────────────────────
     for phase in ("plan", "augment", "review"):
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError(f"digestion cancelled before {phase}")
         run = _run_phase_linear(
             PHASE_SKILLS[phase],
             skills_dir=skills_dir,
@@ -183,6 +202,11 @@ def run_digestion_pipeline(
             backend=backend,
             vault_root=vault_root,
             dry_run=dry_run,
+            budget=budget,
+            context_assembler=context_assembler,
+            cancellation_check=cancellation_check,
+            effect_guard=effect_guard,
+            effect_recorder=effect_recorder,
         )
         phases.append(
             PhaseOutcome(phase=phase, ran=True, error_count=run.error_count, run=run)
@@ -243,6 +267,8 @@ def run_digestion_pipeline(
         )
 
     # ── execute: the fan-out wave (one leaf per planned note) ───────────────
+    if cancellation_check is not None and cancellation_check():
+        raise InterruptedError("digestion cancelled before execute")
     execute_compiled = compile_skill(skills_dir / f"{PHASE_SKILLS['execute']}.md")
     execute_leaves = plan_doc.get("execute_leaves")
     if not isinstance(execute_leaves, list) or not execute_leaves:
@@ -256,6 +282,11 @@ def run_digestion_pipeline(
         vault_root=vault_root,
         dry_run=dry_run,
         max_workers=execute_max_workers,
+        budget=budget,
+        context_assembler=context_assembler,
+        cancellation_check=cancellation_check,
+        effect_guard=effect_guard,
+        effect_recorder=effect_recorder,
         **execute_kwargs,
     )
     phases.append(
