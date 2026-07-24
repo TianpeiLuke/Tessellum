@@ -3176,7 +3176,7 @@ Distills the originating research vault's snippet shape (FZ 12a) into a Tessellu
 
 Distills the repo-note shape (parent + sub-notes):
 
-- YAML with `building_block: model` and `code_repo_url:` placeholder pointing at `https://example.com/owner/repo` (no Amazon-internal URLs)
+- YAML with `building_block: model` and `code_repo_url:` placeholder pointing at `https://example.com/owner/repo` (no internal URLs)
 - `## Overview` with attribute table (URL, language, license, owner, deps, install)
 - Optional `## Architecture` (only for repos with 3+ subsystems worth diagramming)
 - Optional `## Sub-Notes` (one row per module that has its own sub-note declaring `**Parent**: repo_<slug>.md`)
