@@ -66,7 +66,7 @@ The insight that "LLM pipeline construction is analogous to compiler design" is 
 The Module library (Predict → ChainOfThought → ReAct → ProgramOfThought) follows an elegant progression: each level adds a new capability (reasoning, tool use, code execution) while maintaining the same interface. This composability means a developer can prototype with Predict, upgrade to ChainOfThought with one line change, and then compile both without changing anything else. The interface stability across module types is a genuine usability contribution.
 
 **S3. Small model competitiveness challenges the frontier-or-nothing mindset.**
-The result that Llama2-13b compiled with DSPy matches GPT-3.5 with expert CoT is practically important. It directly enables cost-effective deployment — a compiled 13B model on local hardware vs. GPT-3.5 API calls. For production abuse detection pipelines (like BAP's ETL scoring chains), this cost-performance tradeoff is exactly the right design space to be in.
+The result that Llama2-13b compiled with DSPy matches GPT-3.5 with expert CoT is practically important. It directly enables cost-effective deployment — a compiled 13B model on local hardware vs. GPT-3.5 API calls. For production abuse detection pipelines (like ETL scoring chains), this cost-performance tradeoff is exactly the right design space to be in.
 
 **S4. Intellectual lineage positions DSPy correctly in a larger program.**
 Khattab is co-author of both DSPy and Meta-Harness (lee2026metaharness). The progression is clear: DSPy optimizes *prompt strings and few-shot demos within a fixed harness* → Meta-Harness optimizes the *harness structure itself* (what modules exist, how they compose, what retrieval is used). Recognizing DSPy as step one in a two-step program significantly increases its long-term significance beyond its benchmark results.
@@ -113,7 +113,7 @@ The paper demonstrates pipelines with 2-5 modules. It is unclear whether compila
 
 **Q5.** DSPy optimizes within a fixed harness (prompt strings, demo selection). Meta-Harness (lee2026metaharness) optimizes the harness structure itself. Do the two approaches compose — can DSPy be used inside a Meta-Harness outer loop, where Meta-Harness proposes harness variants and DSPy compiles each candidate? This would be the full realization of the compiler hierarchy the metaphor implies.
 - **Goal**: Understand whether DSPy and Meta-Harness are sequential layers or parallel alternatives.
-- **If composable**: DSPy's value increases — it becomes the inner compiler in a larger optimization hierarchy relevant to BAP pipeline construction.
+- **If composable**: DSPy's value increases — it becomes the inner compiler in a larger optimization hierarchy relevant to abuse-prevention pipeline construction.
 
 ## Ratings
 
@@ -121,7 +121,7 @@ The paper demonstrates pipelines with 2-5 modules. It is unclear whether compila
 |-----------|-------|-------|
 | **Soundness** | 3/4 | Compilation gains are empirically well-supported across tasks and models. Core weakness: benchmark scope is narrow (clean structured tasks only), and the "expert-crafted" baseline definition is imprecise. The argument that compilation replaces hand-crafting is supported but not conclusively demonstrated in production-realistic conditions. |
 | **Overall** | 8/10 | The compilation metaphor is a genuine and generative intellectual contribution. Empirical results are strong (+25-65%) and the small-model-competitiveness finding has practical importance. Score penalized for W2 (standard benchmarks only) and W3 (optimizer cost not quantified). The ICLR 2024 acceptance and 634 citations reflect appropriate community valuation. |
-| **Confidence** | 4/5 | Familiar with LLM prompting, few-shot learning, and multi-hop QA. Less expert in the optimizer algorithms (MIPRO's Bayesian search specifics, GEPA's gradient estimation). The BAP/Abuse SlipBox domain context adds confidence in evaluating practical implications. |
+| **Confidence** | 4/5 | Familiar with LLM prompting, few-shot learning, and multi-hop QA. Less expert in the optimizer algorithms (MIPRO's Bayesian search specifics, GEPA's gradient estimation). The abuse-prevention domain context adds confidence in evaluating practical implications. |
 
 ## Similar Papers
 

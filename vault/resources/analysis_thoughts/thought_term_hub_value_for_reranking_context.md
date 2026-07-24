@@ -157,13 +157,11 @@ The vault's graph structure (term hubs, BB signatures, FZ trails) is not zero-va
 - **[FZ 7g1a1a1a1a1: ★ Synthesis — The Vault Is a CQRS Knowledge System](thought_synthesis_two_systems_cqrs_value_proposition.md)** — cites this note as one of 13 Phase 3 syntheses arriving at the same pattern: System P artifacts (term hubs, BB signatures) belong at System D's re-rank/assembly stages, never at candidate generation. This note's "redirected for re-ranking, not BFS" finding is the **R-D rule** in CQRS terms.
 
 ### Within Phase 3 (Unification) Trail
-- **[FZ 5i1: Counter — Hub Dilution Refutes Term BFS](counter_hub_dilution_refutes_term_bfs.md)** — the counter this note responds to
 - **[FZ 5i: Hypothesis — Term Notes as Cross-Subcategory Hubs](thought_term_hub_bfs_retrieval_hypothesis.md)** — the original claim, now redirected
 - **[FZ 5e2a: BB Value Redirected to Evaluation](thought_bb_structural_value_redirected_to_evaluation.md)** — sibling sharpened position for evaluation stage
 - **[FZ 5h1a: BB Demand Redirected to Re-Ranking](thought_bb_demand_redirected_to_reranking.md)** — sibling sharpened position for assembly stage
 - **[FZ 5e1: Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md)** — v2 benchmark evidence
 - **[Network Topology Experiment](../../archives/experiments/experiment_slipbox_network_topology.md)** — structural properties confirming the hub observation
-- **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** — evaluation complement
 - **[FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md)** — parent question
 - **[Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md)** — the 8-type taxonomy
 - **[Term: Information Retrieval](../term_dictionary/term_information_retrieval.md)** — foundational IR concepts

@@ -76,13 +76,13 @@ The training method is **joint RL via GRPO** over all 5 skills simultaneously, w
 4. **Execution-grounded rewards are essential.** Each atomic skill has a reward derived from running the resulting code or tests — not from LLM-based evaluation. This eliminates reward hacking and keeps training signal grounded in actual program behavior.
 5. **Infrastructure matters at scale.** The authors required 10,000+ concurrent Kubernetes sandbox instances to evaluate code execution at training speed. Atomic skills make this tractable because each skill's reward is faster to compute than a full SWE-bench pipeline.
 
-## Relevance to Abuse SlipBox
+## Relevance to This Knowledge Base
 
-The paper's central thesis — **atomic skills as basis vectors for SE tasks** — is a direct structural parallel to the Abuse SlipBox's **building blocks as basis vectors for knowledge types**. Both systems decompose complex artifacts into minimal, self-contained, composable units.
+The paper's central thesis — **atomic skills as basis vectors for SE tasks** — is a direct structural parallel to this knowledge base's **building blocks as basis vectors for knowledge types**. Both systems decompose complex artifacts into minimal, self-contained, composable units.
 
 ### Mapping Table
 
-| Atomic Skills Framework | Abuse SlipBox Analog |
+| Atomic Skills Framework | This Knowledge Base Analog |
 |------------------------|---------------------|
 | Atomic skill (code localization, editing, etc.) | Building block (concept, argument, model, etc.) |
 | Joint RL over all 5 skills simultaneously | C.O.D.E. pipeline processing all block types |
@@ -95,7 +95,7 @@ The paper's central thesis — **atomic skills as basis vectors for SE tasks** �
 | Negative transfer in single-skill RL | Single-block-type note that crowds out others |
 | Kubernetes sandbox instances for scale | SQLite vault + incremental update pipeline |
 
-### Key Insight for Abuse SlipBox
+### Key Insight for This Knowledge Base
 
 The paper provides **theoretical grounding** for our building block decomposition strategy. If coding agents benefit from atomic skill mastery before composite task training, then a knowledge management system benefits from atomic block purity before composite note creation. The **decomposition imperative** is not just a stylistic preference — it is a learning-theoretic necessity for systems that need to generalize.
 
@@ -110,7 +110,7 @@ Furthermore, the joint RL finding — that training all skills together outperfo
 
 ### Structural Parallels
 - [Term: Voyager](../term_dictionary/term_voyager.md) — Voyager's skill library in Minecraft; GPT-4 generates skills for embodied agents; atomic coding skills are the SE analog
-- [Term: Building Blocks](../term_dictionary/term_knowledge_building_blocks.md) — The Abuse SlipBox's equivalent of atomic skills
+- [Term: Building Blocks](../term_dictionary/term_knowledge_building_blocks.md) — This knowledge base's equivalent of atomic skills
 
 ### Thought Notes (Pre-existing Convergent Ideas)
 - [Thought: Atomic Skill Context Blockers](../analysis_thoughts/thought_atomic_skill_context_blockers.md) — How atomic skills can be blocked by missing context; directly maps to τ=(k,x,c) where c is the context dependency

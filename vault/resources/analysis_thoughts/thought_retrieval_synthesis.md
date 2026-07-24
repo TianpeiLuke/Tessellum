@@ -138,7 +138,7 @@ The previous-generation `bm25.pkl` + `.npy` + `.json` + `notes.db` baseline isn'
 
 ### No domain-specific term boosts
 
-The parent project (the source vault) had Amazon-specific term boosts in its working-memory and context-assembler layers. Tessellum ships the generic blending logic; the domain knobs are dropped. Users who need them can extend the retrieval module — but they're not in the default surface.
+The parent project had domain-specific term boosts in its working-memory and context-assembler layers. Tessellum ships the generic blending logic; the domain knobs are dropped. Users who need them can extend the retrieval module — but they're not in the default surface.
 
 ## The five rules that fall out
 

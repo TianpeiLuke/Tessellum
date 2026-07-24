@@ -221,7 +221,7 @@ Johnson's framework connects deeply to several vault concepts:
 
 **Socratic Questioning and Slow Hunches**: The practice of [Socratic questioning](../term_dictionary/term_socratic_questioning.md) — probing assumptions, exploring implications — is a technique for keeping hunches alive and pushing them toward connection with other ideas. Johnson's slow hunch pattern provides the temporal dimension that Socratic inquiry provides the interrogative dimension.
 
-**Adjacent Possible in Abuse Prevention**: The concept of the adjacent possible applies to the BRP domain: new abuse detection capabilities become possible only when the prerequisite data, models, and infrastructure are in place. Each new model deployment (e.g., GNN for network detection) expands the adjacent possible for the next generation of detection approaches.
+**Adjacent Possible in Applied Domains**: The concept of the adjacent possible applies to any capability-building domain: new capabilities become possible only when the prerequisite data, models, and infrastructure are in place. Each new deployment expands the adjacent possible for the next generation of approaches.
 
 ## Related Terms
 

@@ -71,7 +71,7 @@ The Pareto distribution is **not** a member of the exponential family — its su
 | Insurance | Large claim sizes, catastrophic loss modeling |
 | **Abuse detection** | Extreme return rates follow power-law tails — a small fraction of buyers account for a disproportionate share of total abuse losses |
 
-In buyer abuse prevention, the Pareto distribution motivates focusing enforcement on the heavy tail of abusive behavior, where a small number of accounts generate outsized losses.
+In abuse prevention, the Pareto distribution motivates focusing enforcement on the heavy tail of abusive behavior, where a small number of accounts generate outsized losses.
 
 ## Related Terms
 

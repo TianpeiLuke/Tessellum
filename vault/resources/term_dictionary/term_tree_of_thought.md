@@ -138,7 +138,7 @@ ToT with a two-step process (generate plans, then passages) produced coherent st
 
 ### Relevance to Abuse Detection
 - **Complex investigation workflows**: Abuse investigation cases that require exploring multiple hypotheses (e.g., "is this return fraud, wardrobing, or legitimate dissatisfaction?") could benefit from ToT-style multi-path reasoning where the LLM evaluates each hypothesis branch
-- **[GreenTEA](term_greentea.md)** and similar agentic systems could incorporate ToT for cases where the initial reasoning path reaches a dead end, enabling backtracking to try alternative investigation strategies
+- **Agentic investigation systems** could incorporate ToT for cases where the initial reasoning path reaches a dead end, enabling backtracking to try alternative investigation strategies
 - **Decision audit trails**: ToT's explicit tree structure provides richer audit trails than linear CoT, showing not just the chosen reasoning path but also the alternatives considered and why they were rejected
 
 ## Challenges
@@ -169,8 +169,8 @@ ToT with a two-step process (generate plans, then passages) produced coherent st
 - Self-Consistency (Wang et al., 2022) -- Samples multiple independent CoT paths and majority-votes; less structured than ToT but simpler to implement
 
 ### Production Systems
-- [GreenTEA](term_greentea.md) -- Agentic automation system that could incorporate ToT-style multi-hypothesis exploration for complex abuse cases
-- [SPOT-X](term_spot_x.md) -- Structured decision rules that could benefit from ToT when generating explanations for ambiguous classification cases
+- **Agentic automation systems** could incorporate ToT-style multi-hypothesis exploration for complex abuse cases
+- **Structured decision-rule systems** could benefit from ToT when generating explanations for ambiguous classification cases
 
 ## References
 

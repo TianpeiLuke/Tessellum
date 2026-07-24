@@ -78,7 +78,7 @@ The term emerged circa 2024-2025 as developers recognized that an agent's real-w
 | Type | Scope | Examples |
 |------|-------|---------|
 | **General-purpose agent harness** | Full runtime: tools + memory + context + planning + verification | Claude Agent SDK, DeepAgents, OpenAI Assistants API |
-| **Coding harness** | Specialized: file I/O + execution sandbox + test runner + progress tracking | Claude Code, Cursor, GitHub Copilot agent mode, Kiro CLI |
+| **Coding harness** | Specialized: file I/O + execution sandbox + test runner + progress tracking | Claude Code, Cursor, GitHub Copilot agent mode |
 | **Modular harness** | Pluggable modules (perception, memory, reasoning) for domain adaptation | ICML 2025 gaming harness |
 | **Minimal harness** | Lightweight: tool calling + basic context management | Simple ReAct loops, function-calling wrappers |
 
@@ -91,7 +91,6 @@ The term emerged circa 2024-2025 as developers recognized that an agent's real-w
 | **OpenAI Assistants API** | OpenAI | Code interpreter, file search, function calling as harness features |
 | **ICML 2025 Modular Harness** | Academic | Perception + memory + reasoning modules; improved win rates across all tested games vs. unharnessed baseline |
 | **[Claude Code](term_claude_code.md)** | Anthropic | Coding harness — bash/file tools, context compaction, `claude-progress.txt`, Anthropic calls it a "general-purpose agent harness" |
-| **[Kiro CLI](term_kiro.md)** | Amazon | Coding harness — file I/O, bash, code intelligence, MCP servers, skills system, knowledge indexing, context hooks |
 | **[OpenClaw](term_openclaw.md)** | Open-source | Gateway/Brain/Memory/Skills/Heartbeat; 50+ messaging channels, local or cloud LLMs, Lobster DSL for workflows |
 | **[Cline](term_cline.md)** | Open-source | VS Code extension agent harness — file I/O, terminal execution, MCP support, browser automation |
 | **[Cursor](term_cursor.md)** | Cursor Inc. | VS Code fork IDE harness — Composer multi-file editing, 8-agent parallel via git worktrees, embedded browser |
@@ -117,7 +116,6 @@ The term emerged circa 2024-2025 as developers recognized that an agent's real-w
 - **[Agent SOP](term_agent_sop.md)**: Structured procedures harnesses follow
 - **[OpenClaw](term_openclaw.md)**: Open-source agent harness with Gateway/Brain/Memory/Skills/Heartbeat architecture — exemplifies the harness pattern with pluggable tool integration, persistent memory, and multi-agent orchestration
 - **[Claude Code](term_claude_code.md)**: Anthropic's coding agent harness — file I/O, bash execution, context compaction, session handoff via progress logs
-- **[Kiro](term_kiro.md)**: Amazon's Kiro CLI is a coding agent harness — file I/O, bash, code intelligence, MCP tool integration, skills system, knowledge indexing
 - **[Cline](term_cline.md)**: Open-source VS Code extension agent harness — file editing, terminal execution, MCP support, browser automation
 - **[Cursor](term_cursor.md)**: AI-native IDE (VS Code fork) agent harness — Composer, multi-agent parallel, embedded browser
 - **[Evaluation Harness](term_evaluation_harness.md)**: Related but distinct — benchmarking framework, not agent infrastructure
@@ -142,11 +140,3 @@ The term emerged circa 2024-2025 as developers recognized that an agent's real-w
 ---
 
 **Last Updated**: 2026-03-31
-
-### Related Code Repos
-- [reliability-pattern](../../areas/code_repos/repo_meshclaw.md) — Agent harness implementation with session pool, sandbox, and deny list
-
-### Related Code Snippets
-- [Sandbox Linux](../../resources/code_snippets/snippet_meshclaw_sandbox_linux.md) — Linux namespace harness
-- [Sandbox macOS](../../resources/code_snippets/snippet_meshclaw_sandbox_macos.md) — Seatbelt harness
-- [Credential Redaction](../../resources/code_snippets/snippet_meshclaw_credential_redaction.md) — Output redaction harness

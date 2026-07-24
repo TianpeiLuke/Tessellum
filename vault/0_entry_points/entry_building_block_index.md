@@ -122,7 +122,6 @@ Each exemplar pairs with the corresponding row in the "8 Building Block types" t
 ## Related Entry Points
 
 - [`entry_master_toc`](entry_master_toc.md) — the vault's navigation root
-- [`entry_acronym_glossary`](entry_acronym_glossary.md) — master index of the 5 universal acronym glossaries
 
 ## Related Terms
 

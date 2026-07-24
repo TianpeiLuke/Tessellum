@@ -137,10 +137,6 @@ ACE addresses both by using incremental delta updates (adding/modifying individu
 - [Compound AI System](term_compound_ai_system.md) -- TextGrad models compound AI systems as computation graphs optimizable via textual gradients
 - [Instance Optimization](term_instance_optimization.md) -- TextGrad's novel complement to prompt optimization: refining individual solutions at test time
 
-- [SPOT-X](term_spot_x.md) -- TextGrad-style structured prompt optimization for abuse rule generation and SOP disambiguation
-- [GreenTEA](term_greentea.md) -- Evolutionary auto-prompting for SOP-driven investigation automation; genetic algorithm discovers optimized prompts
-- [Project: SPOT-X](../../projects/project_spot_x.md) — Structured prompt optimization via decision sets
-
 ## References
 
 - Source: [Zhang et al. (2025). "Agentic Context Engineering"](../papers/lit_zhang2025agentic.md) -- ACE framework with Generator-Reflector-Curator pipeline; addresses brevity bias and context collapse via incremental delta updates
@@ -149,12 +145,7 @@ ACE addresses both by using incremental delta updates (adding/modifying individu
 
 ### Related Vault Notes
 
-- [Project: GreenTEA 2.0](../../projects/project_greentea.md) -- Agentic AI project extending GreenTEA with SOP-DAG and agent memory
-- [PRFAQ: SPOT-X](../documentation/prfaq/prfaq_spot_x.md) -- SPOT-X for abuse rule generation using textual gradient descent
-- [BRP Agentic AI Projects](../../0_entry_points/entry_brp_agentic_ai_projects.md) -- Index of 33 agentic AI projects in BRP, many using prompt optimization
-- [Context Engineering at Amazon](../documentation/builderhub/context_engineering_at_amazon.md) -- Amazon internal best practices for context engineering in LLM applications
-- [Context Engineering Guide](../documentation/builderhub/context_engineering_guide.md) -- BuilderHub guide on managing context windows in AI coding agents
-- [Context Management Strategies](../documentation/builderhub/context_management_strategies.md) -- 12 strategies for LLM context management
+- [Context Engineering](term_context_engineering.md) -- The broader discipline of designing and managing LLM input contexts, of which prompt optimization is one mechanism
 
 ---
 

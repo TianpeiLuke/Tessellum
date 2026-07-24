@@ -37,7 +37,7 @@ building_block: navigation
 
 **Purpose**: Quick reference for causal inference theory (Pearl's framework), statistical reasoning concepts, and experimentation tools used in research analytics and knowledge management. Covers both foundational theory and domain-specific applications.
 
-**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md) | [Cognitive Science Glossary](acronym_glossary_cognitive_science.md) | [Machine Learning Glossary](acronym_glossary_ml.md)
+**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md) | [Cognitive Science Glossary](acronym_glossary_cognitive_science.md)
 
 ---
 
@@ -197,7 +197,7 @@ building_block: navigation
 ### FPR - False Positive Rate
 **Full Name**: False Positive Rate (Type I Error Rate)
 **Documentation**: [FPR Term](../resources/term_dictionary/term_fpr.md)
-**Related**: [Precision](../resources/term_dictionary/term_precision.md), [PFOC](../resources/term_dictionary/term_pfoc.md)
+**Related**: [Precision](../resources/term_dictionary/term_precision.md)
 
 ### Exponential Family
 **Full Name**: Exponential Family of Distributions
@@ -221,7 +221,7 @@ building_block: navigation
 **Full Name**: Linear Regression (OLS)
 **Description**: Models $y = X\beta + \epsilon$, estimated via OLS (minimize squared residuals) or MLE (Gaussian errors). **Closed-form solution: $\hat{\beta} = (X'X)^{-1}X'y$.** Gauss-Markov theorem: OLS is BLUE (Best Linear Unbiased Estimator). Foundation for logistic regression (GLM with logit link) and all regression-based ML.
 **Documentation**: [Linear Regression Term](../resources/term_dictionary/term_linear_regression.md)
-**Related**: [Least Squares](#least-squares-estimation), [Logistic Regression](acronym_glossary_ml.md#logistic-regression), [Quantile Regression](#quantile-regression)
+**Related**: [Least Squares](#least-squares-estimation), [Quantile Regression](#quantile-regression)
 
 ### Least Squares Estimation
 **Full Name**: Least Squares (OLS, Gauss-Legendre Method)
@@ -403,7 +403,6 @@ building_block: navigation
 ## Related Entry Points
 
 - [Cognitive Science & Decision Frameworks Glossary](acronym_glossary_cognitive_science.md) — cognitive biases, learning science, decision frameworks
-- [Machine Learning Glossary](acronym_glossary_ml.md) — ML algorithms, deep learning, uplift models
 
 ---
 

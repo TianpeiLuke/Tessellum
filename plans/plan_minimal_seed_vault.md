@@ -331,7 +331,7 @@ Execute as **one commit** (small, atomic, easy to revert if a check fails):
 ## See Also
 
 - [`plan_v01_src_tessellum_layout.md`](plan_v01_src_tessellum_layout.md) — the v0.1 release plan; this plan operationalizes its "seed vault" line item
-- [`plan_code_artifacts_port.md`](plan_code_artifacts_port.md) — the precedent for "scrub-and-port from the source vault + validate via format check"
+- [`plan_code_artifacts_port.md`](plan_code_artifacts_port.md) — the precedent for "scrub-and-port from the originating research vault + validate via format check"
 - [`plan_composer_port.md`](plan_composer_port.md) — defines `template_skill.pipeline.yaml` which is the system-facing seed material for Composer
 - `src/tessellum/init.py` — `_SEED_VAULT_MANIFEST` is the load-bearing data structure this plan extends
 - `src/tessellum/format/validator.py` — the validator whose issue codes `term_format_spec.md` must mirror

@@ -53,9 +53,9 @@ This produces the [power-law](term_power_law.md) degree distribution observed in
 | Citation networks | Highly-cited papers | 2.5-3.0 |
 | Social networks | Influencers, celebrities | 2.0-2.5 |
 | Protein interaction | Essential proteins | 2.2 |
-| **Abuse Slipbox** | Entry points, glossaries | **1.4-1.8** |
+| **This knowledge base** | Entry points, glossaries | **1.4-1.8** |
 
-## Abuse Slipbox as Scale-Free Network
+## This Knowledge Base as a Scale-Free Network
 
 The vault's knowledge graph (6,778 notes, 59,619 links) exhibits scale-free properties:
 
@@ -69,10 +69,10 @@ The vault's knowledge graph (6,778 notes, 59,619 links) exhibits scale-free prop
 
 The power-law emerges naturally from the Zettelkasten linking pattern:
 - **Entry points and glossaries** are hubs (high in-degree) — they accumulate links as new notes reference them
-- **Leaf notes** (MTRs, launch announcements) have few connections
+- **Leaf notes** (individual reports, announcements) have few connections
 - **Preferential attachment** occurs because well-linked notes are more discoverable and thus more likely to be linked by new notes
 
-The exponent α ≈ 1.4-1.8 is lower than typical citation networks (2.5-3.0), suggesting the Slipbox has **stronger hub dominance** — entry points concentrate more links than would be expected in a pure citation network.
+The exponent α ≈ 1.4-1.8 is lower than typical citation networks (2.5-3.0), suggesting the knowledge base has **stronger hub dominance** — entry points concentrate more links than would be expected in a pure citation network.
 
 ## Implications for Knowledge Management
 
@@ -94,5 +94,3 @@ The exponent α ≈ 1.4-1.8 is lower than typical citation networks (2.5-3.0), s
 ## References
 
 - Barabási, A.-L. & Albert, R. "Emergence of Scaling in Random Networks" (Science, 1999)
-- [Degree Distribution Plot](../../../archives/experiments/data/network_topology/degree_distribution.png) — Abuse Slipbox degree distribution
-- [Thought: Slipbox vs KG vs RAG](../analysis_thoughts/thought_slipbox_vs_kg_vs_rag_comparison.md) — Architectural comparison

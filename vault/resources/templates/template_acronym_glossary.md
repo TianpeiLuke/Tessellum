@@ -41,9 +41,9 @@ TWO USAGE PATTERNS:
 
   B. PARTITIONED (large vault, > 50 terms — recommended):
      - Multiple per-field files: `vault/0_entry_points/acronym_glossary_<field>.md`
-       (e.g., `acronym_glossary_ml.md`, `acronym_glossary_security.md`,
+       (e.g., `acronym_glossary_data.md`, `acronym_glossary_security.md`,
        `acronym_glossary_statistics.md`)
-     - Plus one master `vault/0_entry_points/entry_acronym_glossary.md` that
+     - Plus one master `vault/0_entry_points/entry_glossaries.md` that
        AGGREGATES the per-field sub-glossaries (uses template_entry_point.md
        — it's just an index of indexes)
      - Each sub-glossary uses THIS template, scoped to one field
@@ -72,7 +72,7 @@ quick-lookup surface — the reader knows the acronym, wants the definition + a
 pointer to the deeper term note.
 
 Distinction from related templates:
-  - `template_entry_point.md` — for the MASTER `entry_acronym_glossary.md` in
+  - `template_entry_point.md` — for the MASTER `entry_glossaries.md` in
     pattern B (it's just an entry point listing the sub-glossaries; doesn't
     have per-acronym entries itself).
   - This template (`template_acronym_glossary.md`) — for both:
@@ -90,7 +90,7 @@ machine-parseable for export to other glossary surfaces.
 
 **Purpose**: Quick reference for <domain> acronyms, terms, and abbreviations used in <project context>. Indexes every term note in `vault/resources/term_dictionary/` whose subject matter falls under <domain>.
 
-**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md) <!-- pattern B; remove this line in pattern A -->
+**Navigation**: [← Back to Main Glossary](entry_glossaries.md) <!-- pattern B; remove this line in pattern A -->
 
 ## <Section A — Primary Topical Group>
 
@@ -146,12 +146,12 @@ compresses the per-acronym detail into one scannable view.>
 <Optional. Help readers find acronyms when they don't remember the exact
 spelling or section. Common patterns:
 - "Use Ctrl-F for the acronym you remember"
-- "If you don't know the domain, start with the [Main Glossary](entry_acronym_glossary.md)"
+- "If you don't know the domain, start with the [Main Glossary](entry_glossaries.md)"
 - "For full definitions and context, follow the Documentation links to term notes">
 
 - Use Ctrl-F to search this page for an acronym.
 - For full context and related concepts, follow the **Documentation** link on each entry to the corresponding term note in `vault/resources/term_dictionary/`.
-- For acronyms not in this glossary, check the [Main Glossary](entry_acronym_glossary.md) which lists all domain glossaries.
+- For acronyms not in this glossary, check the [Main Glossary](entry_glossaries.md) which lists all domain glossaries.
 
 ## Coverage Promise
 
@@ -169,7 +169,7 @@ Term notes outside this scope live in:
 
 ## Related Entry Points
 
-- [Main Glossary](entry_acronym_glossary.md) — master index aggregating all per-field sub-glossaries (pattern B); omit this row if you're using pattern A
+- [Main Glossary](entry_glossaries.md) — master index aggregating all per-field sub-glossaries (pattern B); omit this row if you're using pattern A
 - [Related Glossary A](acronym_glossary_<related>.md) — <related domain>
 - [Related Glossary B](acronym_glossary_<related>.md) — <related domain>
 - [Term Dictionary](../resources/term_dictionary/) — the underlying term notes this glossary indexes

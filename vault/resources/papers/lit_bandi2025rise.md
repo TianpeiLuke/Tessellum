@@ -93,7 +93,7 @@ Agentic AI systems are a recently emerged and important approach that goes beyon
 
 ## Relevance to Our Work
 
-This survey provides a comprehensive taxonomy of agentic AI that directly informs the Abuse Slipbox's agentic architecture:
+This survey provides a comprehensive taxonomy of agentic AI that directly informs the vault's agentic architecture:
 - The **ReAct loop** and **Supervisor/Hierarchical** patterns map to the slipbox agent's search-then-synthesize workflow
 - **Memory systems** (STM/LTM/episodic) parallel the vault's SQLite database + PageRank graph
 - **Planning and reflection** components inform the Slipbox Thinking Protocol research direction
@@ -109,7 +109,6 @@ This survey provides a comprehensive taxonomy of agentic AI that directly inform
 - **[Paper: ACE](lit_zhang2025agentic.md)** — Agentic Context Engineering (related)
 - **[Paper: Self-Evolving Agents Survey](lit_gao2025survey.md)** — Complementary survey on self-improving agents
 - **[Paper: Agent-as-a-Judge](lit_you2026agent.md)** — Agentic evaluation framework
-- **[Project: Abuse Slipbox](../../projects/project_source_vault.md)** — This vault's agentic architecture
 
 ## Questions
 

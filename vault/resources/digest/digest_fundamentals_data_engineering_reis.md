@@ -166,17 +166,14 @@ The book argues most organizations should start with batch and adopt streaming o
 
 > "The best technology is the one your team can operate effectively. Don't adopt a cutting-edge tool if your team can't maintain it."
 
-## Relevance to Our Work
+## Relevance to Knowledge Work
 
-The Data Engineering Lifecycle framework directly maps to the abuse prevention data infrastructure:
+The Data Engineering Lifecycle framework is a useful lens for any data-backed knowledge system:
 
-- **Generation**: Buyer behavior events, transaction data, CS contacts, and seller signals feeding into abuse detection — aligns with our source system integration patterns documented in [ETL](../term_dictionary/term_etl.md) and [Datanet](../tools/tool_etlm_datanet.md) notes
-- **Storage**: The vault's data source documentation covers [Redshift](../term_dictionary/term_redshift.md) warehousing and [Cradle](../term_dictionary/term_cradle.md) job orchestration — both lifecycle-stage implementations
-- **Ingestion/Transformation**: Our ETL jobs and staging tables implement the ingestion and transformation stages with batch-first patterns, consistent with the book's pragmatic recommendation
-- **Serving**: Model scoring, rule evaluation, and investigation queues represent the serving stage — delivering processed data to operational consumers (investigators, automated enforcement)
-- **Undercurrents**: The [BSM Data Architecture](../../areas/bsm_data_architecture.md) note captures our architectural decisions, while DataOps practices map to our monitoring and alarm infrastructure
+- **Generation → Storage → Ingestion → Transformation → Serving**: any pipeline that collects source events, persists them, moves them into a store, reshapes them, and delivers them to consumers maps cleanly onto the five stages
+- **Undercurrents as non-negotiables**: security, data management, and DataOps should be designed in from day one rather than retrofitted
 
-The book's emphasis on simplicity and managed services resonates with the team's preference for proven tools (ETLM, Redshift, OTF) over building custom infrastructure. Its technology evaluation framework could serve as a decision guide for future infrastructure choices.
+The book's emphasis on simplicity and managed services — preferring proven tools over custom infrastructure — and its technology evaluation framework serve as a general decision guide for infrastructure choices.
 
 ## References
 
@@ -188,10 +185,6 @@ The book's emphasis on simplicity and managed services resonates with the team's
 
 ### Related Vault Notes
 - [ETL](../term_dictionary/term_etl.md) — Extract-Transform-Load pattern central to the lifecycle's ingestion and transformation stages
-- [Redshift](../term_dictionary/term_redshift.md) — Data warehouse implementation of the storage stage
-- [Cradle](../term_dictionary/term_cradle.md) — Job orchestration implementing the orchestration undercurrent
-- [Datanet](../tools/tool_etlm_datanet.md) — Data pipeline tool for ingestion and transformation
-- [BSM Data Architecture](../../areas/bsm_data_architecture.md) — Team's data architecture decisions, mapping to the book's architecture undercurrent
 - [SQL](../term_dictionary/term_sql.md) — Query language central to the transformation stage
 
 ### Related Digest Notes

@@ -6,7 +6,6 @@ tags:
   - nlp
   - parameter_efficient_fine_tuning
   - llm
-  - buyer_risk_prevention
 keywords:
   - LoRA
   - Low-Rank Adaptation
@@ -39,9 +38,9 @@ The core insight behind LoRA is that weight updates during adaptation have low "
 
 ## Context
 
-LoRA is widely used across Amazon for adapting foundation models to domain-specific tasks in buyer abuse prevention, customer service, and other applications. Within Buyer Risk Prevention (BRP), LoRA enables teams to fine-tune LLMs for abuse detection tasks (A-to-Z claim abuse, threat detection, review solicitation) without the computational overhead of full model retraining. The technique is particularly valuable for RAG (Retrieval-Augmented Generation) systems where task-specific adaptation improves retrieval relevance and generation quality.
+LoRA is widely used to adapt foundation models to domain-specific tasks such as classification, retrieval, and dialogue, without the computational overhead of full model retraining. The technique is particularly valuable for RAG (Retrieval-Augmented Generation) systems where task-specific adaptation improves retrieval relevance and generation quality.
 
-LoRA adapters are deployed in production systems through AWS Bedrock and SageMaker, allowing teams to maintain multiple task-specific adaptations of a single base model. The Buyer Abuse ML team uses LoRA for fine-tuning models like Falcon-40B on buyer-seller messaging data, combining it with quantization techniques (QLoRA) to further reduce memory footprint for large-scale deployment.
+LoRA adapters are commonly deployed in production through managed model-hosting platforms, allowing teams to maintain multiple task-specific adaptations of a single base model. Combining LoRA with quantization techniques (QLoRA) further reduces the memory footprint for large-scale deployment.
 
 ## Key Characteristics
 
@@ -74,7 +73,6 @@ LoRA adapters are deployed in production systems through AWS Bedrock and SageMak
 - **[Dimensionality Reduction](term_dimensionality_reduction.md)**: LoRA is a form of dimensionality reduction for weight updates — projecting full-rank updates to low-rank subspace
 - **[PCA](term_pca.md)**: PCA and LoRA both exploit low-rank structure; PCA in data space, LoRA in weight update space
 - **[QLoRA](term_qlora.md)**: Extension combining 4-bit quantization of base model with 16-bit LoRA adapters, enabling 65B fine-tuning on a single GPU
-- **[Bedrock](term_bedrock.md)**: AWS service for foundation models that supports LoRA adapter deployment for custom model fine-tuning
 
 ## References
 
@@ -84,7 +82,6 @@ LoRA adapters are deployed in production systems through AWS Bedrock and SageMak
 ### Extensions
 - [Task-Agnostic Low-Rank Adapters for Unseen English Dialects](../papers/lit_xiao2023task.md) — Xiao et al. (2023), EMNLP. *HyperLoRA: extends LoRA with hypernetworks for zero-shot dialect adaptation.*
 
-### Internal Documentation
-- [Supervised Fine-Tuning Wiki](https://internal-wiki) — Amazon internal documentation on PEFT techniques including LoRA and QLoRA
-- [Patterns for Building LLM-based Systems](https://internal-wiki) — Internal wiki covering LoRA and other LLM adaptation techniques
-- [COAP: Context Enhanced Buyer Abuse Prevention](https://internal-wiki) — BRP project using LoRA for fine-tuning Falcon-40B on abuse detection tasks
+### External Resources
+- [QLoRA: Efficient Finetuning of Quantized LLMs](https://arxiv.org/abs/2305.14314) — Dettmers et al. (2023). 4-bit quantization of the base model with LoRA adapters.
+- [Hugging Face PEFT documentation](https://huggingface.co/docs/peft) — reference implementation of LoRA, QLoRA, and related PEFT techniques.

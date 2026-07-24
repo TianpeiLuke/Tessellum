@@ -108,7 +108,6 @@ When you grow your first trail, copy the shape: linear or branching descent, a r
 - [`entry_dialectic_trail`](entry_dialectic_trail.md) — Trail 2 (Dialectic / DKS)
 - [`entry_retrieval_trail`](entry_retrieval_trail.md) — Trail 3 (Retrieval / System D)
 - [`entry_building_block_index`](entry_building_block_index.md) — BB picker matrix (each trail note declares a `building_block:`)
-- [`entry_acronym_glossary`](entry_acronym_glossary.md) — acronym glossaries master index
 
 ## Related Terms
 

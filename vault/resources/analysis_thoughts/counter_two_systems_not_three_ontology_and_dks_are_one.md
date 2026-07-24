@@ -36,7 +36,7 @@ author: lukexie
 
 ## The Challenge
 
-[FZ 7g1a1a1a1](thought_synthesis_three_invariance_regimes_one_vault.md) presented the architecture as **three independent invariance regimes**: Ontology (Layer 1), Retrieval (Layer 2), DKS (Layer 3) — each with its own invariant, drift, and discipline. The synthesis treated all three as **architecturally peer-equal**: three layers, two boundaries, three disciplines.
+An earlier synthesis (FZ 7g1a1a1a1) presented the architecture as **three independent invariance regimes**: Ontology (Layer 1), Retrieval (Layer 2), DKS (Layer 3) — each with its own invariant, drift, and discipline. The synthesis treated all three as **architecturally peer-equal**: three layers, two boundaries, three disciplines.
 
 But the synthesis itself contains the evidence that this peering is wrong. **One of the three boundaries is not a boundary at all — it's a seam between two facets of the same system.** Ontology and DKS share the same *kind* of operation (declaration), the same vocabulary (BB types + edges), the same authority model (typed prescriptive knowledge), and the same failure modes when one is changed without the other. The synthesis correctly distinguished Retrieval from the rest, but over-fragmented "the rest."
 
@@ -219,7 +219,6 @@ Response: **Different *contents* drift; the same *interface* between content kin
 
 ### Folgezettel Trail
 - **★ Child [FZ 7g1a1a1a1a1](thought_synthesis_two_systems_cqrs_value_proposition.md)**: the synthesis this counter motivates — sharpens the system diagram, splits the value proposition into two defensible halves, and shows that 13 Phase 3 (Unification) notes independently converged on the same two-system pattern.
-- **Parent [FZ 7g1a1a1a1](thought_synthesis_three_invariance_regimes_one_vault.md)**: the synthesis this counter sharpens — three regimes → two systems; six rules → three rules; layers → CQRS.
 - **Cousin [FZ 7g1a1a1a](thought_fz5_evidence_confirms_three_layer_and_sharpens_within_bb_recipe.md)**: the FZ 5 evidence — interpreted under the two-system view, FZ 5e2's Pareto dominance is the empirical signature of System P / System D being **categorically different kinds of systems**, not just different layers.
 - **Cousin [FZ 7g1a1a1](thought_dks_constructs_knowledge_retrieval_consumes_it.md)**: the original three-layer reframe — its central insight (DKS write, Retrieval read) is preserved; its decomposition (3 layers vs 2 systems) is the part this counter revises.
 - **Cousin [FZ 7g1a1a](thought_within_bb_navigation_is_retrieval_not_ontology.md)**: the within-BB retrieval recipe — under the two-system view, this is unambiguously inside System D.
@@ -237,9 +236,6 @@ Response: **Different *contents* drift; the same *interface* between content kin
 
 ### Software-Engineering Lens
 - **CQRS pattern** (Command Query Responsibility Segregation) — the architectural pattern this counter recognizes the vault as instantiating. No vault-internal note yet; candidate for a future term note.
-
-### Entry Points
-- **[Entry: Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md)** — this note is FZ 7g1a1a1a1a.
 
 ---
 

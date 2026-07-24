@@ -37,7 +37,7 @@ folgezettel_parent: "5"
 
 ## Claim
 
-The vault's Folgezettel argument trails — the [Abuse SlipBox trail](../../0_entry_points/entry_source_vault_argument_trail.md) (FZ 1–10, 62 notes) and the [Cursus trail](../../0_entry_points/entry_cursus_argument_trail.md) (FZ 9, 52 notes) — constitute a **fifth retrieval modality** that is structurally irreducible to the existing four strategies (keyword search, entry point browsing, metadata filter, graph traversal). FZ trails encode three properties that no combination of existing strategies recovers: **ordered reasoning sequence**, **dialectic structure**, and **phase-aware sibling grouping**. These properties mean that for questions about intellectual development, argument evolution, or cross-cutting synthesis, FZ-ordered traversal is the only strategy that returns contextually correct results.
+The vault's Folgezettel argument trails — the primary argument trail (FZ 1–10, 62 notes) and the Cursus trail (FZ 9, 52 notes) — constitute a **fifth retrieval modality** that is structurally irreducible to the existing four strategies (keyword search, entry point browsing, metadata filter, graph traversal). FZ trails encode three properties that no combination of existing strategies recovers: **ordered reasoning sequence**, **dialectic structure**, and **phase-aware sibling grouping**. These properties mean that for questions about intellectual development, argument evolution, or cross-cutting synthesis, FZ-ordered traversal is the only strategy that returns contextually correct results.
 
 This extends the sibling analysis in [FZ 5e](thought_question_type_building_block_retrieval_alignment.md), which showed building block type predicts optimal strategy better than question type. FZ 5e's routing table maps (intent × building block) → strategy for **content-matching retrieval** — finding a single note or set of notes by their properties. FZ 5f identifies a retrieval modality where **the sequence of notes IS the answer**, not any individual note.
 
@@ -81,7 +81,7 @@ FZ siblings (same parent) represent **parallel investigations** of the same thes
 
 **Comparative siblings** (Cursus trail FZ 9a–9e): Each sibling tests one innovation against 3 comparators. For a synthesis question ("What makes Cursus novel overall?"), all 5 siblings must be retrieved together. They share the same `folgezettel_parent: "9"` but there is no single link connecting them — they connect only through their common parent.
 
-**Dialectic siblings** (Abuse SlipBox trail FZ 2, 3, 4): Each sibling attacks one motivating problem with counter-arguments. For a prioritization question ("Which problem is most important?"), FZ 6 (Mullaney ranking) synthesizes these three threads — but the answer requires understanding what survived from each.
+**Dialectic siblings** (primary trail FZ 2, 3, 4): Each sibling attacks one motivating problem with counter-arguments. For a prioritization question ("Which problem is most important?"), FZ 6 (Mullaney ranking) synthesizes these three threads — but the answer requires understanding what survived from each.
 
 **Deepening siblings** (FZ 10b1b1–10b1b5): Each sibling provides evidence for different aspects of the three-dimensional note type tensor. They form a parallel evidence chain, not a sequential argument.
 
@@ -128,7 +128,7 @@ Current strategies can find 9f by keyword but cannot reconstruct the evidence ch
 
 ### Pattern 4: Phase Questions ("What was the adversarial challenge phase?")
 
-**Example**: "Walk me through the adversarial challenge to the Abuse SlipBox research."
+**Example**: "Walk me through the adversarial challenge to the vault research."
 
 **Gold answer**: FZ 2 + 2a + 2b + 3 + 3a + 4 + 4a (Phase 2 of the trail), grouped by thread.
 
@@ -136,9 +136,9 @@ No current strategy knows about "phases" — this is metadata encoded in the ent
 
 ### Pattern 5: Cross-Trail Questions ("How do the two trails connect?")
 
-**Example**: "Where do the Abuse SlipBox and Cursus argument trails intersect?"
+**Example**: "Where do the primary and Cursus argument trails intersect?"
 
-**Gold answer**: FZ 7 (atomicity) bridges both trails — it extends the Abuse SlipBox trail while FZ 7f (thinking protocol) and FZ 7g (ontology) feed into the Cursus trail's 9f4 (agentic architecture). Additionally, FZ 5e (retrieval alignment) from the Abuse SlipBox trail motivates the [BB routing benchmark](../../archives/experiments/experiment_bb_routing_benchmark.md) which evaluates strategies discovered in FZ 9's comparisons.
+**Gold answer**: FZ 7 (atomicity) bridges both trails — it extends the primary trail while FZ 7f (thinking protocol) and FZ 7g (ontology) feed into the Cursus trail's 9f4 (agentic architecture). Additionally, FZ 5e (retrieval alignment) from the primary trail motivates the BB routing benchmark which evaluates strategies discovered in FZ 9's comparisons.
 
 ## Structural Analysis: FZ Trails in the Graph
 
@@ -146,7 +146,7 @@ No current strategy knows about "phases" — this is metadata encoded in the ent
 
 | Trail | Root | Depth | Notes | Avg Chain Length | Max Chain Length |
 |---|---|---|---|---|---|
-| Abuse SlipBox | FZ 1 | 7 levels (10b1b5a1c) | 62 | 3.2 hops to root | 7 (10b1b5a1c) |
+| Primary | FZ 1 | 7 levels (10b1b5a1c) | 62 | 3.2 hops to root | 7 (10b1b5a1c) |
 | Cursus | FZ 9 | 4 levels (9h14) | 52 | 2.4 hops to root | 4 (9f4c1, 9h14) |
 
 ### Why Standard Graph Traversal Misses FZ Order
@@ -279,7 +279,6 @@ The BB-aware router from [FZ 5e](thought_question_type_building_block_retrieval_
 ### Within Retrieval Trail (FZ 5)
 - [FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md) — the parent question this extends
 - [FZ 5e: Retrieval Strategy Alignment](thought_question_type_building_block_retrieval_alignment.md) — sibling analysis showing BB predicts content-matching strategy; this note adds reasoning-trace strategy
-- [Entry: Abuse SlipBox Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md) — FZ 1–10, 62 notes; the primary evidence for this analysis
 - [Entry: Cursus Argument Trail](../../0_entry_points/entry_cursus_argument_trail.md) — FZ 9, 52 notes; the secondary evidence
 - [Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md) — the 8-type taxonomy whose transitions along FZ chains encode dialectic structure
 - [Experiment: Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md) — benchmark that currently tests 4 strategies; FZ retrieval would be a 5th

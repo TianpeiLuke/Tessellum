@@ -75,7 +75,7 @@ This addresses LASSO's limitations with correlated features, where it tends to s
 |--------|----------|
 | Genomics | Gene selection from high-dimensional expression data ($p \gg n$) |
 | NLP | Sparse feature selection in text classification |
-| Abuse detection | Sparse feature models for buyer abuse signals in BAP; L1 regularization identifies the most predictive features from large variable sets |
+| Abuse detection | Sparse feature models for abuse signals; L1 regularization identifies the most predictive features from large variable sets |
 | Compressed sensing | Recovering sparse signals from few measurements via L1 minimization |
 | Finance | Portfolio selection with sparse asset weights |
 

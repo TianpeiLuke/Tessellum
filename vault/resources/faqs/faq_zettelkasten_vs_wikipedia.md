@@ -233,12 +233,12 @@ Growth characteristics:
 - **Community-driven**: Growth from many contributors
 - **Systematic**: WikiProjects coordinate coverage
 
-## Application to Abuse Prevention
+## Application to a Knowledge Base
 
-### Abuse Slip Box (Zettelkasten Approach)
-The Abuse Slip Box uses Zettelkasten principles for context engineering:
+### The Vault (Zettelkasten Approach)
+The vault uses Zettelkasten principles for context engineering:
 
-| Zettelkasten Principle | Abuse Slip Box Application |
+| Zettelkasten Principle | Vault Application |
 |------------------------|---------------------------|
 | **Atomicity** | One term/concept per note (term dictionary) |
 | **Connectivity** | Explicit links between related concepts |
@@ -255,13 +255,13 @@ The Abuse Slip Box uses Zettelkasten principles for context engineering:
 Wikipedia-style documentation would organize as comprehensive articles:
 
 ```
-Article: "Buyer Abuse Types"
+Article: "Ensemble Learning Methods"
 ├── Overview
-├── Concession Abuse
-│   ├── INR/SNAD
-│   └── Refund Interception
-├── Account Integrity
-├── Return Fraud
+├── Bagging
+│   ├── Random Forest
+│   └── Bootstrap Aggregation
+├── Boosting
+├── Stacking
 └── References
 ```
 
@@ -271,7 +271,7 @@ Article: "Buyer Abuse Types"
 - Monolithic: Hard to extract specific atomic concepts
 - Less flexible: Fixed structure limits recombination
 
-### When to Use Each in Abuse Prevention
+### When to Use Each in a Knowledge Base
 
 | Use Case | Approach | Reason |
 |----------|----------|--------|
@@ -295,14 +295,13 @@ Article: "Buyer Abuse Types"
 | **Growth** | Organic, compound | Structured expansion |
 | **Best for** | Learning, thinking | Reference, lookup |
 
-**Key Insight**: Zettelkasten and Wikipedia serve complementary purposes. Use Zettelkasten when you need to **develop understanding** and **make connections** (like the Abuse Slip Box). Use Wikipedia when you need to **look up facts** and **reference established information**. For team knowledge management at Amazon, Zettelkasten-style organization (via internal wikis with explicit linking) provides better support for LLM context engineering and knowledge transfer than monolithic wiki articles.
+**Key Insight**: Zettelkasten and Wikipedia serve complementary purposes. Use Zettelkasten when you need to **develop understanding** and **make connections** (like this vault). Use Wikipedia when you need to **look up facts** and **reference established information**. For team knowledge management, Zettelkasten-style organization (with explicit linking) provides better support for LLM context engineering and knowledge transfer than monolithic wiki articles.
 
 ## References
 
 ### Internal Slipbox Resources
 - **[Zettelkasten Knowledge Management Principles](../../slipbox/resources/zettelkasten_knowledge_management_principles.md)** - Core methodology
-- **[Term: Zettelkasten](../term_dictionary/term_zettelkasten.md)** - Full definition and Amazon applications
-- **[Abuse Slipbox Design Overview](../../slipbox/0_entry_points/source_vault_design_overview.md)** - Context engineering approach
+- **[Term: Zettelkasten](../term_dictionary/term_zettelkasten.md)** - Full definition and applications
 
 ### External Resources
 - **[zettelkasten.de](https://zettelkasten.de/)** - Comprehensive Zettelkasten method resource
@@ -311,7 +310,7 @@ Article: "Buyer Abuse Types"
 - **"How to Take Smart Notes" by Sönke Ahrens** - Definitive Zettelkasten guide
 
 ### Related FAQs
-- FAQ: How do I set up the Abuse Slip Box? *(Coming soon)*
+- FAQ: How do I set up a vault? *(Coming soon)*
 - FAQ: What are the core principles of Zettelkasten? *(Coming soon)*
 
 ### Related Terms
@@ -323,5 +322,4 @@ Article: "Buyer Abuse Types"
 ---
 
 **Last Updated**: February 8, 2026  
-**Status**: Active  
-**Maintainer**: Buyer Abuse ML Team
+**Status**: Active

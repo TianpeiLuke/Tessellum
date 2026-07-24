@@ -142,7 +142,7 @@ Johnson argues that serendipity can be deliberately cultivated through environme
 - Many research institutions deliberately create serendipity conditions: interdisciplinary institutes, seminar series that mix fields, shared lab spaces, and common rooms. The Santa Fe Institute, for example, was explicitly designed as a serendipity engine for complex systems research.
 
 ### In Analytical Decision-Making and Abuse Prevention
-- In fraud and abuse detection, serendipity manifests when an analyst notices an unexpected connection between seemingly unrelated cases, accounts, or patterns. Systems that link diverse data sources (customer contacts, transaction patterns, risk signals, policy documents) in a unified graph increase the probability of these serendipitous pattern recognitions -- which is a core design principle of the Abuse Slip Box.
+- In fraud and abuse detection, serendipity manifests when an analyst notices an unexpected connection between seemingly unrelated cases, accounts, or patterns. Systems that link diverse data sources (customer contacts, transaction patterns, risk signals, policy documents) in a unified graph increase the probability of these serendipitous pattern recognitions -- a core design principle of graph-based knowledge systems.
 
 ### In Personal Productivity
 - Incorporating walks, unstructured thinking time, and diverse reading into daily routines increases individual serendipity. Johnson specifically recommends maintaining a personal note-taking system that is browsed regularly (not just searched for specific queries), enabling unexpected collisions between past and present ideas.

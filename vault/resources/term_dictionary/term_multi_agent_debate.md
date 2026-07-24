@@ -70,7 +70,7 @@ The technique was introduced independently by two groups in 2023: **Du et al.** 
 | **DebFlow** (2025) | Directed graph workflow debate with reflexion | Structured debate topology |
 | **RUMAD** (2026) | RL-unified MAD | Optimizes debate policy via RL |
 | **A-HMAD** (2025) | Adaptive heterogeneous debate | Consensus optimizer weights agents by reliability |
-| **Congress** (BAP, 2025) | Two agents + moderator for SOP revision | Domain-specific debate for investigation automation |
+| **Domain debate** (2025) | Two agents + moderator for SOP revision | Domain-specific debate for investigation automation |
 | **DKS** (this vault) | Warrant-level debate with persistent knowledge | [Dialectical adequacy](term_dialectical_adequacy.md) + vault memory + typed attacks |
 
 ## Limitations of Standard MAD
@@ -104,7 +104,6 @@ Based on the ICLR 2025 analysis and subsequent research:
 - **[Socratic Questioning](term_socratic_questioning.md)**: Systematic questioning; the Counter Agent in MAD performs Socratic probing
 
 **Applied Systems**:
-- **[SPOT-X](term_spot_x.md)**: DKS uses SPOT-X for warrant repair — the "synthesis" step of DKS-as-MAD
 - **[Knowledge Building Blocks — Argument](term_knowledge_building_blocks_argument.md)**: The building block type produced by MAD debate
 - **[Knowledge Building Blocks — Counter-Argument](term_knowledge_building_blocks_counter_argument.md)**: The building block type produced by MAD critique
 
@@ -121,10 +120,6 @@ Based on the ICLR 2025 analysis and subsequent research:
 - [Multi-LLM-Agents Debate: Performance, Efficiency, and Scaling Challenges (ICLR 2025 Blog)](https://d2jud02ci9yv69.cloudfront.net/2025-04-28-mad-159/blog/mad/) — Critical analysis showing MAD limitations
 - [RUMAD: Reinforcement-Unifying Multi-Agent Debate (2026)](https://arxiv.org/abs/2602.23864) — RL-optimized MAD
 - [From Debate to Equilibrium: Bayesian Nash Equilibrium for Multi-Agent LLM Reasoning (2025)](https://arxiv.org/abs/2506.08292) — Game-theoretic MAD formulation
-
-### Vault Sources
-- [Agentic Dialectic [FZ 8c5a7a]](../../resources/analysis_thoughts/thought_nexustrace_agentic_dialectic.md) — 8 industry MAD systems surveyed
-- [DKS Strength in MAD [FZ 8c5c1a6c]](../../resources/analysis_thoughts/thought_dks_strength_in_multi_agent_debate.md) — Five strengths of DKS over standard MAD
 
 ---
 

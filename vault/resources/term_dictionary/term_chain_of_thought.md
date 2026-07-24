@@ -155,9 +155,8 @@ The threshold is approximately **100B parameters**. This pattern holds across GP
 
 ## Applications to Our Work
 
-- **[SPOT-X](term_spot_x.md)** generates structured decision sets with chain-of-thought examples as part of its output — the disambiguated rules include explicit reasoning traces that investigators can follow.
-- **[GreenTEA](term_greentea.md)** investigation automation uses multi-step reasoning in its agentic pipeline; CoT principles inform how prompts decompose complex abuse classification decisions.
-- **[ARI](term_ari.md)** investigators provide chain-of-thought prompts to LLMs when using investigation tools, applying the technique in human-AI collaborative workflows.
+- **Structured decision-rule generation** systems produce decision sets with chain-of-thought examples as part of their output — the disambiguated rules include explicit reasoning traces that investigators can follow.
+- **Investigation automation** uses multi-step reasoning in an agentic pipeline; CoT principles inform how prompts decompose complex abuse classification decisions.
 - **[Human-in-the-Loop](term_human_in_the_loop.md)** systems in payment risk use CoT-style reasoning traces to make LLM decisions auditable and reviewable by human operators.
 - Any LLM-based reasoning pipeline in abuse detection benefits from understanding CoT's requirements (scale, exemplar quality) and failure modes (hallucinated reasoning, scale dependency).
 
@@ -173,7 +172,7 @@ The threshold is approximately **100B parameters**. This pattern holds across GP
 
 ### Synthesis (Lateral)
 5. CoT is itself a paradigm [exaptation](term_architectural_exaptation.md) — the pedagogical technique of "showing your work" (developed for human mathematics education) exapted into LLM prompting. The Related Terms section links to [Socratic Questioning](term_socratic_questioning.md) and [System 1 and System 2](term_system_1_and_system_2.md), but these connections are descriptive, not mechanistic. Could the Socratic method's effectiveness in *human* reasoning (breaking complex questions into manageable steps, forcing explicit justification) explain *why* CoT works in LLMs — because the training data contains examples of humans reasoning Socratically, and CoT exemplars activate those patterns? -> Follow-up: [term_prompt_exaptation](term_prompt_exaptation.md) *(Exaptation lens — applied to the prompting domain)*
-6. The Applications section lists [SPOT-X](term_spot_x.md), [GreenTEA](term_greentea.md), and [ARI](term_ari.md) all using CoT-style reasoning in production abuse detection. But limitation #3 (hallucinated reasoning — correct answers via wrong intermediate steps) creates a critical tension in these deployments: the *interpretability benefit* of CoT reasoning traces is undermined if the traces are unreliable. How do these production systems address this? Does [Human-in-the-Loop](term_human_in_the_loop.md) review catch hallucinated reasoning, or does it create a false sense of auditability? What would a [Process Reward Model](../papers/lit_wei2022chain.md) look like applied to abuse investigation reasoning chains? *(Liquid Network lens — bridging CoT limitations with production deployment notes)*
+6. The Applications section lists production abuse-detection systems using CoT-style reasoning. But limitation #3 (hallucinated reasoning — correct answers via wrong intermediate steps) creates a critical tension in these deployments: the *interpretability benefit* of CoT reasoning traces is undermined if the traces are unreliable. How do these production systems address this? Does [Human-in-the-Loop](term_human_in_the_loop.md) review catch hallucinated reasoning, or does it create a false sense of auditability? What would a [Process Reward Model](../papers/lit_wei2022chain.md) look like applied to abuse investigation reasoning chains? *(Liquid Network lens — bridging CoT limitations with production deployment notes)*
 
 ## Related Terms
 
@@ -192,9 +191,7 @@ The threshold is approximately **100B parameters**. This pattern holds across GP
 - [MLM](term_mlm.md) — MLM pre-trains the encoder representations that underlie understanding tasks; CoT operates at inference time on the decoder/generation side
 
 ### Production Systems
-- [GreenTEA](term_greentea.md) — Uses multi-step reasoning in agentic automation; CoT principles inform prompt decomposition
-- [SPOT-X](term_spot_x.md) — Generates structured decision rules with chain-of-thought examples
-- [Project: SPOT-X](../../projects/project_spot_x.md) — Uses CoT demonstrations in decision rules
+- Production abuse-detection and investigation-automation systems use multi-step reasoning; CoT principles inform prompt decomposition and the generation of structured decision rules with chain-of-thought examples
 
 ## References
 

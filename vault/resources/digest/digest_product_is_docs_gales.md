@@ -181,15 +181,15 @@ The book argues that exceptional technical writers share two traits: **resourcef
 
 > "So what makes a technical writer exceptional? Resourcefulness and eagerness are essential. Look for someone who can write clear sentences and organize information well, but who isn't afraid to break a rule or two."
 
-## Relevance to Our Work
+## Relevance to Knowledge Work
 
-The vault itself is a documentation product — the Abuse Slipbox is a knowledge system serving the Buyer Abuse Prevention team, and many of the book's principles apply directly to how we structure, measure, and maintain it:
+A knowledge vault is itself a documentation product, and many of the book's principles apply directly to how such a system is structured, measured, and maintained:
 
-- **Audience definition**: The vault serves multiple audiences (new hires, data scientists, applied scientists, SDEs, PMs) with different skill levels and goals — exactly the segmentation framework the book advocates
-- **Scenario-driven organization**: Entry points like `entry_new_hire_curriculum.md` and role-based guides exemplify the scenario-driven approach over feature-dumping
-- **Documentation metrics**: The vault's PageRank scoring, link density, and ghost note tracking are analogs of the book's documentation success metrics
-- **Atomicity as product quality**: The vault's atomicity principles (one concept per note, building blocks) parallel the book's emphasis on modular, task-oriented content
-- **Cross-functional embedding**: The vault captures knowledge from across teams (BAP, AIT, PR) — the book's collaboration model explains why writers embedded in teams produce better documentation
+- **Audience definition**: A vault serves multiple audiences (new hires, data scientists, engineers, PMs) with different skill levels and goals — exactly the segmentation framework the book advocates
+- **Scenario-driven organization**: Entry points like curriculum guides and role-based indexes exemplify the scenario-driven approach over feature-dumping
+- **Documentation metrics**: PageRank scoring, link density, and ghost note tracking are analogs of the book's documentation success metrics
+- **Atomicity as product quality**: Atomicity principles (one concept per note, building blocks) parallel the book's emphasis on modular, task-oriented content
+- **Cross-functional embedding**: A vault captures knowledge from across many teams — the book's collaboration model explains why writers embedded in teams produce better documentation
 
 ## References
 

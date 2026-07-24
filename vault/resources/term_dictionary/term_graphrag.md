@@ -124,20 +124,20 @@ Query → Select Community Level → Map (parallel partial answers) → Reduce (
 5. **Only tested on 2 datasets**: Generalization to other domains and scales unknown
 6. **GPT-4-turbo dependency**: Performance with smaller or open-source LLMs not evaluated
 
-## BRP Context
+## Applications
 
 ### Potential Applications
 
-- **Nexus Enhancement**: Community summarization could provide Nexus with global abuse theme summaries across the knowledge graph
-- **Abuse Slipbox Agent**: The map-reduce query pattern could improve answering broad questions like "What are the main abuse trends?" across the entire vault
-- **Investigation Support**: Hierarchical community summaries could organize abuse pattern documentation at different granularities (program → type → instance)
-- **Tattletale Integration**: The existing community detection in Tattletale could be extended with LLM-generated community summaries for richer investigator context
+- **Graph-RAG enhancement**: Community summarization could provide a graph-based risk model with global theme summaries across a knowledge graph
+- **Knowledge-base agent**: The map-reduce query pattern could improve answering broad questions like "What are the main trends?" across an entire corpus
+- **Investigation support**: Hierarchical community summaries could organize pattern documentation at different granularities (program → type → instance)
+- **Community-detection integration**: Existing community detection could be extended with LLM-generated community summaries for richer analyst context
 
 ### Hybrid Approach Opportunity
 
 A practical deployment could combine:
-- **GraphRAG** for global/thematic questions ("What are the main abuse patterns across all programs?")
-- **HippoRAG / Vector RAG** for local/factual questions ("What is the refund rate for DNR in Q4?")
+- **GraphRAG** for global/thematic questions ("What are the main patterns across all programs?")
+- **HippoRAG / Vector RAG** for local/factual questions ("What is the rate for a specific metric in a given quarter?")
 - **Community level selection** as a dynamic parameter based on query type classification
 
 ## Related Terms
@@ -153,7 +153,6 @@ A practical deployment could combine:
 - [LLM](term_llm.md) — GPT-4-turbo serves triple role: entity extraction, summary generation, query answering
 - [Embedding](term_embedding.md) — Vector embeddings used in the baseline vector RAG comparison
 - [DPR](term_dpr.md) — Dense Passage Retrieval used in the vector RAG baseline
-- [Nexus](term_nexus.md) — BRP's graph-RAG system that could adopt community summarization
 - [Hallucination](term_hallucination.md) — Community summaries may introduce fabricated details (unquantified risk)
 
 ## References

@@ -38,7 +38,7 @@ author: lukexie
 
 The **Sequential Thinking MCP** (by Anthropic) demonstrates a powerful design principle: **protocol-over-intelligence**. Its server has zero computation — it provides a structured scratchpad (flat append-only log with branch labels), records state, and reflects it back. The protocol format itself nudges LLMs into more systematic, step-by-step reasoning.
 
-Our **Abuse Slipbox** is fundamentally richer: a knowledge graph with 3,700+ atomic notes, 31,500+ curated links, pre-computed PageRank scores, typed categories (PARA), and rich link context. We can adopt Sequential Thinking's protocol pattern while adding **graph-aware intelligence** that it deliberately omits.
+This knowledge base is fundamentally richer: a knowledge graph with 3,700+ atomic notes, 31,500+ curated links, pre-computed PageRank scores, typed categories (PARA), and rich link context. We can adopt Sequential Thinking's protocol pattern while adding **graph-aware intelligence** that it deliberately omits.
 
 **Core Question**: How do we combine Sequential Thinking's structured scratchpad protocol with the Slipbox's knowledge graph to achieve reasoning that is both disciplined and grounded in actual knowledge?
 
@@ -80,11 +80,11 @@ LIMIT 5;
 Our `note_links` table stores `link_context` — the sentence surrounding each link. The system presents the LLM with annotated branch options rather than blind choices:
 
 ```
-Current note: area_dnr
+Current note: area_spam_detection
 Available branches:
-  [A] → term_dnr (context: "DNR is the primary enforcement mechanism for...")
-  [B] → model_dnr_scorer (context: "ML model that scores DNR eligibility based on...")
-  [C] → sop_dnr_investigation (context: "Follow the standard investigation procedure for...")
+  [A] → term_spam_classification (context: "Spam classification is the primary filtering mechanism for...")
+  [B] → model_spam_scorer (context: "ML model that scores message spam likelihood based on...")
+  [C] → howto_spam_review (context: "Follow the standard review procedure for...")
 ```
 
 The LLM chooses the branch most relevant to the query, guided by context it didn't have to search for.
@@ -106,10 +106,10 @@ relevance_boost = {
 When multiple branches arrive at the same note, that signals importance. Sequential Thinking has no convergence concept; our graph naturally reveals it:
 
 ```
-Branch "enforcement" → step 3 → term_dnr
-Branch "ml-models"   → step 4 → term_dnr  ← CONVERGENCE
+Branch "filtering"  → step 3 → term_spam_classification
+Branch "ml-models"  → step 4 → term_spam_classification  ← CONVERGENCE
 
-Signal: term_dnr is likely central to the answer
+Signal: term_spam_classification is likely central to the answer
 ```
 
 **5. Coverage Tracking**
@@ -124,8 +124,8 @@ Reflect back not just a count, but which categories and subcategories have been 
     "area": 2,
     "resource/model": 0
   },
-  "unexploredHighPPR": ["model_dnr_scorer", "etl_d_dnr_metrics"],
-  "convergencePoints": ["term_dnr"]
+  "unexploredHighPPR": ["model_spam_scorer", "etl_spam_metrics"],
+  "convergencePoints": ["term_spam_classification"]
 }
 ```
 
@@ -150,7 +150,7 @@ class SlipboxThinkingStep:
 
     # Branching
     branch_from_step: Optional[int]    # Which step this branches from
-    branch_id: Optional[str]           # Branch label (e.g., "enforcement-path")
+    branch_id: Optional[str]           # Branch label (e.g., "filtering-path")
 
     # Revision
     is_revision: bool                  # Does this revise an earlier step?
@@ -173,8 +173,8 @@ The protocol follows the CODE workflow stages:
 Resolve the user query to seed notes via keyword/term search and entry point browsing.
 
 ```
-Input:  User query "How does DNR scoring work?"
-Action: Keyword search → term_dnr, model_dnr_scorer, area_dnr
+Input:  User query "How does spam scoring work?"
+Action: Keyword search → term_spam_classification, model_spam_scorer, area_spam_detection
 Output: Seed set with PPR scores + categories
 Reflect: {seeds: 3, categories: [terminology, model, area]}
 ```
@@ -184,24 +184,24 @@ Reflect: {seeds: 3, categories: [terminology, model, area]}
 At each step, the system presents the current note's ranked neighbors. The LLM reads the note, records reasoning, and chooses the next step (or branches).
 
 ```
-Step 2: Visit term_dnr (resource/terminology, PPR: 0.025)
-  Reasoning: "DNR = Delivered Not Received. Primary enforcement mechanism.
-              Key thresholds: refund rate > 50%, 10+ orders, 90-day window."
+Step 2: Visit term_spam_classification (resource/terminology, PPR: 0.025)
+  Reasoning: "Spam classification = labeling unwanted messages. Primary filtering mechanism.
+              Key thresholds: spam score > 0.8, 10+ reports, 90-day window."
   Next options (ranked by PPR × query relevance):
-    [A] model_dnr_scorer (0.018) — "ML model that scores DNR eligibility"
-    [B] sop_dnr_investigation (0.012) — "Follow the standard investigation procedure"
-    [C] etl_d_dnr_metrics (0.008) — "ETL job computing daily DNR metrics"
-  Decision: Follow [A], branch [B] as "investigation-sop"
+    [A] model_spam_scorer (0.018) — "ML model that scores message spam likelihood"
+    [B] howto_spam_review (0.012) — "Follow the standard review procedure"
+    [C] etl_spam_metrics (0.008) — "ETL job computing daily spam metrics"
+  Decision: Follow [A], branch [B] as "review-procedure"
 ```
 
 ```
-Step 3: Visit model_dnr_scorer (area/model, PPR: 0.018)
-  Reasoning: "XGBoost model v2.3. Key features: refund_rate (0.35 weight),
-              order_velocity (0.22), non_delivery_claims (0.18)."
+Step 3: Visit model_spam_scorer (area/model, PPR: 0.018)
+  Reasoning: "XGBoost model v2.3. Key features: report_rate (0.35 weight),
+              send_velocity (0.22), link_density (0.18)."
   Next options: [training data], [feature engineering], [deployment config]
 
-Step 3b (branch "investigation-sop"):
-  Visit sop_dnr_investigation (resource/sop, PPR: 0.012)
+Step 3b (branch "review-procedure"):
+  Visit howto_spam_review (resource/sop, PPR: 0.012)
   Reasoning: "4-phase process: Assessment → Pattern Analysis → Decision → Documentation"
 ```
 
@@ -210,11 +210,11 @@ Step 3b (branch "investigation-sop"):
 When a newly-visited note contradicts or updates an earlier step's conclusion:
 
 ```
-Step 5: Visit variable_refund_rate_v2 (resource/variable)
-  Reasoning: "Refund rate calculation updated in v2 — now excludes return-without-refund."
+Step 5: Visit variable_report_rate_v2 (resource/variable)
+  Reasoning: "Report rate calculation updated in v2 — now excludes auto-flagged messages."
   isRevision: true, revisesStep: 2
-  Revision: "Step 2 stated refund rate threshold > 50%. The calculation method
-             changed in v2 (excludes returns). Update the formula understanding."
+  Revision: "Step 2 stated spam score threshold > 0.8. The calculation method
+             changed in v2 (excludes auto-flags). Update the formula understanding."
 ```
 
 #### Stage FINAL: SYNTHESIZE (= Express)
@@ -222,11 +222,11 @@ Step 5: Visit variable_refund_rate_v2 (resource/variable)
 The LLM produces an answer grounded in the retrieval trace:
 
 ```
-Answer: "DNR scoring works via an XGBoost model (model_dnr_scorer) that evaluates..."
-Citations: [term_dnr (step 2), model_dnr_scorer (step 3), variable_refund_rate_v2 (step 5)]
-Branches explored: main (4 steps), "investigation-sop" (2 steps)
+Answer: "Spam scoring works via an XGBoost model (model_spam_scorer) that evaluates..."
+Citations: [term_spam_classification (step 2), model_spam_scorer (step 3), variable_report_rate_v2 (step 5)]
+Branches explored: main (4 steps), "review-procedure" (2 steps)
 Branches not followed: "etl-pipeline" (pruned — low query relevance)
-Convergence: term_dnr reached by both main path and investigation-sop branch
+Convergence: term_spam_classification reached by both main path and review-procedure branch
 ```
 
 ## Integration with Existing Slipbox Principles
@@ -246,7 +246,7 @@ Convergence: term_dnr reached by both main path and investigation-sop branch
 | PARA Category | Role in Slipbox Thinking |
 |---|---|
 | **Entry Points** | Natural seeds — the hand-curated navigation hubs (104 notes) |
-| **Areas** | Domain context — which abuse program, which team, which data pipeline |
+| **Areas** | Domain context — which program, which team, which data pipeline |
 | **Resources** | The knowledge payload — terms (596), SOPs (166), models (49), tools (41) |
 | **Projects** | Active work context — what investigations or builds are in progress |
 | **Archives** | Historical evidence — launch announcements (595), reorg history (34) |
@@ -284,7 +284,7 @@ Our current answer-query skill performs graph-aware retrieval (BFS/DFS/PPR) foll
 - Queries where citation traceability matters
 
 **Keep current approach for**:
-- Simple lookups ("What is DNR?")
+- Simple lookups ("What is spam classification?")
 - Broad surveys ("Show me all ML models")
 - Tag/category/metadata filtering
 
@@ -324,26 +324,15 @@ A natural phased approach:
 
 ### Folgezettel Trail (FZ 7f — neighbors)
 
-This note is **FZ 7f** in the [Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md). Its neighbors:
+This note is **FZ 7f** in the Argument Trail. Its neighbors:
 
 - **Parent [FZ 7]**: [Atomicity as Universal Scaling Principle](thought_atomicity_as_universal_scaling_principle.md) — The theoretical claim this note operationalizes: typed atomic units enable structured reasoning, not just storage
-- **Sibling [FZ 7a]**: [SlipBox Skills vs Atomic Skills](thought_slipbox_skills_vs_atomic_skills.md) — Compares skill architectures; the thinking protocol IS a skill (Distill stage) that uses building blocks as reasoning steps
-- **Sibling [FZ 7b]**: [Atomicity Evaluation (Sascha's Lens)](thought_atomicity_evaluation_source_vault.md) — Validates that the vault's note types map to Sascha's building blocks — the same blocks this protocol reasons over
-- **Sibling [FZ 7c]**: [Building Block Vault Health](analysis_building_block_vault_health.md) — The distribution diagnostic that tells the thinking protocol which block types to prioritize during reasoning (e.g., low hypothesis → seek predictions)
-- **Sibling [FZ 7d]**: [Agentic Pipelines: Skill Chaining](analysis_agentic_pipelines_skill_chaining.md) — The thinking protocol is a pipeline (retrieve → reason → retrieve → reason) that could be formalized as a skill chain
-- **Sibling [FZ 7e]**: [Data Flywheel](thought_source_vault_data_flywheel.md) — The thinking protocol feeds the flywheel: each reasoning session produces new argument/counter-argument notes, enriching the graph for future sessions
+- **Sibling [FZ 7b]**: [Atomicity Evaluation (Sascha's Lens)](thought_atomicity_evaluation_vault.md) — Validates that the vault's note types map to Sascha's building blocks — the same blocks this protocol reasons over
 - **Upstream [FZ 5]**: [Meta-Question: Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md) — The thinking protocol is evidence for the meta-question: typed knowledge enables structured reasoning that untyped stores cannot
-- **Upstream [FZ 5d]**: [Meta-Harness Lens](analysis_metaharness_lens_on_source_vault.md) — The thinking protocol is a harness (Meta-Harness) — the code determining what to retrieve, how to reason, and what to output
 
 ### Related Thought & Analysis Notes
 
-- **[Thought: ThoughtData vs. Zettelkasten](thought_thoughtdata_vs_zettelkasten.md)** — Chain-vs-graph divergence; Sequential Thinking is a chain, the SlipBox is a graph — this protocol bridges them
-- **[Thought: Three-Sprint Question Architecture](thought_source_vault_question_generation.md)** — The question generation skill follows the reasoning cycle (Sprint 1: validate → Sprint 2: apply → Sprint 3: synthesize) — a specialized instance of this thinking protocol
-- **[Thought: Paper Review Architecture](thought_source_vault_paper_review_architecture.md)** — The review skill's 8 lenses are reasoning steps guided by building block types — another instance of structured reasoning over typed knowledge
-- **[Thought: Search Strategies](thought_source_vault_search_strategies.md)** — Four retrieval strategies (keyword, graph BFS/DFS, PPR, tag filter) that the thinking protocol uses as retrieval primitives
-- **[Thought: Context Engineering Problem](thought_source_vault_context_engineering_problem.md)** — The thinking protocol addresses the context engineering problem: which notes to put in the LLM's context window, and in what order — building block types provide the selection signal
-- **[Analysis: PlugMem Lens](analysis_plugmem_lens_on_source_vault.md)** — PlugMem's 2-type memory can't support typed reasoning; the thinking protocol requires 8 building block types to route reasoning steps
-- **[Analysis: Research Questions](analysis_research_questions_source_vault.md)** — RQ5.1 (does the reasoning cycle produce self-improving quality?) is directly testable via this protocol
+- **[Analysis: PlugMem Lens](analysis_plugmem_lens_on_vault.md)** — PlugMem's 2-type memory can't support typed reasoning; the thinking protocol requires 8 building block types to route reasoning steps
 
 ### Related Terms
 - **[Term: MCP](../term_dictionary/term_mcp.md)** — Model Context Protocol
@@ -356,17 +345,8 @@ This note is **FZ 7f** in the [Argument Trail](../../0_entry_points/entry_source
 - **[Term: Meta-Harness](../term_dictionary/term_meta_harness.md)** — The thinking protocol IS a harness; Meta-Harness could optimize it via execution traces
 - **[Term: Atomic Skill](../term_dictionary/term_atomic_skill.md)** — Each reasoning step (retrieve observation, form hypothesis, seek counter-argument) is an atomic skill in the thinking domain
 
-### Related Tool Notes
-- **[Tool: Builder MCP](../tools/tool_builder_mcp.md)** — Amazon internal MCP server (contrast: heavy server-side logic, 42+ tools)
-
-### Related Projects
-- **[Project: Abuse Slipbox](../../projects/project_source_vault.md)** — Parent project; this thought note informs the "Research Directions" section
-
 ### Related Entry Points
-- **[Entry: Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md)** — This note is FZ 7f
-- **[Entry: Abuse SlipBox Research](../../0_entry_points/entry_source_vault_research.md)** — Paper structure; the thinking protocol is evidence for Section 5 (Response)
-- **[Entry: MCP Tools and Guides](../../0_entry_points/entry_mcp_tools_and_guides.md)** — MCP server navigation hub
-- **[Entry: Skill Catalog](../../0_entry_points/entry_skill_catalog.md)** — The thinking protocol could become skill #64
+- **[Entry: Skill Catalog](../../0_entry_points/entry_skill_catalog.md)** — The thinking protocol could become a catalog skill
 
 ### External References
 - **[Sequential Thinking MCP Source Code](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)** — Official repository

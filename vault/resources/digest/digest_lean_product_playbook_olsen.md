@@ -205,17 +205,17 @@ Olsen adopts Dave McClure's [AARRR Pirate Metrics](../term_dictionary/term_aarrr
 > "Your MVP should be the smallest investment that lets you test your hypotheses."
 > — Dan Olsen
 
-## Relevance to Our Work
+## Relevance to Knowledge Work
 
-1. **The Importance vs. Satisfaction framework** directly parallels how we evaluate abuse prevention tools and programs — identifying where customer experience gaps exist (underserved needs) versus where existing solutions are adequate. The framework could structure prioritization of abuse prevention investments.
+1. **The Importance vs. Satisfaction framework** is a general prioritization tool — identifying where user experience gaps exist (underserved needs) versus where existing solutions are already adequate, so investment flows to the highest-opportunity quadrant.
 
-2. **Hypothesis-driven iteration** mirrors the scientific method applied in our ML model development and A/B testing workflows. Olsen's structured loop (Hypothesize → Design → Test → Learn → Decide) maps to our experiment design and [DSI](../term_dictionary/term_dsi.md) evaluation processes.
+2. **Hypothesis-driven iteration** mirrors the scientific method applied in ML model development and A/B testing workflows. Olsen's structured loop (Hypothesize → Design → Test → Learn → Decide) maps to any experiment-design and evaluation process.
 
-3. **The MVP fidelity spectrum** applies to internal tool development — prototyping investigation tools at the lowest fidelity before committing engineering resources, similar to how [design thinking](../term_dictionary/term_design_thinking.md) advocates rapid prototyping.
+3. **The MVP fidelity spectrum** applies to any tool development — prototyping at the lowest fidelity before committing engineering resources, similar to how [design thinking](../term_dictionary/term_design_thinking.md) advocates rapid prototyping.
 
-4. **AARRR pirate metrics** translate to internal product health monitoring — acquisition (team adoption), activation (first successful use), retention (continued use), with [WBR](../term_dictionary/term_wbr.md) cadences tracking these signals.
+4. **AARRR pirate metrics** translate to product health monitoring generally — acquisition (adoption), activation (first successful use), and retention (continued use).
 
-5. **The Lean Product Process complements [Agile](../term_dictionary/term_agile.md) and [Scrum](../term_dictionary/term_scrum.md) practices** already in use, adding the "what to build" layer on top of the "how to build" layer.
+5. **The Lean Product Process complements [Agile](../term_dictionary/term_agile.md) and [Scrum](../term_dictionary/term_scrum.md) practices**, adding the "what to build" layer on top of the "how to build" layer.
 
 ## Related Terms
 - [User Story](../term_dictionary/term_user_story.md) — Agile requirements format for decomposing product features

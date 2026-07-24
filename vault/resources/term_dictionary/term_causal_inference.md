@@ -6,7 +6,6 @@ tags:
   - causal_inference
   - analytics
   - experimentation
-  - buyer_abuse_prevention
 keywords:
   - Causal Inference
   - CI
@@ -14,13 +13,10 @@ keywords:
   - CATE
   - treatment effect
   - counterfactual
-  - DSI
-  - HonestSpot
   - RDD
   - A/B testing
   - observational data
 topics:
-  - buyer abuse prevention
   - measurement methodology
   - experimentation
   - ML causal methods
@@ -28,88 +24,73 @@ language: markdown
 date of note: 2026-03-02
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # Term: Causal Inference
 
 ## Definition
 
-**Causal Inference** is a collection of statistical and machine learning methodologies that estimate the **causal effect** of an action, intervention, or treatment on an outcome — answering the "with-and-without" question rather than the "before-and-after" question that standard prediction models address. In buyer abuse prevention at Amazon/BRP, causal inference is applied across three distinct domains: (1) **measuring enforcement impact** through DSI (Downstream Impact), quantifying how warnings, closures, and friction affect customer value over 30–270 day horizons; (2) **identifying false positives** via uplift models (e.g., HonestSpot) that find silently-abandoned customers who were incorrectly enforced; and (3) **optimizing treatment decisions** through CATE (Conditional Average Treatment Effect) estimation and Causal ML vs RL approaches for fault attribution in MFN RFS suppression. The core challenge across all these applications is the **fundamental problem of counterfactuals** — for each customer or order, only one treatment outcome (enforce or pass) is observed, never both.
+**Causal Inference** is a collection of statistical and machine learning methodologies that estimate the **causal effect** of an action, intervention, or treatment on an outcome — answering the "with-and-without" question rather than the "before-and-after" question that standard prediction models address. It is applied across three broad domains: (1) **measuring intervention impact**, quantifying how an action affects an outcome over time; (2) **identifying heterogeneous responders** via uplift models that find which units benefit most (or are harmed) by a treatment; and (3) **optimizing treatment decisions** through CATE (Conditional Average Treatment Effect) estimation. The core challenge across all these applications is the **fundamental problem of counterfactuals** — for each unit, only one treatment outcome (treated or control) is observed, never both.
 
 ## Core Concepts
 
 ### The Causal vs. Predictive Distinction
 
-| Approach | Question | Method | BRP Example |
-|----------|----------|--------|-------------|
-| **Predictive ML** | "Given features, what outcome will occur?" | XGBoost, Neural Networks | DNR risk score at order placement |
-| **Causal Inference** | "If we take this action, how does it change the outcome?" | Uplift models, DSI, RDD | Impact of account closure on DSI-OPS |
+| Approach | Question | Method |
+|----------|----------|--------|
+| **Predictive ML** | "Given features, what outcome will occur?" | XGBoost, Neural Networks |
+| **Causal Inference** | "If we take this action, how does it change the outcome?" | Uplift models, matching, RDD |
 
-**Key Insight**: A predictive model that says "this customer has 90% abuse probability" cannot tell you what happens if you warn vs. close the account. Only causal methods answer the counterfactual question.
+**Key Insight**: A predictive model that says "this unit has 90% event probability" cannot tell you what happens if you intervene one way vs. another. Only causal methods answer the counterfactual question.
 
 ### Fundamental Problem of Causal Inference
 
 For any individual, we observe only one potential outcome:
-- **Observed**: What actually happened after we enforced (or passed) the order/account
+- **Observed**: What actually happened after treatment (or control) was applied
 - **Counterfactual**: What *would* have happened under the alternative action
 
 ```
-Y_observed(customer_i) = Y_enforce(i) if we enforced, OR Y_pass(i) if we passed
-Y_counterfactual(customer_i) = NEVER directly observable
+Y_observed(unit_i) = Y_treatment(i) if treated, OR Y_control(i) if control
+Y_counterfactual(unit_i) = NEVER directly observable
 ```
 
 **CATE (Conditional Average Treatment Effect)**:  
 `τ(x) = E[Y_treatment(x) - Y_control(x)]`  
 → The expected difference in outcome between treated and control, conditional on features x
 
-## Causal Inference Methods Used in BRP
+## Causal Inference Methods
 
-### 1. Treatment-Control Matching (DSI)
+### 1. Treatment-Control Matching
 
-Used for measuring enforcement impact via DSI:
-- **Treatment group**: Customers who received enforcement (e.g., secure delivery, account closure)
-- **Control group**: Statistically matched customers who did NOT receive enforcement
+Used for measuring intervention impact from observational data:
+- **Treatment group**: Units that received the intervention
+- **Control group**: Statistically matched units that did NOT receive the intervention
 - **Matching**: [Propensity score matching](term_propensity_score_matching.md) or covariate matching to ensure comparable groups
-- **Measurement**: Track OPS/CP outcomes over 30/60/90/180/270-day horizons
-- **Validation**: Placebo test — apply methodology to a period where no effect should exist; if causal estimate is near zero, the methodology is valid
+- **Measurement**: Track outcomes over multiple time horizons
+- **Validation**: Placebo test — apply methodology to a period where no effect should exist; if the causal estimate is near zero, the methodology is valid
 
-**Example**: Measuring whether Secure Delivery reduces DNR without disproportionately harming good customer OPS.
+### 2. Uplift Modeling
 
-### 2. Uplift Modeling (HonestSpot / Fraud Uplift Model)
+Used for identifying which units respond to treatment:
 
-Used for identifying silently-abandoned false positives:
+**Problem**: A treatment may help some units, harm others, and leave the rest unaffected. Aggregate metrics obscure this heterogeneity.
 
-**Problem**: Only ~40% of incorrectly-enforced customers reinstate (appeal). The other 60% **silently abandon** — stop shopping without filing an appeal. This under-represents true false positive rate and pollutes model training labels.
-
-**Solution (HonestSpot)**: Uplift random forest predicts which enforced customers are "silent false positives":
-- **Treatment group (T=1)**: Enforced customers → synthetic label `Y = fraud_tag - reinstate_tag`
-- **Control group (T=0)**: Non-enforced customers with known ground truth
-- **4 Cohorts** defined by (T, Y):
-  - Silent (enforced, didn't reinstate, likely FP)
-  - Reinstated (enforced, reinstated → confirmed FP)
-  - Fraudulent for sure
-  - Reinstated fraudsters (abuser who reinstated)
-- **Evaluation**: Qini curve and Qini coefficient (since no counterfactual ground truth)
-- **Result**: Top 20% predicted silent customers have **2.26x higher abandonment rate** than average enforcement population
+**Solution**: Uplift models predict the incremental effect of treatment per unit, enabling targeting of the units most positively affected.
 
 **Algorithms**:
 - **Uplift Random Forest**: Split criterion based on KL divergence or Euclidean distance between treatment/control distributions
 - **Meta-Learners** (T-Learner, S-Learner, X-Learner): Train separate models for treatment and control groups, compute CATE as difference
 - **Orthogonal Random Forest**: Doubly robust estimation; computationally intensive
+- **Evaluation**: Qini curve and Qini coefficient (since no counterfactual ground truth exists)
 
-### 3. Causal ML for Treatment Optimization (CausalML vs RL)
+### 3. Causal ML for Treatment Optimization
 
-Used for fault attribution in MFN RFS suppression:
-
-**Problem**: Amazon issues refunds before sellers receive returned items (RFS). Sellers may over-report buyer abuse to charge excessive restocking fees. How do we identify which party is at fault?
-
-**Causal Formulation**: For each return, compare two actions (RFS: refund immediately vs N-RFS: investigate first). The difference in abuse/non-abuse outcomes represents the "uplift" — if outcome changes when treatment changes, it signals a mismatch (seller over-charging).
+For choosing the best action per unit:
 
 **Methods Compared**:
 | Method | Approach | Strength |
 |--------|----------|---------|
-| T-Learner (XGB) | Train separate models per action | Best Qini curve performance |
+| T-Learner (XGB) | Train separate models per action | Strong Qini curve performance |
 | X-Learner | Impute counterfactual outcomes | Reduces bias for imbalanced groups |
 | S-Learner (TabNet) | Single model with action indicator | Simple but biases toward 0 |
 | DragonNet | Shared embedding + action heads | Better cell-wise prediction |
@@ -126,38 +107,25 @@ Extension for complex scenarios where outcomes are not binary:
 **Generalized ATE (GATE)**:  
 `GATE(i,j) = P[Y_treatment = i] - P[Y_control = j]`
 
-Used when seller responses create multi-outcome scenarios (no evidence, evidence of abuse, evidence of non-abuse), requiring generalized gain curves and T-learners extended to multi-class classification.
+Used when outcomes are multi-valued, requiring generalized gain curves and T-learners extended to multi-class classification.
 
-### 5. A/B Testing and Weblabs
+### 5. A/B Testing (Randomized Controlled Experiments)
 
 Randomized controlled experiments for measuring causal effects when randomization is possible:
-- **Weblab**: Amazon's A/B testing platform for controlled experiments
 - **Pre-registered treatment/control** groups with known randomization → enables unbiased CATE estimation
-- Used for validating DSI measurements and testing new enforcement policies before full rollout
+- Used for validating observational measurements and testing new policies before full rollout
 
 ### 6. Regression Discontinuity Design (RDD)
 
 A quasi-experimental causal method leveraging thresholds in assignment rules:
-- **Intuition**: Customers just above/below a score threshold are comparable — differences in outcomes near the cutoff are causally attributable to the treatment
-- **BRP Application**: Estimating the causal impact of enforcement thresholds (e.g., what happens to customers with score = 0.505 vs score = 0.495 where threshold = 0.50?)
+- **Intuition**: Units just above/below a score threshold are comparable — differences in outcomes near the cutoff are causally attributable to the treatment
 - Uses the discontinuity at the threshold to identify local average treatment effect (LATE)
-
-## BRP Applications Summary
-
-| Application | Method | Problem Solved | Team |
-|-------------|--------|----------------|------|
-| **DSI** | Treatment-control matching | Enforcement impact on customer value | BAP Analytics |
-| **HonestSpot** | Uplift Random Forest | Silent FP identification (40% reinstate gap) | BRP (chaoxuc@) |
-| **Causal ML vs RL** | T/X-Learner, Q-Learning | MFN fault attribution (seller vs buyer) | BAP ML (seanyin@) |
-| **Seq2DSI** | Sequential causal modeling | Customer order sequence → DSI prediction | BRP Research |
-| **A/B Testing** | Weblab randomization | Enforcement policy validation | BAP Operations |
-| **Model Calibration** | Counterfactual evaluation | Silent customer rate estimation | BAP ML |
 
 ## Key Causal Inference Packages
 
 | Package | Use Case | Notes |
 |---------|----------|-------|
-| **CausalML** | Meta-learners, uplift RF | Uber's library, widely used in BRP |
+| **CausalML** | Meta-learners, uplift RF | Uber's open-source library |
 | **EconML** | Orthogonal RF, CATE estimation | Microsoft, doubly robust methods |
 | **scikit-uplift** | Uplift evaluation (Qini, lift curves) | Dedicated uplift evaluation tools |
 | **Ray RLlib** | RL-based treatment optimization | Used for Q-learning experiments |
@@ -170,14 +138,11 @@ A quasi-experimental causal method leveraging thresholds in assignment rules:
 | **Data requirement** | Large labeled dataset | Treatment/control split or experimental data |
 | **Evaluation** | AUC, F1, Precision/Recall | Qini curve, AUUC, ATE |
 | **Output** | Risk score (probability) | Treatment effect (CATE τ(x)) |
-| **Use case** | Real-time enforcement decision | Policy design, FP detection, impact measurement |
-| **BRP Primary Use** | DNR/MDR risk scoring, DeepCARE | DSI, HonestSpot, RFS fault attribution |
+| **Use case** | Real-time prediction | Policy design, responder detection, impact measurement |
 
 ## Related Terms
 
 ### Causal Methods & Applications
-- **[Term: DSI](term_dsi.md)** - Downstream Impact; Amazon's primary causal measurement framework for enforcement impact on customer OPS/CP
-- **[Term: Weblab](term_weblab.md)** - Amazon's A/B testing platform; gold standard for causal inference via randomization
 - **[Term: Causal Model](term_causal_model.md)** - Structured causal models (DAGs) for encoding causal assumptions
 
 ### ML Methods Related to Causal Inference
@@ -187,17 +152,10 @@ A quasi-experimental causal method leveraging thresholds in assignment rules:
 - **[Term: Active Learning](term_active_learning.md)** - Selects informative samples; complements causal methods for label efficiency
 
 ### Measurement & Metrics
-- **[Term: FPR](term_false_positive.md)** - False Positive Rate; causal methods (HonestSpot) help identify true FPR beyond reinstate rate
+- **[Term: FPR](term_false_positive.md)** - False Positive Rate; causal methods help estimate true FPR beyond observed rates
 - **[Term: AUC](term_auc.md)** - Predictive model evaluation; complemented by Qini curve for uplift model evaluation
 
 ## References
-
-### Amazon Internal
-- **Fraud Uplift Model (HonestSpot) Wiki**: https://internal-wiki
-- **Causal ML vs RL for Treatment Orchestration**: https://internal-wiki
-- **DSI Wiki**: https://internal-wiki
-- **BRP ML Research Weekly 2023** (HonestSpot presentation, July 2023): https://internal-wiki
-- **AMLC 2022 Selected Posters**: Context-Enhanced Buyer Abuse Prevention with BSM
 
 ### External Resources
 - **CausalML Library**: https://causalml.readthedocs.io/en/latest/about.html
@@ -215,15 +173,14 @@ A quasi-experimental causal method leveraging thresholds in assignment rules:
 | **Core Question** | "What would happen if we had acted differently?" (counterfactual) |
 | **vs Predictive ML** | Predicts effect of action, not just probability of outcome |
 | **Key Concept** | CATE: τ(x) = E[Y_treatment - Y_control \| features x] |
-| **BRP Applications** | DSI (enforcement impact), HonestSpot (silent FP), Causal ML vs RL (fault attribution) |
 | **Key Methods** | Uplift RF, T/X/S-Learner, Treatment-Control Matching, RDD, A/B Testing |
-| **Evaluation** | Qini curve, AUUC (uplift); DSI-OPS/CP with placebo test (matching) |
+| **Evaluation** | Qini curve, AUUC (uplift); matched-outcome comparison with placebo test |
 | **Key Challenge** | Fundamental problem: only one outcome observed per individual per treatment |
 | **Packages** | CausalML, EconML, scikit-uplift |
 
-**Key Insight**: In buyer abuse prevention, **causal inference bridges the gap between what models detect and what interventions should be taken**. Standard ML (XGBoost, LightGBM) answers "is this abuse?" while causal inference answers "what happens to this customer — and to Amazon — if we enforce?" The HonestSpot finding that only 40% of falsely-enforced customers reinstate means standard FPR metrics severely underestimate true false positive rates, creating a systematic bias in model training data that only causal methods can detect and correct.
+**Key Insight**: Causal inference **bridges the gap between what models detect and what interventions should be taken**. Standard ML answers "is this event likely?" while causal inference answers "what happens if we intervene?" Because observed data reflect only the actions actually taken, naive metrics can severely misestimate the effect of alternative policies — a systematic bias that only causal methods can detect and correct.
 
 ---
 
 **Last Updated**: March 2, 2026  
-**Status**: Active - foundational methodology for BRP enforcement impact measurement and FP detection
+**Status**: Active - foundational methodology for intervention impact measurement and responder detection

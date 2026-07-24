@@ -36,13 +36,13 @@ folgezettel_parent: "1"
 
 [FZ 1: `thought_building_block_ontology_relationships`](thought_building_block_ontology_relationships.md) proposes the 8 BB types form a directed graph of 10 epistemic edges. [FZ 1b: `thought_bb_ontology_as_typed_graph`](thought_bb_ontology_as_typed_graph.md) sharpens this into the BB_SCHEMA + corpus split — 16 typed edges in total (8 epistemic + 7 navigation + 1 DKS extension). [FZ 2a2: `thought_dks_as_fsm_on_bb_graph`](thought_dks_as_fsm_on_bb_graph.md) formalises DKS as a finite-state machine over those 16 edges. **Every edge in BB_SCHEMA connects two different BB types. There is no same-type edge — no `model → model`, no `argument → argument`, no `procedure → procedure`.**
 
-This note argues that the omission is a *load-bearing gap*. The parent AB project's empirical investigation (which AB FZ 7g1 documented before this trail diverged into Tessellum) shows BB-internal transitions are not a fringe case — they are the **modal pattern** in real query traffic and they score *higher* in quality than the cross-type transitions BB_SCHEMA was designed to capture. The current Tessellum schema is silent on the dominant traversal pattern in any non-trivial corpus.
+This note argues that the omission is a *load-bearing gap*. The parent project's empirical investigation (which an earlier trail documented before this diverged into Tessellum) shows BB-internal transitions are not a fringe case — they are the **modal pattern** in real query traffic and they score *higher* in quality than the cross-type transitions BB_SCHEMA was designed to capture. The current Tessellum schema is silent on the dominant traversal pattern in any non-trivial corpus.
 
 This is not a benchmark-design issue (which retrieval handles at its own layer). It is an **ontology-design issue**: the directed graph that v0.0.47 calls "the BB schema" is incomplete as a description of how typed knowledge in a real vault is actually structured and traversed.
 
-## Evidence: the AB Slipbot QA analysis
+## Evidence: the production QA analysis
 
-The AB project's Slipbot QA database (~700 production questions answered by an agent over a typed slipbox) reconstructed the *demand hop chain* — the sequence of BB-typed notes the answer trail walked — for 87 questions. The distribution (from AB FZ 7g1, source: `counter_bb_ontology_misses_same_bb_deep_dive.md`):
+The parent project's QA database (~700 production questions answered by an agent over a typed slipbox) reconstructed the *demand hop chain* — the sequence of BB-typed notes the answer trail walked — for 87 questions. The distribution (from the parent project's earlier deep-dive analysis):
 
 | Chain class | Count | % of chains | Avg rating | Avg quality |
 |---|---|---|---|---|
@@ -53,12 +53,12 @@ The AB project's Slipbot QA database (~700 production questions answered by an a
 
 **Same-BB model chains account for ~46% of reconstructed trails. They also score *higher* on average rating + quality than the cross-BB chains the ontology was designed for.** This is reproducible empirical evidence over hundreds of real production questions — not a synthetic benchmark.
 
-Concrete examples (verbatim from AB's experiment table):
+Concrete examples (verbatim from the project's experiment table):
 
 - q207 — *"end-to-end process for RnR"* — chain: `model→procedure→model→model` walking `area_rnr → etl_reversal_reclassification → cradle_rnr_bsm_kinesis → model_rnr_bsm_bert → staging tables → OTF variables`. Five hops. Every node is `building_block: model`. Rating 3.
 - q152 — *"data source behind this RMP ruleset/intent?"* — chain: `model→model→model` (ruleset → intent → MDS table). Rating 5.
-- q587 — *"system-design lens: what was missing in the abuse pipeline?"* — chain: `model→model→model→model→model→model`. Six hops, all `model`. Rating 5.
-- q427 — *"KALE knowledge base for buyer abuse function ownership"* — `model→model→model→procedure→model` across 10 capability areas. Rating 5.
+- q587 — *"system-design lens: what was missing in the pipeline?"* — chain: `model→model→model→model→model→model`. Six hops, all `model`. Rating 5.
+- q427 — *"knowledge base for function ownership"* — `model→model→model→procedure→model` across 10 capability areas. Rating 5.
 
 **The literal trail "intent → model → variable → Cradle → ETL" exists in q207's hop chain.** Every node along this trail is a `building_block: model` note, but the *kind of system layer* changes at every hop: program area, ETL job, Cradle profile, Bedrock model, staging table, OTF variable.
 
@@ -109,7 +109,7 @@ Three concrete consequences for the current implementation:
 
 ## The lean: two layers, not one
 
-The AB resolution (FZ 7g1a) proposes a **two-layer ontology**: Layer A (epistemic, the current 10-edge core) preserved intact, plus Layer B (architectural, same-BB edges parameterised by sub-kind) added in parallel. The two are kept distinct: epistemic edges describe knowledge maturity; architectural edges describe system composition. Same nodes, two edge families.
+The parent project's resolution (its FZ 7g1a) proposes a **two-layer ontology**: Layer A (epistemic, the current 10-edge core) preserved intact, plus Layer B (architectural, same-BB edges parameterised by sub-kind) added in parallel. The two are kept distinct: epistemic edges describe knowledge maturity; architectural edges describe system composition. Same nodes, two edge families.
 
 Tessellum's `note_second_category` (the `tags[1]` source-of-truth introduced in v0.0.30 — see `term_format_spec`) is already populated and validated. It is the natural discriminator for sub-kinds. Layer B edges live as `(source.bb_type, source.note_second_category, target.bb_type, target.note_second_category, label)` 5-tuples.
 
@@ -122,7 +122,7 @@ Four things deliberately deferred:
 1. **Doesn't add Layer B edges to `BB_SCHEMA` today.** v0.0.49 ships the *evidence* and the *design lens*; the schema change is a Phase 9-class architectural decision that goes through meta-DKS once that lands.
 2. **Doesn't change TESS-005's behaviour.** v0.0.48's same-BB skip is currently right *because* the schema doesn't model same-BB edges — flagging them as errors would be misleading. When Layer B lands, TESS-005 generalises naturally (type-check against both layers; only warn when neither matches).
 3. **Doesn't relitigate the 8 BB types.** Sascha's typology survives. The change is at the edge layer, not the node layer.
-4. **Doesn't presume the architectural edge set is fixed.** The AB analysis named six edges (Implements / Routes to / Computes / Runs on / Sources from / Reads); other domains (legal corpora, scientific writing, code analysis) will have different architectural edges. The mechanism must be *learnable*, not hard-coded.
+4. **Doesn't presume the architectural edge set is fixed.** The parent analysis named six edges (Implements / Routes to / Computes / Runs on / Sources from / Reads); other domains (legal corpora, scientific writing, code analysis) will have different architectural edges. The mechanism must be *learnable*, not hard-coded.
 
 The companion note [FZ 2c: `thought_dks_transition_model_adaptation`](thought_dks_transition_model_adaptation.md) (forthcoming) treats the *adaptation* question: how DKS should learn the transition model over time, drawing on knowledge-graph literature + industry practice.
 

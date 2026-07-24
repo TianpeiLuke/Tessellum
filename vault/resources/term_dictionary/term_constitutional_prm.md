@@ -105,7 +105,7 @@ Several research threads are converging toward this concept:
 ## Applications to Our Work
 
 - **Investigation audit trail**: A Constitutional PRM for abuse investigation would evaluate each investigation step against policy principles — "Did the investigator consider order history?" "Was the decision proportionate to the evidence?" This provides an auditable, principle-referenced quality score at each step.
-- **[GreenTEA](term_greentea.md) reasoning verification**: GreenTEA's multi-step reasoning could be evaluated step-by-step against abuse policy principles, catching policy violations at the step where they occur rather than only at the final decision.
+- **Investigation-automation reasoning verification**: An investigation-automation system's multi-step reasoning could be evaluated step-by-step against abuse policy principles, catching policy violations at the step where they occur rather than only at the final decision.
 - **Bias detection in classification**: A Constitutional PRM could detect when a classification chain uses protected characteristics (geography, buyer tenure, purchase category) as reasoning steps, even if the final decision is "correct."
 - **Training signal for abuse classifiers**: Step-level constitutional feedback provides richer training signal than outcome-only labels, potentially improving data efficiency.
 

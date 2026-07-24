@@ -164,7 +164,6 @@ The pre-retrieval routing step from FZ 5h is dead. But BB demand classification 
 - **[FZ 5h1: Counter — Uniform Retrieval Supersedes BB Pre-Routing](counter_uniform_retrieval_supersedes_bb_prerouting.md)** — the counter this note responds to
 - **[FZ 5h: BB Demand as Pre-Retrieval Routing Step](thought_bb_demand_prerouting_for_retrieval.md)** — the original claim, now redirected
 - **[FZ 5e2a: BB Value Redirected to Evaluation](thought_bb_structural_value_redirected_to_evaluation.md)** — sibling sharpened position for evaluation stage
-- **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** — the evaluation complement to this assembly-stage argument
 - **[FZ 5g1a: BB Demand Inter-Annotator Agreement](../../archives/experiments/experiment_bb_demand_interannotator_agreement.md)** — κ=0.711 feasibility confirmation
 - **[FZ 5e1: Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md)** — v2 benchmark evidence
 - **[FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md)** — parent question

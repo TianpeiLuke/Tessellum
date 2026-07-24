@@ -32,9 +32,9 @@ building_block: navigation
 
 # Large Language Models (LLM) Glossary
 
-**Purpose**: Quick reference for Large Language Models, generative AI systems, NLP architectures, and related techniques used in anomaly / anomaly operations.
+**Purpose**: Quick reference for Large Language Models, generative AI systems, NLP architectures, and related techniques.
 
-**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md) | [← ML Algorithms](acronym_glossary_ml.md)
+**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md)
 
 ---
 
@@ -42,40 +42,30 @@ building_block: navigation
 
 ### Foundation Model
 **Full Name**: Foundation Model
-**Description**: Large-scale pre-trained model adaptable to many downstream tasks through fine-tuning or prompting. Examples: GPT-4 (language), CLIP (vision), **TabPFN (tabular)**. Key characteristics: trained on massive data, general-purpose, emergent capabilities, few-shot learning. **Relevance to domain**: TabPFN outperforms XGBoost on small datasets (<10K samples) in 2.8s vs 4h tuning - potential for rapid response to new patterns with limited labeled data.
+**Description**: Large-scale pre-trained model adaptable to many downstream tasks through fine-tuning or prompting. Examples: GPT-4 (language), CLIP (vision), **TabPFN (tabular)**. Key characteristics: trained on massive data, general-purpose, emergent capabilities, few-shot learning. TabPFN outperforms XGBoost on small datasets (<10K samples) in 2.8s vs 4h tuning.
 **Documentation**: [Foundation Model Term](../resources/term_dictionary/term_foundation_model.md)
 **Examples**: GPT-4, Claude (language); CLIP, SAM (vision); TabPFN (tabular); AlphaFold (biology)
 **Key Capabilities**: Transfer learning, few-shot learning, emergent abilities, general-purpose adaptation
-**domain Potential**: TabPFN for small-data anomaly detection, rapid adaptation to new patterns
 **Related**: [LLM](#llm---large-language-models), [TabPFN Paper](../resources/papers/lit_hollmann2025accurate.md), [Transfer Learning](../resources/term_dictionary/term_transfer_learning.md), [Meta-Learning](../resources/term_dictionary/term_meta_learning.md)
 
 ### Claude - Anthropic's Large Language Model Family
 **Full Name**: Claude (Anthropic's Large Language Model Family)
 **Documentation**: [Claude Term](../resources/term_dictionary/term_claude.md)
 **Model Variants**: Haiku (fast), Sonnet (balanced), Opus (sophisticated), Instant (cost-effective)
-**Related**: [LLM](#llm---large-language-models), [](#greentea---gradient-descent-with-topic-modeling-and-evolutionary-auto-prompting), [RAG](#rag---retrieval-augmented-generation)
+**Related**: [LLM](#llm---large-language-models), [RAG](#rag---retrieval-augmented-generation)
 
 ### GenAI - Generative Artificial Intelligence
 **Full Name**: Generative Artificial Intelligence
 **Documentation**: [GenAI Term](../resources/term_dictionary/term_genai.md)
 **Key Technologies**: LLMs (transformer-based), VLMs (vision+language), multimodal systems
-**Infrastructure**: AWS Bedrock, SageMaker,, Harmony
-**Status**: ✅ Active - core technology for domain automation
-**Related**: [LLM](#llm---large-language-models), [VLM](#vlm---vision-language-model), [RAG](#rag---retrieval-augmented-generation), [](#greentea---gradient-descent-with-topic-modeling-and-evolutionary-auto-prompting)
+**Infrastructure**: AWS Bedrock, SageMaker
+**Related**: [LLM](#llm---large-language-models), [VLM](#vlm---vision-language-model), [RAG](#rag---retrieval-augmented-generation)
 
 ### Phi - Microsoft Small Language Model Family
 **Full Name**: Phi (Microsoft Small Language Model Family)
 **Documentation**: [Phi Term](../resources/term_dictionary/term_phi.md)
 **Key Papers**: Gunasekar et al. (2023, arXiv:2306.11644), Abdin et al. (2024, arXiv:2404.14219, arXiv:2412.08905)
-**Related**: [LLM](#llm---large-language-models), [Foundation Model](#foundation-model), [Scaling Law](#scaling-law), [MoE](acronym_glossary_ml.md#moe---mixture-of-experts), [Knowledge Distillation](../resources/term_dictionary/term_knowledge_distillation.md)
-
-### CRFM - Customer Representation Foundation Model
-**Full Name**: Customer Representation Foundation Model
-**Description**: Lightweight transformer (87K params) converting shopping history → 64D behavioral embeddings. Production-friendly 4ms latency. Impact: <value>+ OPS growth. Uses: P13N, Ads, customer behavior analysis.
-**Documentation**: [CRFM Term](../resources/term_dictionary/term_crfm.md)
-**Team**: Stores Foundational AI (SFAI) M5
-**Launch**: November 2025
-**Related**: [](#lila---lite-language-model-for-behavior-understanding), [LLM](#llm---large-language-models)
+**Related**: [LLM](#llm---large-language-models), [Foundation Model](#foundation-model), [Scaling Law](#scaling-law), [Knowledge Distillation](../resources/term_dictionary/term_knowledge_distillation.md)
 
 ### Scaling Law
 **Full Name**: Scaling Law (Neural Scaling Law, Power-Law Scaling)
@@ -83,8 +73,7 @@ building_block: navigation
 **Documentation**: [Scaling Law Term](../resources/term_dictionary/term_scaling_law.md)
 **Key Papers**: Kaplan et al. (2020, arXiv:2001.08361), Hoffmann et al. (2022, Chinchilla), Caballero et al. (2023, BNSL)
 **Key Equations**: L(N) = (N_c/N)^α_N; L(N,D) joint scaling; B_crit(L) = B*/L^(1/α_B)
-**domain Relevance**: Informs model sizing for BSM-BERT, data requirements (D ≳ 5×10³ · N^0.74), architecture choices for CrossBERT
-**Related**: [LLM](#llm---large-language-models), [Foundation Model](#foundation-model), [BERT](#bert---bidirectional-encoder-representations-from-transformers), [Fine-Tuning](../resources/term_dictionary/term_fine_tuning.md), [SSL](acronym_glossary_ml.md#ssl---self-supervised-learning)
+**Related**: [LLM](#llm---large-language-models), [Foundation Model](#foundation-model), [BERT](#bert---bidirectional-encoder-representations-from-transformers), [Fine-Tuning](../resources/term_dictionary/term_fine_tuning.md)
 
 ### Inference Scaling Law
 **Full Name**: Inference Scaling Law (Inference-Aware Scaling, Deployment-Optimal Scaling)
@@ -104,11 +93,11 @@ building_block: navigation
 **Description**: Multimodal vision-language model from OpenAI (Radford et al., ICML 2021) that learns visual representations from natural language supervision by training dual encoders (ViT + Transformer) on 400M image-text pairs with a contrastive objective. **Matches supervised ResNet-50 on ImageNet zero-shot** (76.2%) and shows dramatically superior robustness to distribution shift. CLIP's frozen ViT encoder became the standard vision backbone for BLIP-2, LLaVA, DALL-E 2, and the broader multimodal AI ecosystem (45K+ citations).
 **Documentation**: [CLIP Term](../resources/term_dictionary/term_clip.md)
 **Key Paper**: Radford et al. (2021, ICML, arXiv:2103.00020), 45,741 citations
-**Related**: [BLIP-2](#blip-2---bootstrapping-language-image-pre-training-2), [Q-Former](#q-former---querying-transformer), [Foundation Model](#foundation-model), [Contrastive Learning](acronym_glossary_ml.md#contrastive-learning)
+**Related**: [BLIP-2](#blip-2---bootstrapping-language-image-pre-training-2), [Q-Former](#q-former---querying-transformer), [Foundation Model](#foundation-model)
 
 ### BLIP-2 - Bootstrapping Language-Image Pre-training 2
 **Full Name**: BLIP-2 (Bootstrapping Language-Image Pre-training 2)
-**Description**: Vision-language pre-training framework from Salesforce Research (Li et al., ICML 2023) that bridges frozen image encoders and frozen LLMs via a lightweight Querying Transformer (Q-Former). **Achieves state-of-the-art multimodal performance with 54× fewer trainable parameters than Flamingo80B** (~188M vs 10.2B). The Q-Former's cross-attention mechanism with 32 learnable queries has become the standard pattern for modality bridging, directly inspiring 's Tabular-Language Q-Former for operations.
+**Description**: Vision-language pre-training framework from Salesforce Research (Li et al., ICML 2023) that bridges frozen image encoders and frozen LLMs via a lightweight Querying Transformer (Q-Former). **Achieves state-of-the-art multimodal performance with 54× fewer trainable parameters than Flamingo80B** (~188M vs 10.2B). The Q-Former's cross-attention mechanism with 32 learnable queries has become the standard pattern for modality bridging.
 **Documentation**: [BLIP-2 Term](../resources/term_dictionary/term_blip2.md)
 **Key Paper**: Li et al. (2023, ICML, arXiv:2301.12597), 7,498 citations
 **Related**: [Q-Former](#q-former---querying-transformer), [Phi](#phi---microsoft-small-language-model-family), [Foundation Model](#foundation-model)
@@ -118,7 +107,7 @@ building_block: navigation
 **Description**: Lightweight 12-layer Transformer encoder introduced in BLIP-2 that uses **32 learnable query embeddings with cross-attention** to bridge frozen pre-trained encoders and frozen LLMs. The queries interact with the encoder's output to extract task-relevant information, producing fixed-size "soft tokens" for the LLM. Pre-trained with three objectives (ITC, ITM, ITG) sharing the same weights via different attention masks. Modality-agnostic: originally vision-language, adapted to tabular-language, video (Video-LLaMA), and 3D (3D-LLM).
 **Documentation**: [Q-Former Term](../resources/term_dictionary/term_q_former.md)
 **Key Paper**: Li et al. (2023, ICML, arXiv:2301.12597)
-**Related**: [BLIP-2](#blip-2---bootstrapping-language-image-pre-training-2), [Attention Mechanism](acronym_glossary_ml.md#attention-mechanism), [BERT](#bert---bidirectional-encoder-representations-from-transformers)
+**Related**: [BLIP-2](#blip-2---bootstrapping-language-image-pre-training-2), [BERT](#bert---bidirectional-encoder-representations-from-transformers)
 
 ### GLP - Generative Latent Prediction
 **Full Name**: Generative Latent Prediction
@@ -132,7 +121,7 @@ building_block: navigation
 **Description**: Efficient LLM architecture (Bae et al., 2025) unifying parameter sharing (weight-tied recursive layers) with adaptive token-level computation (learned routers assigning different recursion depths per token). **Analogous to MoE but routing across depth instead of across experts.** A shared layer stack is reused across recursion steps while routers enable early exit for easy tokens; selective KV caching stores only active tokens' pairs. Achieves up to 2× throughput vs vanilla Transformers at similar accuracy (135M–1.7B scale).
 **Documentation**: [MoR Term](../resources/term_dictionary/term_mixture_of_recursions.md)
 **Key Paper**: Bae et al. (2025, arXiv:2507.10524)
-**Related**: [MoE](acronym_glossary_ml.md#moe---mixture-of-experts), [Phi](#phi---microsoft-small-language-model-family), [Scaling Law](#scaling-law)
+**Related**: [Phi](#phi---microsoft-small-language-model-family), [Scaling Law](#scaling-law)
 
 ### RMSNorm - Root Mean Square Layer Normalization
 **Full Name**: Root Mean Square Layer Normalization
@@ -250,14 +239,14 @@ building_block: navigation
 **Full Name**: Post-Training Quantization
 **Description**: A model compression technique that reduces the numerical precision of a pre-trained model's weights and/or activations without retraining. PTQ maps floating-point values to lower-bit integers (Int8, Int4) using scaling constants derived from calibration data or model statistics. **Unlike quantization-aware training (QAT), PTQ requires no gradient computation and can be applied to any pre-trained checkpoint.** Key methods include absmax quantization (symmetric) and zero-point quantization (asymmetric), with granularity ranging from tensor-wise to vector-wise.
 **Documentation**: [PTQ](../resources/term_dictionary/term_ptq.md), [Quantization](../resources/term_dictionary/term_quantization.md)
-**Related**: [LLM.int8](#llmint8---8-bit-matrix-multiplication-for-transformers), [QLoRA](../resources/term_dictionary/term_qlora.md), [Knowledge Distillation](acronym_glossary_ml.md#kd---knowledge-distillation)
+**Related**: [LLM.int8](#llmint8---8-bit-matrix-multiplication-for-transformers), [QLoRA](../resources/term_dictionary/term_qlora.md), [Knowledge Distillation](../resources/term_dictionary/term_knowledge_distillation.md)
 
 ### LLM.int8 - 8-bit Matrix Multiplication for Transformers
 **Full Name**: LLM.int8
 **Description**: A two-part post-training quantization method for transformer inference that combines vector-wise Int8 quantization with mixed-precision decomposition for outlier features. The method isolates emergent outlier dimensions (magnitude > 6 standard deviations) into FP16 computation while quantizing the remaining 99.9% of values to Int8. **The key discovery is that transformer activations undergo a phase transition at ~6.7B parameters where outlier features become fully coordinated across all layers, concentrating in just 6 hidden dimensions.** Enables zero-degradation Int8 inference for models up to 175B parameters with ~2x memory reduction.
 **Documentation**: [LLM.int8](../resources/term_dictionary/term_llm_int8.md), [Quantization](../resources/term_dictionary/term_quantization.md)
 **Key Paper**: Dettmers et al. (2022), NeurIPS — [lit_dettmers2022llm](../resources/papers/lit_dettmers2022llm.md)
-**Related**: [PTQ](#ptq---post-training-quantization), [QLoRA](../resources/term_dictionary/term_qlora.md), [Knowledge Distillation](acronym_glossary_ml.md#kd---knowledge-distillation)
+**Related**: [PTQ](#ptq---post-training-quantization), [QLoRA](../resources/term_dictionary/term_qlora.md), [Knowledge Distillation](../resources/term_dictionary/term_knowledge_distillation.md)
 
 ### GPTQ - Generative Pre-trained Transformer Quantization
 **Full Name**: GPTQ (named for its application to GPT-family models)
@@ -289,7 +278,7 @@ building_block: navigation
 **Full Name**: Distilled Bidirectional Encoder Representations from Transformers
 **Description**: A 6-layer student model distilled from 12-layer BERT-base during pre-training using a triple loss framework combining distillation cross-entropy, masked language modeling, and cosine embedding loss. **The most impactful design choice is teacher weight initialization — initializing student layer i from teacher layer 2i contributes +3.69 GLUE points over random initialization.** Retains 97% of BERT-base's GLUE performance (77.0 vs 79.5) while being 40% smaller (66M vs 110M parameters) and 60% faster on CPU. Demonstrated that pre-training distillation produces general-purpose compressed models transferable to any downstream task.
 **Documentation**: [lit_sanh2019distilbert](../resources/papers/lit_sanh2019distilbert.md), [Knowledge Distillation](../resources/term_dictionary/term_knowledge_distillation.md)
-**Related**: [KD](acronym_glossary_ml.md#kd---knowledge-distillation), [BERT](../resources/term_dictionary/term_bert.md)
+**Related**: [Knowledge Distillation](../resources/term_dictionary/term_knowledge_distillation.md), [BERT](../resources/term_dictionary/term_bert.md)
 
 ---
 
@@ -297,9 +286,9 @@ building_block: navigation
 
 ### Episodic Memory - Experience-Based Memory System for LLM Agents
 **Full Name**: Episodic Memory (EM)
-**Description**: A memory system that stores specific experiences and events — what happened, when, where, and in what context — enabling AI agents to recall past interactions and learn from prior task executions. Distinguished by five key properties: long-term storage, explicit reasoning, single-shot learning, instance-specificity, and contextual relations. **Unlike semantic memory (facts) or procedural memory (skills), episodic memory captures the full context of individual events for adaptive behavior.** Grounded in Complementary Learning Systems theory (McClelland et al., 1995). Used in this domain's SENTRIX system where episodic memory of past reasoning trajectories yields up to 27% recall gain for phishing detection.
+**Description**: A memory system that stores specific experiences and events — what happened, when, where, and in what context — enabling AI agents to recall past interactions and learn from prior task executions. Distinguished by five key properties: long-term storage, explicit reasoning, single-shot learning, instance-specificity, and contextual relations. **Unlike semantic memory (facts) or procedural memory (skills), episodic memory captures the full context of individual events for adaptive behavior.** Grounded in Complementary Learning Systems theory (McClelland et al., 1995). Applied in agentic systems where episodic memory of past reasoning trajectories improves recall on repeated tasks.
 **Documentation**: [Episodic Memory](../resources/term_dictionary/term_episodic_memory.md)
-**Related**: [RAG](#rag---retrieval-augmented-generation), [](#hipporag---hippocampus-inspired-retrieval-augmented-generation), [PlugMem](#plugmem---plugin-memory-module-for-llm-agents), [KG](#kg---knowledge-graph)
+**Related**: [RAG](#rag---retrieval-augmented-generation), [PlugMem](#plugmem---plugin-memory-module-for-llm-agents), [KG](#kg---knowledge-graph)
 
 ### PPR - Personalized PageRank
 **Full Name**: Personalized PageRank
@@ -311,7 +300,7 @@ building_block: navigation
 **Full Name**: Knowledge Graph
 **Documentation**: [Knowledge Graph Term](../resources/term_dictionary/term_knowledge_graph.md)
 **Status**: ✅ Active - foundational concept for graph-based anomaly detection
-**Related**: [RAG](#rag---retrieval-augmented-generation), [](#hipporag---hippocampus-inspired-retrieval-augmented-generation), [PPR](#ppr---personalized-pagerank)
+**Related**: [RAG](#rag---retrieval-augmented-generation), [PPR](#ppr---personalized-pagerank)
 
 ### KG Enrichment - Knowledge Graph Enrichment
 **Full Name**: Knowledge Graph Enrichment
@@ -341,13 +330,13 @@ building_block: navigation
 **Full Name**: PlugMem (Task-Agnostic Plugin Memory Module)
 **Description**: A task-agnostic plugin memory module that transforms raw episodic experience into a knowledge-centric memory graph organized around propositional knowledge (fact blocks) and prescriptive knowledge (workflow blocks). Unlike [GraphRAG](#graphrag---graph-based-retrieval-augmented-generation) which uses entities as graph nodes, PlugMem uses **knowledge units as the fundamental unit of memory access and organization**. Three modules: Structuring (episodic standardization + knowledge extraction), Retrieval (abstraction-aware multi-hop traversal via concepts/intents), and Reasoning (task-adaptive compression). Achieves highest memory information density across three heterogeneous benchmarks while using 1-2 orders of magnitude fewer memory tokens than baselines.
 **Documentation**: [PlugMem](../resources/term_dictionary/term_plugmem.md) | [PlugMem Paper (Yang et al., 2026)](../resources/papers/lit_yang2026plugmem.md)
-**Related**: [RAG](#rag---retrieval-augmented-generation), [GraphRAG](#graphrag---graph-based-retrieval-augmented-generation), [](#hipporag---hippocampus-inspired-retrieval-augmented-generation), [Knowledge Agent](#knowledge-agent)
+**Related**: [RAG](#rag---retrieval-augmented-generation), [GraphRAG](#graphrag---graph-based-retrieval-augmented-generation), [Knowledge Agent](#knowledge-agent)
 
 ### Knowledge Agent
 **Full Name**: Knowledge Agent (Grounded Reasoning Agent)
 **Description**: AI system that iteratively queries, retrieves, and reasons over large document collections to produce grounded answers. Unlike single-step [RAG](#rag---retrieval-augmented-generation), knowledge agents use multi-turn interactions with search tools, maintaining conversation history and adapting search strategy based on intermediate results. KARL (Chang et al., 2026) demonstrates that RL-trained knowledge agents match frontier models (Claude Opus 4.6) at 33% lower cost on KARLBench. Key components: agent harness (tool orchestration), context compression (self-compression via RL), and test-time compute scaling (parallel thinking, value-guided search).
 **Documentation**: [Knowledge Agent Term](../resources/term_dictionary/term_knowledge_agent.md)
-**Related**: [RAG](#rag---retrieval-augmented-generation), [RL](acronym_glossary_ml.md#rl---reinforcement-learning), [OAPL](acronym_glossary_ml.md#oapl---optimal-advantage-based-policy-learning), [LLM](#llm---large-language-models)
+**Related**: [RAG](#rag---retrieval-augmented-generation), [LLM](#llm---large-language-models)
 
 ---
 
@@ -355,10 +344,9 @@ building_block: navigation
 
 ### Fine-Tuning
 **Full Name**: Fine-Tuning (Transfer Learning via Fine-Tuning)
-**Description**: Process of adapting a pre-trained model to a specific downstream task by continuing training on task-specific labeled data with a small learning rate. In the BERT paradigm, fine-tuning adds a minimal task-specific output layer and updates all parameters end-to-end. Default transfer learning strategy for NLP since 2019. Modern variants include full fine-tuning (all parameters), parameter-efficient fine-tuning (PEFT: LoRA, adapters, prefix tuning), instruction tuning (SFT), and RLHF/DPO for LLM alignment. BSM-BERT models follow canonical BERT fine-tuning: linear layer on [CLS], LR=2e-5, 3 epochs on labeled anomaly data.
+**Description**: Process of adapting a pre-trained model to a specific downstream task by continuing training on task-specific labeled data with a small learning rate. In the BERT paradigm, fine-tuning adds a minimal task-specific output layer and updates all parameters end-to-end. Default transfer learning strategy for NLP since 2019. Modern variants include full fine-tuning (all parameters), parameter-efficient fine-tuning (PEFT: LoRA, adapters, prefix tuning), instruction tuning (SFT), and RLHF/DPO for LLM alignment. A canonical BERT fine-tuning recipe: linear layer on [CLS], LR=2e-5, 3 epochs on labeled data.
 **Documentation**: [Fine-Tuning Term](../resources/term_dictionary/term_fine_tuning.md)
 **Key Variants**: Full fine-tuning, LoRA/PEFT, Instruction tuning (SFT), RLHF, DPO
-**domain Applications**: BSM-BERT models (RnR, AtoZ), CrossBERT, Abuse 
 **Related**: [LoRA](#lora---low-rank-adaptation), [PEFT](#peft---parameter-efficient-fine-tuning), [BERT](#bert---bidirectional-encoder-representations-from-transformers), [LLM](#llm---large-language-models)
 
 ### LoRA - Low-Rank Adaptation
@@ -417,7 +405,6 @@ building_block: navigation
 **Description**: Alignment paradigm that rejects the assumption of a single "correct" preference and instead trains AI to represent diverse human values. Standard RLHF collapses ~27% inter-annotator disagreement into majority-vote reward signals, suppressing minority viewpoints. Pluralistic alignment learns distributions over preferences via multiple reward models, conditional generation, or steerable value dimensions. Key approaches: reward model ensembles (separate RMs per value perspective), distributional RLHF (learn preference distributions, not point estimates), steerable alignment (user-selected value profiles), and Collective Constitutional AI (crowdsourced principles from diverse populations). Motivated by Prism project showing systematic cross-cultural differences across 21 countries. Arrow's impossibility theorem proves no perfect aggregation exists.
 **Documentation**: [Pluralistic Alignment Term](../resources/term_dictionary/term_pluralistic_alignment.md)
 **Key Papers**: Sorensen et al. (2024) Value Kaleidoscope, Kirk et al. (2024) Prism, Conitzer et al. (2024) Social Choice, Anthropic (2023) Collective Constitutional AI
-**domain Relevance**: Cross-marketplace anomaly norms, investigator preference diversity, escalation threshold tradeoffs
 **Related**: [RLHF](#rlhf---reinforcement-learning-from-human-feedback), [CAI](#cai---constitutional-ai), [RLAIF](#rlaif---reinforcement-learning-from-ai-feedback), [RM](#rm---reward-model)
 
 ### RLAIF - Reinforcement Learning from AI Feedback
@@ -497,13 +484,12 @@ building_block: navigation
 
 ### CoT - Chain of Thought
 **Full Name**: Chain of Thought (CoT Prompting)
-**Description**: Prompting technique augmenting few-shot exemplars with intermediate natural language reasoning steps, enabling LLMs to perform complex multi-step reasoning without fine-tuning. Emergent capability requiring ≥100B parameters. PaLM 540B + 8 CoT exemplars achieves 56.9% on GSM8K (surpassing fine-tuned GPT-3 with verifier at 55%). Ablations confirm natural language reasoning — not extra tokens or equations alone — is the active ingredient. Spawned zero-shot CoT ("Let's think step by step"), self-consistency, tree-of-thought, and the prompt engineering research field. domain relevance: SPOT-X generates chain-of-thought decision rules, uses multi-step reasoning in agentic automation, ARI investigators provide CoT prompts to LLMs.
+**Description**: Prompting technique augmenting few-shot exemplars with intermediate natural language reasoning steps, enabling LLMs to perform complex multi-step reasoning without fine-tuning. Emergent capability requiring ≥100B parameters. PaLM 540B + 8 CoT exemplars achieves 56.9% on GSM8K (surpassing fine-tuned GPT-3 with verifier at 55%). Ablations confirm natural language reasoning — not extra tokens or equations alone — is the active ingredient. Spawned zero-shot CoT ("Let's think step by step"), self-consistency, tree-of-thought, and the prompt engineering research field.
 **Documentation**: [Chain of Thought Term](../resources/term_dictionary/term_chain_of_thought.md)
 **Key Paper**: Wei et al. (2022), NeurIPS — [Literature Note](../resources/papers/lit_wei2022chain.md)
 **Key Variants**: Zero-shot CoT (Kojima 2022), Self-Consistency (Wang 2022), Tree of Thought (Yao 2023), Process Reward Models (Lightman 2023)
 **Key Properties**: Training-free, emergent (≥100B), task-general, interpretable reasoning traces
-**domain Applications**: SPOT-X (decision rules with CoT examples),, ARI (investigator-LLM interaction)
-**Related**: [LLM](#llm---large-language-models), [Scaling Law](#scaling-law), [RLHF](#rlhf---reinforcement-learning-from-human-feedback), [SPOT-X](#spot-x---structured-prompt-optimization-for-text-classification-with-explanations), [](#greentea---gradient-descent-with-topic-modeling-and-evolutionary-auto-prompting)
+**Related**: [LLM](#llm---large-language-models), [Scaling Law](#scaling-law), [RLHF](#rlhf---reinforcement-learning-from-human-feedback)
 
 ### Context Engineering - Dynamic Context Assembly for LLMs
 **Full Name**: Context Engineering
@@ -513,7 +499,7 @@ building_block: navigation
 
 ### ReAct - Reasoning + Acting
 **Full Name**: ReAct (Reasoning + Acting)
-**Description**: Prompting framework that synergizes verbal reasoning traces and task-specific actions in an interleaved Thought-Action-Observation loop. LLM alternates between generating reasoning (Thought), emitting actions that interact with external environments (Action), and receiving environment feedback (Observation). Enables two synergies: *reason to act* (reasoning informs action selection) and *act to reason* (observations ground reasoning, reducing hallucination). On ALFWorld/WebShop, 1-2 shot ReAct outperforms RL/IL agents trained on ~100K samples by 34%/10% absolute. Foundational paradigm for agentic LLM systems — LangChain, Bedrock Agents, and Strands all implement ReAct-style loops. domain relevance: agentic pipeline uses ReAct-style reasoning; agent orchestration patterns (LangGraph, Strands) descend from this framework.
+**Description**: Prompting framework that synergizes verbal reasoning traces and task-specific actions in an interleaved Thought-Action-Observation loop. LLM alternates between generating reasoning (Thought), emitting actions that interact with external environments (Action), and receiving environment feedback (Observation). Enables two synergies: *reason to act* (reasoning informs action selection) and *act to reason* (observations ground reasoning, reducing hallucination). On ALFWorld/WebShop, 1-2 shot ReAct outperforms RL/IL agents trained on ~100K samples by 34%/10% absolute. Foundational paradigm for agentic LLM systems — LangChain, Bedrock Agents, and Strands all implement ReAct-style loops.
 **Documentation**: [ReAct Term](../resources/term_dictionary/term_react.md)
 **Key Paper**: Yao et al. (2023), ICLR (notable top 5%) — arXiv:2210.03629
 **Key Properties**: Training-free (few-shot), interleaved reasoning+acting, grounded in external observations, interpretable thought traces, human-editable trajectories
@@ -524,8 +510,7 @@ building_block: navigation
 **Full Name**: Prompt Engineering (Context Engineering)
 **Description**: Discipline of designing, structuring, and optimizing natural language inputs to LLMs to elicit desired outputs — spanning task instructions, examples, reasoning scaffolds, and formatting directives. Evolved from ad-hoc prompt crafting (GPT-3, 2020) through systematic techniques (CoT, ReAct, ToT) to programmatic optimization (DSPy, OPRO, APE). **Andrej Karpathy (2025) proposed reframing as "context engineering" — assembling the right information (retrieval, tools, history) matters more than wording.** Key challenge: prompt sensitivity — small changes can cause dramatically different outputs.
 **Documentation**: [Prompt Engineering Term](../resources/term_dictionary/term_prompt_engineering.md)
-**Related**: [CoT](#cot---chain-of-thought), [Prompt Exaptation](#prompt-exaptation), [Function Calling](#function-calling---llm-tool-invocation-protocol), [Structured Output](#structured-output---schema-constrained-llm-generation), [](#greentea---gradient-descent-with-topic-modeling-and-evolutionary-auto-prompting)
-
+**Related**: [CoT](#cot---chain-of-thought), [Prompt Exaptation](#prompt-exaptation), [Function Calling](#function-calling---llm-tool-invocation-protocol), [Structured Output](#structured-output---schema-constrained-llm-generation)
 ### Function Calling - LLM Tool Invocation Protocol
 **Full Name**: Function Calling (Tool Use, Tool Calling)
 **Description**: Mechanism enabling LLMs to invoke external functions or tools by generating structured JSON arguments conforming to a predefined schema, rather than producing free-form text. The LLM selects which tool to call and with what parameters; the runtime executes the tool and returns results. Standardized via JSON Schema tool definitions across providers (OpenAI, Anthropic, Google). **Foundation of agentic AI — transforms LLMs from text generators into action-taking agents.** Evolved from ReAct prompting (2022) through native API support (2023-2024) to standardized protocols like MCP (2024).
@@ -561,22 +546,22 @@ building_block: navigation
 
 ### BERT - Bidirectional Encoder Representations from Transformers
 **Full Name**: Bidirectional Encoder Representations from Transformers
-**Description**: Workhorse for real-time text classification (~10ms latency) — bidirectional transformer. domain: Abuse, BSM analysis (A-to-Z, RnR), CSMO (F1 0.84), CrossBERT (~<value>). Variants: XLM-RoBERTa (multilingual), RoBERTa. vs LLM: lower latency, better for classification.
+**Description**: Workhorse for real-time text classification (~10ms latency) — a bidirectional transformer encoder pre-trained with masked language modeling. Variants: XLM-RoBERTa (multilingual), RoBERTa. vs LLM: lower latency, better for classification.
 **Documentation**: [BERT Term](../resources/term_dictionary/term_bert.md)
-**Related**: [NLP](#nlp---natural-language-processing), [LLM](#llm---large-language-models), [SBERT](#sbert---sentence-bert), [CrossBERT](#crossbert---foundation-model-for-identity-entities)
+**Related**: [NLP](#nlp---natural-language-processing), [LLM](#llm---large-language-models), [SBERT](#sbert---sentence-bert)
 
 ### MLM - Masked Language Model
 **Full Name**: Masked Language Model (Cloze-Style Pre-Training)
-**Description**: Self-supervised pre-training objective where a fraction of input tokens are randomly masked and the model predicts the original tokens using full bidirectional context. Introduced in BERT (Devlin et al., 2019) — masks 15% of tokens (80% [MASK], 10% random, 10% unchanged). Unlike autoregressive LM (left-to-right), MLM enables deep bidirectional representations. Key variants: Whole Word Masking, RoBERTa (dynamic masking, no NSP), SpanBERT (contiguous span masking), ELECTRA (replaced token detection — 4x more sample-efficient). MLM is the pre-training objective that produces the BERT encoder used across all BSM-BERT anomaly detection models.
+**Description**: Self-supervised pre-training objective where a fraction of input tokens are randomly masked and the model predicts the original tokens using full bidirectional context. Introduced in BERT (Devlin et al., 2019) — masks 15% of tokens (80% [MASK], 10% random, 10% unchanged). Unlike autoregressive LM (left-to-right), MLM enables deep bidirectional representations. Key variants: Whole Word Masking, RoBERTa (dynamic masking, no NSP), SpanBERT (contiguous span masking), ELECTRA (replaced token detection — 4x more sample-efficient). MLM is the pre-training objective that produces the BERT encoder used across downstream classification tasks.
 **Documentation**: [MLM Term](../resources/term_dictionary/term_mlm.md)
 **Key Variants**: RoBERTa (dynamic masking), SpanBERT (span masking), ELECTRA (replaced token detection), XLM (cross-lingual)
 **Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers), [NLP](#nlp---natural-language-processing), [Fine-Tuning](#fine-tuning)
 
 ### SBERT - Sentence BERT
 **Full Name**: Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks
-**Description**: Efficient sentence embeddings via Siamese BERT — reduces similarity search from 65 hours → 5 seconds (10K sentences). Powers GoldMiner (annotation clustering), Alexa G2KIC (80% precision), SEC (return analysis). Self-hosted, fine-tunable, low-latency (~10ms).
+**Description**: Efficient sentence embeddings via Siamese BERT — reduces similarity search from 65 hours → 5 seconds (10K sentences). Powers semantic clustering, retrieval, and paraphrase mining. Self-hosted, fine-tunable, low-latency (~10ms).
 **Documentation**: [SBERT Term](../resources/term_dictionary/term_sbert.md)
-**Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers), [NLP](#nlp---natural-language-processing), [GoldMiner](acronym_glossary_ml.md#goldminer---annotation-processor)
+**Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers), [NLP](#nlp---natural-language-processing)
 
 ### WordPiece - Likelihood-Based Subword Tokenizer
 **Full Name**: WordPiece (Schuster & Nakajima, 2012)
@@ -596,28 +581,22 @@ building_block: navigation
 **Documentation**: [NER Term](../resources/term_dictionary/term_ner.md)
 **Related**: [NLP](#nlp---natural-language-processing), [BERT](#bert---bidirectional-encoder-representations-from-transformers), [LLM](#llm---large-language-models), [KG](#kg---knowledge-graph)
 
-### CrossBERT - Foundation Model for Identity Entities
-**Full Name**: Cross-attention Bidirectional Encoder Representations from Transformers
-**Documentation**: [CrossBERT Term](../resources/term_dictionary/term_crossbert.md)
-**Launch**: January 2026
-**Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers), [NLP](#nlp---natural-language-processing)
-
 ### NLI - Natural Language Inference
 **Full Name**: Natural Language Inference / Recognizing Textual Entailment (RTE)
 **Description**: Classification task that determines the logical relationship (entailment, contradiction, neutral) between a premise and hypothesis. Key backbone for [Semantic Entropy](#se---semantic-entropy): DeBERTa-large fine-tuned on MNLI (~91% accuracy) provides bidirectional entailment classification to cluster semantically equivalent LLM outputs. Also used for zero-shot text classification, fact verification, and summarization faithfulness evaluation. Standard benchmarks: SNLI (570K), MNLI (433K), ANLI (adversarial).
 **Documentation**: [NLI Term](../resources/term_dictionary/term_nli.md)
 **Key Models**: DeBERTa-v3-large (~91% MNLI), RoBERTa-large (~90%), BERT-large (~86%)
-**Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers), [Bidirectional Entailment](#bidirectional-entailment), [Semantic Entropy](acronym_glossary_ml.md#se---semantic-entropy), [SBERT](#sbert---sentence-bert)
+**Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers), [Bidirectional Entailment](#bidirectional-entailment), [Semantic Entropy](#se---semantic-entropy), [SBERT](#sbert---sentence-bert)
 
 ### Bidirectional Entailment
 **Full Name**: Bidirectional Textual Entailment
-**Description**: Semantic equivalence test where two texts have the same meaning iff each entails the other: A ≡ B iff (A→B) ∧ (B→A). Core mechanism in [Semantic Entropy](acronym_glossary_ml.md#se---semantic-entropy) for clustering LLM generations into meaning groups. Implemented via two NLI classifier calls per pair. Stricter than unidirectional entailment (rules out hypernymy/hyponymy). Greedy clustering: O(M×K) NLI calls where M=generations, K=clusters.
+**Description**: Semantic equivalence test where two texts have the same meaning iff each entails the other: A ≡ B iff (A→B) ∧ (B→A). Core mechanism in [Semantic Entropy](#se---semantic-entropy) for clustering LLM generations into meaning groups. Implemented via two NLI classifier calls per pair. Stricter than unidirectional entailment (rules out hypernymy/hyponymy). Greedy clustering: O(M×K) NLI calls where M=generations, K=clusters.
 **Documentation**: [Bidirectional Entailment Term](../resources/term_dictionary/term_bidirectional_entailment.md)
 **Related**: [NLI](#nli---natural-language-inference), [SE - Semantic Entropy](#se---semantic-entropy), [Hallucination](#hallucination---llm-hallucination)
 
 ### SE - Semantic Entropy
 **Full Name**: Semantic Entropy
-**Description**: Uncertainty measure for LLMs that computes entropy over **meaning equivalence classes** rather than token sequences. Generates M samples from an LLM, clusters them by bidirectional NLI entailment (DeBERTa), then computes entropy over cluster probabilities. SE ≤ PE (predictive entropy) always — the gap is "wasted" entropy from lexical variation. Achieves AUROC ~0.82 vs ~0.75 (PE) on TriviaQA (OPT-30B). Advantage grows with model size. Extends to conformal prediction over meanings. **domain relevance**: principled confidence score for any LLM-generated investigation output; complements conformal prediction for free-form text.
+**Description**: Uncertainty measure for LLMs that computes entropy over **meaning equivalence classes** rather than token sequences. Generates M samples from an LLM, clusters them by bidirectional NLI entailment (DeBERTa), then computes entropy over cluster probabilities. SE ≤ PE (predictive entropy) always — the gap is "wasted" entropy from lexical variation. Achieves AUROC ~0.82 vs ~0.75 (PE) on TriviaQA (OPT-30B). Advantage grows with model size. Extends to conformal prediction over meanings.
 **Documentation**: [Semantic Entropy Term](../resources/term_dictionary/term_semantic_entropy.md)
 **Formula**: SE(x) = −Σ_c p(c|x) log p(c|x), where c are meaning clusters
 **Optimal Settings**: T=0.5 (temperature), M=10 (generations)
@@ -642,43 +621,40 @@ building_block: navigation
 ### OpenIE - Open Information Extraction
 **Full Name**: Open Information Extraction
 **Documentation**: [OpenIE Term](../resources/term_dictionary/term_open_ie.md)
-**Related**: [NLP](#nlp---natural-language-processing), [KG](#kg---knowledge-graph), [](#hipporag---hippocampus-inspired-retrieval-augmented-generation)
-
+**Related**: [NLP](#nlp---natural-language-processing), [KG](#kg---knowledge-graph)
 ---
 
 ## Vision & Multimodal
 
 ### VLM - Vision Language Model
 **Full Name**: Vision Language Model
-**Description**: Multimodal AI processing images + text. Architecture: ViT encoder + LLM. a major vendor: Document VLM (94% vs 51% OCR),, tamper detection. Popular: CLIP, LLaVA, Qwen2-VL.
+**Description**: Multimodal AI processing images + text. Architecture: ViT encoder + LLM. Applications include document understanding, OCR, and image-tamper detection. Popular: CLIP, LLaVA, Qwen2-VL.
 **Documentation**: [VLM Term](../resources/term_dictionary/term_vlm.md)
 **Related**: [LLM](#llm---large-language-models), [BERT](#bert---bidirectional-encoder-representations-from-transformers), [Computer Vision](#computer-vision---cv)
 
 ### SWIN Transformer - Shifted Window Transformer
 **Full Name**: Shifted Window Transformer
-**Description**: Vision transformer for document classification using shifted window attention (linear complexity O(HW)). Deployed at domain for police report SPAM detection: 96% precision, 60% recall, 9.6% filtered volume. Hierarchical multi-scale features, 29M–197M parameters.
+**Description**: Vision transformer for image and document classification using shifted window attention (linear complexity O(HW)). Hierarchical multi-scale features, 29M–197M parameters.
 **Documentation**: [SWIN Transformer Term](../resources/term_dictionary/term_swin_transformer.md)
-**Launch**: January 2026
 **Related**: [VLM](#vlm---vision-language-model), [Computer Vision](#computer-vision---cv), [CNN](#cnn---convolutional-neural-network)
 
 ### Qwen2.5-VL - Qwen Vision Language Model
 **Full Name**: Qwen2.5 Vision Language Model (Alibaba)
-**Description**: Open-weight vision-language model family (Alibaba, 2025) combining Qwen 2.5 language model with a new Vision Transformer encoder. Processes images at **native resolution** with dynamic token counts, supports video understanding with absolute time encoding, and enables agent-based GUI interaction. Available in 3B, 7B, and 72B parameter sizes under Apache 2.0 license. 's current foundation model — replaced IDEFICS-v2 with 16% accuracy improvement and 58% hallucination reduction at <<value> training cost.
+**Description**: Open-weight vision-language model family (Alibaba, 2025) combining Qwen 2.5 language model with a new Vision Transformer encoder. Processes images at **native resolution** with dynamic token counts, supports video understanding with absolute time encoding, and enables agent-based GUI interaction. Available in 3B, 7B, and 72B parameter sizes under Apache 2.0 license.
 **Documentation**: [Qwen Term](../resources/term_dictionary/term_qwen.md)
 **Related**: [VLM](#vlm---vision-language-model), [ViT](#vit---vision-transformer), [IDEFICS](#idefics---image-aware-decoder-enhanced-à-la-flamingo)
 
 ### IDEFICS - Image-aware Decoder Enhanced à la Flamingo
 **Full Name**: Image-aware Decoder Enhanced à la Flamingo with Interleaved Cross-attentionS
-**Description**: Open-source vision-language model family (HuggingFace) reproducing DeepMind's closed-source Flamingo architecture. IDEFICS-v2 (8B parameters, Apache 2.0) processes interleaved image-text sequences via cross-attention layers for visual QA, captioning, and multi-image reasoning. The "What matters when building VLMs?" paper showed that **careful data curation matters more than model size**. 's first-generation VLM backbone — fine-tuned on 200k e-commerce images, published at NAACL'25.
+**Description**: Open-source vision-language model family (HuggingFace) reproducing DeepMind's closed-source Flamingo architecture. IDEFICS-v2 (8B parameters, Apache 2.0) processes interleaved image-text sequences via cross-attention layers for visual QA, captioning, and multi-image reasoning. The "What matters when building VLMs?" paper showed that **careful data curation matters more than model size**.
 **Documentation**: [IDEFICS Term](../resources/term_dictionary/term_idefics.md)
 **Related**: [VLM](#vlm---vision-language-model), [Qwen2.5-VL](#qwen25-vl---qwen-vision-language-model), [ViT](#vit---vision-transformer)
 
 ### Diffusion Model
 **Full Name**: Diffusion Model (Denoising Diffusion Probabilistic Model)
-**Description**: Generative model creating new data by reversing a noise-adding process. a major vendor domain: Stable Diffusion for adversarial CAPTCHA (~65% improvement), WAF CAPTCHA, synthetic training data. Also powers tabular data synthesis for anomaly detection research.
+**Description**: Generative model creating new data by reversing a noise-adding process. Applications include adversarial CAPTCHA generation, synthetic image generation, and tabular data synthesis. Popular implementations: Stable Diffusion, DALL-E, Imagen.
 **Documentation**: [Diffusion Model Term](../resources/term_dictionary/term_diffusion_model.md)
 **Key Applications**: Adversarial CAPTCHA, synthetic image generation, bot mitigation
-**Status**: ✅ Active - core security and synthetic data technology
 **Related**: [Computer Vision](#computer-vision---cv), [GenAI](#genai---generative-artificial-intelligence), [Masked Diffusion](#masked-diffusion)
 
 ### Masked Diffusion
@@ -713,7 +689,7 @@ building_block: navigation
 
 ### Rubric Discovery - Autonomous Evaluation Criteria Generation
 **Full Name**: Rubric Discovery (Adaptive Rubric Generation)
-**Description**: Capability of agent judges to autonomously formulate and refine evaluation criteria during operation. Hallmark of Self-Evolving Agent-as-a-Judge systems. Approaches: EvalAgents (web-search rubric synthesis), AGENT-X (adaptive guideline selection), OnlineRubrics (RL-integrated rubric evolution), GradeOpt (iterative refinement via feedback loops). Replaces static human-authored rubrics with dynamically generated criteria that adapt to novel tasks and domains. domain relevance: auto-generating anomaly evaluation criteria as new patterns emerge.
+**Description**: Capability of agent judges to autonomously formulate and refine evaluation criteria during operation. Hallmark of Self-Evolving Agent-as-a-Judge systems. Approaches: EvalAgents (web-search rubric synthesis), AGENT-X (adaptive guideline selection), OnlineRubrics (RL-integrated rubric evolution), GradeOpt (iterative refinement via feedback loops). Replaces static human-authored rubrics with dynamically generated criteria that adapt to novel tasks and domains.
 **Documentation**: [Rubric Discovery Term](../resources/term_dictionary/term_rubric_discovery.md)
 **Key Papers**: You et al. (2026) — [lit_you2026agent](../resources/papers/lit_you2026agent.md)
 **Related**: [Agent-as-a-Judge](#agent-as-a-judge---agentic-evaluation-paradigm), [Prompt Optimization](../resources/term_dictionary/term_prompt_optimization.md), [Self-Evolving Agent](../resources/term_dictionary/term_self_evolving_agent.md)
@@ -755,7 +731,7 @@ building_block: navigation
 
 ### Red Teaming
 **Full Name**: Red Teaming (Adversarial Safety Evaluation)
-**Description**: Practice of deliberately probing AI models with adversarial inputs to discover harmful, biased, or unsafe behaviors before deployment. Borrowed from military/cybersecurity terminology. Methods: human red teaming (expert adversarial prompts), automated red teaming (LM-generated attacks, gradient-based adversarial suffixes), hybrid approaches. Serves dual roles: evaluation (measuring safety) and training data (generating prompts for alignment). Ganguli et al. (2022) found larger models are more susceptible to red-team attacks; RLHF reduces but doesn't eliminate vulnerabilities. In Constitutional AI, ~182K red-team prompts are inputs to SL-CAI critique-revision. Attack categories: direct prompting, jailbreaking, prompt injection, multi-turn elicitation, encoding attacks, adversarial suffixes. domain relevance: testing anomaly detection models against edge cases, understanding adversarial buyer behavior.
+**Description**: Practice of deliberately probing AI models with adversarial inputs to discover harmful, biased, or unsafe behaviors before deployment. Borrowed from military/cybersecurity terminology. Methods: human red teaming (expert adversarial prompts), automated red teaming (LM-generated attacks, gradient-based adversarial suffixes), hybrid approaches. Serves dual roles: evaluation (measuring safety) and training data (generating prompts for alignment). Ganguli et al. (2022) found larger models are more susceptible to red-team attacks; RLHF reduces but doesn't eliminate vulnerabilities. In Constitutional AI, ~182K red-team prompts are inputs to SL-CAI critique-revision. Attack categories: direct prompting, jailbreaking, prompt injection, multi-turn elicitation, encoding attacks, adversarial suffixes.
 **Documentation**: [Red Teaming Term](../resources/term_dictionary/term_red_teaming.md)
 **Key Papers**: Ganguli et al. (2022), Perez et al. (2022), Zou et al. (2023) GCG attack
 **Related**: [CAI](#cai---constitutional-ai), [RLHF](#rlhf---reinforcement-learning-from-human-feedback), [RLAIF](#rlaif---reinforcement-learning-from-ai-feedback), [LLM](#llm---large-language-models)
@@ -804,7 +780,7 @@ building_block: navigation
 
 ### Ontology
 **Full Name**: Ontology
-**Description**: Formal schema defining entity types, properties, relationships — enables machine reasoning. Formula: Ontology + Data = Knowledge Graph. : anomaly type hierarchy, OTF schema, MO classification. Nexus KG: 21 entity types, 23 relationships.
+**Description**: Formal schema defining entity types, properties, relationships — enables machine reasoning. Formula: Ontology + Data = Knowledge Graph.
 **Documentation**: [Ontology Term](../resources/term_dictionary/term_ontology.md)
 **Related**: [KG](#kg---knowledge-graph), [RAG](#rag---retrieval-augmented-generation)
 
@@ -820,14 +796,14 @@ building_block: navigation
 **Description**: Architectures where multiple AI agents work together toward shared goals through communication protocols, shared resources, or structured interaction patterns. Modalities include direct messaging (AutoGen), shared memory (SiriuS), publication-based sharing (AgentRxiv), and competitive dynamics (self-play). AgentRxiv showed publication-based collaboration enables faster convergence (76.2% accuracy at paper 7 vs. 23 sequentially) but at higher cost (3x for parallel labs).
 **Documentation**: [Multi-Agent Collaboration Term](../resources/term_dictionary/term_multi_agent_collaboration.md)
 **Key Papers**: Schmidgall & Moor (2025) — [lit_schmidgall2025agentrxiv](../resources/papers/lit_schmidgall2025agentrxiv.md)
-**Related**: [AgentSpace](../resources/term_dictionary/term_agentspace.md), [Autonomous Research](#autonomous-research---ai-driven-scientific-discovery), [Self-Evolving Agent](../resources/term_dictionary/term_self_evolving_agent.md), [Generative Agents](#generative-agents---believable-agent-society-simulation)
+**Related**: [Autonomous Research](#autonomous-research---ai-driven-scientific-discovery), [Self-Evolving Agent](../resources/term_dictionary/term_self_evolving_agent.md), [Generative Agents](#generative-agents---believable-agent-society-simulation)
 
 ### MAD - Multi-Agent Debate
 **Full Name**: Multi-Agent Debate
-**Description**: LLM reasoning framework where multiple agents independently generate responses, then iteratively critique each other's answers across structured debate rounds. **Promotes divergent thinking through adversarial interaction**, countering the Degeneration-of-Thought problem where single agents lock into incorrect solutions. Follows PROPOSE → CRITIQUE → SYNTHESIZE architecture. Key limitation: debate degrades to "inefficient resampling" on simple tasks and agents prove "overly aggressive" — flipping correct answers to incorrect ones through rhetorical pressure (ICLR 2025). The DKS extends MAD with persistent knowledge, warrant-level attacks, and dialectical adequacy as termination criterion.
+**Description**: LLM reasoning framework where multiple agents independently generate responses, then iteratively critique each other's answers across structured debate rounds. **Promotes divergent thinking through adversarial interaction**, countering the Degeneration-of-Thought problem where single agents lock into incorrect solutions. Follows PROPOSE → CRITIQUE → SYNTHESIZE architecture. Key limitation: debate degrades to "inefficient resampling" on simple tasks and agents prove "overly aggressive" — flipping correct answers to incorrect ones through rhetorical pressure (ICLR 2025).
 **Documentation**: [Multi-Agent Debate](../resources/term_dictionary/term_multi_agent_debate.md)
 **Key Papers**: Du et al. (2023, ICML 2024); Liang et al. (2023, EMNLP 2024)
-**Related**: [Multi-Agent Collaboration](#multi-agent-collaboration---cooperative-agent-systems), [DKS](acronym_glossary_cognitive_science.md#dks---dialectic-knowledge-system), [Dialectical Adequacy](../resources/term_dictionary/term_dialectical_adequacy.md), [Chain of Thought](#cot---chain-of-thought)
+**Related**: [Multi-Agent Collaboration](#multi-agent-collaboration---cooperative-agent-systems), [Dialectical Adequacy](../resources/term_dictionary/term_dialectical_adequacy.md), [Chain of Thought](#cot---chain-of-thought)
 
 ### Generative Agents - Believable Agent Society Simulation
 **Full Name**: Generative Agents (Interactive Simulacra of Human Behavior)
@@ -857,7 +833,7 @@ building_block: navigation
 **Description**: Coordination strategies that govern how multiple LLM-powered agents collaborate, communicate, and transfer control to accomplish complex tasks. Dibia (2025) provides a definitive taxonomy: **deterministic patterns** (Sequential, Parallel, Supervisor) offer predictable control for production; **autonomous patterns** (GroupChat, Handoff, Plan-based, Magentic One) provide flexibility for open-ended tasks. **Most production systems should favor deterministic workflows with targeted autonomy at specific nodes.** Implemented via computational graphs (DAGs) with agents as nodes and data/control flow as edges.
 **Documentation**: [Agent Orchestration Term](../resources/term_dictionary/term_agent_orchestration.md)
 **Key Frameworks**: AutoGen, LangGraph, CrewAI, Semantic Kernel, OpenAI Swarm
-**Related**: [Multi-Agent Collaboration](#multi-agent-collaboration---cooperative-agent-systems), [Function Calling](#function-calling---llm-tool-invocation-protocol), [Guardrails](#guardrails---ai-system-safety-controls), [AgentSpace](#agentspace)
+**Related**: [Multi-Agent Collaboration](#multi-agent-collaboration---cooperative-agent-systems), [Function Calling](#function-calling---llm-tool-invocation-protocol), [Guardrails](#guardrails---ai-system-safety-controls)
 
 ### Agent-as-a-Tool - Hierarchical Agent Composition Pattern
 **Full Name**: Agent-as-a-Tool (Agents as Tools, Agent Wrapping)
@@ -868,7 +844,7 @@ building_block: navigation
 
 ### LangGraph - Stateful Graph-Based Agent Orchestration Framework
 **Full Name**: LangGraph (LangChain Graph Orchestration Framework)
-**Description**: Open-source framework built on LangChain for orchestrating complex AI agent workflows as stateful directed graphs. Models agent tasks as nodes connected by edges while maintaining shared state, enabling conditional branching, loops, and human-in-the-loop control. **Unlike DAG-only frameworks, LangGraph supports cyclic graphs for iterative refinement and self-correction workflows.** Used in this domain's Deep Research Agent for multi-phase research-to-report automation. Reached general availability in May 2025 with managed deployment infrastructure.
+**Description**: Open-source framework built on LangChain for orchestrating complex AI agent workflows as stateful directed graphs. Models agent tasks as nodes connected by edges while maintaining shared state, enabling conditional branching, loops, and human-in-the-loop control. **Unlike DAG-only frameworks, LangGraph supports cyclic graphs for iterative refinement and self-correction workflows.** Commonly used for multi-phase research-to-report automation. Reached general availability in May 2025 with managed deployment infrastructure.
 **Documentation**: [LangGraph](../resources/term_dictionary/term_langgraph.md)
 **Related**: [Agent Orchestration](#agent-orchestration---multi-agent-coordination-patterns), [RAG](#rag---retrieval-augmented-generation), [Guardrails](#guardrails---ai-system-safety-controls)
 
@@ -882,7 +858,7 @@ building_block: navigation
 **Full Name**: Observability for Agent Systems (LLM Observability, AI Observability)
 **Description**: Practices and tools for monitoring, tracing, debugging, and understanding the internal behavior of LLM-powered agent systems. Extends traditional software observability (metrics, logs, traces) with LLM-specific concerns: **token usage tracking, prompt/completion logging, tool call tracing, multi-agent interaction visualization, and cost attribution.** Built on OpenTelemetry GenAI Semantic Conventions (2024). Dibia (2025) argues observability is "non-negotiable" — every agent interaction must be traceable for debugging, evaluation, and cost optimization. Key platforms: LangSmith, Arize Phoenix, Weights & Biases Weave, Braintrust.
 **Documentation**: [Observability Term](../resources/term_dictionary/term_observability_agent_systems.md)
-**Related**: [Agent Orchestration](#agent-orchestration---multi-agent-coordination-patterns), [Guardrails](#guardrails---ai-system-safety-controls), [Agentic Evaluation](#agentic-evaluation---agent-based-automated-assessment), [AgentSpace](#agentspace)
+**Related**: [Agent Orchestration](#agent-orchestration---multi-agent-coordination-patterns), [Guardrails](#guardrails---ai-system-safety-controls), [Agentic Evaluation](#agentic-evaluation---agent-based-automated-assessment)
 
 ### Voyager - LLM-Powered Embodied Lifelong Learning Agent
 **Full Name**: Voyager (Open-Ended Embodied Agent with Large Language Models)
@@ -896,14 +872,14 @@ building_block: navigation
 **Description**: An emerging machine form that unifies computation, memory, and I/O in a single learned runtime state, making the neural model itself the running computer rather than a tool layer atop conventional hardware. Formalized as an update-and-render loop: $h_t = F_\theta(h_{t-1}, x_t, u_t)$; $x_{t+1} \sim G_\theta(h_t)$. **Proposes a paradigm shift from compound AI systems (multi-component tool-using agents) to a single neural runtime where programs, files, and OS functionality emerge from learned dynamics.** Current prototypes (NCCLIGen for terminals, NCGUIWorld for desktops) use Diffusion Transformer (DiT) architectures. The ultimate vision — the Completely Neural Computer (CNC) — requires Turing completeness, universal programmability, behavioral consistency, and machine-native semantics.
 **Documentation**: [Neural Computer](../resources/term_dictionary/term_neural_computer.md)
 **Key Paper**: Zhuge et al. (2026) -- [arXiv:2604.06425](https://arxiv.org/abs/2604.06425) (Meta AI / KAUST)
-**Related**: [World Model](#world-model---learned-environment-dynamics), [Compound AI System](../resources/term_dictionary/term_compound_ai_system.md), [Genie](../resources/term_dictionary/term_genie.md), [Foundation Model](#foundation-model)
+**Related**: [World Model](#world-model---learned-environment-dynamics), [Compound AI System](../resources/term_dictionary/term_compound_ai_system.md), [Foundation Model](#foundation-model)
 
 ### World Model - Learned Environment Dynamics
 **Full Name**: World Model (Environment Dynamics Model, Latent Dynamics Model)
 **Description**: A learned neural representation of environment dynamics that predicts future states given current observations and actions, enabling model-based planning and control via internal simulation ("imagination"). Taxonomy spans three prediction spaces: pixel-space (Sora, GameNGen), latent-space (Dreamer family), and joint-embedding (V-JEPA). **Distinguished from Neural Computers in that world models serve autonomous agents for planning, while NCs serve as user-operated computing platforms.** Major systems include DreamerV1-V3 (RL), Sora (video generation), Genie (interactive environments), GAIA-1 (autonomous driving), and NVIDIA Cosmos (physical AI).
 **Documentation**: [World Model](../resources/term_dictionary/term_world_model.md)
 **Key Paper**: Ha & Schmidhuber (2018) -- [arXiv:1803.10122](https://arxiv.org/abs/1803.10122)
-**Related**: [Neural Computer](#nc---neural-computer), [Genie](../resources/term_dictionary/term_genie.md), [GLP](#glp---generative-latent-prediction), [Foundation Model](#foundation-model)
+**Related**: [Neural Computer](#nc---neural-computer), [GLP](#glp---generative-latent-prediction), [Foundation Model](#foundation-model)
 
 ### Toolformer - Self-Supervised Tool-Use Learning for LLMs
 **Full Name**: Toolformer (Self-Supervised Tool-Augmented Language Model)
@@ -953,24 +929,18 @@ building_block: navigation
 ## Vector Search & Similarity Technologies
 ### Embedding
 **Full Name**: Embedding (Vector Representation)
-**Description**: Dense vector representations where semantic similarity = geometric distance - **universal language of modern ML**. domain types: Behavioral (Sandstone, 768D), Graph (TGN/, +20% ATO), Text (BERT/CrossBERT, +160 bps), Product (ASIN). Key shift from hand-crafted features to learned representations.
+**Description**: Dense vector representations where semantic similarity = geometric distance - **universal language of modern ML**. Common types: behavioral, graph, text (BERT-family), and product embeddings. Key shift from hand-crafted features to learned representations.
 **Documentation**: [Embedding Term](../resources/term_dictionary/term_embedding.md)
-**Wiki**: [Sandstone], [TGN/SMAUG], [GNN for Buyer Fraud]
-**Key Types**: Behavioral (Sandstone), Graph (TGN/), Text (BERT), Product (ASIN)
 **Typical Dimensions**: 64-768 depending on type
-**Use Cases**: Customer similarity, anomaly pattern detection, multi-modal fusion, k-NN classification, anomaly detection
-**Key Projects**: Sandstone (+100 BPS contact automation), TGN/, CrossBERT (+160 BPS), DCL (+78 BPS Recall), AGATE (DeepCare, Physical Stores)
-**Status**: ✅ Active - foundational technology for ML at domain
-**Related**: [Sandstone](#sandstone---foundational-behavioral-model), [BERT](#bert---bidirectional-encoder-representations-from-transformers), [Contrastive Learning](#contrastive-learning), [](#deepcare---deep-representation-learning-for-continuously-adaptive-risk-evaluation), [GNN](#gnn---graph-neural-networks), [TGN](#tgn---temporal-graph-network)
+**Use Cases**: Similarity search, pattern detection, multi-modal fusion, k-NN classification
+**Related**: [BERT](#bert---bidirectional-encoder-representations-from-transformers)
 
 ### FAISS - Facebook AI Similarity Search
 **Full Name**: Facebook AI Similarity Search
-**Description**: Open-source library for efficient similarity search and clustering of dense vectors, developed by Facebook AI Research under MIT license. Provides optimized algorithms for searching through millions to billions of high-dimensional vectors using Approximate Nearest Neighbor (ANN) techniques with CPU and GPU acceleration (up to 20x speedup). At a major vendor, FAISS serves as backbone for large-scale applications including catalog similarity search (Khoj), RAG systems for generative AI, product recommendations, and explainable AI experiments, enabling efficient semantic search across massive datasets with sub-second query response times.
+**Description**: Open-source library for efficient similarity search and clustering of dense vectors, developed by Facebook AI Research under MIT license. Provides optimized algorithms for searching through millions to billions of high-dimensional vectors using Approximate Nearest Neighbor (ANN) techniques with CPU and GPU acceleration (up to 20x speedup). Serves as a backbone for large-scale catalog similarity search, RAG systems, and product recommendations, enabling efficient semantic search across massive datasets with sub-second query response times.
 **Documentation**: [FAISS Term](../resources/term_dictionary/term_faiss.md)
-**Wiki**: [Khoj Vector Search], [ProductDNA Performance]
 **Scale**: Hundreds of millions to billions of vectors, catalog-scale performance
 **Performance**: GPU 8-20x faster than CPU, sub-second query response
-**Applications**: Khoj (catalog search), ProductDNA similarity, RAG systems, explainable AI experiments
 **Key Benefits**: Open source, scalable, GPU accelerated, production-ready
 **Related**: [RAG](#rag---retrieval-augmented-generation), [Embedding](#embedding), [k-NN](#k-nn---k-nearest-neighbors), [Vector Database](../resources/term_dictionary/term_vector_database.md)
 
@@ -980,10 +950,9 @@ building_block: navigation
 **Mathematical formulation**: p(y|x) ≈ Σ_{z∈top-k} p_η(z|x) · p_θ(y|x,z), where p_η = DPR retriever, p_θ = BART generator
 **Documentation**: [RAG Term](../resources/term_dictionary/term_rag.md)
 **Key Papers**: Lewis et al. (2020) "Retrieval-Augmented Generation" (NeurIPS, 11,802 citations) — [lit_lewis2020retrieval](../resources/papers/lit_lewis2020retrieval.md)
-**Key Extensions**: Gutierrez et al. (2025) "From RAG to Memory" — [lit_gutierrez2025rag](../resources/papers/lit_gutierrez2025rag.md); ; Modular RAG; Graph-RAG
-**Wiki**: [Agentic AI Portal RAG], [BuilderHub RAG Recommendations]
-**Use Cases**: Investigation automation, Q&A bots, document search, SOP compliance, pattern retrieval
-**Status**: ✅ Active - foundational technique for LLM applications
+**Key Extensions**: Gutierrez et al. (2025) "From RAG to Memory" — [lit_gutierrez2025rag](../resources/papers/lit_gutierrez2025rag.md); Modular RAG; Graph-RAG
+**Use Cases**: Q&A bots, document search, pattern retrieval
+**Related**: [DPR](#dpr---dense-passage-retrieval), [Dense Retrieval](#dense-retrieval), [KG](#kg---knowledge-graph), [LLM](#llm---large-language-models)
 
 ### DPR - Dense Passage Retrieval
 **Full Name**: Dense Passage Retrieval
@@ -996,14 +965,13 @@ building_block: navigation
 **Full Name**: Dense Retrieval
 **Description**: The IR family that ranks documents by **vector similarity in a learned embedding space** rather than by lexical-overlap statistics. Both queries and documents are encoded as fixed-dimensional dense vectors by a neural encoder (typically a fine-tuned BERT-family bi-encoder), and ranking reduces to a cosine-similarity score (almost always on L2-normalized vectors → reduces to a dot product). **Foundational retrieval primitive of modern RAG pipelines**, distinguished from sparse retrieval (BM25, TF-IDF) which scores on direct term overlap, and from hybrid retrieval which combines both. Dense wins on paraphrase / semantic-similarity queries; sparse wins on exact-match / rare-term / temporal queries — production systems typically use both via Reciprocal Rank Fusion or learned routers.
 **Documentation**: [Dense Retrieval Term](../resources/term_dictionary/term_dense_retrieval.md)
-**Related**: [DPR](#dpr---dense-passage-retrieval), [RAG](#rag---retrieval-augmented-generation), [Embedding](#embedding), [Cosine Similarity](acronym_glossary_ml.md#cosine-similarity), [FAISS](#faiss---facebook-ai-similarity-search), [](#hipporag---hippocampus-inspired-retrieval-augmented-generation), [PPR](#ppr---personalized-pagerank)
+**Related**: [DPR](#dpr---dense-passage-retrieval), [RAG](#rag---retrieval-augmented-generation), [Embedding](#embedding), [FAISS](#faiss---facebook-ai-similarity-search), [PPR](#ppr---personalized-pagerank)
 
 ### Hallucination - LLM Hallucination
 **Full Name**: Hallucination (LLM)
 **Description**: Generation of fluent but factually incorrect, unsupported, or internally inconsistent text by LLMs. Two types: **intrinsic** (contradicts source material) and **extrinsic** (invents facts beyond source). Root causes: parametric knowledge gaps, training distribution mismatch, exposure bias, overconfidence. Primary mitigation: RAG (Lewis et al. 2020 showed 42.7% vs 7.1% factuality preference). Additional mitigations: RLHF, Constitutional AI, Chain-of-Thought, system prompt constraints. Metrics: FActScore (atomic fact precision), SelfCheckGPT (sample consistency), human factuality evaluation.
 **Documentation**: [Hallucination Term](../resources/term_dictionary/term_hallucination.md)
-**Related**: [RAG](#rag---retrieval-augmented-generation), [LLM](#llm---large-language-models), [RLHF](#rlhf---reinforcement-learning-from-human-feedback), [](#greentea---gradient-descent-with-topic-modeling-and-evolutionary-auto-prompting)
-
+**Related**: [RAG](#rag---retrieval-augmented-generation), [LLM](#llm---large-language-models), [RLHF](#rlhf---reinforcement-learning-from-human-feedback)
 ### PPR - Personalized PageRank
 **Full Name**: Personalized PageRank
 **Description**: Graph ranking algorithm that ranks knowledge graph nodes by relevance to seed entities through biased random walks. **Core retrieval mechanism in GraphRAG systems** combining with semantic search for hybrid knowledge retrieval. Uses damping factor α=0.85 with personalization vector biased toward query-extracted entities, achieving 150ms warm latency for 15K-node graphs. Converges in 20-30 iterations, returning top 400 nodes capturing 95% relevance.
@@ -1012,25 +980,25 @@ building_block: navigation
 
 ### GraphRAG - Graph-Based Retrieval-Augmented Generation
 **Full Name**: Graph-Based Retrieval-Augmented Generation
-**Description**: Graph-based RAG framework (Edge et al., 2024, Microsoft Research) that answers **global sensemaking questions** by combining LLM-derived entity knowledge graphs with Leiden hierarchical community detection and map-reduce community summarization. Unlike vector RAG (local retrieval) or, GraphRAG exploits graph **community structure** for pre-computed hierarchical summaries. Pipeline: text chunks → LLM entity extraction (with self-reflection) → knowledge graph → Leiden communities → community summaries → map-reduce answering. Achieves 72-83% comprehensiveness win rate over vector RAG at 97% fewer tokens (root level). Open source: github.com/microsoft/graphrag.
+**Description**: Graph-based RAG framework (Edge et al., 2024, Microsoft Research) that answers **global sensemaking questions** by combining LLM-derived entity knowledge graphs with Leiden hierarchical community detection and map-reduce community summarization. Unlike vector RAG (local retrieval), GraphRAG exploits graph **community structure** for pre-computed hierarchical summaries. Pipeline: text chunks → LLM entity extraction (with self-reflection) → knowledge graph → Leiden communities → community summaries → map-reduce answering. Achieves 72-83% comprehensiveness win rate over vector RAG at 97% fewer tokens (root level). Open source: github.com/microsoft/graphrag.
 **Key Papers**: [lit_edge2024local](../resources/papers/lit_edge2024local.md) — From Local to Global: A Graph RAG Approach to Query-Focused Summarization (arXiv:2404.16130, 1,159 citations)
 **Documentation**: [GraphRAG Term](../resources/term_dictionary/term_graphrag.md)
-**Related**: [RAG](#rag---retrieval-augmented-generation), [](#hipporag---hippocampus-inspired-retrieval-augmented-generation), [PPR](#ppr---personalized-pagerank), [KG](#kg---knowledge-graph), [LLM](#llm---large-language-models)
+**Related**: [RAG](#rag---retrieval-augmented-generation), [PPR](#ppr---personalized-pagerank), [KG](#kg---knowledge-graph), [LLM](#llm---large-language-models)
 
 ### Vector Database (Reference)
 **Full Name**: Vector Database (Vector DB)
-**Description**: See [Systems & Platform Glossary](acronym_glossary_systems.md#vector-database---specialized-vector-storage-and-search) - Specialized database systems optimized for storing, indexing, and searching high-dimensional vector embeddings using ANN techniques like HNSW. At a major vendor: OpenSearch (enterprise), Khoj (catalog), Neptune (graph), RAG systems.
+**Description**: Specialized database systems optimized for storing, indexing, and searching high-dimensional vector embeddings using ANN techniques like HNSW. Common implementations power enterprise search, catalog retrieval, graph queries, and RAG systems.
 **Documentation**: [Vector Database Term](../resources/term_dictionary/term_vector_database.md)
-**Key Implementations**: OpenSearch, Elasticsearch, Neptune, Bedrock Knowledge Bases
+**Key Implementations**: OpenSearch, Elasticsearch, FAISS, pgvector, Pinecone, Bedrock Knowledge Bases
 **Related**: [FAISS](#faiss---facebook-ai-similarity-search), [HNSW](#hnsw---hierarchical-navigable-small-world), [Embedding](#embedding), [RAG](#rag---retrieval-augmented-generation)
 
 ---
 
 ## Related Glossaries
 
-- [ML Algorithms & Frameworks](acronym_glossary_ml.md) — XGBoost, GNN, RL, clustering, and evaluation metrics
+- [Network Science & Graph Theory](acronym_glossary_network_science.md) — graph algorithms, PageRank/PPR, community detection
 
-**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md) | [← ML Algorithms](acronym_glossary_ml.md)
+**Navigation**: [← Back to Main Glossary](entry_acronym_glossary.md)
 
 ---
 

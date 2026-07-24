@@ -47,7 +47,6 @@ Also known as:
 - **Randomized experiment** / **Randomized trial**
 - **Randomized clinical trial** (in medicine)
 - **A/B test** (in technology industry -- typically a simpler form of RCT for product features)
-- **Weblab** (Amazon's internal A/B testing platform)
 
 Contrasted with:
 - **Observational study** -- no randomization; treatment assignment depends on natural processes
@@ -121,8 +120,8 @@ Pearl identifies several situations where observational causal inference can sub
 - Online platforms run thousands of RCTs (A/B tests) simultaneously to evaluate product features, UI changes, recommendation algorithms, and pricing strategies. The randomization is implemented at the user or session level, and outcomes are measured automatically.
 
 ### Abuse Prevention and Fraud Detection
-- **Enforcement policy evaluation**: A/B testing (Weblab) can randomize enforcement actions (e.g., warning vs. no warning) to measure causal impact on customer behavior, though ethical constraints limit what can be randomized.
-- **DSI validation**: RCTs provide ground-truth causal estimates against which observational methods (DSI, propensity score matching) can be validated.
+- **Enforcement policy evaluation**: A/B testing can randomize enforcement actions (e.g., warning vs. no warning) to measure causal impact on customer behavior, though ethical constraints limit what can be randomized.
+- **Downstream-impact validation**: RCTs provide ground-truth causal estimates against which observational methods (propensity score matching) can be validated.
 - **Treatment optimization**: RCTs with multiple treatment arms can compare the effectiveness of different enforcement actions (warning, friction, closure) to identify the optimal treatment for each customer segment.
 - **Limitations in abuse context**: It may be unethical to randomly allow known abuse to proceed (control group), creating a fundamental tension between experimental rigor and business/ethical obligations.
 

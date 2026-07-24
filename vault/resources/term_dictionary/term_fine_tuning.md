@@ -154,9 +154,8 @@ For LLMs, fine-tuning has evolved into a multi-stage pipeline:
 
 ## Applications to Our Work
 
-- **BSM-BERT models** ([RnR BSM BERT](../../areas/models/model_rnr_bsm_bert.md), [AtoZ BSM BERT](../../areas/models/model_atoz_bsm_bert.md)) follow the canonical BERT fine-tuning procedure: add a linear layer on `[CLS]`, fine-tune with LR=2e-5 for 3 epochs on labeled abuse data.
-- **[CrossBERT](term_crossbert.md)** fine-tunes BERT for cross-marketplace risk transfer.
-- **[Abuse Polygraph](term_abuse_polygraph.md)** fine-tunes XLM-RoBERTa for deception detection in customer chats.
+- **Domain-specific BERT classifiers** follow the canonical BERT fine-tuning procedure: add a linear layer on `[CLS]`, fine-tune with LR=2e-5 for 3 epochs on labeled abuse data.
+- **Deception-detection models** fine-tune XLM-RoBERTa for detecting deception in customer chats.
 - PEFT methods (LoRA) could enable rapid adaptation of a single base BERT model to multiple abuse vectors without maintaining separate full models.
 
 ## Related Terms

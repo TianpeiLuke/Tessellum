@@ -73,14 +73,6 @@ A good empirical observation note should:
 - **Use consistent units and formats** -- ensure metrics are comparable across observation notes by using standard units, time ranges, and measurement definitions
 - **Tag the observation type** -- distinguish between experimental observations (controlled), operational observations (system metrics), and anecdotal observations (individual cases)
 
-## Vault Examples
-
-| Example Note | Why It Is an Empirical Observation |
-|--------------|-------------------------------------|
-| MTR (Monthly Ticket Review) notes in [entry_mtr_monthly_reviews.md](../../0_entry_points/entry_mtr_monthly_reviews.md) | Monthly reviews that record metrics like defect rates, false positive rates, and operational counts -- direct measurements of system performance. |
-| Launch announcement notes in [entry_launch_announcements.md](../../0_entry_points/entry_launch_announcements.md) | Document observable events: what was launched, when, with what measured impact. The announcement records the fact; analysis notes interpret it. |
-| SlipBot Q&A captures and oncall summaries in [entry_oncall_summaries.md](../../0_entry_points/entry_oncall_summaries.md) | Record what questions were asked, what issues occurred, and what was found during investigation -- raw operational observations. |
-
 ## Common Mistakes
 
 - **Interpreting observations as arguments**: Writing "the false positive rate increased to 12%, which means the model is degrading" in a single note. The increase to 12% is the observation; the claim about model degradation is an argument that uses the observation as a premise. Separate them into two notes and link.

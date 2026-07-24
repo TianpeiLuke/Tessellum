@@ -41,7 +41,7 @@ This trail does two things at once: it records *which experiments were run and w
 └── 3a   ★ Retrieval System Design Synthesis  (4 surfaces + 1 metadata filter over a unified engine)
 ```
 
-Linear, two nodes. The trail roots at FZ 3 with no parent (`folgezettel_parent: ""`); 3a descends from 3. The depth-2 shape is deliberate — extended experimental trails (each step's individual experiment, each ablation, each failure analysis) live in the source vault (FZ 5e1*–5e2b* in the source vault) but don't need to ship to Tessellum users. What ships is the *summary* + the *synthesis*.
+Linear, two nodes. The trail roots at FZ 3 with no parent (`folgezettel_parent: ""`); 3a descends from 3. The depth-2 shape is deliberate — extended experimental trails (each step's individual experiment, each ablation, each failure analysis) live in the source vault (FZ 5e1*–5e2b*) but don't need to ship to Tessellum users. What ships is the *summary* + the *synthesis*.
 
 ## FZ Table
 

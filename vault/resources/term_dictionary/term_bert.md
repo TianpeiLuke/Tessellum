@@ -16,7 +16,6 @@ keywords:
   - text classification
   - embeddings
 topics:
-  - buyer risk prevention
   - machine learning
   - natural language processing
   - text analysis
@@ -25,14 +24,13 @@ language: markdown
 date of note: 2026-01-31
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # BERT - Bidirectional Encoder Representations from Transformers
 
 ## Definition
 
-**BERT** stands for **Bidirectional Encoder Representations from Transformers**. It is a pre-trained transformer-based language model developed by Google (2018) that revolutionized natural language processing by processing text bidirectionally—considering both left and right context simultaneously—to understand word meanings in context. At Amazon/BRP, BERT-based models are deployed across multiple abuse detection workflows, including customer service contact analysis (Abuse Polygraph), buyer-seller messaging analysis (BSM models), and text classification tasks for fraud detection.
+**BERT** stands for **Bidirectional Encoder Representations from Transformers**. It is a pre-trained transformer-based language model developed by Google (2018) that revolutionized natural language processing by processing text bidirectionally—considering both left and right context simultaneously—to understand word meanings in context. BERT-based models are widely deployed for text classification, named entity recognition, and semantic similarity tasks.
 
 **Key Function**: Generate contextual embeddings for text that capture semantic meaning, enabling downstream tasks like classification, named entity recognition, and similarity matching.
 
@@ -44,8 +42,8 @@ related_wiki: https://internal-wiki
 - **Pre-trained Language Model**: Category of models trained on large text corpora
 - **Encoder-only Transformer**: Architecture type (vs decoder-only like GPT)
 - **Contextual Embeddings**: Output representations that capture context
-- **XLM-RoBERTa**: Multilingual BERT variant used in production
-- **AmaBERT**: Amazon-trained BERT on product catalog data
+- **RoBERTa**: Robustly optimized BERT training recipe
+- **XLM-RoBERTa**: Multilingual BERT variant
 
 ## How BERT Works
 
@@ -104,77 +102,25 @@ related_wiki: https://internal-wiki
 | RoBERTa | 12/24 | 768/1024 | 12/16 | 125M/355M |
 | XLM-RoBERTa | 12/24 | 768/1024 | 12/16 | 270M/550M |
 
-## BERT at Amazon/BRP
-
-### Production Models
-
-#### 1. Abuse Polygraph (Global Real-Time)
-**Purpose**: Detect customer deception in CS chat/contact transcripts
-**Architecture**: XLM-RoBERTa (multilingual) fine-tuned for deception detection
-**Data Source**: Patronus (real-time CS contact data from POE team)
-**Training**: Contacts from enforced (abuse) accounts vs normal accounts
-**Performance**:
-  - $100K weekly savings in NA
-  - 88% investigation yield
-  - 30% AOC/closure yield
-  - 3,400 accounts closed
-**Deployment**: Real-time via Patronus service, OTF for queueing
-**Launch**: May 2024 (US async via JUMICS), June 2025 (WW real-time)
-**Wiki**: [Abuse Polygraph](https://internal-wiki)
-
-#### 2. BSM (Buyer-Seller Messaging) Models
-**Purpose**: Analyze emails between buyers and third-party sellers for A-to-Z Claims abuse detection
-**Architecture**: Multi-modal Deep Learning (BERT/textCNN for text + fully connected for legacy features)
-**Use Cases**: A-to-Z Claims, RnR detection, MFN buyer abuse
-**Performance**: Outperforms legacy XGBoost models (AUC improvement)
-**Key Innovation**: Context extraction from buyer-seller communications
-**Wiki**: [BSM NLP](https://internal-wiki)
-
-#### 3. CSMO BERT (Chat MO Detection)
-**Purpose**: Detect Modus Operandi patterns in customer service chat conversations
-**Architecture**: BERT classifier for MO pattern recognition
-**Performance**: F1 0.84 for MO detection
-**Use Cases**: Rapid Fire MO, Broken Object MO detection
-**Related**: Tattletale pipeline integration
-
-### Amazon Internal BERT Variants
-
-| Model | Team | Training Data | Use Cases |
-|-------|------|---------------|-----------|
-| **AmaBERT** | Model Factory | Amazon product catalog | Product classification, embeddings |
-| **XLM-RoBERTa** | External | Multilingual web corpus | Multilingual abuse detection (Polygraph) |
-| **CrossBERT** | BAP ML | Identity entities | X2Risk, email/domain risk scoring |
-| **BSM BERT** | BAP ML | Buyer-seller messages | A-to-Z Claims, RnR |
-
-### BRP Applications Summary
-
-| Application | Model Type | Data Source | Key Metric |
-|-------------|------------|-------------|------------|
-| **Abuse Polygraph** | XLM-RoBERTa | CS chat transcripts | $100K/week savings |
-| **A-to-Z BSM** | textCNN/BERT | Buyer-seller emails | AUC improvement |
-| **CSMO Detection** | BERT classifier | CS chat logs | F1 0.84 |
-| **NEAT** | BERT | Email automation | Email classification |
-| **CrossBERT X2Risk** | Dual-stream BERT | Identity entities | ~$2M/year savings |
-
 ## Technical Implementation
 
-### Fine-tuning for Abuse Detection
+### Fine-tuning for Text Classification
 
 ```python
-# Typical BERT fine-tuning pattern for abuse detection
+# Typical BERT fine-tuning pattern for text classification
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # Load pre-trained model
-model_name = "xlm-roberta-base"  # Multilingual for global deployment
+model_name = "xlm-roberta-base"  # Multilingual variant
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSequenceClassification.from_pretrained(
     model_name,
-    num_labels=2  # Binary: abuse/non-abuse
+    num_labels=2  # Binary classification
 )
 
 # Data preparation
 def prepare_input(text, max_length=512):
-    """Tokenize customer message for BERT input"""
+    """Tokenize text for BERT input"""
     return tokenizer(
         text,
         max_length=max_length,
@@ -182,36 +128,25 @@ def prepare_input(text, max_length=512):
         padding="max_length",
         return_tensors="pt"
     )
-
-# Fine-tuning loop on labeled abuse data
-# Labels derived from:
-# - Good: Normal accounts, non-concession contacts
-# - Bad: Enforced accounts, concession-related contacts
 ```
 
 ### Input Processing
 
-**For Abuse Polygraph (CS Chat)**:
-```
-Raw CS Contact → Patronus Processing → Extract Customer Sentences → 
-BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
-```
-
 **Processing Steps**:
-1. Exclude contacts without human agent involvement
-2. Extract customer-only text (remove agent responses)
-3. Tokenize with WordPiece (subword tokenization)
-4. Apply max sequence length (typically 512 tokens)
-5. Forward through fine-tuned model
+1. Tokenize with WordPiece (subword tokenization)
+2. Add special tokens ([CLS], [SEP])
+3. Apply max sequence length (typically 512 tokens)
+4. Forward through fine-tuned model
+5. Read classification head or pooled embeddings
 
 ### Evaluation Metrics
 
-| Metric | Description | BRP Target |
-|--------|-------------|------------|
-| **AUC** | Discrimination ability | >0.80 |
-| **Precision** | Avoid over-enforcement | >90% |
-| **Recall** | Catch abuse patterns | Task-dependent |
-| **F1-Score** | Harmonic mean | >0.80 |
+| Metric | Description |
+|--------|-------------|
+| **AUC** | Discrimination ability |
+| **Precision** | Fraction of positive predictions that are correct |
+| **Recall** | Fraction of positives that are captured |
+| **F1-Score** | Harmonic mean of precision and recall |
 
 ## BERT vs Other Approaches
 
@@ -225,9 +160,8 @@ BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
 | **Parameters** | 110M - 550M | 1B - 1T+ |
 | **Inference Latency** | Low (~10ms) | High (100ms - seconds) |
 | **Best For** | Classification, embeddings | Generation, reasoning |
-| **BRP Use** | Real-time scoring | Investigation automation |
 
-### BERT vs XGBoost
+### BERT vs Gradient-Boosted Trees (XGBoost)
 
 | Aspect | BERT | XGBoost |
 |--------|------|---------|
@@ -235,18 +169,18 @@ BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
 | **Feature Engineering** | Minimal (learn from text) | Extensive manual features |
 | **Interpretability** | Lower (embeddings) | Higher (feature importance) |
 | **Training Data** | Needs text corpus | Needs structured features |
-| **Best For** | NLP tasks | Structured abuse detection |
+| **Best For** | NLP tasks | Structured/tabular prediction |
 
-### When to Use BERT at BRP
+### When to Use BERT
 
 | Use Case | Recommended | Reason |
 |----------|-------------|--------|
-| CS chat analysis | ✅ BERT | Text understanding required |
-| BSM analysis | ✅ BERT | Email/message semantics |
+| Text/document analysis | ✅ BERT | Text understanding required |
+| Message/email semantics | ✅ BERT | Contextual understanding |
 | Risk scoring (numeric) | ❌ XGBoost | Tabular features |
 | Complex reasoning | ❌ LLM | Chain-of-thought needed |
 | Real-time classification | ✅ BERT | Low latency |
-| Investigation automation | ❌ LLM | SOP following, generation |
+| Long-form generation | ❌ LLM | Auto-regressive decoding needed |
 
 ## Evolution & Related Models
 
@@ -263,16 +197,6 @@ BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
 2024+: BERT still optimal for classification/embedding tasks
 ```
 
-### BRP Evolution
-
-```
-2019: First BERT experiments for BSM
-2021: A-to-Z BSM BERT production
-2024: Abuse Polygraph (XLM-RoBERTa) US launch
-2025: Global real-time Polygraph
-2026: CrossBERT X2Risk foundation model
-```
-
 ## Related Terms
 
 ### Core Architecture
@@ -281,18 +205,6 @@ BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
 ### NLP & Language Models
 - **[LLM](term_llm.md)**: Large Language Model (GPT, Claude) for generation
 - **[NLP](term_nlp.md)**: Natural Language Processing field
-- **[CrossBERT](term_crossbert.md)**: Identity entity foundation model
-
-### BRP Applications
-- **[Abuse Polygraph](term_abuse_polygraph.md)**: BERT-based deception detection (CS chat)
-- **[BSM](term_bsm.md)**: Buyer-Seller Messaging data
-- **[DeepCARE](term_deepcare.md)**: Embedding-based automation
-- **[GreenTEA](term_greentea.md)**: LLM-based SOP automation
-
-### Infrastructure
-- **[Patronus](term_patronus.md)**: CS contact data service
-- **[URES](term_ures.md)**: Unified Risk Evaluation Service
-- **[AMES](term_ames.md)**: Model endpoint serving
 
 ### Embeddings & Similarity
 - **[SBERT](term_sbert.md)**: Sentence-BERT for efficient sentence embeddings via siamese networks
@@ -305,14 +217,10 @@ BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
 
 ## References
 
-### Amazon Internal
-- **Abuse Polygraph Wiki**: https://internal-wiki
-- **BSM NLP Wiki**: https://internal-wiki
-- **BRP ML Research**: https://internal-wiki
-- **Model Factory Quipus**: https://internal-wiki
-
 ### External Resources
 - **Original Paper**: [BERT: Pre-training of Deep Bidirectional Transformers](https://arxiv.org/abs/1810.04805)
+- **RoBERTa Paper**: [RoBERTa: A Robustly Optimized BERT Pretraining Approach](https://arxiv.org/abs/1907.11692)
+- **XLM-RoBERTa Paper**: [Unsupervised Cross-lingual Representation Learning at Scale](https://arxiv.org/abs/1911.02116)
 - **HuggingFace BERT**: https://huggingface.co/docs/transformers/model_doc/bert
 - **Google BERT GitHub**: https://github.com/google-research/bert
 
@@ -327,14 +235,13 @@ BERT Tokenization → Fine-tuned XLM-RoBERTa → Abuse Probability
 | **Parameters** | 110M (Base) - 550M (XLM-RoBERTa Large) |
 | **Pre-training** | MLM + NSP on large text corpora |
 | **Adaptation** | Fine-tuning on labeled task data |
-| **BRP Applications** | Abuse Polygraph, BSM, CSMO, CrossBERT |
-| **Key Variants** | XLM-RoBERTa (multilingual), AmaBERT (Amazon), CrossBERT |
+| **Key Variants** | RoBERTa (optimized), XLM-RoBERTa (multilingual) |
 | **Inference** | Low latency (~10ms), suitable for real-time |
 | **Best For** | Text classification, embeddings, NER |
 
-**Key Insight**: BERT remains the **workhorse for text classification** at BRP despite the LLM revolution. While LLMs excel at generation and complex reasoning, BERT's **lower latency, efficient fine-tuning, and strong classification performance** make it ideal for real-time abuse detection in customer communications. The Abuse Polygraph (XLM-RoBERTa) demonstrates BERT's continued value—detecting deception patterns in CS chats at scale across all Amazon marketplaces, delivering $100K+ weekly savings with 88% investigation yield. As LLMs expand into investigation automation (GreenTEA, AutoSignality), BERT-based models remain critical for the **first-line real-time classification layer** in the BRP ML stack.
+**Key Insight**: BERT remains the **workhorse for text classification** despite the LLM revolution. While LLMs excel at generation and complex reasoning, BERT's **lower latency, efficient fine-tuning, and strong classification performance** make it ideal for real-time text classification. Encoder-only models continue to provide the **first-line classification layer** in many production NLP stacks.
 
 ---
 
 **Last Updated**: January 31, 2026  
-**Status**: Active - core technology for NLP-based abuse detection
+**Status**: Active - core technology for NLP-based text classification

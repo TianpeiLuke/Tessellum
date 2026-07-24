@@ -127,7 +127,7 @@ The key structural difference from [Chain of Thought](term_chain_of_thought.md) 
 - **LangChain**: Adopted ReAct as its default agent architecture; the `AgentExecutor` implements the Thought-Action-Observation loop
 - **LangGraph**: Extends ReAct with stateful graph-based orchestration for multi-step agent workflows
 - **Amazon Bedrock Agents**: Uses ReAct-style reasoning for orchestrating tool calls in managed agent services
-- **Strands Agents SDK**: Amazon's open-source agent framework implementing ReAct-style action loops
+- **Strands Agents SDK**: Open-source agent framework implementing ReAct-style action loops
 - **AutoGPT / BabyAGI**: Early autonomous agent projects inspired by the ReAct interleaving paradigm
 - **OpenAI Function Calling**: The tool-use API pattern can be seen as a productionized variant of ReAct's action mechanism
 
@@ -138,9 +138,9 @@ The key structural difference from [Chain of Thought](term_chain_of_thought.md) 
 - **Tool-augmented LLMs**: The Action step in ReAct generalized to arbitrary tool calls (search, code execution, API calls), forming the conceptual basis for [function calling](term_function_calling.md).
 - **Human-in-the-loop correction**: ReAct's interpretable Thought traces enable human operators to inspect, understand, and edit agent reasoning mid-trajectory.
 
-### Applications to Our Work
-- **[GreenTEA](term_greentea.md)** investigation automation uses ReAct-style interleaved reasoning and tool use in its agentic pipeline -- the agent reasons about which investigation step to take next, executes it, observes the result, and continues.
-- **[Agent Orchestration](term_agent_orchestration.md)** patterns in our systems (LangGraph, Strands) are direct descendants of the ReAct framework, extended with state management and multi-agent coordination.
+### Applications in Agentic Systems
+- **Investigation and workflow automation** commonly uses ReAct-style interleaved reasoning and tool use -- the agent reasons about which step to take next, executes it, observes the result, and continues.
+- **[Agent Orchestration](term_agent_orchestration.md)** patterns (LangGraph, Strands) are direct descendants of the ReAct framework, extended with state management and multi-agent coordination.
 - **[Agent SOP](term_agent_sop.md)** enforcement benefits from ReAct's interpretable traces -- each Thought step can be audited against standard operating procedures.
 
 ## Challenges and Limitations
@@ -167,8 +167,7 @@ The key structural difference from [Chain of Thought](term_chain_of_thought.md) 
 ### Failure Modes
 - [Hallucination](term_hallucination.md) -- ReAct reduces hallucination vs. CoT by grounding reasoning in external observations (6% vs. 14% false positive)
 
-### Production Systems
-- [GreenTEA](term_greentea.md) -- Uses ReAct-style agentic reasoning for investigation automation
+### Agentic Patterns
 - [Agent SOP](term_agent_sop.md) -- SOP enforcement leverages ReAct's interpretable thought traces for auditability
 
 ## References
@@ -187,6 +186,3 @@ The key structural difference from [Chain of Thought](term_chain_of_thought.md) 
 
 ### Surveys and Context
 - Wang, L. et al. (2024). A Survey on Large Language Model based Autonomous Agents. arXiv:2308.11432. *Comprehensive survey positioning ReAct as foundational to the LLM agent paradigm.*
-
-### Related Code Repos
-- [SlipBot](../../areas/code_repos/repo_slipbot.md) — Production ReAct agent implementation for slipbox knowledge base Q&A

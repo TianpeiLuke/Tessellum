@@ -65,7 +65,7 @@ In abuse prevention systems, throughput requirements vary by pipeline: real-time
 
 ## Related Terms
 
-- **[TPS](term_tps.md)**: Transactions Per Second — the most common throughput unit in buyer abuse systems for model deployments, URES evaluations, and capacity planning
+- **[TPS](term_tps.md)**: Transactions Per Second — the most common throughput unit in abuse-prevention systems for model deployments, URES evaluations, and capacity planning
 - **[Latency](term_latency.md)**: The complementary performance metric — time per request; throughput measures aggregate rate, latency measures individual wait time
 - **[Scalability](term_scalability.md)**: A system's ability to increase throughput by adding resources (vertical or horizontal scaling)
 - **[SLO](term_slo.md)**: Service Level Objectives may include throughput targets alongside latency percentiles

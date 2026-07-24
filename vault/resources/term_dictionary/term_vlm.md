@@ -16,7 +16,6 @@ keywords:
   - visual question answering
   - document understanding
 topics:
-  - buyer risk prevention
   - machine learning
   - computer vision
   - multimodal AI
@@ -25,14 +24,13 @@ language: markdown
 date of note: 2026-03-15
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # VLM - Vision Language Model
 
 ## Definition
 
-**VLM** stands for **Vision Language Model**. VLMs are multimodal AI models that can process both images and text, enabling them to understand visual content using natural language. Modern VLMs (2023+) typically use a pre-trained Vision Transformer (ViT) backbone to process images, fusing image embeddings with text embeddings at various stages of a transformer architecture. At Amazon/BRP, VLMs are deployed for document understanding (customer evidence verification), tamper detection, fraud detection, and return abuse prevention where visual signals from product images or uploaded documents are critical for decision-making.
+**VLM** stands for **Vision Language Model**. VLMs are multimodal AI models that can process both images and text, enabling them to understand visual content using natural language. Modern VLMs (2023+) typically use a pre-trained Vision Transformer (ViT) backbone to process images, fusing image embeddings with text embeddings at various stages of a transformer architecture. VLMs are widely deployed for document understanding (evidence verification), tamper detection, and fraud detection, where visual signals from product images or uploaded documents are critical for decision-making.
 
 **Key Function**: Enable AI systems to comprehend and reason about visual content using natural language, supporting tasks like visual question answering (VQA), document information extraction, image captioning, and fraud/abuse detection from images.
 
@@ -49,11 +47,11 @@ related_wiki: https://internal-wiki
 
 ## Key Highlights
 
-**Architecture**: VLMs combine a Vision Encoder (typically ViT/CLIP) with a Language Model backbone through a fusion layer (cross-attention, linear projector, or Q-Former). Three main fusion strategies exist -- late fusion (CLIP), middle fusion (PaLI), and early fusion (Fuyu) -- with popular model families including CLIP, BLIP-2, LLaVA, Qwen2-VL, GPT-4V, and Claude 3. For detailed architecture diagrams and component breakdowns, see [VLM Architecture and How VLMs Work](../analysis_thoughts/thought_vlm_architecture.md).
+**Architecture**: VLMs combine a Vision Encoder (typically ViT/CLIP) with a Language Model backbone through a fusion layer (cross-attention, linear projector, or Q-Former). Three main fusion strategies exist -- late fusion (CLIP), middle fusion (PaLI), and early fusion (Fuyu) -- with popular model families including CLIP, BLIP-2, LLaVA, Qwen2-VL, GPT-4V, and Claude 3.
 
-**BRP Applications**: VLMs are deployed across Amazon/BRP for document verification (Document VLM achieving 94% accuracy vs 51% OCR), return abuse prevention (Guardian), tamper detection, book fraud detection (Phoenix Shield), and CAPTCHA defense (MASN). Research applications include Last Mile delivery and curriculum learning. For full details on each application, see [VLM Applications at Amazon/BRP](../analysis_thoughts/thought_vlm_brp_applications.md).
+**Applications**: VLMs are deployed for document verification, tamper detection, and fraud/abuse detection where visual evidence (uploaded documents, product images) is central to the decision. VLMs consistently outperform OCR-only pipelines on complex documents, and multimodal reasoning lets them handle cases where text and image signals must be jointly interpreted.
 
-**Implementation and Evaluation**: Fine-tuning VLMs (e.g., Qwen2-VL) for fraud detection uses reference-aware prompting and two-stage pipelines for document processing. VLMs outperform OCR+LLM pipelines for complex documents while facing challenges around inference latency, hallucination, privacy, and adversarial robustness. See [VLM Technical Implementation](../policy_sops/sop_vlm_implementation.md) and [VLM Evaluation and Challenges](../analysis_thoughts/thought_vlm_evaluation.md) for details.
+**Implementation and Evaluation**: Fine-tuning VLMs (e.g., Qwen2-VL) for fraud detection uses reference-aware prompting and two-stage pipelines for document processing. VLMs outperform OCR+LLM pipelines for complex documents while facing challenges around inference latency, hallucination, privacy, and adversarial robustness.
 
 ## Related Terms
 
@@ -66,39 +64,17 @@ related_wiki: https://internal-wiki
 - **[LLM](term_llm.md)** - Large Language Model (text-only)
 - **[BERT](term_bert.md)** - Encoder-only transformer for text
 
-### BRP Applications
-- **[Guardian](term_guardian.md)** - Multimodal LLM for return abuse (if exists)
-- **[DeepCARE](term_deepcare.md)** - Investigation automation
-- **[AutoSignality](term_autosignality.md)** - LLM-based fraud automation
-
 ### Related Concepts
 - **[OCR](term_ocr.md)** - Optical Character Recognition
 - **[Multimodal](term_multimodal.md)** - Multiple input modalities
 - **[Embedding](term_embedding.md)** - Dense vector representations (image/text fusion)
 
-## See Also
-
-- [VLM Architecture and How VLMs Work](../analysis_thoughts/thought_vlm_architecture.md) -- Architecture overview, fusion strategies, key VLM families, and core components (vision encoder, projector, language model backbone)
-- [VLM Applications at Amazon/BRP](../analysis_thoughts/thought_vlm_brp_applications.md) -- Production applications (Document VLM, Guardian, tamper detection, Phoenix Shield, CAPTCHA defense) and research applications (Last Mile, curriculum learning)
-- [VLM Technical Implementation](../policy_sops/sop_vlm_implementation.md) -- Fine-tuning code examples, prompting strategies (simple, reference-aware, chain-of-thought), and two-stage document processing pipeline
-- [VLM Evaluation and Challenges](../analysis_thoughts/thought_vlm_evaluation.md) -- Comparison with OCR+LLM and CV+Rules approaches, VLM selection guidance at BRP, and key challenges (latency, hallucination, privacy, adversarial robustness)
-
 ## References
-
-### Launch Announcements
-- [PROPHET 2.0 Multi-Modal AI Agent for Impersonation Phishing (December 2025)](../../archives/launch_announcements/2025-12-15_launch-announcement-prophet-20-multi-modal-ai-agent-for-impersonation-phishing.md) - Agentic AI system using multimodal (text + visual) analysis to detect phishing websites impersonating Amazon
-
-### Amazon Internal
-- **Document VLM Wiki**: https://internal-wiki
-- **Guardian Project**: https://internal-wiki
-- **VLM Last Mile**: https://internal-wiki
-- **CAPTCHA Mitigation**: https://internal-wiki
-- **CV4CT Workshop AMLC 2025**: https://internal-wiki
-- **Efficient VLM Tutorial AMLC 2025**: https://internal-wiki
 
 ### External Resources
 - **CLIP Paper**: [Learning Transferable Visual Models](https://arxiv.org/abs/2103.00020)
 - **LLaVA Paper**: [Visual Instruction Tuning](https://arxiv.org/abs/2304.08485)
+- **BLIP-2 Paper**: [Bootstrapping Language-Image Pre-training](https://arxiv.org/abs/2301.12597)
 - **Qwen2-VL**: https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct
 
 ## Summary
@@ -111,12 +87,12 @@ related_wiki: https://internal-wiki
 | **Architecture** | Vision encoder + Language model + Fusion |
 | **Key Components** | ViT, Cross-attention/Projector, Transformer LLM |
 | **Popular Models** | CLIP, BLIP-2, LLaVA, Qwen2-VL, GPT-4V, Claude 3 |
-| **BRP Applications** | Document VLM (CSSW), Guardian, Tamper Detection, CAPTCHA Defense |
+| **Applications** | Document verification, tamper detection, visual fraud/abuse detection |
 | **Key Strength** | Understand images with natural language reasoning |
 | **Best For** | Document verification, visual fraud detection, multimodal abuse |
-| **Deployment** | CoSS Document VLM in production (94% accuracy) |
+| **Deployment** | Production document VLMs report large accuracy gains over OCR-only pipelines |
 
-**Key Insight**: VLMs represent the **convergence of computer vision and NLP**, enabling AI systems to reason about visual content using natural language. At BRP, VLMs address the critical gap in abuse detection where **visual evidence** (customer documents, product images, appeal evidence) is central to fraud/abuse decisions. The Document VLM (94% accuracy vs 51% OCR) demonstrates how VLMs dramatically improve document verification in Customer Self-Service Workflow, while Guardian shows how VLMs can **read SOPs directly from images** to automate return abuse decisions. As customers increasingly submit images as evidence (receipts, photos, documents), VLMs provide the multimodal understanding necessary for accurate, scalable abuse prevention. The AMLC 2025 CV4CT Workshop highlights VLM adoption across Customer Trust for tamper detection, book fraud, and multimodal product analysis--signaling VLMs as a growing foundation technology for visual fraud detection at Amazon.
+**Key Insight**: VLMs represent the **convergence of computer vision and NLP**, enabling AI systems to reason about visual content using natural language. They address a critical gap in abuse detection where **visual evidence** (uploaded documents, product images, appeal evidence) is central to fraud/abuse decisions. Document-focused VLMs have demonstrated large accuracy gains over OCR-only pipelines, and multimodal VLMs can read procedural instructions directly from images to automate decisions. As users increasingly submit images as evidence (receipts, photos, documents), VLMs provide the multimodal understanding necessary for accurate, scalable abuse prevention -- making them a growing foundation technology for visual fraud detection.
 
 ---
 

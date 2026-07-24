@@ -112,7 +112,6 @@ This counter addresses FZ 5h's **strategy routing claim**, not its classificatio
 
 ### Cross-Trail Use as Evidence (Architecture Trail)
 - **[FZ 7g1a1a1a: FZ 5 Evidence Confirms Three-Layer + Sharpens Within-BB Recipe](thought_fz5_evidence_confirms_three_layer_and_sharpens_within_bb_recipe.md)** — cites this note as **Confirmation 2** that Layer 1 (Ontology) and Layer 2 (Retrieval) must remain non-coupled at the query path; the routing-target collapse documented here is what makes the layer boundary architecturally strict, not just a recommendation.
-- **[FZ 7g1a1a1a1: ★ Synthesis — One Vault, Three Invariance Regimes](thought_synthesis_three_invariance_regimes_one_vault.md)** — uses this note's κ=0.711 + collapse finding to ground design rule R2 ("edge labels in Layer 2 do not exist; the retriever sees an unlabeled link graph").
 - **[FZ 7g1a1a1a1a1: ★ Synthesis — The Vault Is a CQRS Knowledge System](thought_synthesis_two_systems_cqrs_value_proposition.md)** — promotes this note's evidence to architectural rule **R-Cross**: the query path may not cross the System P → System D boundary. The pre-routing collapse is the empirical signature of CQRS being right.
 
 ### Within Retrieval Trail (FZ 5)
@@ -122,5 +121,4 @@ This counter addresses FZ 5h's **strategy routing claim**, not its classificatio
 - **[FZ 5e2: Counter — Dense Retrieval Refutes BB Strategy Routing](counter_dense_retrieval_refutes_bb_strategy_routing.md)** — sibling counter addressing FZ 5e
 - **[FZ 5e1: Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md)** — v2 benchmark providing the evidence
 - **[FZ 5g1a: BB Demand Inter-Annotator Agreement](../../archives/experiments/experiment_bb_demand_interannotator_agreement.md)** — κ=0.711 classification feasibility
-- **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** — the evaluation-stage application of BB demand
 - **[FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md)** — parent question

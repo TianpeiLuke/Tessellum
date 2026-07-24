@@ -62,10 +62,10 @@ Rubric discovery is the evaluation-specific manifestation of self-evolving agent
 - **Reactive agents**: Select rubrics from a predefined set based on task characteristics
 - **Self-Evolving agents**: Synthesize rubrics on-the-fly and refine them through experience
 
-## Relevance to BRP
+## Relevance to Abuse Prevention
 
 - **Abuse policy evolution**: As new abuse patterns emerge, rubric discovery can automatically generate evaluation criteria from policy documents and historical decisions
-- **GreenTEA SOP compliance**: Instead of static SOP checklists, rubric discovery can synthesize compliance criteria that adapt to new investigation workflows
+- **SOP compliance**: Instead of static SOP checklists, rubric discovery can synthesize compliance criteria that adapt to new investigation workflows
 - **Model evaluation**: Rubric discovery can generate evaluation criteria for new model types without manual rubric authoring
 
 ## Related Terms

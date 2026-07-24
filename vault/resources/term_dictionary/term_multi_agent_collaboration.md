@@ -58,8 +58,6 @@ Multi-agent collaboration introduces trade-offs:
 
 ## Related Terms
 - **[A2A (Agent2Agent)](term_a2a.md)**: Open protocol enabling cross-vendor agent collaboration
-
-- [AgentSpace](term_agentspace.md) -- Multi-agent coordination framework
 - [Self-Evolving Agent](term_self_evolving_agent.md) -- Agents that improve through multi-agent interaction (social learning)
 - [Agentic Memory](term_agentic_memory.md) -- Shared memory as a collaboration mechanism
 - [Compound AI System](term_compound_ai_system.md) -- Multi-agent systems as compound AI architectures

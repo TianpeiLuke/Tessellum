@@ -364,11 +364,6 @@ building_block: navigation
 **Source**: Tversky, A. & Kahneman, D. (1974). "Judgment under Uncertainty: Heuristics and Biases." *Science*, 185, 1124–1131
 **Related**: [Cognitive Bias](#cognitive-bias), [System 1 and System 2](#system-1-and-system-2), [Availability Heuristic](#availability-heuristic), [Framing Effect](#framing-effect)
 
-### Anchoring Effect
-**Full Name**: Anchoring Effect (Anchoring Bias)
-**Description**: Cognitive bias where individuals rely too heavily on the first piece of information encountered when making judgments. In operations, affects investigators anchoring on initial risk scores and ML threshold setting anchoring on historical targets. **Mitigated by structured decision frameworks and multiple independent assessments.Documentation**: [Anchoring Effect Term](../resources/term_dictionary/term_anchoring_effect.md)
-**Related**: [Sugar Index](../resources/term_dictionary/term_sugar_index.md), [ARI](../resources/term_dictionary/term_ari.md)
-
 ### Availability Heuristic
 **Full Name**: Availability Heuristic
 **Description**: Mental shortcut where the ease of recalling examples from memory substitutes for objective assessment of frequency or probability. Events that are vivid, recent, emotionally charged, or media-prominent are judged as more likely than they are. First described by Tversky & Kahneman (1973). In analytical contexts, the availability heuristic causes investigators to overweight recent or dramatic cases when estimating base rates, leading to systematically skewed risk assessments.
@@ -749,12 +744,6 @@ building_block: navigation
 **Documentation**: [Beetle in a Box Term](../resources/term_dictionary/term_beetle_in_a_box.md)
 **Related**: [Shuhari](#shuhari), [Permanent Notes](#permanent-notes), [Socratic Questioning](../resources/term_dictionary/term_socratic_questioning.md)
 
-### DKS - Dialectic Knowledge System
-**Full Name**: Dialectic Knowledge System
-**Description**: A knowledge architecture where empirical observations are abstracted into behavioral patterns, classified by competing arguments (automated model vs. human expert), and refined through structured disagreement that updates operational rules via a closed feedback loop. **The key structural requirement is that the system produces falsifiable claims (arguments) that can be challenged by independent evidence, not just descriptions that cannot be counter-argued.** A DKS has 7 components: observation source, two independent argument generators, disagreement detection, counter-argument capture, pattern discovery, and rule improvement. The term was coined in the Abuse SlipBox argument trail to name the design pattern independently discovered in Athelas-Conv (conversation investigation) and proposed in NexusTrace (behavioral pattern memory).
-**Documentation**: [Dialectic Knowledge System](../resources/term_dictionary/term_dialectic_knowledge_system.md)
-**Related**: [Knowledge Building Blocks](../resources/term_dictionary/term_knowledge_building_blocks.md), [Argumentation](../resources/term_dictionary/term_argumentation.md), [Zettelkasten](#zettelkasten), [MO Slipbox](../resources/term_dictionary/term_mo_slipbox.md)
-
 ### Fleeting Notes
 **Full Name**: Fleeting Notes (Zettelkasten Capture Stage)
 **Description**: Temporary, informal captures of ideas, thoughts, or reactions — "mere reminders of what is in your head" (Ahrens). The first stage of the Zettelkasten note pipeline, designed to be processed into [literature notes](#literature-notes) or [permanent notes](#permanent-notes) within 1-2 days, then discarded. Fleeting notes have no required structure or permanent home — they exist only to prevent ideas from being lost before elaboration. The danger is confusing capture with understanding: "just collecting unprocessed fleeting notes inevitably leads to chaos" (Ahrens). Leverages the Zeigarnik effect — capturing an idea externally closes the cognitive open loop.
@@ -935,7 +924,7 @@ building_block: navigation
 **Description**: An interpersonal leadership paradigm from Covey's Habit 4 (*The 7 Habits of Highly Effective People*, 1989) that seeks mutual benefit in all interactions. Covey identifies six paradigms: Win/Win (mutual benefit), Win/Lose (competition), Lose/Win (capitulation), Lose/Lose (spite), Win (self-interest), and **Win/Win or No Deal** (mutual benefit or walk away). Win/Win requires three character traits: **integrity** (keeping commitments), **maturity** (balancing courage with consideration), and **abundance mentality** (believing there is enough for everyone). It is the foundation for Habit 6 (Synergize) — without Win/Win agreements, genuine creative cooperation is impossible.
 **Documentation**: [Win/Win Thinking Term](../resources/term_dictionary/term_win_win_thinking.md)
 **Source**: Covey, S.R. (1989). *The 7 Habits of Highly Effective People*, Habit 4
-**Related**: [Abundance Mentality](#abundance-mentality), [Emotional Bank Account](#emotional-bank-account), [Game Theory](acronym_glossary_ml.md#game-theory), [Loss Aversion](#loss-aversion)
+**Related**: [Abundance Mentality](#abundance-mentality), [Emotional Bank Account](#emotional-bank-account), [Game Theory](../resources/term_dictionary/term_game_theory.md), [Loss Aversion](#loss-aversion)
 
 ### Empathic Listening
 **Full Name**: Empathic Listening (Listening Within the Other's Frame of Reference)
@@ -1009,14 +998,14 @@ building_block: navigation
 **Description**: The principle of reducing others' cognitive load by providing specific, constrained options rather than open-ended flexibility. Grounded in the asymmetry between **verification** (easy — "Does Tuesday at 2pm work?") and **generation** (hard — "When are you free?"). Proposing specific options is kinder than open flexibility because it transforms a hard generation problem into an easy verification problem. The same P ≠ NP principle that underpins cryptography.
 **Documentation**: [Computational Kindness Term](../resources/term_dictionary/term_computational_kindness.md)
 **Source**: Christian, B. & Griffiths, T. (2016). *Algorithms to Live By*, Conclusion
-**Related**: [Choice Architecture](#choice-architecture), [Satisficing](acronym_glossary_ml.md#satisficing), [Game Theory](acronym_glossary_ml.md#game-theory)
+**Related**: [Choice Architecture](#choice-architecture), Satisficing, [Game Theory](../resources/term_dictionary/term_game_theory.md)
 
 ### Information Cascades
 **Full Name**: Information Cascades (Herding / Social Proof)
 **Description**: Phenomenon where individuals rationally follow observed actions of others rather than their own private information, producing **herding behavior**. A cascade forms when the accumulated public signal overwhelms each individual's private signal. Rational at the individual level but potentially catastrophic collectively — the group can converge on an incorrect outcome. Cascades are **fragile**: a single confident contrarian with strong contrary evidence can shatter them. Explains market bubbles, fads, and the outsized influence of early product reviews.
 **Documentation**: [Information Cascades Term](../resources/term_dictionary/term_information_cascades.md)
 **Source**: Christian, B. & Griffiths, T. (2016). *Algorithms to Live By*, Chapter 11; Bikhchandani et al. (1992)
-**Related**: [Game Theory](acronym_glossary_ml.md#game-theory), [Cognitive Bias](#cognitive-bias), [WYSIATI](#wysiati)
+**Related**: [Game Theory](../resources/term_dictionary/term_game_theory.md), [Cognitive Bias](#cognitive-bias), [WYSIATI](#wysiati)
 
 ---
 
@@ -1024,7 +1013,7 @@ building_block: navigation
 
 | Source Book | Terms |
 |-------------|-------|
-| **Algorithms to Live By** (Christian & Griffiths, 2016) | [Computational Kindness](#computational-kindness), [Information Cascades](#information-cascades) — plus [ML Glossary](acronym_glossary_ml.md#optimization--foundational-algorithms): Optimal Stopping, Scheduling Algorithms, LRU Cache, Game Theory, Satisficing, Overfitting, Simulated Annealing, Relaxation, Sorting Algorithms, Exponential Backoff |
+| **Algorithms to Live By** (Christian & Griffiths, 2016) | [Computational Kindness](#computational-kindness), [Information Cascades](#information-cascades) |
 | **Thinking, Fast and Slow** (Kahneman, 2011) | [System 1 and System 2](#system-1-and-system-2), [Cognitive Bias](#cognitive-bias), [Prospect Theory](#prospect-theory), [Loss Aversion](#loss-aversion), [Anchoring](#anchoring), [Availability Heuristic](#availability-heuristic), [WYSIATI](#wysiati), [Framing Effect](#framing-effect), [Planning Fallacy](#planning-fallacy), [Peak-End Rule](#peak-end-rule) |
 | **How to Read a Book** (Adler & Van Doren, 1972) | [Active Reading](#active-reading), [Inspectional Reading](#inspectional-reading), [Analytical Reading](#analytical-reading), [Syntopical Reading](#syntopical-reading) |
 | **Make It Stick** (Brown et al., 2014) | [Retrieval Practice](#retrieval-practice), [Spaced Repetition](#spaced-repetition), [Interleaving](#interleaving), [Elaborative Interrogation](#elaborative-interrogation), [Desirable Difficulties](#desirable-difficulties) |
@@ -1047,7 +1036,7 @@ building_block: navigation
 | **Grit** (Duckworth, 2016) | [Grit](#grit), [Growth Mindset](#growth-mindset), [Deliberate Practice](#deliberate-practice), [Compound Effect](#compound-effect) |
 | **Mindset** (Dweck, 2006) | [Growth Mindset](#growth-mindset), [Grit](#grit), [Deliberate Practice](#deliberate-practice), [Desirable Difficulties](#desirable-difficulties) |
 | **The 7 Habits of Highly Effective People** (Covey, 1989) | [Paradigm Shift](#paradigm-shift), [Circle of Influence](#circle-of-influence), [Inside-Out Approach](#inside-out-approach), [P/PC Balance](#ppc-balance), [Time Management Matrix](#time-management-matrix), [Win/Win Thinking](#winwin-thinking), [Empathic Listening](#empathic-listening), [Abundance Mentality](#abundance-mentality), [Emotional Bank Account](#emotional-bank-account), [Maturity Continuum](#maturity-continuum) |
-| **Thinking in Systems** (Meadows, 2008) | [Systems Thinking](#systems-thinking), [Feedback Loop](acronym_glossary_ml.md#feedback-loop), [Stocks and Flows](#stocks-and-flows), [Leverage Points](#leverage-points), [System Archetypes](#system-archetypes), [Emergence](#emergence), [Mental Model](#mental-model) |
+| **Thinking in Systems** (Meadows, 2008) | [Systems Thinking](#systems-thinking), [Feedback Loop](../resources/term_dictionary/term_feedback_loop.md), [Stocks and Flows](#stocks-and-flows), [Leverage Points](#leverage-points), [System Archetypes](#system-archetypes), [Emergence](#emergence), [Mental Model](#mental-model) |
 | **The Book of Why** (Pearl & Mackenzie, 2018) | See [Statistics, Causal Inference & Experimentation Glossary](acronym_glossary_statistics.md) — Ladder of Causation, SCM, DAG, Do-Calculus, Counterfactuals, Confounding, Simpson's Paradox, Mediation, RCT, Collider Bias |
 
 ---
@@ -1057,7 +1046,6 @@ building_block: navigation
 - [Critical Thinking & Logical Argumentation Glossary](acronym_glossary_critical_thinking.md) — logical fallacies, argumentation patterns; the reasoning errors that exploit the biases defined here
 - [Statistics, Causal Inference & Experimentation Glossary](acronym_glossary_statistics.md) — causal inference theory, statistical reasoning, experimentation tools
 - [Entry: Effective Thinking, Questioning & Research](entry_effective_thinking_and_questioning.md) — the entry point collecting all thinking/questioning book digests
-- [Machine Learning Glossary](acronym_glossary_ml.md) — ML algorithms and techniques
 - [LLM Glossary](acronym_glossary_llm.md) — language models and NLP systems
 
 ---

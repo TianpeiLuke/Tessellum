@@ -28,7 +28,7 @@ building_block: procedure
 
 ## Problem
 
-Composer is the largest single subsystem in the v0.1 plan and the **bridge between System P (capture) and System D (retrieval)** in Tessellum's CQRS framing. The parent project (the source vault) has a mature Composer at `src/buyer_source_vault_agent/composer/` developed across the FZ 10d1e1a8a1a* trail, with ~3500 LOC of typed-contract orchestration plus eval framework and batch runner.
+Composer is the largest single subsystem in the v0.1 plan and the **bridge between System P (capture) and System D (retrieval)** in Tessellum's CQRS framing. The parent project has a mature Composer developed across the FZ 10d1e1a8a1a* trail, with ~3500 LOC of typed-contract orchestration plus eval framework and batch runner.
 
 Tessellum currently has **none** of it. The CLI banner lists `tessellum compose <chain>` under "Roadmap" with no implementation behind it; `runs/composer/` is an empty gitignored directory waiting for a runtime to write to it.
 
@@ -119,7 +119,7 @@ pipeline:
 
 Nine concrete deliverables (the user's hint about skill canonical → sidecar conversion is load-bearing — items 8 and 9 deliver that):
 
-1. **`src/tessellum/composer/schemas/pipeline.schema.json`** — port verbatim from `src/buyer_source_vault_agent/composer/schemas/pipeline.schema.json`. The schema declares the sidecar's structure: required keys, role enum (CORE/DEFERRED/INFRA), aggregation enum (per_leaf/cross_leaf/corpus_wide), materializer enum, MCP contract shape.
+1. **`src/tessellum/composer/schemas/pipeline.schema.json`** — port verbatim from the source vault's `composer/schemas/pipeline.schema.json`. The schema declares the sidecar's structure: required keys, role enum (CORE/DEFERRED/INFRA), aggregation enum (per_leaf/cross_leaf/corpus_wide), materializer enum, MCP contract shape.
 2. **`src/tessellum/composer/contracts.py`** — Pydantic V2 models matching the parent's 6 contracts: `MaterializerContract`, `LLMBackendContract`, `MCPContract`, `DynamicResolverContract`, `RouterSubcategoryContract`, `OutputPathContract`. ~300 LOC.
 3. **`src/tessellum/composer/skill_extractor.py`** — `load_skill_section(skill_name, section_id)` reads the canonical markdown, finds the `<!-- :: section_id = X :: -->` anchor, returns the section text. Plus `load_pipeline_metadata(skill_name)` reads the sidecar, validates against schema, returns parsed dict. ~200 LOC.
 4. **`src/tessellum/composer/loader.py`** — pipeline-loader entry point: takes a skill name, resolves the canonical's `pipeline_metadata:` frontmatter field, loads + validates the sidecar, raises `PipelineValidationError` on drift. ~150 LOC.
@@ -159,8 +159,8 @@ Nine concrete deliverables (the user's hint about skill canonical → sidecar co
 
 Execute as 1-2 commits (Wave 1 is large; could split schema+contracts in one commit, extractor+loader+CLI+capture in another):
 
-1. **Port `pipeline.schema.json`** from parent project. Adjust any the source vault-specific enum values (e.g., remove ML-domain materializers if they reference parent-only filesystem layouts).
-2. **Author `tessellum.composer.contracts`** — Pydantic V2 models. Match parent's contract types but rename any the source vault-specific class names. Tests: model construction + serialization round-trip.
+1. **Port `pipeline.schema.json`** from parent project. Adjust any parent-specific enum values (e.g., remove ML-domain materializers if they reference parent-only filesystem layouts).
+2. **Author `tessellum.composer.contracts`** — Pydantic V2 models. Match parent's contract types but rename any parent-specific class names. Tests: model construction + serialization round-trip.
 3. **Author `tessellum.composer.skill_extractor`** — section anchor regex matches `<!-- :: section_id = ([a-z0-9_]+) :: -->`. Tests: extract sections from `skill_tessellum_format_check.md` (already has these markers).
 4. **Author `tessellum.composer.loader`** — uses PyYAML + jsonschema + Pydantic. Tests: valid sidecar loads; invalid sidecar raises with clear error message; `pipeline_metadata: none` is accepted as a sentinel for "skill has no Composer dispatch".
 5. **Author `tessellum.cli.composer`** — `tessellum composer validate <skill>`. Wire into `cli/main.py` dispatcher. Tests: validate with mock skill files in `tmp_path`.
@@ -186,8 +186,8 @@ Execute as 1-2 commits (Wave 1 is large; could split schema+contracts in one com
 - [`plan_cqrs_repo_layout.md`](plan_cqrs_repo_layout.md) — repo layout that decided where `runs/composer/` lives (gitignored, top-level)
 - [`term_cqrs.md`](../vault/resources/term_dictionary/term_cqrs.md) — the principle Composer-as-bridge implements
 - [`skill_tessellum_format_check.md`](../vault/resources/skills/skill_tessellum_format_check.md) — first Tessellum skill canonical; Wave 1 milestone is making this validate-ready
-- the source vault source: `src/buyer_source_vault_agent/composer/` (especially `compiler.py`, `contracts.py`, `skill_section_extractor.py`)
-- the source vault FZ trail: 10d1e1a8a1a* (rooted in `thought_composer_*`)
+- Source vault: the parent project's `composer/` (especially `compiler.py`, `contracts.py`, `skill_section_extractor.py`)
+- Source vault FZ trail: 10d1e1a8a1a* (rooted in `thought_composer_*`)
 
 ---
 

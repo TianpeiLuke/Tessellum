@@ -25,7 +25,7 @@ language: markdown
 date of note: 2026-02-06
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
+related_wiki: null
 ---
 
 # Term: Knowledge Graph
@@ -55,7 +55,7 @@ A **Knowledge Graph (KG)** is a structured representation of real-world entities
 (Order:456, contains, Product:789)
 (Buyer:123, has_address, Address:001)
 (Buyer:123, linked_to, Account:987)
-(Account:987, flagged_for, AbusePattern:DNR)
+(Account:987, flagged_for, Pattern:Anomalous)
 ```
 
 ### Knowledge Graph vs Traditional Database
@@ -143,56 +143,38 @@ Query Understanding (LLM)
     Response with Provenance
 ```
 
-## Amazon Context
+## Graph Database Technologies
 
-### Knowledge Graph Technologies at Amazon
+### Managed Graph and Search Services
 
 | Technology | Description | Use Case |
 |------------|-------------|----------|
 | **Amazon Neptune** | Managed graph database service | Enterprise KG storage |
 | **Neptune Analytics** | Graph analytics with vector search | GraphRAG applications |
-| **Alexa Knowledge Graph** | Consumer product KG | Voice assistant reasoning |
-| **AWS Knowledge Mesh** | Enterprise knowledge integration | Cross-service knowledge sharing |
 | **Amazon Kendra** | Enterprise search with ML | RAG retrieval |
+| **Neo4j** | Property-graph database | Native graph storage and Cypher queries |
 
 ### Graph Query Languages
 
-| Language | Description | Amazon Service |
+| Language | Description | Example Service |
 |----------|-------------|----------------|
 | **SPARQL** | W3C standard for RDF graphs | Neptune (RDF mode) |
 | **Gremlin** | Apache TinkerPop graph traversal | Neptune (Property Graph) |
-| **OpenCypher** | Graph query language (Neo4j origin) | Neptune (Property Graph) |
+| **OpenCypher** | Graph query language (Neo4j origin) | Neptune (Property Graph), Neo4j |
 
-### Internal Amazon KG Applications
+## Applications in Fraud and Abuse Detection
 
-- **Product Catalog Graph** - Product relationships, attributes, categories
-- **Alexa Knowledge Graph** - Entities, facts, relationships for voice Q&A
-- **Fraud/Abuse Detection Graphs** - Account relationships, transaction patterns
-- **Search Knowledge Graph** - Query understanding, entity linking
-- **AWS Service Graph** - Service dependencies, relationships
-
-## BAP Context
-
-### Knowledge Graphs in Abuse Prevention
+### Knowledge Graphs for Abuse Prevention
 
 | Application | Description |
 |-------------|-------------|
 | **Account Link Analysis** | Graph of customer accounts, shared attributes, behavioral patterns |
 | **Transaction Networks** | Relationships between orders, payments, addresses, devices |
 | **Abuse Pattern Detection** | Graph-based clustering to identify coordinated abuse rings |
-| **Multi-Account Abuse** | MALTA/PACMAN use graph relationships for account clustering |
+| **Multi-Account Abuse** | Graph relationships used for account clustering |
 | **Investigation Support** | Graph visualization for investigators to explore connections |
 
-### BAP Graph-Based Systems
-
-| System | Graph Use |
-|--------|-----------|
-| **MALTA** | Account-level clustering using relationship graphs |
-| **PACMAN/LANTERN** | Multi-account abuse detection via link analysis |
-| **COSA (Continuous One Step Ahead)** | Real-time graph for proactive detection |
-| **Investigation Tools** | Graph visualization for abuse ring exploration |
-
-### Example BAP Knowledge Graph Structure
+### Example Abuse-Detection Knowledge Graph Structure
 
 ```
 Account:A123
@@ -202,7 +184,7 @@ Account:A123
 │                      └── [shared_by] → Account:B456
 ├── [placed_order] → Order:ORD001
 │                      └── [contains] → Product:P001
-│                      └── [claimed] → DNR_Claim:C001
+│                      └── [claimed] → Claim:C001
 └── [linked_to] → Payment:PAY001
                       └── [also_used_by] → Account:C789
 ```
@@ -276,28 +258,11 @@ Account:A123
 - **[Zettelkasten](term_zettelkasten.md)** - Note-taking method using atomic, interconnected notes (German: "slip box") - conceptually similar to KG with notes as nodes and links as edges
 - **[Slipbox](term_slipbox.md)** - Implementation of Zettelkasten principles for domain knowledge organization - combines KG structure with curated human expertise
 
-### BAP Systems
-- **[MALTA](term_malta.md)** - Multi-Account and Large Transaction Abuse Prevention team - owns graph-based MAA detection (PACMAN, LANTERN, COSA)
-- **[PACMAN](term_pacman.md)** - Proactive Multi-Account Abuse Prevention using graph relationships
-- **[LANTERN](term_lantern.md)** - Real-time order-level MAA detection via identity graphs
-- **[Nexus](term_nexus.md)** - Graph-based risk scoring system and AskNexus (GraphRAG for abuse Q&A)
-- **[URES](term_ures.md)** - Universal Risk Evaluation Service
-
+### Distributed Systems
 - **[CAP Theorem](term_cap_theorem.md)**: Distributed graph queries face CAP trade-offs
 - **[GraphQL](term_graphql.md)**: GraphQL's graph-shaped query language is a natural fit for knowledge graph APIs, enabling clients to traverse entity relationships with flexible nested queries
 - **[MongoDB](term_mongodb.md)**: Can store graph-like data but lacks native traversal — Neptune is better suited
 ## References
-
-### Amazon Resources
-- **KnowledgeCon**: https://internal-wiki
-- **GraphRAG Wiki**: https://internal-wiki
-- **ML on Graphs Workshop (AMLC)**: https://internal-wiki
-- **Knowledge Graph Powered LLM**: https://internal-wiki
-
-### AMLC Workshops (ML for Fraud/Abuse)
-- **4th Workshop ML Fraud/Abuse/Security (2023)**: https://internal-wiki
-- **5th Workshop ML Fraud/Abuse/Security (2024)**: https://internal-wiki
-- **Graph ML Workshop (2022)**: https://internal-wiki
 
 ### External Resources
 - **Neo4j**: Industry-leading graph database platform
@@ -314,13 +279,13 @@ Account:A123
 | **Structure** | Graph: Nodes (entities) + Edges (relationships) |
 | **Basic Unit** | Triple: (subject, predicate, object) |
 | **Query Languages** | SPARQL, Gremlin, Cypher |
-| **Amazon Service** | Amazon Neptune |
+| **Example Services** | Amazon Neptune, Neo4j |
 | **ML Integration** | GraphRAG (KG + RAG for LLMs) |
-| **BAP Applications** | Account link analysis, abuse ring detection, MALTA/PACMAN |
+| **Abuse Applications** | Account link analysis, abuse ring detection |
 | **Key Benefit** | Explicit relationships enable multi-hop reasoning, reduces hallucination |
 | **vs RAG** | GraphRAG achieves ~80% accuracy vs ~50% baseline RAG |
 
-**Key Insight**: Knowledge Graphs complement LLMs by providing structured, explicit, and verifiable knowledge that LLMs lack. While LLMs represent knowledge implicitly in parameters (hard to interpret/validate), KGs store knowledge as explicit triples with clear provenance. GraphRAG combines both: using KGs to ground LLM responses in factual relationships, enabling multi-hop reasoning, and providing explainable answers with traceable sources. In abuse prevention, graph-based approaches like MALTA and PACMAN leverage relationship structures to detect coordinated abuse that single-order models miss.
+**Key Insight**: Knowledge Graphs complement LLMs by providing structured, explicit, and verifiable knowledge that LLMs lack. While LLMs represent knowledge implicitly in parameters (hard to interpret/validate), KGs store knowledge as explicit triples with clear provenance. GraphRAG combines both: using KGs to ground LLM responses in factual relationships, enabling multi-hop reasoning, and providing explainable answers with traceable sources. In fraud and abuse prevention, graph-based approaches leverage relationship structures to detect coordinated abuse that single-order models miss.
 
 ---
 

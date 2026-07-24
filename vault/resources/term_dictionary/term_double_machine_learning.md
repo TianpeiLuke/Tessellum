@@ -154,7 +154,7 @@ where $\theta_0$ is the causal parameter of interest, $g_0(\cdot)$ and $m_0(\cdo
 - **[Randomized Controlled Trial](term_randomized_controlled_trial.md)**: DML approximates RCT-quality estimates from observational data with complex confounding
 - **[Counterfactual Reasoning](term_counterfactual_reasoning.md)**: DML estimates counterfactual outcomes via nuisance function prediction
 - **[Structural Causal Model](term_structural_causal_model.md)**: SCMs formalize the causal assumptions that DML requires for identification
-- **[DSI](term_dsi.md)**: Downstream Impact — DML can estimate DSI with high-dimensional controls where simpler methods struggle
+- **downstream impact**: Downstream Impact — DML can estimate DSI with high-dimensional controls where simpler methods struggle
 - **[Directed Acyclic Graph](term_directed_acyclic_graph.md)**: DAGs guide the choice of conditioning set that DML uses for debiasing
 - **[Semiparametric Model](term_semiparametric_model.md)**: DML is a semiparametric method — $\theta_0$ is the finite-dimensional target, $g_0$ and $m_0$ are infinite-dimensional nuisance functions
 

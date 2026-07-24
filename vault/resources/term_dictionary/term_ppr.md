@@ -25,7 +25,6 @@ language: markdown
 date of note: 2026-03-03
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # PPR - Personalized PageRank
@@ -34,7 +33,7 @@ related_wiki: https://internal-wiki
 Personalized PageRank (PPR) is a graph ranking algorithm that ranks all nodes in a knowledge graph by their relevance to a set of seed entities. It extends the classic PageRank algorithm by introducing a personalization vector that biases the random walk to restart at specific seed nodes rather than uniformly across all nodes. In the context of GraphRAG and LLM-powered knowledge systems, PPR is used to retrieve relevant entities and relationships from knowledge graphs by computing relevance scores based on graph structure and connectivity.
 
 ## Context
-PPR is primarily used in GraphRAG (Graph-based Retrieval Augmented Generation) systems at Amazon, particularly in the AB Search and Checkout teams' knowledge base implementations. It serves as a deterministic, mathematical approach to graph traversal that complements semantic search in hybrid retrieval systems. The algorithm is implemented using NetworkX in Python and runs within AWS Lambda functions to provide fast, consistent entity ranking for LLM query systems. PPR is used alongside Bedrock Knowledge Bases to merge vector search results with graph-based retrieval.
+PPR is widely used in GraphRAG (Graph-based Retrieval Augmented Generation) systems and knowledge-base implementations. It serves as a deterministic, mathematical approach to graph traversal that complements semantic search in hybrid retrieval systems. The algorithm is commonly implemented using NetworkX in Python and can run within serverless functions to provide fast, consistent entity ranking for LLM query systems. PPR is often used alongside vector search to merge embedding-based results with graph-based retrieval.
 
 ## Key Characteristics
 - **Random Walk with Restart**: Simulates a random walker that follows edges with 85% probability (damping factor α=0.85) and teleports back to seed entities with 15% probability
@@ -70,6 +69,6 @@ PPR is primarily used in GraphRAG (Graph-based Retrieval Augmented Generation) s
 - **[Pixie Random Walk](term_pixie_random_walk.md)**: Pinterest's Monte Carlo approximation of PPR — trades matrix exactness for trivial parallelism. FZ 5e2b1a empirically showed random-seeded Pixie underperforms dense-seeded PPR by ~30 pp Hit@5; the signal lives in the seeds, not in the walk.
 
 ## References
-- [Semantic Search + Knowledge Graph: Technical Playbook](https://internal-wiki)
-- [GraphRAG Overview](https://internal-wiki)
-- [TFL GraphRAG Project](https://internal-wiki)
+- [Haveliwala, T. (2002). "Topic-Sensitive PageRank"](https://dl.acm.org/doi/10.1145/511446.511513) — the foundational personalized/topic-sensitive PageRank formulation
+- [Eksombatchai et al. (2018). "Pixie: A System for Recommending 3+ Billion Items to 200+ Million Users in Real-Time"](https://arxiv.org/abs/1711.07601) — Pinterest's Monte Carlo random-walk approximation of PPR
+- [Gutierrez et al. (2024). "HippoRAG: Neurobiologically Inspired Long-Term Memory for Large Language Models"](https://arxiv.org/abs/2405.14831) — PPR over an open knowledge graph for multi-hop GraphRAG retrieval

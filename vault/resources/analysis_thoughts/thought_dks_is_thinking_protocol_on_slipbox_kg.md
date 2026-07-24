@@ -73,15 +73,15 @@ A knowledge graph built on Zettelkasten principles:
 
 ### Its Intellectual Lineage
 
-Zettelkasten (Luhmann) → Digital tools (Obsidian) → Agent-augmented vault (Abuse SlipBox) → Typed KG (building block ontology)
+Zettelkasten (Luhmann) → Digital tools (Obsidian) → Agent-augmented vault → Typed KG (building block ontology)
 
 ### What It Contributes Independently
 
 Even without the DKS protocol, the Slipbox KG contributes:
-- **Building block typing** — 8 epistemic types enabling health diagnosis ([RQ1.1](analysis_research_questions_source_vault.md))
-- **Structured retrieval** — SQL over metadata outperforming embedding-only retrieval for structured queries ([RQ3.1](analysis_research_questions_source_vault.md))
-- **Ghost note analysis** — knowledge gaps detected from broken links ([RQ3.2](analysis_research_questions_source_vault.md))
-- **Atomicity criteria** — building-block-defined atomicity replacing subjective "one idea per note" ([RQ2.1](analysis_research_questions_source_vault.md))
+- **Building block typing** — 8 epistemic types enabling health diagnosis
+- **Structured retrieval** — SQL over metadata outperforming embedding-only retrieval for structured queries
+- **Ghost note analysis** — knowledge gaps detected from broken links
+- **Atomicity criteria** — building-block-defined atomicity replacing subjective "one idea per note"
 
 ### Evaluated Against
 
@@ -202,10 +202,6 @@ The ontology defines **what the protocol can see and do** — which note types e
 | **P13** | The building block ontology (the API) is the binding constraint — removing it breaks both substrate quality (no typed atoms) and protocol function (no phase guidance) | Ablation: replace 8 building blocks with untyped notes; measure both retrieval quality and protocol convergence |
 
 ## Related Notes
-
-### Cross-Trail Refinement (Architecture Trail)
-- **[FZ 7g1a1a1: DKS Constructs Knowledge, Retrieval Consumes It](thought_dks_constructs_knowledge_retrieval_consumes_it.md)** — sharpens this note's **two-entity model (Substrate + Protocol) into a three-entity model** (Substrate + Read Protocol + Write Protocol). DKS = Write Protocol; Retrieval = Read Protocol; Substrate is shared. The mutual enablement story for Substrate ↔ Protocol holds; a parallel Substrate ↔ Retrieval story is added.
-- **[FZ 7g1a1a1a1: ★ Synthesis — One Vault, Three Invariance Regimes](thought_synthesis_three_invariance_regimes_one_vault.md)** — promotes the three entities into three **invariance regimes** with distinct design disciplines. DKS literature contribution sharpens to "closed-loop dialectic for warrant precision" (a write-protocol claim, not an answer-engine claim).
 
 ### Folgezettel Trail
 - **Parent [FZ 8c5c1a]**: [DKS Design](../../projects/athelas_conv/athelas_conv_dialectic_knowledge_system.md)

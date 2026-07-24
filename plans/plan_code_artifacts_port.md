@@ -28,23 +28,23 @@ building_block: procedure
 
 ## Problem
 
-the source vault has a mature, tested capture surface for two code-artifact note types and a rich set of acronym glossaries that index domain terminology. None of it has been ported to Tessellum yet. The user wants:
+The originating research vault has a mature, tested capture surface for two code-artifact note types and a rich set of acronym glossaries that index domain terminology. None of it has been ported to Tessellum yet. The user wants:
 
 1. **Acronym glossaries** in `vault/0_entry_points/` so newcomers can resolve unfamiliar acronyms without leaving the vault.
 2. **`template_code_snippet.md`** + **`template_code_repo.md`** under `vault/resources/templates/` so `tessellum capture code_snippet <slug>` and `tessellum capture code_repo <slug>` work like the other 12 capture flavors.
 3. **Two capture skills** ported and adapted: `skill_tessellum_capture_code_snippet.md` + sidecar, `skill_tessellum_capture_code_repo_note.md` + sidecar.
-4. **All Amazon-internal content scrubbed** — references to `internal-repo`, internal tools (Nautilus, Paragon, Triton, LEADS, TTUX, CamShaft, Cradle, Wasabi, Brazil, Coral, Midway, Isengard, Sandalwood, etc.), abuse-domain teams/systems, and Amazon-business acronyms must NOT ship in the public vault.
+4. **All internal content scrubbed** — references to internal repo URLs, internal tools (various internal build systems, data platforms, and auth infrastructure), domain-specific teams/systems, and business acronyms must NOT ship in the public vault.
 
 ## Why this matters
 
-These three artifact types form a tight triangle: a code repo note documents a project; code snippet notes document algorithms or components inside the repo; acronym glossaries resolve the technical vocabulary used by both. A user who installs Tessellum and runs `tessellum capture code_snippet my_algo` should land on a template that produces a snippet note that other users can read without needing to know what "MTR" or "Cradle" means. Right now they can't capture either; once they can, the vault scaffold demonstrates the full Tessellum-as-public-slipbox workflow.
+These three artifact types form a tight triangle: a code repo note documents a project; code snippet notes document algorithms or components inside the repo; acronym glossaries resolve the technical vocabulary used by both. A user who installs Tessellum and runs `tessellum capture code_snippet my_algo` should land on a template that produces a snippet note that other users can read without needing to know what an internal-only acronym or tool name means. Right now they can't capture either; once they can, the vault scaffold demonstrates the full Tessellum-as-public-slipbox workflow.
 
 ## Inventory — what's in the source
 
-### Acronym glossaries (16 files in `src/buyer_source_vault_agent/source_vault/0_entry_points/`)
+### Acronym glossaries (16 files in the source vault's `0_entry_points/`)
 
-| Glossary | Lines | AB-internal mentions | Disposition |
-| -------- | -----:| --------------------:| ----------- |
+| Glossary | Lines | Internal mentions | Disposition |
+| -------- | -----:| -----------------:| ----------- |
 | `acronym_glossary_statistics.md` | 460 | 16 | **Keep + light scrub** — universal stats |
 | `acronym_glossary_network_science.md` | 390 | 18 | **Keep + light scrub** — universal graph theory |
 | `acronym_glossary_critical_thinking.md` | 396 | 29 | **Keep + light scrub** — universal logic/reasoning |
@@ -52,33 +52,33 @@ These three artifact types form a tight triangle: a code repo note documents a p
 | `acronym_glossary_security.md` | 546 | 63 | **Keep + scrub** — mostly universal infosec |
 | `acronym_glossary_llm.md` | 1236 | 129 | **Keep + scrub** — core for an LLM-driven slipbox |
 | `acronym_glossary_ml.md` | 1853 | 296 | **Keep + heavy scrub** — universal ML |
-| `acronym_glossary_developer.md` | 1529 | 368 | **Keep + heavy scrub** — strip AB tools, keep universal dev |
+| `acronym_glossary_developer.md` | 1529 | 368 | **Keep + heavy scrub** — strip internal tools, keep universal dev |
 | `acronym_glossary_tools.md` | 712 | 236 | **Keep + heavy scrub** — keep open-source/general tools only |
 | `acronym_glossary_data_governance.md` | 317 | 31 | **Keep + scrub** — universal data-gov terminology |
-| `acronym_glossary_abuse_networks.md` | 1016 | 343 | **Drop** — domain-specific to Amazon abuse fight |
-| `acronym_glossary_business.md` | 588 | 112 | **Drop** — Amazon retail business metrics |
-| `acronym_glossary_workflows.md` | 639 | 113 | **Drop** — Amazon-internal workflow tooling |
-| `acronym_glossary_teams.md` | 773 | 217 | **Drop** — Amazon org structure |
-| `acronym_glossary_systems.md` | 2291 | 548 | **Drop** — overwhelmingly AWS-internal |
-| `acronym_glossary_data_metrics.md` | 1636 | 355 | **Drop** — Amazon retail data products |
+| `acronym_glossary_abuse_networks.md` | 1016 | 343 | **Drop** — domain-specific to the abuse-prevention fight |
+| `acronym_glossary_business.md` | 588 | 112 | **Drop** — internal retail business metrics |
+| `acronym_glossary_workflows.md` | 639 | 113 | **Drop** — internal workflow tooling |
+| `acronym_glossary_teams.md` | 773 | 217 | **Drop** — internal org structure |
+| `acronym_glossary_systems.md` | 2291 | 548 | **Drop** — overwhelmingly internal-infrastructure |
+| `acronym_glossary_data_metrics.md` | 1636 | 355 | **Drop** — internal retail data products |
 
 Result: **10 glossaries kept, 6 dropped.**
 
 ### Existing code-artifact notes (source for template extraction)
 
-- `src/buyer_source_vault_agent/source_vault/areas/code_repos/repo_*.md` — 30+ examples; main + sub-note structure with parent backlink, attribute table, code structure, and reference sections. **Pick one** as the canonical example to derive `template_code_repo.md`. Lean: `repo_slipbox_agent_databases.md` (clean, has the standard sections, only mild AB-internal).
-- `src/buyer_source_vault_agent/source_vault/resources/code_snippets/snippet_*.md` — 100+ examples; the `## Patterns` template with dual code blocks per pattern is the load-bearing innovation. **Pick one** as canonical. Lean: `snippet_slipbot_ppr.md` (a procedure-BB snippet with mermaid diagram, 5 patterns; clean structure).
+- The source vault's `areas/code_repos/repo_*.md` — 30+ examples; main + sub-note structure with parent backlink, attribute table, code structure, and reference sections. **Pick one** as the canonical example to derive `template_code_repo.md`. Lean: `repo_slipbox_agent_databases.md` (clean, has the standard sections, only mild domain-internal content).
+- The source vault's `resources/code_snippets/snippet_*.md` — 100+ examples; the `## Patterns` template with dual code blocks per pattern is the load-bearing innovation. **Pick one** as canonical. Lean: `snippet_slipbot_ppr.md` (a procedure-BB snippet with mermaid diagram, 5 patterns; clean structure).
 
 ### Capture skills (~750 LOC each)
 
 | Skill | Lines | Sidecar lines | What needs adapting |
 | ----- | -----:| -------------:| ------------------- |
-| `skill_slipbox_capture_code_repo_note.md` | 221 | 289 | URL refs (`internal-repo`), tool refs (Cradle/Wasabi), entry-point name (`entry_skill_catalog.md` → Tessellum has no equivalent yet) |
+| `skill_slipbox_capture_code_repo_note.md` | 221 | 289 | internal repo-URL refs, internal-tool refs, entry-point name (`entry_skill_catalog.md` → Tessellum has no equivalent yet) |
 | `skill_slipbox_capture_code_snippet.md` | 558 | 227 | URL refs, package-naming convention assumptions, master-TOC-of-entry-points pattern |
 
 ## Design principles
 
-1. **The public vault must read clean.** A first-time reader of any glossary, snippet, or repo note in `vault/` should not encounter Amazon-internal jargon. If a section can't be scrubbed without losing meaning, drop the section.
+1. **The public vault must read clean.** A first-time reader of any glossary, snippet, or repo note in `vault/` should not encounter internal jargon. If a section can't be scrubbed without losing meaning, drop the section.
 2. **Templates carry placeholder content, not example content.** A template's job is to teach the structure; it shouldn't ship with snippet of a real algorithm or a real-repo URL. Every concrete reference becomes `<placeholder>` or `<example>`.
 3. **Skills are renamed `slipbox-*` → `tessellum-*`** and updated to use Tessellum's CLI surface (`tessellum index build`, BM25 / hybrid search) rather than the source vault's `bm25_search.py` script.
 4. **Capture flavor registry stays the source of truth.** Adding `code_repo` and `code_snippet` to `REGISTRY` in `src/tessellum/capture.py` is what makes `tessellum capture code_snippet my-algo` work — without it, the templates are inert.
@@ -99,9 +99,9 @@ Adds two templates and wires them into the capture registry. Once landed, `tesse
    - `## Patterns` with `### Index` table + one example `### Pattern N` showing dual-block shape
    - `## Source` (file:line range)
    - `## References`
-   - **Crucially**: scrub mermaid styling that uses Amazon palette colors; keep monochrome.
+   - **Crucially**: scrub mermaid styling that uses brand palette colors; keep monochrome.
 2. **`vault/resources/templates/template_code_repo.md`** — derive from `repo_slipbox_agent_databases.md` shape:
-   - YAML frontmatter with `building_block: model`, `code_repo_url:` placeholder (no `internal-repo`)
+   - YAML frontmatter with `building_block: model`, `code_repo_url:` placeholder (no internal repo URL)
    - `# Repository: <Name> — <One-Line>`
    - `## Overview` with attribute table (URL, language, owner, deps placeholder)
    - `## Architecture` (optional)
@@ -137,12 +137,12 @@ Per-glossary scrub + drop into `vault/0_entry_points/`. Each glossary is indepen
 
 1. For each kept glossary (10 files):
    - Copy verbatim to `vault/0_entry_points/`.
-   - Run a scrub pass: drop entries that name internal tools (Nautilus, Paragon, Triton, LEADS, TTUX, CamShaft, etc.); rewrite section intros that reference Amazon roles ("SDEs and Applied Scientists at Amazon" → "developers and researchers"); replace `internal-repo` URLs with placeholder or generic GitHub references.
+   - Run a scrub pass: drop entries that name internal tools (various internal build systems, data platforms, etc.); rewrite section intros that reference internal roles ("engineers and researchers at the company" → "developers and researchers"); replace internal repo URLs with placeholder or generic GitHub references.
    - Update internal nav line: `[← Back to Main Glossary](entry_acronym_glossary.md)` → either drop (no master glossary in Tessellum yet) or point to the master TOC.
    - Validate `tessellum format check vault/0_entry_points/<file>.md` passes.
 2. **Optional master glossary** (`entry_acronym_glossary.md`) — a thin TOC linking all 10. Lean: skip for now; users can find them by directory listing. Add later if there's demand.
 
-**Milestone**: 10 glossaries land in `vault/0_entry_points/`, all pass format check, none mention Amazon-internal tooling.
+**Milestone**: 10 glossaries land in `vault/0_entry_points/`, all pass format check, none mention internal tooling.
 
 ### Phase 3 — Capture skills (the hard part)
 
@@ -150,7 +150,7 @@ Port both skill canonicals + sidecars, adapt to Tessellum's CLI + vault layout.
 
 1. **`vault/resources/skills/skill_tessellum_capture_code_repo_note.md`** + sidecar:
    - Rename header from `slipbox-capture-code-repo-note` → `tessellum-capture-code-repo-note`.
-   - Replace `internal-repo` → `https://github.com/<owner>/<repo>`.
+   - Replace internal repo-URL patterns → `https://github.com/<owner>/<repo>`.
    - Replace `bm25_search.py` script invocations with Tessellum CLI (`tessellum search --bm25 ...`).
    - Drop `related_skill_headers:` (no `.claude/skills/` or `.kiro/skills/` shims in Tessellum yet).
    - Update `pipeline_metadata` ref to point at the renamed sidecar.
@@ -158,7 +158,7 @@ Port both skill canonicals + sidecars, adapt to Tessellum's CLI + vault layout.
    - Drop the "Update Database" step (`bash ./scripts/update_notes_database.sh` → `tessellum index build`).
 2. **`vault/resources/skills/skill_tessellum_capture_code_snippet.md`** + sidecar — same treatment:
    - Rename slipbox → tessellum.
-   - Replace AB-specific tool references in setup block.
+   - Replace source-specific tool references in setup block.
    - Adapt the per-package entry-point pattern; Tessellum can drop "TOC-of-entry-points" complexity for v0.1 (single `entry_code_snippets.md` is fine until the snippet count justifies splitting).
    - Keep the BB-by-BB section structure (concept/procedure/model) verbatim — that's the load-bearing taxonomy.
    - Keep the `## Patterns` template (Index + dual-block per pattern).
@@ -170,10 +170,10 @@ Port both skill canonicals + sidecars, adapt to Tessellum's CLI + vault layout.
 
 ## What we're explicitly NOT porting
 
-- **`acronym_glossary_business`, `_workflows`, `_teams`, `_systems`, `_data_metrics`, `_abuse_networks`** — Amazon-internal in nature; would require rewriting from scratch rather than scrubbing. Public users don't need a glossary of internal team aliases.
-- **AB-specific snippet examples** that demonstrate Amazon tools (Cradle pipelines, OTF datasheets, Wasabi, etc.). These can serve as private references in the source vault; they don't ship in Tessellum's public vault.
+- **`acronym_glossary_business`, `_workflows`, `_teams`, `_systems`, `_data_metrics`, `_abuse_networks`** — internal in nature; would require rewriting from scratch rather than scrubbing. Public users don't need a glossary of internal team aliases.
+- **Domain-specific snippet examples** that demonstrate internal tools (data pipelines, OTF datasheets, etc.). These can serve as private references in the source vault; they don't ship in Tessellum's public vault.
 - **`related_skill_headers:` mechanism** with `.claude/skills/` and `.kiro/skills/` thin shims. Tessellum's skill canonicals are self-contained; the multi-ecosystem header pattern is parent-project complexity that Tessellum doesn't need yet.
-- **Composer pipeline steps referencing AB-specific scripts** (`update_notes_database.sh`, `bm25_search.py` direct script invocations). Tessellum's CLI subsumes these.
+- **Composer pipeline steps referencing parent-specific scripts** (`update_notes_database.sh`, `bm25_search.py` direct script invocations). Tessellum's CLI subsumes these.
 
 ## Migration steps
 
@@ -189,7 +189,7 @@ Execute as **three commits** (one per phase):
 
 ### Commit 2 — Phase 2 (glossaries)
 1. Copy 10 glossaries to `vault/0_entry_points/`.
-2. Scrub Amazon-internal references (per-file pass — manual judgment per kept glossary).
+2. Scrub internal references (per-file pass — manual judgment per kept glossary).
 3. Validate each via `tessellum format check`.
 4. CHANGELOG entry: "v0.0.25 — adds 10 acronym glossaries to seed vault."
 5. Commit + push.
@@ -197,7 +197,7 @@ Execute as **three commits** (one per phase):
 ### Commit 3 — Phase 3 (skills)
 1. Copy + rename both skill canonicals.
 2. Copy + rename both sidecars.
-3. Scrub Amazon-internal references in skill bodies.
+3. Scrub internal references in skill bodies.
 4. Run `tessellum composer validate` on each.
 5. CHANGELOG entry: "v0.0.26 — adds tessellum-capture-code-repo-note + tessellum-capture-code-snippet skills."
 6. Commit + push.
@@ -215,7 +215,7 @@ Execute as **three commits** (one per phase):
 - [`plan_composer_port.md`](plan_composer_port.md) — defines the skill-canonical + sidecar format that Phase 3 produces (now complete)
 - [`plan_v01_src_tessellum_layout.md`](plan_v01_src_tessellum_layout.md) — defines `vault/resources/templates/` and the `force-include` graft that ships templates in the wheel
 - [`plan_retrieval_port.md`](plan_retrieval_port.md) — defines the search CLI the ported skills will use (`tessellum search`, `tessellum filter`)
-- the source vault source skills: `src/buyer_source_vault_agent/source_vault/resources/skills/skill_slipbox_capture_code_*`
+- Source vault skills: the parent project's `resources/skills/skill_slipbox_capture_code_*`
 
 ---
 

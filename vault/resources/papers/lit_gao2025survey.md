@@ -89,19 +89,19 @@ Large Language Models (LLMs) have demonstrated remarkable capabilities across di
 
 ## Relevance to Our Work
 
-- Related: [Continual Learning](../term_dictionary/term_continual_learning.md) — BRP's continual learning research directly addresses the "when to evolve" dimension; self-evolving agents extend this beyond parameter updates
-- Related: [Catastrophic Forgetting](../term_dictionary/term_catastrophic_forgetting.md) — Identified as a key challenge in §8.2; BRP faces this in abuse model retraining
-- Related: [GreenTEA](../term_dictionary/term_greentea.md) — BRP's agentic AI for investigation automation is a proto-self-evolving agent (prompt optimization + tool use)
-- Related: [AutoSignality](../term_dictionary/term_autosignality.md) — Automated fraud signal generation maps to the "tool creation" evolutionary locus
+- Related: [Continual Learning](../term_dictionary/term_continual_learning.md) — continual learning research directly addresses the "when to evolve" dimension; self-evolving agents extend this beyond parameter updates
+- Related: [Catastrophic Forgetting](../term_dictionary/term_catastrophic_forgetting.md) — Identified as a key challenge in §8.2; a recurring problem in abuse model retraining
+- Related: an agentic investigation-automation tool is a proto-self-evolving agent (prompt optimization + tool use)
+- Related: automated fraud-signal generation maps to the "tool creation" evolutionary locus
 - Related: [RL](../term_dictionary/term_rl.md) — Reinforcement learning is a core "how to evolve" mechanism across all temporal phases
-- Related: [UCM](../term_dictionary/term_ucm.md) — Unified Concessions Model's cross-market learning relates to knowledge transfer in self-evolving agents
+- Related: cross-market learning in concessions models relates to knowledge transfer in self-evolving agents
 
 ## Questions
 
-- How would BRP's abuse detection models benefit from intra-test-time self-evolution (adapting during investigation)?
-- Could GreenTEA's SOP-driven prompting be formalized as a prompt optimization evolutionary locus?
-- What safety guardrails from §8.3 (sandboxing, audit trails, approval gates) apply to BRP's agentic automation?
-- Is the "misevolution" risk (safety alignment degradation during evolution) relevant to BRP's model refresh cycles?
+- How would abuse-detection models benefit from intra-test-time self-evolution (adapting during investigation)?
+- Could SOP-driven prompting in an investigation-automation tool be formalized as a prompt optimization evolutionary locus?
+- What safety guardrails from §8.3 (sandboxing, audit trails, approval gates) apply to agentic automation in the domain?
+- Is the "misevolution" risk (safety alignment degradation during evolution) relevant to model refresh cycles?
 
 ## Related Documentation
 
@@ -117,10 +117,7 @@ Large Language Models (LLMs) have demonstrated remarkable capabilities across di
 ### Related Vault Notes
 - [Continual Learning](../term_dictionary/term_continual_learning.md)
 - [Catastrophic Forgetting](../term_dictionary/term_catastrophic_forgetting.md)
-- [GreenTEA](../term_dictionary/term_greentea.md)
-- [AutoSignality](../term_dictionary/term_autosignality.md)
 - [RL](../term_dictionary/term_rl.md)
-- [UCM](../term_dictionary/term_ucm.md)
 - [Continual Learning ATO](../../projects/project_continual_learning_ato.md)
 - [Meta Learning Fraud](../../projects/project_meta_learning_fraud.md)
 - [TextGrad](lit_yuksekgonul2024textgrad.md) — Implements "experience-driven self-refinement" via textual gradients; fits the survey's taxonomy of self-evolving agents that improve through feedback without weight updates

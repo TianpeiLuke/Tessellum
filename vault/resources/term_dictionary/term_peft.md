@@ -35,13 +35,13 @@ related_wiki: null
 
 Parameter-Efficient Fine-Tuning (PEFT) refers to a family of techniques that adapt large pre-trained models to downstream tasks by training only a small subset of parameters while keeping the majority of the pre-trained model frozen. Unlike traditional full fine-tuning which updates all model parameters (often billions), PEFT methods introduce a small number of trainable parameters (typically 0.01-1% of the original model size) that are sufficient to achieve comparable or superior performance. This approach dramatically reduces computational costs, memory requirements, and training time while avoiding catastrophic forgetting—the loss of previously learned knowledge during adaptation.
 
-PEFT enables practical deployment of multiple task-specific adaptations from a single base model, as each adaptation requires storing only the small set of task-specific parameters rather than an entire model copy. This is particularly valuable for organizations like Amazon that need to maintain hundreds of specialized models across different abuse detection tasks, customer segments, and use cases.
+PEFT enables practical deployment of multiple task-specific adaptations from a single base model, as each adaptation requires storing only the small set of task-specific parameters rather than an entire model copy. This is particularly valuable for organizations that need to maintain hundreds of specialized models across different tasks, customer segments, and use cases.
 
 ## Context
 
-PEFT techniques are widely adopted across Amazon for adapting foundation models to domain-specific tasks in buyer abuse prevention, customer service, and fraud detection. Within Buyer Risk Prevention (BRP), PEFT methods enable teams to fine-tune large language models for abuse detection tasks without the prohibitive costs of full model retraining. The Buyer Abuse ML team uses PEFT (particularly LoRA and QLoRA) for adapting models like Falcon-40B to buyer-seller messaging analysis, A-to-Z claim abuse detection, and threat identification.
+PEFT techniques are widely adopted for adapting foundation models to domain-specific tasks such as classification, content moderation, customer service, and fraud detection. They let teams fine-tune large language models for narrow tasks without the prohibitive costs of full model retraining — for example, using LoRA and QLoRA to adapt models like Falcon-40B or Llama to a specialized text-analysis task.
 
-PEFT is deployed through AWS Bedrock and SageMaker, allowing teams to maintain multiple task-specific adaptations efficiently. The approach is critical for RAG (Retrieval-Augmented Generation) systems where task-specific fine-tuning improves both retrieval relevance and generation quality. PEFT also enables rapid experimentation and iteration, as training new adapters takes hours instead of days or weeks required for full fine-tuning.
+PEFT is commonly deployed through managed model-serving platforms, allowing teams to maintain multiple task-specific adaptations efficiently. The approach is useful for RAG (Retrieval-Augmented Generation) systems where task-specific fine-tuning improves both retrieval relevance and generation quality. PEFT also enables rapid experimentation and iteration, as training new adapters takes hours instead of the days or weeks required for full fine-tuning.
 
 ## Key Characteristics
 
@@ -74,8 +74,8 @@ PEFT is deployed through AWS Bedrock and SageMaker, allowing teams to maintain m
 
 ## References
 
-- [Supervised Fine-Tuning Wiki](https://internal-wiki) - Amazon internal documentation covering PEFT techniques including LoRA, QLoRA, and adapters
-- [Getting Started with LLMs Guide](https://internal-wiki) - Internal guide covering PEFT techniques like LoRA and soft prompts
-- [Patterns for Building LLM-based Systems](https://internal-wiki) - Internal wiki covering PEFT methods including adapters, LoRA, and prefix tuning
-- [COAP: Context Enhanced Buyer Abuse Prevention](https://internal-wiki) - BRP project using PEFT (LoRA/QLoRA) for fine-tuning on abuse detection
+- [Hu, E.J. et al. (2021). *LoRA: Low-Rank Adaptation of Large Language Models*. arXiv:2106.09685](https://arxiv.org/abs/2106.09685) — the foundational LoRA paper, the most widely used PEFT method
+- [Dettmers, T. et al. (2023). *QLoRA: Efficient Finetuning of Quantized LLMs*. arXiv:2305.14314](https://arxiv.org/abs/2305.14314) — combines quantization with LoRA for large memory savings
+- [Houlsby, N. et al. (2019). *Parameter-Efficient Transfer Learning for NLP*. arXiv:1902.00751](https://arxiv.org/abs/1902.00751) — introduces adapter modules
+- [Hugging Face PEFT library documentation](https://huggingface.co/docs/peft) — practical reference covering LoRA, prefix tuning, prompt tuning, and adapters
 - [LoRA: Low-Rank Adaptation of Large Language Models](../papers/lit_xiao2023task.md) - Research paper on LoRA, a key PEFT technique

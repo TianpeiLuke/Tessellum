@@ -114,7 +114,7 @@ The key insight is **dimensionality reduction**: instead of matching on all cova
 | **Economics** | Policy evaluation from administrative data | Effect of job training programs on employment |
 | **Education** | Program impact evaluation | Effect of school vouchers on student achievement |
 | **Epidemiology** | Exposure-outcome studies | Smoking and lung cancer from cohort data |
-| **Abuse Prevention** | Evaluating intervention effectiveness | Effect of enforcement actions (suppression, warnings) on future abuse behavior; measuring [DSI](term_dsi.md) of abuse prevention programs |
+| **Abuse Prevention** | Evaluating intervention effectiveness | Effect of enforcement actions (suppression, warnings) on future abuse behavior; measuring downstream impact of abuse prevention programs |
 | **Tech/A-B Testing** | Quasi-experimental analysis when randomization fails | Analyzing treatment effects when A/B test has selection bias or compliance issues |
 
 ## Challenges and Limitations
@@ -168,7 +168,7 @@ The key insight is **dimensionality reduction**: instead of matching on all cova
 
 ### Application (Taxonomic — "What If? / How?")
 3. How would PSM be applied to evaluate the causal effect of abuse enforcement actions (e.g., account suppression) on future abuse behavior — what covariates would need to be balanced, and where would the overlap assumption likely fail?
-   - **Tests**: Domain applicability to buyer abuse prevention (Adjacent Possible)
+   - **Tests**: Domain applicability to abuse prevention (Adjacent Possible)
 
 ### Synthesis (Lateral — "Who Else?")
 4. How does PSM relate to [Do-Calculus](term_do_calculus.md) and the [Structural Causal Model](term_structural_causal_model.md) framework — does Pearl's critique of PSM imply that SCM-based adjustment (backdoor criterion) is strictly superior, or do the two approaches have complementary strengths?
@@ -183,7 +183,7 @@ The key insight is **dimensionality reduction**: instead of matching on all cova
 - **[Do-Calculus](term_do_calculus.md)**: Pearl's formal system for identifying causal effects; relates to but differs from propensity score approaches
 - **[Ladder of Causation](term_ladder_of_causation.md)**: PSM operates at rung 2 (intervention) of Pearl's causal hierarchy
 - **[Directed Acyclic Graph](term_directed_acyclic_graph.md)**: DAGs formalize the causal structure that PSM's assumptions require
-- **[DSI](term_dsi.md)**: Downstream Impact measurement in abuse prevention — PSM can estimate DSI when randomization is infeasible
+- **downstream impact**: Downstream Impact measurement in abuse prevention — PSM can estimate DSI when randomization is infeasible
 - **[Mediation Analysis](term_mediation_analysis.md)**: Related causal method for decomposing direct and indirect effects
 - **[Difference-in-Differences](term_difference_in_differences.md)**: Complementary quasi-experimental method; often combined with PSM to strengthen parallel trends
 - **[Double Machine Learning](term_double_machine_learning.md)**: DML improves on PSM by being robust to propensity model misspecification through Neyman orthogonality

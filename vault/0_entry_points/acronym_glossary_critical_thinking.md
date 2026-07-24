@@ -89,7 +89,7 @@ building_block: navigation
 
 # Critical Thinking & Logical Argumentation Glossary
 
-Quick-reference glossary for logical fallacies, argumentation patterns, and critical thinking concepts in the source_vault vault. Terms are organized by fallacy category following the taxonomy in Aristotle's *Sophistical Refutations* and modern treatments (Hamblin, 1970; Damer, 2009; Hartley, 2024).
+Quick-reference glossary for logical fallacies, argumentation patterns, and critical thinking concepts in this knowledge base. Terms are organized by fallacy category following the taxonomy in Aristotle's *Sophistical Refutations* and modern treatments (Hamblin, 1970; Damer, 2009; Hartley, 2024).
 
 Each entry links to the full term note in `resources/term_dictionary/` for detailed definitions, examples, detection strategies, and cognitive bias connections.
 

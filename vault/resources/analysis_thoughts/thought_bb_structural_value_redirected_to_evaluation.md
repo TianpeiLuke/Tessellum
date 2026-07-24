@@ -124,7 +124,6 @@ The redirected value is real but narrower than FZ 5e's original claim. The meta-
 ### Within Phase 3 (Unification) Trail
 - **[FZ 5e2: Counter — Dense Retrieval Refutes BB Strategy Routing](counter_dense_retrieval_refutes_bb_strategy_routing.md)** — the counter this note responds to
 - **[FZ 5e: Question Type × Building Block Alignment](thought_question_type_building_block_retrieval_alignment.md)** — the original claim, now narrowed
-- **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** — the primary application of this redirected value
 - **[FZ 5g3b: Epistemic Congruence Skill Design](analysis_epistemic_congruence_skill_design.md)** — implementation of congruence into the review skill
 - **[FZ 5g3: Counter — Rating Instrument Lacks BB Lens](counter_rating_instrument_lacks_bb_lens.md)** — the evaluation gap that BB typing fills
 - **[FZ 5g1a: BB Demand Inter-Annotator Agreement](../../archives/experiments/experiment_bb_demand_interannotator_agreement.md)** — κ=0.711 feasibility

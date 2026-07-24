@@ -69,7 +69,7 @@ Unlike an [agent harness](term_agent_harness.md) (which empowers a model to act 
 | System | Developer | Scope |
 |--------|-----------|-------|
 | **lm-evaluation-harness** | EleutherAI | 60+ tasks, powers Open LLM Leaderboard, most widely used |
-| **HELM** | Stanford CRFM | Holistic multi-metric evaluation (accuracy, calibration, robustness, fairness, efficiency) |
+| **HELM** | Stanford | Holistic multi-metric evaluation (accuracy, calibration, robustness, fairness, efficiency) |
 | **OpenCompass** | Shanghai AI Lab | Comprehensive evaluation with 100+ datasets, supports Chinese LLMs |
 | **Eval Harness (OpenAI)** | OpenAI | Internal evaluation framework for GPT models |
 

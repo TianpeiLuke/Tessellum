@@ -119,7 +119,6 @@ Dosovitskiy et al. (2020) split images into 16x16 patches, treat each patch as a
 ## Applications to Our Work
 
 - **BERT-based models** ([RnR BSM BERT](../../areas/models/model_rnr_bsm_bert.md), [AtoZ BSM BERT](../../areas/models/model_atoz_bsm_bert.md)) use **bidirectional self-attention** in every encoder layer, enabling each token in a buyer-seller message to attend to all other tokens for abuse classification.
-- **[CrossBERT](term_crossbert.md)** uses self-attention to learn cross-marketplace identity embeddings.
 - **Graph Transformers** (HGT for Gift Card Lifecycle, TGN for TFCM) use type-specific attention over heterogeneous graph nodes for fraud detection.
 - Inference latency of attention-based models (~10ms for BERT-BASE) meets real-time abuse scoring requirements.
 

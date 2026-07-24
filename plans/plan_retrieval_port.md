@@ -38,7 +38,7 @@ Tessellum's value proposition is typed-knowledge **slipbox**, not typed-knowledg
 
 ## Parent's retrieval architecture — three tiers
 
-Per the FZ 5e research trail in the source vault:
+Per the FZ 5e research trail in the originating research vault:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -155,7 +155,7 @@ This wave produces the **first user-visible answer-the-question capability**. Af
 
 - **PPR** (`ppr_search.py`, ~257 LOC). Documented in design principles + Wave 4. Re-add later behind an extras flag if a real use case surfaces.
 - **Legacy artifact format support** (`bm25.pkl` / `.npy` / `.json`). Tessellum starts unified; never had the four-artifact baseline.
-- **Amazon-specific term boosts** in working_memory and context_assembler. Keep the generic blending logic; drop the domain knobs.
+- **Domain-specific term boosts** in working_memory and context_assembler. Keep the generic blending logic; drop the domain knobs.
 - **Hit@K-only benchmarking**. Wave 5+ ships eval infrastructure that measures answer quality, not retrieval metrics in isolation.
 
 ## Migration steps for Wave 1 (when we start)
@@ -216,6 +216,6 @@ Subsequent waves follow the same pattern with their respective scopes.
 
 - PPR — skipped. Saved ~257 LOC. Best-first BFS is Pareto-optimal.
 - Legacy artifact format support (.pkl/.npy/.json side files).
-- Amazon-specific term boosts in working-memory blending.
+- Domain-specific term boosts in working-memory blending.
 
 Test count at port closure: covered by the same 464-passed / 1-skipped suite as the Composer port.

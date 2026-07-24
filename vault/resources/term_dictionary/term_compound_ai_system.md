@@ -52,7 +52,6 @@ Compound AI systems are distinguished from single-model approaches by having **m
 - [Instance Optimization](term_instance_optimization.md) — Test-time optimization of individual compound system outputs
 - [Prompt Optimization](term_prompt_optimization.md) — Optimizing the prompt component of compound systems
 - [Self-Evolving Agent](term_self_evolving_agent.md) — Agents that improve their own compound system components
-- [AgentZ](term_agentz.md) — Amazon's compound AI platform combining LLMs, tools, and HITL
 - **[Neural Computer](term_neural_computer.md)**: NCs propose collapsing compound multi-component systems into a single neural runtime
 - **[World Model](term_world_model.md)**: World models can serve as planning and simulation components within compound AI systems
 

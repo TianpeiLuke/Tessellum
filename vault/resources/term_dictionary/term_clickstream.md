@@ -19,14 +19,13 @@ language: markdown
 date of note: 2026-01-30
 status: active
 building_block: concept
-related_docs: https://internal-wiki
 ---
 
 # Term: Clickstream
 
 ## Definition
 
-**Clickstream** is sequential data capturing a customer's browsing behavior on Amazon's website, including page views, navigation paths, timestamps, and interactions. This data is processed from raw query logs and normalized into session-level records that track the complete customer journey from arrival through purchase or contact.
+**Clickstream** is sequential data capturing a user's browsing behavior on a website, including page views, navigation paths, timestamps, and interactions. This data is processed from raw query/request logs and normalized into session-level records that track the complete user journey from arrival through conversion or exit.
 
 ## Full Name
 
@@ -34,18 +33,18 @@ related_docs: https://internal-wiki
 
 ## Purpose
 
-Clickstream data serves multiple purposes in buyer risk prevention:
-1. **Behavioral Fingerprinting**: Identify abuse patterns through browsing behavior differences
-2. **Intent Prediction**: Predict customer's likely action (return, refund, claim) from navigation
-3. **Temporal Analysis**: Compare behavior at different points (ordering vs concession time)
-4. **Anomaly Detection**: Detect non-customer traffic (bots, scrapers, associates fraud)
+Clickstream data serves multiple purposes in behavioral analytics and risk detection:
+1. **Behavioral Fingerprinting**: Identify patterns through browsing-behavior differences
+2. **Intent Prediction**: Predict a user's likely next action from navigation
+3. **Temporal Analysis**: Compare behavior at different points in a journey
+4. **Anomaly Detection**: Detect non-human traffic (bots, scrapers) and unusual activity
 
 ## Architecture
 
 ### Data Processing Pipeline
 
 ```
-Raw Query Logs → HitAssembly → SortedHits → SessionizedHits → Webmon
+Raw Query Logs → Hit Assembly → Sorted Hits → Sessionized Hits → Analytics Store
                      |
                      v
               +----------------+
@@ -58,7 +57,7 @@ Raw Query Logs → HitAssembly → SortedHits → SessionizedHits → Webmon
                      v
               +----------------+
               | Sessionization |
-              | - Customer ID  |
+              | - User ID      |
               | - Session ID   |
               | - Attribution  |
               +----------------+
@@ -71,44 +70,40 @@ Raw Query Logs → HitAssembly → SortedHits → SessionizedHits → Webmon
 
 | Component | Description | Example |
 |-----------|-------------|---------|
-| **Page Type** | Category of page viewed | `gateway`, `DetailPage`, `YourOrders`, `Cart` |
+| **Page Type** | Category of page viewed | `gateway`, `DetailPage`, `Orders`, `Cart` |
 | **Ref Marker** | Tracking tag in URLs | Tracks link performance, attribution |
-| **Session** | Grouped clicks by customer | Time-bounded customer journey |
+| **Session** | Grouped clicks by user | Time-bounded user journey |
 | **Feed** | Country/marketplace | `us`, `uk`, `de`, `jp` |
 
-## Applications in Buyer Abuse Prevention
+## Applications in Behavioral Analysis
 
-### 1. RASP Detection (Tattletale)
+### 1. Behavioral Drift Detection
 
-**Diff Transformer for Clickstream**:
-- **Architecture**: [Siamese Network](term_siamese_network.md) comparing clickstream at ordering vs concession time
-- **Purpose**: Detect behavioral drift indicative of Refund As Service Provider abuse
-- **Performance**: AUC 0.86 → 0.90 with time encoding
-- **Reference**: [Tattletale MTR Diff Transformer](../documentation/mtr/mtr_tattletale_2024_03_diff_transformer.md)
+**Diff / Comparison Models**:
+- **Architecture**: [Siamese Network](term_siamese_network.md) comparing clickstream from two different windows
+- **Purpose**: Detect behavioral drift between points in a user journey
+- **Signal**: Time encoding of events improves discrimination of behavioral change
 
-### 2. Moderated Enforcement (ME) Customer Behavior
+### 2. Reinstatement / Churn Prediction
 
 **Behavioral Embeddings**:
-- **Architecture**: TF-IDF + LightGBM on page type sequences
-- **Purpose**: Predict whether suspended customers will be reinstated
-- **Look-back Window**: 2-4 days of clickstream data
-- **Features**: Page sequences (e.g., `YourOrders → Spark → YourOrders → gateway-phone-web`)
-- **Reference**: [ME Behavioral Model](https://internal-wiki)
+- **Architecture**: TF-IDF + gradient-boosted trees on page-type sequences
+- **Purpose**: Predict future user behavior from recent browsing
+- **Look-back Window**: A few days of clickstream data
+- **Features**: Page sequences (e.g., `Orders → Search → Orders → gateway`)
 
-### 3. Intent Prediction (CS ML)
+### 3. Intent Prediction
 
-**Contact Reason Prediction**:
-- **Architecture**: LSTM/BiLSTM with page embedding layers
-- **Purpose**: Predict most relevant issue/intent from browsing patterns
+**Contact/Action Reason Prediction**:
+- **Architecture**: LSTM/BiLSTM with page-embedding layers
+- **Purpose**: Predict the most relevant intent from browsing patterns
 - **Approach**: Sequential deep learning treating clicks as time-ordered events
-- **Reference**: [Clickstream Intent Prediction](https://internal-wiki)
 
-### 4. Non-Customer Traffic Detection
+### 4. Non-Human Traffic Detection
 
-**Fraud Detection**:
-- **Purpose**: Identify bots, scrapers, and associate fraud
-- **Signals**: High volume from single IP, no conversion patterns, embedded pages
-- **Reference**: [Clickstream Non-customer Traffic](https://internal-wiki)
+**Bot/Scraper Detection**:
+- **Purpose**: Identify bots, scrapers, and automated traffic
+- **Signals**: High volume from single IP, no conversion patterns, atypical page access
 
 ## Technical Details
 
@@ -116,7 +111,7 @@ Raw Query Logs → HitAssembly → SortedHits → SessionizedHits → Webmon
 
 | Approach | Description | Use Case |
 |----------|-------------|----------|
-| **TF-IDF Vectorization** | Convert page sequences to weighted vectors | ME behavior classification |
+| **TF-IDF Vectorization** | Convert page sequences to weighted vectors | Behavior classification |
 | **LSTM Embedding** | Learn sequential representations | Intent prediction |
 | **Siamese Networks** | Compare two clickstream windows | Behavioral drift detection |
 | **Session Statistics** | Aggregate metrics (duration, page count) | Anomaly detection |
@@ -136,65 +131,24 @@ Input (Page Sequence) → Embedding Layer → LSTM Layer 1 → LSTM Layer 2 → 
 - LSTM handles long-term dependencies through memory cells
 - Bidirectional LSTM captures both forward and backward patterns
 
-### Data Access
-
-| Source | Description |
-|--------|-------------|
-| **Clickstream Tables** | Processed session-level data in DW |
-| **Clickstream Console** | [console.clickstream.amazon.com](https://console.clickstream.amazon.com/bootcamp) |
-| **Onboarding** | [Clickstream User Docs](https://internal-wiki) |
-
-## Evolution in Buyer Abuse ML
-
-### Timeline
-
-| Year | Application | Team |
-|------|-------------|------|
-| 2018 | CS Intent Prediction | CS ML |
-| 2020 | ME Behavioral Analysis | BAP ML |
-| 2024 | RASP Diff Transformer | Tattletale |
-
-### Current State
-
-Clickstream embeddings are being developed by BAP ML (Ethan/yunxiaow) for:
-- ASIN embeddings integration
-- Sandstone embedding fusion
-- Enhanced behavioral fingerprinting
-
 ## Related Terms
 
-- [Traffic Stream](term_traffic_stream.md) - Complementary web event data source (sign-in focused)
 - [Siamese Network](term_siamese_network.md) - Architecture for comparing clickstream windows
-- [RASP](term_rasp.md) - Refund As Service Provider (detection use case)
-- [Tattletale](term_tattletale.md) - MO detection system using clickstream
-- [OTF](term_otf.md) - On-The-Fly variables (clickstream features)
-- [BSM](term_bsm.md) - Buyer Seller Messaging (complementary behavioral data)
-- **[Pub/Sub](term_pub_sub.md)**: Clickstream events are commonly transported via pub/sub topics (Kafka, SNS) for real-time analytics, session replay, and downstream abuse detection pipelines
+- **[Pub/Sub](term_pub_sub.md)**: Clickstream events are commonly transported via pub/sub topics (Kafka, SNS) for real-time analytics, session replay, and downstream detection pipelines
 - **[WebSocket](term_websocket.md)**: WebSocket connections generate real-time clickstream events for interactive sessions, complementing traditional HTTP-based page view tracking
-
-## References
-
-### Amazon Internal
-- [Clickstream 101](https://internal-wiki)
-- [Clickstream Console Bootcamp](https://console.clickstream.amazon.com/bootcamp)
-- [ME Behavioral Embeddings](https://internal-wiki)
-- [CS ML Intent Prediction](https://internal-wiki)
-- [Non-customer Traffic Detection](https://internal-wiki)
-- [BAP ML Team Wiki](https://internal-wiki)
 
 ## Summary
 
 | Aspect | Details |
 |--------|---------|
 | **Full Name** | Clickstream Data |
-| **Purpose** | Capture browsing behavior for abuse detection |
+| **Purpose** | Capture browsing behavior for analytics and detection |
 | **Data Type** | Sequential page views, timestamps, session metadata |
-| **Key Applications** | RASP detection, intent prediction, ME classification |
+| **Key Applications** | Behavioral drift, intent prediction, bot detection |
 | **ML Approaches** | LSTM, BiLSTM, Siamese Networks, TF-IDF |
 | **Status** | Active - foundational behavioral data source |
-| **Team** | BAP ML (Ethan/yunxiaow for embeddings) |
 
 ---
 
 **Last Updated**: January 30, 2026  
-**Status**: Active - Key behavioral data source for abuse detection
+**Status**: Active - key behavioral data source for analytics and detection

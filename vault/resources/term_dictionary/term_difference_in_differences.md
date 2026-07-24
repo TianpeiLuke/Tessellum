@@ -118,7 +118,7 @@ The key identifying assumption is **parallel trends**: absent treatment, the tre
 | **Education** | Program evaluation | Impact of school funding reforms on student outcomes |
 | **Economic history** | Historical event analysis | Sherman's March long-term economic effects |
 | **Tech/A-B testing** | Quasi-experimental analysis | Effect of a feature rollout when A/B test is infeasible |
-| **Abuse prevention** | Enforcement impact | Comparing abuse rates in treatment vs. control marketplaces before/after policy launch; measuring [DSI](term_dsi.md) when [RCT](term_randomized_controlled_trial.md) is not available |
+| **Abuse prevention** | Enforcement impact | Comparing abuse rates in treatment vs. control marketplaces before/after policy launch; measuring downstream impact when [RCT](term_randomized_controlled_trial.md) is not available |
 
 ## Challenges and Limitations
 
@@ -176,7 +176,7 @@ This led to a wave of new estimators (Callaway-Sant'Anna, Sun-Abraham, de Chaise
 - **[Counterfactual Reasoning](term_counterfactual_reasoning.md)**: DiD constructs counterfactuals via the parallel trends assumption
 - **[Structural Causal Model](term_structural_causal_model.md)**: Pearl's framework formalizes the causal assumptions underlying DiD
 - **[Directed Acyclic Graph](term_directed_acyclic_graph.md)**: DAGs can represent the causal structure and identify when DiD assumptions hold
-- **[DSI](term_dsi.md)**: Downstream Impact measurement — DiD is one method for estimating DSI when RCTs are unavailable
+- **downstream impact**: Downstream Impact measurement — DiD is one method for estimating DSI when RCTs are unavailable
 - **[Ladder of Causation](term_ladder_of_causation.md)**: DiD operates at rung 2 (intervention) — estimating $P(Y \mid do(X))$ from observational data
 - **[Double Machine Learning](term_double_machine_learning.md)**: DML can be combined with DiD; handles high-dimensional confounders via Neyman orthogonality
 

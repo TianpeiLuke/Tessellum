@@ -15,7 +15,6 @@ keywords:
   - adversarial CAPTCHA
   - computer vision
   - deep learning
-  - buyer risk prevention
 topics:
   - generative AI
   - computer vision
@@ -26,14 +25,14 @@ language: python
 date of note: 2026-02-25
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
+related_wiki: null
 ---
 
 # Term: Diffusion Model
 
 ## Definition
 
-**Diffusion Model** is a class of generative deep learning models that create new data by learning to reverse a gradual noise-adding process, enabling high-quality synthesis of images, text, and tabular data through iterative denoising steps. At Amazon, diffusion models are primarily deployed in buyer risk prevention and security applications, including Stable Diffusion for synthetic CAPTCHA image generation, adversarial noise generation for bot mitigation, and tabular data synthesis for fraud detection research, providing stable training alternatives to GANs while achieving state-of-the-art generation quality.
+**Diffusion Model** is a class of generative deep learning models that create new data by learning to reverse a gradual noise-adding process, enabling high-quality synthesis of images, text, and tabular data through iterative denoising steps. Diffusion models are widely applied to image synthesis, synthetic data generation, and security research (for example, synthetic CAPTCHA image generation and adversarial-robustness studies), providing stable training alternatives to GANs while achieving state-of-the-art generation quality.
 
 ## Full Name
 
@@ -50,27 +49,22 @@ Diffusion models operate through a two-stage process:
 
 **Key Innovation**: Unlike GANs (which suffer from training instability) or VAEs (which may produce blurry outputs), diffusion models provide stable training with high-quality generation through the denoising paradigm.
 
-## Applications in Amazon/BRP
+## Applications
 
 ### Security and Anti-Automation
 
 1. **Adversarial CAPTCHA Enhancement**
-   - **Project**: "Adversarial CAPTCHA: Leveraging Diffusion Models for Enhanced Security and Usability"
-   - **Team**: Buyer Risk Prevention (BRP), Selling Partner Services
-   - **Contributor**: mhrtsh
-   - **Purpose**: Generate more robust CAPTCHA images resistant to Vision Language Model (VLM) solvers
+   - **Purpose**: Generate more robust CAPTCHA images that are resistant to Vision Language Model (VLM) solvers
+   - **Approach**: Combine diffusion-based image synthesis with adversarial perturbation techniques
 
-2. **Synthetic Image Generation for WAF CAPTCHA**
-   - **Platform**: AWS Web Application Firewall (WAF) team collaboration with AIT
-   - **Technology**: Stable Diffusion-powered clean-image generation component
-   - **Function**: Dynamically grow clean image bank for CAPTCHA puzzle generation
-   - **Impact**: Better customer experience and enhanced bot resistance
+2. **Synthetic Image Generation for CAPTCHA**
+   - **Technology**: Diffusion-powered clean-image generation
+   - **Function**: Dynamically grow a bank of clean images for CAPTCHA puzzle generation
+   - **Impact**: Better usability and enhanced bot resistance
 
-3. **MASN Integration**
-   - **Full Name**: Min-max Attack with Smart Noise
+3. **Joint Image-Prompt Adversarial Optimization**
    - **Purpose**: Joint optimization of adversarial perturbations for both images and language prompts
    - **Target**: VLM-based CAPTCHA solvers (BLIP, MiniGPT-4, LLaVA, etc.)
-   - **Performance**: ~65% improvement over baseline adversarial noise methods
 
 ### Synthetic Data Generation
 
@@ -80,11 +74,9 @@ Diffusion models operate through a two-stage process:
    - **Method**: TabSyn approach combining VAE + Diffusion for tabular data
    - **Use Case**: Synthetic transaction data for model training without privacy concerns
 
-2. **Anti-Automation Challenge Bank**
-   - **Integration**: AIT AntiAutomationService ChallengeBank
-   - **Process**: Stable Diffusion → Clean Image Generation → Adversarial Noise Addition → CAPTCHA Puzzle Creation
-   - **Scale**: ~10K+ synthetic images across multiple categories
-   - **Evolution**: Static ASIN images → Dynamic synthetic image generation
+2. **Challenge Bank Generation**
+   - **Process**: Diffusion generation → clean image generation → adversarial noise addition → CAPTCHA puzzle creation
+   - **Evolution**: Static image repositories → dynamic synthetic image generation
 
 ## Technical Implementation
 
@@ -101,24 +93,6 @@ Diffusion models operate through a two-stage process:
 Clean Image → Add Noise (T steps) → Pure Noise
 Pure Noise → Learned Denoising (T steps) → Generated Image
 ```
-
-### Amazon-Specific Adaptations
-
-**Adversarial CAPTCHA Pipeline**:
-```
-Stable Diffusion Generation → Clean Image Bank
-        ↓
-Adversarial Noise Generation (ANG) → Noisy Image Bank  
-        ↓
-WAF Problem Generator → CAPTCHA Puzzles
-        ↓
-AntiAutomationService ChallengeBank → Bot Detection
-```
-
-**Security Enhancements**:
-- **Multi-Model Ensemble**: >200 deep computer vision models for adversarial generation
-- **Dynamic Image Banking**: Continuous addition of new synthetic images to prevent bot adaptation
-- **Category Management**: Incremental category addition and image deprecation based on security metrics
 
 ## Advantages Over Alternative Approaches
 
@@ -142,24 +116,12 @@ AntiAutomationService ChallengeBank → Bot Detection
 
 ### Unique Advantages for Security Applications
 
-1. **Robust Generation**: Less prone to adversarial attacks during generation process
+1. **Robust Generation**: Less prone to adversarial attacks during the generation process
 2. **High-Quality Outputs**: Superior visual quality important for human-solvable CAPTCHAs
 3. **Diversity**: Reduced risk of bot adaptation through diverse synthetic content
 4. **Controllable Generation**: Ability to guide generation through text prompts and conditioning
 
 ## Research and Development
-
-### Academic Contributions
-
-**AMLC 2023 Synthetic Data Generation Workshop**:
-- **Paper**: "Diffusion models for tabular data generation with applications in fraud detection"
-- **Contributors**: Shengduo Liu (shengduo@), Yibing Wu (yibinwue@), Jiayue Tong (tongjia@), Danial Sabri Dashti (ddashti@)
-- **Focus**: Application to fraud detection through synthetic tabular data
-
-**Internal Research Projects**:
-- **Adversarial CAPTCHA Enhancement**: Integration of diffusion models with adversarial techniques
-- **Synthetic Data for Security**: Alternative to manual data curation for anti-automation systems
-- **Bot Mitigation**: Enhanced resistance to sophisticated AI-based CAPTCHA solvers
 
 ### Technical Innovation Areas
 
@@ -181,7 +143,7 @@ AntiAutomationService ChallengeBank → Bot Detection
 - Enhanced resistance to VLM-based CAPTCHA solvers
 - Dynamic image generation prevents static image repository attacks
 - Transferable adversarial properties across multiple vision models
-- Improved customer experience through better image quality
+- Improved usability through better image quality
 
 **Cost Benefits**:
 - Reduced dependency on manual image curation
@@ -202,7 +164,7 @@ AntiAutomationService ChallengeBank → Bot Detection
 ### Computational Requirements
 
 **Resource Intensity**:
-- **Generation Time**: ~1 minute per image for adversarial CAPTCHA (BLIP-2 based)
+- **Generation Time**: multiple denoising steps make per-image generation slower than single-pass models
 - **Memory Requirements**: Large models require significant GPU memory
 - **Training Costs**: Extensive computational resources for training from scratch
 - **Inference Costs**: Multiple denoising steps increase generation latency
@@ -215,10 +177,9 @@ AntiAutomationService ChallengeBank → Bot Detection
 
 ### Implementation Challenges
 
-1. **Integration Complexity**: Coordination between AIT ML, WAF, and AntiAutomationService
-2. **Quality Control**: Ensuring synthetic images maintain human solvability
-3. **Security Validation**: Continuous testing against evolving AI-based solvers
-4. **Performance Monitoring**: Real-time metrics for attack success rates and transferability
+1. **Quality Control**: Ensuring synthetic images maintain human solvability
+2. **Security Validation**: Continuous testing against evolving AI-based solvers
+3. **Performance Monitoring**: Real-time metrics for attack success rates and transferability
 
 ## Future Directions and Evolution
 
@@ -237,7 +198,7 @@ AntiAutomationService ChallengeBank → Bot Detection
 
 ### Strategic Applications
 
-**Broader BRP Integration**:
+**Broader Integration**:
 - Synthetic evidence generation for investigation training
 - Fake content detection for abuse prevention
 - Enhanced data augmentation for fraud detection models
@@ -246,7 +207,7 @@ AntiAutomationService ChallengeBank → Bot Detection
 ## Related Technologies
 
 ### Generative AI Ecosystem
-- **Stable Diffusion**: Primary implementation used at Amazon
+- **Stable Diffusion**: Widely used open-source diffusion implementation
 - **DALL-E**: Alternative text-to-image generation model
 - **Midjourney**: Commercial image generation service
 - **ControlNet**: Enhanced control mechanisms for diffusion models
@@ -256,28 +217,6 @@ AntiAutomationService ChallengeBank → Bot Detection
 - **SageMaker**: AWS platform for model training and deployment
 - **S3**: Storage for generated synthetic images and model artifacts
 - **EC2/GPU**: Computational resources for training and inference
-
-## Integration with Amazon Infrastructure
-
-### Data Pipeline
-```
-Synthetic Data Requirements
-        ↓
-Stable Diffusion Model (SageMaker)
-        ↓
-Generated Images (S3 Storage)
-        ↓
-Adversarial Noise Generation (ANG Pipeline)  
-        ↓
-WAF CAPTCHA Problem Generator
-        ↓
-AntiAutomationService ChallengeBank
-```
-
-### Quality Assurance
-- **Security Metrics**: Attack success rate, transferability, robustness
-- **Usability Metrics**: Human solvability, accessibility, customer experience
-- **Performance Metrics**: Generation speed, computational efficiency, scalability
 
 ## Related Terms
 
@@ -294,12 +233,6 @@ AntiAutomationService ChallengeBank
 - **[Term: CAPTCHA](term_captcha.md)** - Automated human verification tests
 - **[Term: Bot Detection](term_bot_detection.md)** - Automated system identification
 
-### Security Systems
-- **[Term: MASN](term_masn.md)** - Min-max Attack with Smart Noise
-- **[Term: WAF](term_waf.md)** - Web Application Firewall
-- **[Term: AIT](term_ait.md)** - Account Integrity Team
-- **[Term: AntiAutomation](term_antiautomation.md)** - Bot prevention systems
-
 ### Machine Learning Infrastructure
 - **[Term: PyTorch](term_pytorch.md)** - Deep learning framework
 - **[Term: SageMaker](term_sagemaker.md)** - AWS ML platform
@@ -311,22 +244,6 @@ AntiAutomationService ChallengeBank
 - **[World Model](term_world_model.md)**: Video diffusion is increasingly used as the backbone for pixel-space world model prediction
 
 ## References
-
-### Primary Documentation
-- [Synthetic image based WAF CAPTCHA](https://internal-wiki)
-- [Adversarial CAPTCHA](https://internal-wiki)
-- [CAPTCHA Intern Project 2024](https://internal-wiki)
-
-### Research Presentations
-- [BRP ML Research Weekly Presentations 2023](https://internal-wiki) - Adversarial CAPTCHA section
-- [2024 BRP Internships Final Report](https://internal-wiki)
-
-### Academic Work
-- [Synthetic Data Generation Working Group](https://internal-wiki)
-- [AMLC 2023 Synthetic Data Generation Workshop](https://internal-wiki)
-
-### Conference Presentations
-- [Science for Shopping 2025 Posters](https://internal-wiki)
 
 ### External References
 
@@ -354,10 +271,9 @@ AntiAutomationService ChallengeBank
 ## Notes
 
 - Diffusion models represent a paradigm shift in generative AI with superior stability and quality
-- Critical technology for Amazon's anti-automation and security infrastructure
+- A useful technology for anti-automation and security infrastructure
 - Enables privacy-preserving synthetic data generation for fraud detection research
-- Integration with existing Amazon infrastructure (SageMaker, S3, WAF) for production deployment
+- Integrates with common ML infrastructure (SageMaker, S3) for production deployment
 - Active research area with ongoing improvements in efficiency and application domains
-- Key component of multi-layered security approach against sophisticated AI-based threats
-- Foundation for future generative AI applications across Amazon's trust and safety domain
-- Represents Amazon's commitment to cutting-edge AI research for practical security applications
+- A key component of multi-layered security approaches against sophisticated AI-based threats
+- A foundation for generative AI applications across trust and safety domains

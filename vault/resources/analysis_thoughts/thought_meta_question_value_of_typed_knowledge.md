@@ -39,7 +39,7 @@ folgezettel_parent: ""
 
 > **Does epistemically typed, structurally connected, agent-maintained knowledge provide measurable value over unstructured information — and if so, under what conditions?**
 
-This is the single question that unifies all three domain problems, all three generalized problems, and all 14 research questions. It is the core intellectual contribution the Abuse SlipBox proposes to answer.
+This is the single question that unifies all three domain problems, all three generalized problems, and all 14 research questions. It is the core intellectual contribution this knowledge base proposes to answer.
 
 ## Why This Is the Right Question
 
@@ -109,9 +109,9 @@ Demonstrates that LLMs can generate useful summaries, FAQs, and even podcasts fr
 | GraphRAG | No | Yes (auto communities) | Yes (auto) | Benchmark only |
 | A-MEM | No | Yes (auto links) | Yes (auto) | Benchmark only |
 | Obsidian users | No | Yes (human links) | No (manual) | Personal scale |
-| **Abuse SlipBox** | **Yes (8 epistemic types)** | **Yes (human links)** | **Yes (agent skills)** | **Yes (6,450+ notes)** |
+| **This vault** | **Yes (8 epistemic types)** | **Yes (human links)** | **Yes (agent skills)** | **Yes (6,450+ notes)** |
 
-The Abuse SlipBox is the **only system that has all four properties** — making it the only system that can empirically answer the meta-question.
+This vault is the **only system that has all four properties** — making it the only system that can empirically answer the meta-question.
 
 ## How to Answer the Meta-Question
 
@@ -205,17 +205,13 @@ The meta-question applies not just to organizational KM, but to two adjacent fie
 
 - **[Connected DAG of Atomic Skills [7d1]](thought_connected_dag_atomic_skills.md)** — Cross-trail: typed state for skill DAGs
 
-- [Entry: Abuse SlipBox Research](../../0_entry_points/entry_source_vault_research.md) — The meta-question is the core research contribution
 - [Thought: Knowledge Currency](thought_general_problem_knowledge_currency.md) — Instance 1: does agent maintenance keep knowledge fresher?
 - [Thought: Expertise Transfer](thought_general_problem_expertise_transfer.md) — Instance 2: does typed retrieval improve onboarding?
 - [Thought: Policy-Model Synchronization](thought_general_problem_policy_model_synchronization.md) — Instance 3: does cross-referencing enable impact analysis?
-- [Competitive Landscape](analysis_agentic_km_landscape_vs_source_vault.md) — No existing system has all three properties
-- [Research Questions](analysis_research_questions_source_vault.md) — 14 RQs that decompose the meta-question
 - [Long Context vs Structure](analysis_long_context_vs_structure.md) — Empirical evidence on the "structure" component
 - [Counter: Knowledge Decay](counter_knowledge_decay_is_not_the_real_problem.md) — C3 challenges the value of structure
 - [Counter: Onboarding](counter_onboarding_bottleneck_alternative_solutions.md) — C1 challenges the value of typing
 - [Counter: Automation](counter_automation_brittleness_llm_adaptation.md) — C2 challenges the value of agent maintenance
-- [Building Block Vault Health](analysis_building_block_vault_health.md) — Current typing distribution as evidence
 - [Term: Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md) — The 8-type taxonomy
 
 ---

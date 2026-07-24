@@ -20,7 +20,7 @@ keywords:
   - two-stage retrieval
   - re-ranking by graph distance
   - building block aware assembly
-  - Abuse Slipbox
+  - knowledge vault
 topics:
   - information retrieval
   - knowledge management
@@ -212,7 +212,6 @@ The benchmark must measure **answer quality** (not just Hit@5) to detect the hyb
 
 ### Cross-Trail Operational Use (Architecture Trail)
 - **[FZ 7g1a1a1a: FZ 5 Evidence Confirms Three-Layer + Sharpens Within-BB Recipe](thought_fz5_evidence_confirms_three_layer_and_sharpens_within_bb_recipe.md)** — operationalizes this hypothesis as the **within-BB retrieval recipe v2** for the architecture trail's Layer 2. The α/β/γ/δ blending recipe described here (dense + graph_proximity + BB_alignment + link_context) is adopted directly as the re-rank stage; the BB-aware context assembly stages 4 are adopted for the assembly stage. The PPR-primary recipe of [FZ 7g1a1a](thought_within_bb_navigation_is_retrieval_not_ontology.md) v1 is replaced with this dense-primary hybrid.
-- **[FZ 7g1a1a1a1: ★ Synthesis — One Vault, Three Invariance Regimes](thought_synthesis_three_invariance_regimes_one_vault.md)** — this note's stage decomposition (candidate generation → re-rank → context assembly) becomes the **internal architecture of Layer 2** in the three-regime model.
 
 ### Within Retrieval Trail (FZ 5)
 - **[FZ 5e1c1: SQLite as Non-RAG Indexing Baseline](thought_sqlite_non_rag_indexing_baseline.md)**: parent note — poses the question "can hybrid retrieval outperform dense alone?" that this note answers with a concrete architecture
@@ -220,7 +219,6 @@ The benchmark must measure **answer quality** (not just Hit@5) to detect the hyb
 - **[FZ 5e1c1b: Structural Retrieval Value Beyond Embeddings](thought_structural_retrieval_value_beyond_embeddings.md)**: sibling — identifies the three structural signals (path, ordering, BB type) that this hybrid architecture exploits
 - **[FZ 5h1a: BB Demand for Re-Ranking + Context Assembly](thought_bb_demand_redirected_to_reranking.md)**: the key predecessor — redirected BB demand from pre-routing (refuted) to post-retrieval re-ranking (this note's stage 3-4)
 - **[FZ 5i1a: Term Hub Value for Re-Ranking](thought_term_hub_value_for_reranking_context.md)**: term-hub diversity for context assembly — directly applicable to the hybrid architecture's stage 4
-- **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)**: the BB alignment scoring matrix used in stage 3's γ component
 - **[FZ 5g1a: BB Demand Inter-Annotator Agreement](../../archives/experiments/experiment_bb_demand_interannotator_agreement.md)**: κ=0.711 — the reliability basis for BB demand classification in stage 3
 - **[FZ 5f: Folgezettel Trails as Retrieval Modality](thought_folgezettel_trails_as_retrieval_modality.md)**: FZ-ordered assembly in stage 4's trail question type
 - **[FZ 5e1c: SQLite vs RAG Benchmark](../../archives/experiments/experiment_sqlite_vs_rag_benchmark.md)**: grandparent experiment — hybrid is a third condition (alongside SQLite-only and dense-only)

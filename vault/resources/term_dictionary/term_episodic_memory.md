@@ -73,7 +73,7 @@ Episodic memory is distinguished from other memory types by a unique combination
 | Neural Episodic Control (NEC) | Differentiable neural dictionary for fast value estimation | RL game playing |
 | Larimar | Distributed external memory with episodic control for LLMs | Fact editing, long-context QA |
 | EM-LLM (Fountas et al.) | Bayesian surprise-based event segmentation with episodic retrieval | Infinite-context LLM reasoning |
-| SENTRIX/PROPHET | Episodic memory of past reasoning trajectories for phishing detection | Phishing URL detection at Amazon |
+| Phishing-detection agent | Episodic memory of past reasoning trajectories for phishing detection | Phishing URL detection |
 | HippoRAG | Neurobiologically-inspired long-term memory using hippocampal indexing | Knowledge-intensive QA |
 | MemoryBank | Timestamps and personality profiles as contextual episodic storage | Long-range open-domain conversation |
 | Self-Evolving Agents | Runtime RL on episodic memory for continuous agent improvement | Autonomous agent adaptation |
@@ -82,7 +82,7 @@ Episodic memory is distinguished from other memory types by a unique combination
 
 | Domain | Application |
 |--------|-------------|
-| **Fraud Detection** | Storing past reasoning trajectories to guide decisions on recurring threats (e.g., SENTRIX at Amazon) |
+| **Fraud Detection** | Storing past reasoning trajectories to guide decisions on recurring threats (e.g., a phishing-detection agent) |
 | **Reinforcement Learning** | Experience replay buffers enabling sample-efficient learning from past episodes |
 | **Conversational AI** | Recalling prior interactions for consistent, personalized assistance |
 | **Autonomous Research** | Tracking literature reviews, data analyses, and hypothesis generation over time |
@@ -108,9 +108,6 @@ Episodic memory is distinguished from other memory types by a unique combination
 - **[Multi-Modal](term_multi_modal.md)**: Episodic memories can span multiple modalities (text, images, actions)
 
 ## References
-
-### Vault Sources
-- [BRP ML Research 2026 - #11 SENTRIX](../../0_entry_points/entry_brp_ml_research_2026.md) — SENTRIX uses episodic memory of past reasoning trajectories for phishing detection
 
 ### External Sources
 - [Tulving, E. (1972). "Episodic and semantic memory." Organization of Memory, Academic Press](https://en.wikipedia.org/wiki/Episodic_memory)

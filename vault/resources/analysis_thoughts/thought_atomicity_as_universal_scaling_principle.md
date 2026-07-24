@@ -38,7 +38,7 @@ folgezettel_parent: ""
 
 ## Thesis
 
-Three independent lines of research — **DSPy** (composable LM modules), **LATM** (LLM as tool maker), and **Atomic Skills** (RL over coding primitives) — converge on the same structural insight: **complex capabilities scale better when decomposed into typed, composable, independently optimizable atomic units.** The Abuse SlipBox discovered this principle for knowledge management (building blocks); these papers discovered it for agent capabilities. This convergence suggests that **atomicity is not a domain-specific design choice but a universal scaling principle** — and the building block taxonomy is the knowledge-domain instance of a general theory of composable primitives.
+Three independent lines of research — **DSPy** (composable LM modules), **LATM** (LLM as tool maker), and **Atomic Skills** (RL over coding primitives) — converge on the same structural insight: **complex capabilities scale better when decomposed into typed, composable, independently optimizable atomic units.** The vault discovered this principle for knowledge management (building blocks); these papers discovered it for agent capabilities. This convergence suggests that **atomicity is not a domain-specific design choice but a universal scaling principle** — and the building block taxonomy is the knowledge-domain instance of a general theory of composable primitives.
 
 ## The Convergence
 
@@ -46,7 +46,7 @@ Four independent systems, four domains, one structural pattern:
 
 | System | Domain | Atomic Unit | Types | Composition | Optimization |
 |--------|--------|-------------|-------|-------------|-------------|
-| **Abuse SlipBox** | Knowledge management | Building block (note) | 8 epistemic types | Cross-reference links | Skill-based maintenance |
+| **The vault** | Knowledge management | Building block (note) | 8 epistemic types | Cross-reference links | Skill-based maintenance |
 | **DSPy** | LM pipelines | Signature/Module | Predict, CoT, ReAct, PoT... | Module nesting | Teleprompter compilation |
 | **LATM** | Tool use | Python function | Task-specific tools | Tool dispatch + caching | Maker/user separation |
 | **Atomic Skills** | Coding agents | RL-trained skill | 5 coding primitives | Composite task decomposition | Joint RL (GRPO) |
@@ -77,7 +77,7 @@ In all four systems, the **type of the atomic unit determines how it's used**:
 
 | System | Type → Usage |
 |--------|-------------|
-| **SlipBox** | Concept → retrieval for definitions; Argument → retrieval for claims; Procedure → retrieval for action steps |
+| **The vault** | Concept → retrieval for definitions; Argument → retrieval for claims; Procedure → retrieval for action steps |
 | **Atomic Skills** | Localization → find files; Editing → generate patches; Review → evaluate correctness |
 | **DSPy** | Predict → single-step; ChainOfThought → multi-step reasoning; ReAct → tool-augmented |
 | **LATM** | Each tool type → specific problem class; dispatch routes by type |
@@ -88,12 +88,12 @@ In all four systems, the **type of the atomic unit determines how it's used**:
 
 The Atomic Skills paper's strongest empirical finding: **joint RL over all 5 skills outperforms single-skill RL** (+18.7% average vs. task-specific gains that don't transfer).
 
-The same pattern holds in the SlipBox: maintaining all building block types simultaneously (via the C.O.D.E. pipeline across all skills) produces a more coherent vault than focusing on one type at a time. The analogy:
+The same pattern holds in the vault: maintaining all building block types simultaneously (via the C.O.D.E. pipeline across all skills) produces a more coherent vault than focusing on one type at a time. The analogy:
 
 | | Single-Type Focus | Joint Optimization |
 |---|---|---|
 | **Atomic Skills** | Editing-only RL → strong editing, weak localization | Joint RL → balanced, transferable |
-| **SlipBox** | Capture-only (all observations) → data-rich, theory-poor | C.O.D.E. pipeline → balanced building block distribution |
+| **The vault** | Capture-only (all observations) → data-rich, theory-poor | C.O.D.E. pipeline → balanced building block distribution |
 | **DSPy** | Optimize one module → local optimum | Compile full pipeline → global optimum |
 
 **The mechanism is the same**: single-type optimization creates imbalanced competence; joint optimization across types produces emergent capabilities through cross-type transfer.
@@ -110,9 +110,9 @@ The Atomic Skills paper provides **the strongest indirect evidence yet**:
 
 If typed atomic skills produce 18.7% gains for coding agents, **typed atomic knowledge (building blocks) should produce analogous gains for knowledge management** — same structural principle, different domain.
 
-## Concrete Evidence: The SlipBox's 63 Skills ARE Atomic Skills
+## Concrete Evidence: The Vault's 63 Skills ARE Atomic Skills
 
-The [Skill Catalog](../../0_entry_points/entry_skill_catalog.md) reveals that the Abuse SlipBox **already implements the atomic skill pattern** — with 63 skills across 4 C.O.D.E. stages:
+The [Skill Catalog](../../0_entry_points/entry_skill_catalog.md) reveals that the vault **already implements the atomic skill pattern** — with 63 skills across 4 C.O.D.E. stages:
 
 | C.O.D.E. Stage | Skills | Atomic Skill Analogy | Examples |
 |----------------|--------|---------------------|----------|
@@ -123,7 +123,7 @@ The [Skill Catalog](../../0_entry_points/entry_skill_catalog.md) reveals that th
 
 ### The Parallel Deepens: Skill Properties Match the 7-Property Definition
 
-| Property | Atomic Skills (Coding) | SlipBox Skills (Knowledge) |
+| Property | Atomic Skills (Coding) | Vault Skills (Knowledge) |
 |----------|----------------------|---------------------------|
 | **Minimal** | 1 SE capability | 1 knowledge workflow (e.g., "capture a term note" — not "manage the vault") |
 | **Typed** | 5 types (localize, edit, test, review, reproduce) | 4 C.O.D.E. types (Capture, Organize, Distill, Express) |
@@ -142,7 +142,7 @@ Distill    ( 6)   ██████                         10%
 Express    ( 5)   █████                           8%
 ```
 
-This mirrors the Atomic Skills paper's finding that **balanced skill development outperforms single-skill focus**. The SlipBox's current distribution is Capture-heavy (48%) — analogous to Atomic Skills' finding that "editing-only RL" produces strong editing but weak localization.
+This mirrors the Atomic Skills paper's finding that **balanced skill development outperforms single-skill focus**. The vault's current distribution is Capture-heavy (48%) — analogous to Atomic Skills' finding that "editing-only RL" produces strong editing but weak localization.
 
 **Prediction**: Investing in more Distill and Express skills (currently underrepresented) would produce disproportionate vault quality improvement — just as joint RL over all 5 coding skills outperforms editing-only RL. Specifically:
 - More Distill skills (e.g., automated cross-note comparison, contradiction detection, hypothesis generation from observations) would strengthen the argument/hypothesis/counter-argument building blocks
@@ -150,7 +150,7 @@ This mirrors the Atomic Skills paper's finding that **balanced skill development
 
 ### Two Types of Atomicity, One System
 
-The SlipBox uniquely implements **both** atomicity levels:
+The vault uniquely implements **both** atomicity levels:
 
 1. **Knowledge atomicity** (building blocks): Each *note* is one epistemic type — concept, argument, model, procedure...
 2. **Skill atomicity** (C.O.D.E. skills): Each *skill* is one workflow type — capture, organize, distill, express...
@@ -164,14 +164,14 @@ The SlipBox uniquely implements **both** atomicity levels:
 | **Distill** | argument, counter_argument, hypothesis |
 | **Express** | argument (answers), navigation (reports) |
 
-This two-level atomicity is **unique to the Abuse SlipBox** — no other system in the landscape has typed atoms at both the knowledge level AND the skill level.
+This two-level atomicity is **unique to this vault** — no other system in the landscape has typed atoms at both the knowledge level AND the skill level.
 
 ## The Progression: From Tools to Atoms to Building Blocks
 
 The four papers form a **progression of increasing abstraction**:
 
 ```
-LATM (2023)         DSPy (2023)         Atomic Skills (2026)     Abuse SlipBox (2026)
+LATM (2023)         DSPy (2023)         Atomic Skills (2026)     The Vault (2026)
 ─────────────       ─────────────       ──────────────────       ──────────────────
 Create tools        Compile modules     Train primitives         Type knowledge atoms
 (Python functions)  (LM signatures)     (RL-trained skills)      (building blocks)
@@ -207,21 +207,13 @@ Each column is the **same three-layer pattern**:
 - [Meta-Question: Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md) — The parent question this note provides indirect evidence for
 - [Meta-Question: Agentic Memory](thought_meta_question_agentic_memory.md) — Typed memory as atomic units for agent reasoning
 - [Meta-Question: Multi-Agent Systems](thought_meta_question_multi_agent_systems.md) — Agent specialization by atomic type
-- [Competitive Landscape](analysis_agentic_km_landscape_vs_source_vault.md) — Innovation 2: building-block atomicity
-- [Research Questions](analysis_research_questions_source_vault.md) — RQ2 (atomicity), now extended by OQ27–30
 - [Atomic Skills Lit Note](../papers/lit_ma2026atomic.md) — The coding agent paper
 - [DSPy Lit Note](../papers/lit_khattab2023dspy.md) — Composable LM modules
 - [LATM Lit Note](../papers/lit_cai2023latm.md) — LLM as tool maker
 - [Meta-Harness Lit Note](../papers/lit_lee2026metaharness.md) — Harness-level optimization
 - [Term: Atomic Skill](../term_dictionary/term_atomic_skill.md) | [Term: DSPy](../term_dictionary/term_dspy.md) | [Term: LATM](../term_dictionary/term_latm.md) | [Term: Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md)
-- [Thought: Atomic Skill Context Blockers](thought_atomic_skill_context_blockers.md) | [Thought: Connected DAG Atomic Skills](thought_connected_dag_atomic_skills.md) | [Thought: LangGraph Atomic Skill DAG](thought_langgraph_atomic_skill_dag.md) — Prior thoughts on atomic skills in the SlipBox context
-- [Entry: Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md) — Folgezettel 7
-
+- [Thought: Atomic Skill Context Blockers](thought_atomic_skill_context_blockers.md) | [Thought: Connected DAG Atomic Skills](thought_connected_dag_atomic_skills.md) | [Thought: LangGraph Atomic Skill DAG](thought_langgraph_atomic_skill_dag.md) — Prior thoughts on atomic skills in the vault context
 - [FZ 10: Universal Content Digestion Skill](thought_universal_content_digestion_skill.md) — BB purity constraint derives from atomicity principle
 ---
 
 **Last Updated**: 2026-04-10
-
-
-### Related Code Repos
-- [AmazonBuyerAbuseSlipboxAgent](../../areas/code_repos/repo_amazon_buyer_source_vault_agent.md) — Repository implementing these concepts

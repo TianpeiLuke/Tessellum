@@ -134,7 +134,7 @@ The central claim of this digest is: **the building blocks are not novel categor
 |---|---|
 | **Maps to established categories** | Each block corresponds to a recognized epistemological category (definitions, arguments, models, hypotheses, observations) — these are not invented categories |
 | **Stability** | Sascha reports the inventory has been stable since 2011 — 14 years without needing additions or removals suggests genuine structural validity |
-| **Practical utility** | The taxonomy successfully classifies 5,800+ notes in the Abuse SlipBox vault with high type purity |
+| **Practical utility** | The taxonomy successfully classifies thousands of notes in a production vault with high type purity |
 | **Cross-domain applicability** | Works across philosophy, science, operations, and engineering domains |
 | **Two coherent versions** | The v1 (argument-focused) and v2 (knowledge-type) versions are consistent — v1 decomposes *arguments* internally, v2 classifies *knowledge types* externally |
 
@@ -144,7 +144,7 @@ The central claim of this digest is: **the building blocks are not novel categor
 |---|---|
 | **No formal citation** | Sascha does not cite the philosophical traditions his categories draw from — this makes the framework appear as personal invention rather than scholarly synthesis |
 | **No completeness argument** | No proof that six types are exhaustive — why not seven? Why not five? The stability claim is empirical, not theoretical |
-| **Procedural knowledge gap** | Neither version includes "procedures" as a building block — the Abuse SlipBox had to add this as a vault extension, suggesting the taxonomy is incomplete for operational knowledge systems |
+| **Procedural knowledge gap** | Neither version includes "procedures" as a building block — this vault had to add it as an extension, suggesting the taxonomy is incomplete for operational knowledge systems |
 | **Navigation gap** | Similarly, "navigation" was added as a vault extension — the taxonomy doesn't account for meta-structural knowledge |
 | **Boundary ambiguity** | The distinction between "Model" and "Argument" can be unclear — a system architecture note argues for relationships (argument) while showing structure (model) |
 | **No peer review** | Published on a personal blog, not in a peer-reviewed journal — the framework hasn't undergone formal academic scrutiny |
@@ -165,7 +165,7 @@ The framework would benefit from:
 - [Digest: Complete Guide to Atomic Note-Taking](digest_atomicity_guide_sascha.md) — Contains v2 building blocks (knowledge-type)
 - [Design: Building Block Classification](../../slipbox/2_design/design_building_block_classification.md) — How building blocks are applied in the vault
 - [Diataxis vs. Building Blocks Analysis](../analysis_thoughts/analysis_diataxis_vs_building_blocks.md) — Cross-framework comparison
-- [Atomicity Evaluation](../analysis_thoughts/thought_atomicity_evaluation_source_vault.md) — Vault-wide atomicity analysis using building blocks
+- [Atomicity Evaluation](../analysis_thoughts/thought_atomicity_evaluation_vault.md) — Vault-wide atomicity analysis using building blocks
 - [PlugMem](../papers/lit_yang2026plugmem.md) — Propositional/prescriptive knowledge as building blocks for AI agent memory
 - [Propositional Knowledge](../term_dictionary/term_propositional_knowledge.md) — "Knowing that" — corresponds to Concepts + Empirical Observations
 - [Prescriptive Knowledge](../term_dictionary/term_prescriptive_knowledge.md) — "Knowing how" — corresponds to the vault's Procedure extension

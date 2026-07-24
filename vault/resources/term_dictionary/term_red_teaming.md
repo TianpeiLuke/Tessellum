@@ -144,7 +144,7 @@ Most red-teaming focuses on **overt harms** (toxicity, violence). Subtler harms 
 - **Abuse policy testing**: Red-teaming abuse detection models against edge cases — legitimate returns that look like abuse, abuse patterns that mimic legitimate behavior
 - **Adversarial buyer testing**: Understanding how sophisticated abusers probe and exploit detection systems (the abuse detection analog of AI red teaming)
 - **Model robustness**: Testing LLM-based abuse classifiers against adversarial inputs that attempt to evade detection
-- **Investigation tool safety**: Red-teaming investigation automation ([GreenTEA](term_greentea.md), [ARI](term_ari.md)) to ensure they don't produce false accusations or miss clear abuse signals
+- **Investigation tool safety**: Red-teaming investigation-automation tools to ensure they don't produce false accusations or miss clear abuse signals
 
 ## Related Terms
 

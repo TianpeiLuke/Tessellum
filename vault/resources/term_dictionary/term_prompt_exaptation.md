@@ -67,9 +67,9 @@ Once a prompting technique is established, it gets exapted *again* into domains 
 
 | Technique | Original LLM Domain | Exapted Domain | Surprise Factor |
 |-----------|---------------------|---------------|-----------------|
-| **CoT** | Math word problems (GSM8K) | Code generation, scientific reasoning, abuse investigation ([GreenTEA](term_greentea.md)), ethical analysis | High — "show your work" for non-math tasks |
+| **CoT** | Math word problems (GSM8K) | Code generation, scientific reasoning, abuse investigation, ethical analysis | High — "show your work" for non-math tasks |
 | **Few-shot** | NLP classification | Image generation (DALL-E), audio (Whisper), tabular (TabPFN) | Very high — text exemplars for non-text tasks |
-| **Role-playing** | Knowledge QA | Creative writing, therapy simulation, red-teaming, [investigator-LLM interaction](term_ari.md) | Moderate — natural extension of persona |
+| **Role-playing** | Knowledge QA | Creative writing, therapy simulation, red-teaming, investigator-LLM interaction | Moderate — natural extension of persona |
 | **Self-Consistency** | Arithmetic reasoning | Medical diagnosis, legal analysis, code review | Moderate — voting works across domains |
 
 ### Level 3: Reverse Exaptation (LLM Prompt Insights → Human Practice)
@@ -137,9 +137,9 @@ The key difference: architectural exaptation transfers *computational components
 
 ## Applications to Our Work
 
-- **Prompt design for abuse detection**: When designing prompts for [GreenTEA](term_greentea.md) or [ARI](term_ari.md), systematically mine investigator cognitive strategies (pattern matching, red-flagging, escalation heuristics) as candidates for prompt exaptation — the investigator's mental process may directly translate into effective prompting
-- **[SPOT-X](term_spot_x.md) reasoning traces**: SPOT-X's chain-of-thought decision rules are a Level 2 exaptation of CoT from math reasoning into abuse classification — understanding this lineage helps evaluate which CoT properties (interpretability, decomposition) transfer and which (verifiability, mathematical rigor) do not
-- **Cross-team prompting knowledge**: Techniques proven in one abuse detection domain (e.g., CoT for DNR classification) can be systematically exapted to other domains (e.g., CoT for A-to-Z investigation) — the exaptation framework provides a structured methodology for prompt reuse
+- **Prompt design for abuse detection**: When designing prompts for LLM-based investigation assistants, systematically mine investigator cognitive strategies (pattern matching, red-flagging, escalation heuristics) as candidates for prompt exaptation — the investigator's mental process may directly translate into effective prompting
+- **Reasoning traces in classifiers**: When an abuse classifier generates chain-of-thought decision rules, this is a Level 2 exaptation of CoT from math reasoning into classification — understanding this lineage helps evaluate which CoT properties (interpretability, decomposition) transfer and which (verifiability, mathematical rigor) do not
+- **Cross-team prompting knowledge**: Techniques proven in one abuse detection domain can be systematically exapted to other domains — the exaptation framework provides a structured methodology for prompt reuse
 
 ## Questions
 
@@ -168,9 +168,9 @@ The key difference: architectural exaptation transfers *computational components
 - [System 1 and System 2](term_system_1_and_system_2.md) — Cognitive framework exapted into prompt design: standard prompting elicits System 1, CoT externalizes System 2
 
 ### Production Systems Using Prompt Exaptation
-- [GreenTEA](term_greentea.md) — Uses CoT-style reasoning (Level 2 exaptation from math to abuse investigation)
-- [SPOT-X](term_spot_x.md) — Generates chain-of-thought decision rules (Level 2 exaptation from reasoning to classification)
-- [ARI](term_ari.md) — Investigator-LLM interaction using role-playing and CoT prompts
+- Abuse-investigation LLM systems — Use CoT-style reasoning (Level 2 exaptation from math to investigation)
+- Reasoning-rule classifiers — Generate chain-of-thought decision rules (Level 2 exaptation from reasoning to classification)
+- Investigator-LLM assistants — Investigator-LLM interaction using role-playing and CoT prompts
 
 ### Innovation Framework
 - [Design Thinking](term_design_thinking.md) — Human-centered methodology; a candidate source domain for future prompt exaptation

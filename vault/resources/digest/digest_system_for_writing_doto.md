@@ -214,7 +214,7 @@ A systematic checklist of question categories for finding connections when proce
 
 Doto's practical approach maps directly to several vault patterns:
 
-- **Hub notes vs. structure notes** maps precisely to the vault's **entry points** (hub notes for navigation/retrieval) vs. **area notes** (structure notes for developing domain understanding). Entry points like `entry_buyer_abuse_runbook` are hubs; area notes like `area_dnr` are structure notes that organize knowledge for active use.
+- **Hub notes vs. structure notes** maps precisely to the vault's **entry points** (hub notes for navigation/retrieval) vs. **area notes** (structure notes for developing domain understanding). Entry points are hubs; area notes are structure notes that organize knowledge for active use.
 
 - **CLOGs** parallel the vault's **research logs** (`archives/research_logs/`) — both track active writing projects with time-stamped progress notes, published outputs, and next steps.
 

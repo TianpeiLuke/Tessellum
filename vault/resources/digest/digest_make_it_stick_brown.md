@@ -290,7 +290,6 @@ The strategies in *Make It Stick* map directly to Zettelkasten and SlipBox knowl
 
 ### Related Vault Notes
 - [Term: Zettelkasten](../term_dictionary/term_zettelkasten.md) — the note-linking methodology that embodies elaborative interrogation through forced connection-making
-- [Project: Abuse SlipBox](../../../projects/project_source_vault.md) — this vault project, which implements many of the learning principles described in the book
 - [Digest: The Art of Asking](digest_art_of_asking_fadem.md) — complementary book on questioning frameworks, directly applicable to elaborative interrogation technique
 - [Digest: A More Beautiful Question](digest_beautiful_question_berger.md) — complementary book on the philosophy of inquiry; Berger's argument that "Why" questions drive innovation validates the cognitive science behind elaborative interrogation
 - [Digest: Building a Second Brain](digest_building_second_brain_forte.md) — Progressive Summarization's Layer 4 (writing in your own words) creates the desirable difficulty that produces deeper learning

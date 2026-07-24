@@ -249,16 +249,9 @@ Sascha's three principles (Sound Communication, Focus, Purpose) moderate when at
 ## Related Notes
 
 ### Folgezettel Trail
-- **★ Trail outcome [FZ 7g1a1a1a1]**: [Synthesis: One Vault, Three Invariance Regimes](thought_synthesis_three_invariance_regimes_one_vault.md) — where the FZ 7g1 chain concludes; this note (FZ 7g) is preserved as Layer 1 (Ontology) of a three-regime architecture.
 - **Parent [FZ 7]**: [Atomicity as Universal Scaling Principle](thought_atomicity_as_universal_scaling_principle.md) — The 7-property definition; this note adds the relationship layer
-- **Child [FZ 7g1]**: [Counter: BB Ontology Misses Same-BB Deep-Dive Trail](counter_bb_ontology_misses_same_bb_deep_dive.md) — Argues the 10 cross-type edges miss the dominant deep-dive pattern (intent → model → variable → a data loading service → ETL, all in "model" BB); proposes a parallel architectural edge family
-- **Sibling [FZ 7a]**: [SlipBox Skills vs Atomic Skills](thought_slipbox_skills_vs_atomic_skills.md) — Skill routing uses these relationships
-- **Sibling [FZ 7b]**: [Atomicity Evaluation](thought_atomicity_evaluation_source_vault.md) — Sascha's types validated; this note extends with relationships
-- **Sibling [FZ 7c]**: [Vault Health](analysis_building_block_vault_health.md) — Distribution diagnostic uses type counts; this note explains why gaps propagate via edges
+- **Sibling [FZ 7b]**: [Atomicity Evaluation](thought_atomicity_evaluation_vault.md) — Sascha's types validated; this note extends with relationships
 - **Sibling [FZ 7f]**: [Thinking Protocol](thought_slipbox_thinking_protocol.md) — The reasoning protocol follows these edges as reasoning steps
-
-### Applied
-- **[FZ 5k2: Ontology-Grounded Multi-Hop Benchmark](thought_ontology_grounded_multi_hop_benchmark.md)** — Uses this ontology's 10 directed edges to define multi-hop QA questions; Edge Recall@K measures whether retrieval recovers ontology edge pairs
 
 ### Source Digests
 - **[The Complete Guide to Atomic Note-Taking (Sascha)](../digest/digest_atomicity_guide_sascha.md)** — Original 6-type taxonomy this note extends
@@ -269,16 +262,10 @@ Sascha's three principles (Sound Communication, Focus, Purpose) moderate when at
 - **[Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md)** — Overview term note
 - 8 individual building block terms: [Concept](../term_dictionary/term_knowledge_building_blocks_concept.md) | [Argument](../term_dictionary/term_knowledge_building_blocks_argument.md) | [Counter-Argument](../term_dictionary/term_knowledge_building_blocks_counter_argument.md) | [Model](../term_dictionary/term_knowledge_building_blocks_model.md) | [Hypothesis](../term_dictionary/term_knowledge_building_blocks_hypothesis.md) | [Empirical Observation](../term_dictionary/term_knowledge_building_blocks_empirical_observation.md) | [Procedure](../term_dictionary/term_knowledge_building_blocks_procedure.md) | [Navigation](../term_dictionary/term_knowledge_building_blocks_navigation.md)
 
-### Entry Points
-- **[Entry: Tessellum Research](../../0_entry_points/entry_source_vault_research.md)** — Section 5.3 contains the reasoning cycle diagram
-- **[Entry: Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md)** — This note is FZ 7g
-
 - [FZ 10b: BB × Category × Directory Mapping](thought_bb_category_directory_mapping.md) — empirical routing principles derived from the ontology
 
 ### Forward Extensions (FZ 10d1e1a family — applying the ontology as software architecture)
 
-- **** — argues this ontology IS the design principle for the universal decomposer skill: split axis = BB type; cross-leaf inlinks = the 10 directed edges, correct-by-construction
-- **** — applies the BB ↔ category mapping (FZ 10b) at *add-to-plan* time; sub-category becomes a deferred decision driven by leaf content
 - **[FZ 10d1e1a5 ★](thought_synthesis_knowledge_auto_digest_architecture.md)** — Central design synthesis: the 12-criteria validator (C1–C12) operationalizes the ontology's purity rules; the 5-role architecture deploys the 10 directed edges as auto-generated cross-leaf inlinks
 ---
 

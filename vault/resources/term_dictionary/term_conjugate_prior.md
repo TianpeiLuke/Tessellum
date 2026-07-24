@@ -27,7 +27,7 @@ A **conjugate prior** is a prior distribution that, when combined with a given l
 
 Formally, if the prior $p(\theta)$ and the posterior $p(\theta|x)$ both belong to the same distribution family $\mathcal{F}$, then $\mathcal{F}$ is called the **conjugate family** for the likelihood $p(x|\theta)$. This property provides a closed-form expression for the posterior, eliminating the need for numerical integration or MCMC sampling.
 
-Conjugate priors exist for all likelihood functions in the exponential family. The Beta-Binomial conjugacy is the foundation of CUBES return rate estimation in buyer abuse prevention.
+Conjugate priors exist for all likelihood functions in the exponential family. The Beta-Binomial conjugacy is the foundation of return rate estimation in abuse prevention.
 
 ## Taxonomy
 

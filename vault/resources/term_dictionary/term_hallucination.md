@@ -101,27 +101,11 @@ Lewis et al. (2020) showed RAG reduces hallucination dramatically (42.7% vs 7.1%
 | **Groundedness** | Automatic | Whether claims are entailed by provided context |
 | **Faithfulness** | Automatic | Whether summary/generation is faithful to source document |
 
-## Context
-
-### In Buyer Risk Prevention
-
-Hallucination is a critical concern for LLM-based abuse detection systems:
-
-- **GreenTEA**: SOP-driven investigation automation must not hallucinate investigation conclusions — wrong decisions directly impact customer accounts. RAG over SOPs mitigates this.
-- **AskNexus**: Natural language queries over the entity graph must return factually grounded responses — hallucinated entity relationships could lead to false abuse flags
-- **Abuse Slipbox Agent**: The answer-query pipeline uses graph-aware retrieval specifically to ground responses in vault source notes, with explicit citation requirements
-- **Investigation Reports**: Any LLM-generated investigation summary must be verifiable against case data — hallucinated evidence details could cause regulatory issues
-
-### The Trust Gap
-
-For abuse prevention specifically, hallucination is not just an accuracy problem but a **trust problem**: investigators need to verify every AI-generated claim against source data. RAG with source attribution is the minimum requirement for production deployment.
-
 ## Related Terms
 
 - **[RAG](term_rag.md)**: Retrieval-Augmented Generation — primary mitigation strategy for hallucination; grounds generation in retrieved documents
 - **[LLM](term_llm.md)**: Large Language Models — the model class where hallucination is a core failure mode
 - **[Fine-Tuning](term_fine_tuning.md)**: Alternative approach to reduce hallucination via domain-specific training, but doesn't eliminate it
-- **[GreenTEA](term_greentea.md)**: BRP's SOP-driven investigation system that uses RAG to reduce hallucination in automation decisions
 - **[Knowledge Graph](term_knowledge_graph.md)**: Structured knowledge source that can provide factual grounding for generation
 - **[Embedding](term_embedding.md)**: Dense representations enabling the semantic retrieval that RAG uses for grounding
 - **[Conformal Prediction](term_conformal_prediction.md)**: Statistical framework for uncertainty quantification that could complement hallucination detection
@@ -136,6 +120,3 @@ For abuse prevention specifically, hallucination is not just an accuracy problem
 ### Key References
 - Ji, Z., et al. (2023). "Survey of Hallucination in Natural Language Generation." ACM Computing Surveys. *Comprehensive taxonomy of hallucination types, causes, and mitigations.*
 - Min, S., et al. (2023). "FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation." EMNLP 2023. *Standard metric for measuring hallucination at the atomic fact level.*
-
-### Internal Documentation
-- [GreenTEA](https://internal-wiki) — BRP project using RAG to mitigate hallucination in investigation automation

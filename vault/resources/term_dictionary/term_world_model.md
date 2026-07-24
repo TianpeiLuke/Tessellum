@@ -127,7 +127,6 @@ The term was popularized by Ha & Schmidhuber (2018), though the concept of "inte
 - **[Diffusion Model](term_diffusion_model.md)**: Video diffusion is increasingly used as the world model backbone for pixel-space prediction
 - **[Foundation Model](term_foundation_model.md)**: Large-scale world models (Sora, Cosmos) are foundation models trained on internet-scale video data
 - **[Generative Latent Prediction](term_generative_latent_prediction.md)**: Prediction in latent space without pixel decoding — the V-JEPA approach to world modeling
-- **[Genie](term_genie.md)**: Interactive world model generating playable 2D/3D environments from video — a key prototype system
 - **[SSM](term_ssm.md)**: State Space Models share the state-transition formalism $h_t = f(h_{t-1}, x_t)$ with RSSM-based world models
 - **[Autoencoder](term_autoencoder.md)**: VAE encoders compress observations into the latent space where dynamics are learned
 - **[RNN](term_rnn.md)**: Recurrent networks provide the sequential dynamics backbone for latent-space world models (GRU in RSSM)

@@ -157,7 +157,6 @@ When encountering a new input type (e.g., SharePoint PDF, Word doc SOP, Broadcas
 - **OQ48**: How should the router handle content that legitimately spans two categories (e.g., a tutorial that is also an SOP)?
 
 - [FZ 7g: Building Block Ontology](thought_building_block_ontology_relationships.md) — the ontology that the routing decision tree operationalizes
-- [FZ 7c: Building Block Vault Health](analysis_building_block_vault_health.md) — distribution diagnostic that the dominant attractor analysis extends
 
 ### Forward Extensions (FZ 10d1e1a family — operationalizing this routing rule)
 

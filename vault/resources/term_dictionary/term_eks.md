@@ -32,14 +32,14 @@ related_wiki: https://docs.aws.amazon.com/eks/
 
 Amazon Elastic Kubernetes Service (EKS) is AWS's managed Kubernetes service that runs the Kubernetes control plane across multiple availability zones without requiring operators to install, operate, or maintain their own Kubernetes clusters. EKS provides a certified Kubernetes-conformant environment, enabling teams to use standard Kubernetes tooling (kubectl, Helm, operators) while AWS manages control plane availability, patching, and scaling.
 
-In the buyer abuse prevention context, EKS is a deployment target for ORCA Edge containerized workflows and supports BAP teams that require Kubernetes-native features such as custom operators, service meshes, or GPU scheduling for ML inference workloads.
+EKS is commonly used as a deployment target for containerized workflows and services that require Kubernetes-native features such as custom operators, service meshes, or GPU scheduling for ML inference workloads.
 
 ## Context
 
-- **ORCA Edge**: EKS is a supported deployment platform for ORCA Edge alongside Docker-compose, ECS, and vanilla Kubernetes
-- **BAP ML Inference**: Teams with complex scheduling requirements (GPU node pools, spot instances, custom autoscaling) use EKS for model serving
+- **Containerized Workflows**: EKS is a supported deployment platform for container-based workflow runtimes alongside Docker Compose, ECS, and self-managed Kubernetes
+- **ML Inference**: Teams with complex scheduling requirements (GPU node pools, spot instances, custom autoscaling) use EKS for model serving
 - **Platform Teams**: Infrastructure teams provide EKS clusters as shared compute platforms with namespace isolation per service team
-- **Hybrid Deployments**: Some BAP services run on EKS when they need Kubernetes-specific features (CRDs, operators, Istio service mesh)
+- **Hybrid Deployments**: Services run on EKS when they need Kubernetes-specific features (CRDs, operators, Istio service mesh)
 
 ## Key Characteristics
 
@@ -55,17 +55,13 @@ In the buyer abuse prevention context, EKS is a deployment target for ORCA Edge 
 ## Related Terms
 
 - **[ECR](term_ecr.md)**: Container registry storing images pulled by EKS pods during deployment
-- **[ORCA Edge](term_orca_edge.md)**: Containerized ORCA runtime deployable on EKS for Kubernetes-native orchestration
 - **[ECS](term_ecs.md)**: AWS's alternative container orchestration — simpler but less flexible than EKS/Kubernetes
-- **[Apollo](term_apollo.md)**: Amazon's deployment service that can target EKS clusters for container deployments
 - **[SageMaker](term_sagemaker.md)**: ML platform that can use EKS for distributed training and inference via SageMaker Operators
 - **[Microservices Architecture](term_microservices_architecture.md)**: Architectural pattern enabled by EKS pod isolation and service discovery
-- **[NAWS](term_naws.md)**: Native AWS environment where EKS clusters run for BAP services
 - **[CDK](term_cdk.md)**: Infrastructure-as-code used to provision EKS clusters and managed node groups
 - **[DAG](term_dag.md)**: Kubernetes workflow engines (Argo) execute DAG-structured pipelines on EKS
-- **[ORCA](term_orca.md)**: Workflow orchestration platform whose Edge runtime deploys on EKS
 
 ## References
 
 - [Amazon EKS Documentation](https://docs.aws.amazon.com/eks/)
-- [ORCA Edge Architecture](https://internal-host)
+- [Kubernetes Documentation](https://kubernetes.io/docs/home/)

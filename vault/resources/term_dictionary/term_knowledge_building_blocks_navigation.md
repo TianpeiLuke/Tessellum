@@ -78,8 +78,8 @@ A good navigation note should:
 
 | Example Note | Why It Is a Navigation Note |
 |--------------|------------------------------|
-| Entry point notes (e.g., [entry_buyer_abuse_ml_programs.md](../../0_entry_points/entry_buyer_abuse_ml_programs.md)) | Entry point notes are pure navigation: they list and link to all notes related to a program area, organized by category. They contain no substantive analysis -- only routing structure. |
-| [entry_acronym_glossary.md](../../0_entry_points/entry_acronym_glossary.md) | An alphabetical index of acronyms with links to their term notes. Classic glossary-style navigation: organizational structure over substantive content. |
+| Entry point notes (program-area indexes) | Entry point notes are pure navigation: they list and link to all notes related to a program area, organized by category. They contain no substantive analysis -- only routing structure. |
+| Glossary index notes | An alphabetical index of acronyms and terms with links to their definitions. Classic glossary-style navigation: organizational structure over substantive content. |
 | [README.md](../../../README.md) | The vault's top-level routing guide: points new users to entry points, explains the folder structure, and provides statistics. Navigation meta-structure for the entire system. |
 
 ## Common Mistakes
@@ -104,7 +104,6 @@ A good navigation note should:
 ### Vault Sources
 
 - [entry_faq.md](../../0_entry_points/entry_faq.md) -- a navigation note that routes common questions to relevant vault notes
-- [entry_buyer_abuse_ml_model_landscape.md](../../0_entry_points/entry_buyer_abuse_ml_model_landscape.md) -- navigation note organizing the ML model portfolio
 
 ### External Sources
 

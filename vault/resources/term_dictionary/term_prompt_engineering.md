@@ -64,7 +64,7 @@ Prompt engineering operates at the intersection of LLM capabilities and human in
 | **Basic prompting** | Zero-shot, few-shot, role prompting, system prompts | Simple tasks; known output format |
 | **Reasoning augmentation** | [Chain of Thought](term_chain_of_thought.md), Self-Consistency, Tree of Thought, Least-to-Most | Multi-step reasoning; math; logic |
 | **Agentic prompting** | [ReAct](term_react.md), Reflexion, plan-and-solve, tool-use instructions | Tasks requiring external tools or multi-turn interaction |
-| **Automatic optimization** | DSPy, APE, OPRO, EvoPrompt, [GreenTEA](term_greentea.md) | Production systems needing consistent, optimized prompts at scale |
+| **Automatic optimization** | DSPy, APE, OPRO, EvoPrompt | Production systems needing consistent, optimized prompts at scale |
 | **Security** | Prompt injection defense, system prompt hardening, input sanitization | Any user-facing LLM application |
 
 ### By Prompt Component
@@ -111,7 +111,6 @@ Prompt engineering operates at the intersection of LLM capabilities and human in
 | **DSPy** | 2023 | Programmatic prompt compilation and optimization | Replaced hand-crafted prompts with compiled programs; Stanford NLP |
 | **APE** | 2023 | LLM-generated prompts outperform human-written | Automated prompt search via LLM scoring |
 | **OPRO** | 2023 | LLMs as optimizers for prompt engineering | Meta-optimization: use LLMs to optimize LLM prompts |
-| **[GreenTEA](term_greentea.md)** | 2024 | Multi-agent prompt optimization (Predictor + Error Analyzer + Prompt Generator) | Production deployment; +9% AUC; KDD 2025 |
 | **Claude System Prompts** | 2024 | XML-structured system prompts with explicit constraints | Formalized best practices for structured prompting |
 
 ## Challenges and Limitations
@@ -136,7 +135,6 @@ Prompt engineering operates at the intersection of LLM capabilities and human in
 - **[Agent Orchestration](term_agent_orchestration.md)**: Agent system prompts define agent roles, capabilities, and collaboration patterns within orchestration frameworks
 - **[Guardrails](term_guardrails.md)**: System prompts are the first line of defense for safety constraints; guardrails provide enforcement beyond prompt-level instructions
 - **[Prompt Exaptation](term_prompt_exaptation.md)**: Pattern where human cognitive practices (pedagogy, Socratic method, legal reasoning) are repurposed as prompt techniques — explains why prompt engineering works
-- **[GreenTEA](term_greentea.md)**: Production system that automates prompt engineering via multi-agent optimization — transforms SOPs into optimized LLM prompts
 - **[RAG](term_rag.md)**: Retrieval-Augmented Generation provides contextual information to prompts — the "context" part of context engineering
 - **[Red Teaming](term_red_teaming.md)**: Adversarial prompt testing to discover safety failures and prompt injection vulnerabilities
 

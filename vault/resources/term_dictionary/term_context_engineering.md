@@ -165,7 +165,6 @@ Context engineering treats the context window as a finite, precious resource —
 - **[Embedding](term_embedding.md)**: Dense vector representations enabling similarity-based context retrieval in RAG pipelines
 - **[Vector Database](term_vector_database.md)**: Specialized storage for embeddings enabling fast similarity search for context selection
 - **[MCP](term_mcp.md)**: Model Context Protocol — standardized protocol for injecting tool outputs and external data into LLM context
-- **[AgentZ](term_agentz.md)**: Amazon's agent platform whose DAPE engine performs context assembly for each task step
 - **[Chain of Thought](term_chain_of_thought.md)**: Reasoning technique that consumes context tokens for intermediate steps — a key context budget trade-off
 - **[Transformer](term_transformer.md)**: The architecture whose attention mechanism creates the quadratic cost that motivates context engineering
 - **[Hallucination](term_hallucination.md)**: LLM failure mode that context engineering mitigates through factual grounding, but that context poisoning can amplify

@@ -220,7 +220,7 @@ Tessellum/
 
 ## Origin
 
-Tessellum is the public release of the typed-knowledge system originally developed inside Amazon's buyer-abuse-prevention research vault. The architecture (BB ontology, Folgezettel trails, DKS protocol, CQRS thesis) was discovered through ~14 long-running Folgezettel research trails over 2024–2026.
+Tessellum is the public release of a typed-knowledge system originally developed inside a production research vault. The architecture (BB ontology, Folgezettel trails, DKS protocol, CQRS thesis) was discovered through ~14 long-running Folgezettel research trails over 2024–2026.
 
 The name **Tessellum** is Latin: *small mosaic tile* — the atomic typed unit. A vault is the mosaic.
 

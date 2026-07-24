@@ -105,11 +105,11 @@ Agentic AI represents a transformative shift in artificial intelligence, but its
 
 ## Relevance to Our Work
 
-This survey provides a unifying framework for classifying the Abuse Slipbox's agentic AI capabilities:
-- The **dual-paradigm framework** maps to the slipbox's own architecture: symbolic (SQLite database, graph queries, PageRank) + neural (LLM-based skill orchestration)
+This survey provides a unifying framework for classifying this knowledge base's agentic AI capabilities:
+- The **dual-paradigm framework** maps to this knowledge base's own architecture: symbolic (SQLite database, graph queries, PageRank) + neural (LLM-based skill orchestration)
 - **Conceptual retrofitting** is a useful lens for evaluating whether our agent architecture genuinely implements agentic patterns or merely mimics them
-- The **evaluation framework** for agency (beyond accuracy) informs how to assess slipbox agent quality
-- **Multi-agent coordination patterns** (conversation-based, role-based workflow) map to the slipbox's skill-based orchestration model
+- The **evaluation framework** for agency (beyond accuracy) informs how to assess the knowledge base's agent quality
+- **Multi-agent coordination patterns** (conversation-based, role-based workflow) map to this knowledge base's skill-based orchestration model
 
 ### Vault Connections
 

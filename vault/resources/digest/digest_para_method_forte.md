@@ -214,7 +214,7 @@ The vault's architecture is a direct implementation of PARA principles, extended
 
 1. **PARA categories as vault top-level structure**: The vault's five top-level directories — `areas/`, `resources/`, `projects/`, `archives/`, `0_entry_points/` — map directly to PARA's four categories plus an entry-point layer that serves as the vault's navigation system.
 
-2. **Project–Area distinction in practice**: The vault maintains this boundary: `projects/` contains time-bounded efforts (project_csmo, project_source_vault), while `areas/` contains ongoing program areas (area_dnr, area_mdr) with standards to maintain. Completed projects move to `archives/projects/`.
+2. **Project–Area distinction in practice**: The vault maintains this boundary: `projects/` contains time-bounded efforts, while `areas/` contains ongoing program areas with standards to maintain. Completed projects move to `archives/projects/`.
 
 3. **Just-in-time organization**: The vault's incremental database updates and on-demand link audits embody the just-in-time principle — notes are indexed when created, links are audited when needed, not on a rigid schedule.
 

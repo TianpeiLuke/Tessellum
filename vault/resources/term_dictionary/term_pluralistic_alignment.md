@@ -136,7 +136,7 @@ Make value tradeoffs explicit in the model's reasoning process:
 
 - **Abuse policy disagreement**: Abuse detection policies reflect specific organizational values. Different teams (investigation, customer service, legal) may have legitimately different perspectives on what constitutes "abuse" vs. "legitimate behavior." Pluralistic alignment could model these perspectives explicitly rather than forcing a single threshold.
 - **Cross-marketplace alignment**: Abuse norms differ across marketplaces and cultures. A pluralistically aligned abuse classifier could adapt to local norms while maintaining global safety constraints.
-- **Investigator preference diversity**: [ARI](term_ari.md) investigators have different investigation styles and risk tolerances. A reward model trained on averaged preferences may not serve any individual investigator well — personalized reward models could improve investigation quality.
+- **Investigator preference diversity**: Human investigators have different investigation styles and risk tolerances. A reward model trained on averaged preferences may not serve any individual investigator well — personalized reward models could improve investigation quality.
 - **Escalation thresholds**: What triggers escalation from automated to human review reflects value tradeoffs (false positive cost vs. false negative cost) that legitimately differ across abuse types, regions, and risk levels.
 
 ## Related Terms

@@ -63,7 +63,7 @@ The method was introduced by Friedman, Hastie & Tibshirani (2008), building on e
 | Fraud detection | Transaction network inference | Accounts / entities | Conditional transaction dependencies |
 | **Abuse ring detection** | **Customer interaction graphs** | **Customer accounts** | **Conditional behavioral dependencies** |
 
-In the buyer abuse prevention context, GraphLasso is relevant for **abuse ring detection**: given behavioral features across customer accounts, the estimated sparse precision matrix reveals which customers are conditionally dependent — suggesting coordinated behavior even after controlling for common population-level patterns. This complements graph-based approaches (GNNs, community detection) by providing a statistically principled way to infer the latent dependency structure from observed feature data.
+In the abuse-prevention context, GraphLasso is relevant for **abuse ring detection**: given behavioral features across customer accounts, the estimated sparse precision matrix reveals which customers are conditionally dependent — suggesting coordinated behavior even after controlling for common population-level patterns. This complements graph-based approaches (GNNs, community detection) by providing a statistically principled way to infer the latent dependency structure from observed feature data.
 
 ## Related Terms
 

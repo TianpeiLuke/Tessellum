@@ -68,10 +68,6 @@ Term notes that define the knowledge management systems underpinning the vault:
 - [thought_slipbox_thinking_protocol](../resources/analysis_thoughts/thought_slipbox_thinking_protocol.md) — thinking protocol for slipbox: how to reason through the vault's note graph
 - [thought_thoughtdata_vs_zettelkasten](../resources/analysis_thoughts/thought_thoughtdata_vs_zettelkasten.md) — ThoughtData vs Zettelkasten comparison: contrasting two approaches to knowledge architecture
 
-## Project
-
-- [project_source_vault](../projects/project_source_vault.md) — the the source vault project itself; design decisions, architecture, and roadmap for this vault
-
 ## FAQ
 
 - [faq_zettelkasten_vs_wikipedia](../resources/faqs/faq_zettelkasten_vs_wikipedia.md) — why a Zettelkasten is not a personal Wikipedia; structural and philosophical differences

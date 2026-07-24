@@ -4,32 +4,27 @@ tags:
   - terminology
   - ml_model
   - graph_algorithm
-  - tattletale
-  - buyer_abuse
 keywords:
   - Community Detection
   - graph partitioning
   - Greedy Modularity Maximization
   - modularity
-  - EVINCE
-  - expansion
-  - Tattletale
+  - Leiden
+  - Louvain
 topics:
   - machine learning
   - graph algorithms
-  - abuse detection
 language: markdown
 date of note: 2026-01-30
 status: active
 building_block: concept
-related_docs: https://internal-wiki
 ---
 
 # Term: Community Detection
 
 ## Definition
 
-**Community Detection** (CD) is a graph partitioning technique used in the Tattletale expansion stage to identify densely connected subgroups ("communities") of accounts within larger clusters. While Tattletale's initial clustering via MODE groups accounts by behavioral similarity, Community Detection further refines these clusters by finding tightly-knit account networks based on relationship density. This allows investigators to prioritize the highest-risk subsets within large clusters, minimizing false positive rates while maximizing abuse detection.
+**Community Detection** (CD) is a graph partitioning technique used to identify densely connected subgroups ("communities") of nodes within a larger graph. Given a graph whose nodes represent entities and whose edges represent relationships, community detection finds groups of nodes with many internal edges and comparatively few edges to the rest of the graph. It is widely used to decompose large clusters into tightly-knit sub-communities, enabling analysis at the level of coherent groups rather than of the graph as a whole.
 
 ## Full Name
 
@@ -37,43 +32,20 @@ Community Detection (CD)
 
 ## Purpose
 
-Community Detection serves multiple purposes in the Tattletale pipeline:
-1. **Break down large clusters** - Decompose clusters of 50-200 accounts into manageable 10-30 account communities
-2. **Minimize False Positive Rate** - Focus on densely connected accounts most likely to be truly abusive
-3. **Improve prioritization accuracy** - Leverage community-level features rather than cluster-level averages
-4. **Enhance investigation efficiency** - Provide investigators with tighter, more coherent account groups
-5. **Increase MO detection** - Identify abuse patterns that may be diluted in larger clusters
+Community Detection serves several purposes in graph analysis:
+1. **Break down large clusters** - Decompose large, heterogeneous clusters into smaller, coherent communities
+2. **Improve prioritization accuracy** - Leverage community-level features rather than whole-graph averages
+3. **Enhance interpretability** - Provide tighter, more coherent node groups for downstream analysis
+4. **Surface latent structure** - Identify subgroups that may be diluted in a larger graph
 
-## Context in Buyer Abuse Prevention
+## Algorithm: Greedy Modularity Maximization
 
-### Position in Tattletale Pipeline
-
-Community Detection operates in the **Expansion** stage of the Tattletale pipeline:
-
-```
-Seeding → Detection (MODE) → Expansion (EVINCE + CD) → Refinement (SCAP) → TTUX
-                                      ↑
-                               Community Detection
-```
-
-**Problem Solved**: After MODE clusters accounts by behavioral similarity, some clusters are too large and contain both high-risk and low-risk subsets. SCAP prioritization works at cluster level, which can:
-- Rank high a cluster that has low-risk subsets
-- Queue clusters where only a portion is truly abusive
-- Create investigator burden with noisy account groups
-
-**Solution**: Community Detection partitions clusters into smaller, densely connected communities, enabling:
-- Community-level risk scoring
-- Filtering low-risk communities before queuing
-- Higher precision investigation targets
-
-### Algorithm: Greedy Modularity Maximization
-
-**Modularity** measures the quality of graph partitioning by comparing edge density within communities vs. a random graph with the same degree distribution.
+**Modularity** measures the quality of a graph partition by comparing edge density within communities against a random graph with the same degree distribution.
 
 **Algorithm Steps**:
-1. Start with each account as its own community
+1. Start with each node as its own community
 2. Iteratively merge neighboring nodes into communities
-3. Optimize modularity score at each step
+3. Optimize the modularity score at each step
 4. Stop when no merge improves modularity
 
 **Mathematical Definition**:
@@ -88,178 +60,109 @@ Where:
 - δ = 1 if same community, 0 otherwise
 ```
 
-**Intuition**: High modularity = many edges within communities, few edges between communities
+**Intuition**: High modularity = many edges within communities, few edges between communities.
 
-### Key Features
+### Common Algorithms
+
+| Algorithm | Approach | Notes |
+|-----------|----------|-------|
+| **Greedy Modularity Maximization** | Iteratively merge to maximize Q | Simple, deterministic |
+| **Louvain** | Multi-level modularity optimization | Fast, widely used |
+| **Leiden** | Refinement of Louvain | Guarantees well-connected communities |
+| **Label Propagation** | Nodes adopt majority neighbor label | Near-linear time |
+
+## Key Features
 
 **1. Density-Based Grouping**
-- Accounts with strong inter-connections grouped together
-- Sparse connections between communities indicate different abuse patterns
-- Preserves relationship structure from original graph
+- Nodes with strong inter-connections are grouped together
+- Sparse connections between communities indicate distinct structure
+- Preserves relationship structure from the original graph
 
 **2. Community-Level Features**
-- Aggregated concession amounts per community
-- Order velocity and behavioral patterns
-- Risk score distributions within community
+- Aggregated attributes per community
+- Structural metrics (density, size, degree distribution)
 
 **3. Prioritization Enhancement**
-- Community-level risk scores complement cluster-level SCAP
-- Dense communities with high concessions prioritized
-- Low-density or low-risk communities filtered out
-
-## Performance Results
-
-### Launch Impact (July 2023)
-
-| Metric | Before CD | After CD | Improvement |
-|--------|-----------|----------|-------------|
-| MOs Detected per Month | 71 | 89 | **+25%** |
-| False Positive Rate | Higher | Lower | Improved |
-| Investigation Precision | Cluster-level | Community-level | Enhanced |
-
-### Key Metrics
-
-| Metric | Target | Actual |
-|--------|--------|--------|
-| MO Detection Increase | +15% | **+25%** |
-| Community Size | 10-30 accounts | Achieved |
-| Investigation Time | Reduced | Per-community |
+- Community-level scores complement whole-graph scoring
+- Dense communities can be surfaced; low-density ones filtered
 
 ## Implementation Details
 
 ### Input
-- Clusters from MODE (clusters of 50-200 accounts)
-- Account relationship graph (linkages as edges)
+- A graph (nodes with attributes, edges with optional weights)
+- Optional subgraphs (e.g., per pre-computed cluster)
 - Edge weights (strength of relationships)
-- Node features (account attributes)
 
 ### Processing
-1. **Graph Construction**: Build subgraph for each cluster
-2. **Modularity Optimization**: Apply Greedy Modularity Maximization
+1. **Graph Construction**: Build the (sub)graph
+2. **Modularity Optimization**: Apply Greedy Modularity Maximization (or Louvain/Leiden)
 3. **Community Extraction**: Identify final community partitions
 4. **Feature Aggregation**: Compute community-level metrics
-5. **Prioritization**: Score communities for investigation
+5. **Scoring / Prioritization**: Rank communities for downstream use
 
 ### Output
-- Communities (10-30 accounts each)
-- Community-level risk scores
+- Communities (node partitions)
+- Community-level scores
 - Relationship density metrics
-- Queued to TTUX for investigation
-
-### Integration with SCAP
-
-**Before CD**: SCAP ranked entire clusters
-**After CD**: SCAP ranks communities within clusters
-
-```
-MODE Cluster (100 accounts)
-   ↓ Community Detection
-Community A (25 accounts, high density) → High SCAP score → Queued
-Community B (40 accounts, medium density) → Medium SCAP score → Queued
-Community C (35 accounts, low density) → Low SCAP score → Filtered
-```
-
-## Deployment Timeline
-
-| Date | Milestone |
-|------|-----------|
-| Q2 2023 | Experiments started |
-| June 30, 2023 | Launched for NCL queue |
-| September 1, 2023 | Launched in HeavyHitter queue |
-| December 2023 | DNRIN/US expansion |
-| March 2024 | All stores worldwide (target) |
-
-## Related Research
-
-### HGT-GRAHIES (2024 Internship Research)
-
-Advanced research exploring **Heterogeneous Graph Transformers** with **hierarchical coarsening** for community-aware MO detection:
-
-- **HGT-GRAHIES**: Achieves F1-score of 0.8421 vs 0.1538 (HGT-base)
-- **Entropy Reduction**: 0.36 → 0.11 (improved cluster purity)
-- **Precision**: 72.73% with perfect recall
-- **MO Clusters**: Identifies 8 vs 4-5 (baseline methods)
-
-**Future Direction**: Heterogeneous-aware coarsening mechanisms for customer-chat graphs.
 
 ## Limitations
 
 **1. Computational Cost**
-- Modularity optimization is O(n log n) per cluster
-- Large clusters require more processing time
+- Modularity optimization is roughly O(n log n) per graph
+- Large graphs require more processing time
 - Trade-off with processing frequency
 
 **2. Resolution Limit**
 - Small communities may be merged into larger ones
-- Very small abuse rings may not be detected as separate communities
-- Tuning required for different cluster sizes
+- Very small groups may not be detected as separate communities
+- Tuning required for different graph sizes
 
 **3. Static Graph Assumption**
-- Operates on point-in-time relationship snapshot
+- Operates on a point-in-time relationship snapshot
 - Doesn't capture temporal evolution of communities
-- Weekly refresh addresses but doesn't eliminate issue
+- Periodic refresh mitigates but doesn't eliminate the issue
 
 ## Best Practices
 
-### For Scientists
-- ✅ Test modularity thresholds on labeled MO data
-- ✅ Validate community sizes are investigable (10-50 accounts)
-- ✅ Monitor community-level vs cluster-level metrics
-- ✅ Compare with Consensus Clustering results
-
-### For Investigators
-- ✅ Review community boundaries before filtering
-- ✅ Check inter-community relationships for missed patterns
-- ✅ Report communities that should be merged/split
-- ✅ Provide feedback on community quality
-
-## Ownership & Support
-
-**Team**: BAP ML Tattletale
-**Contact**: REDACTED_EMAIL
-**Wiki**: https://internal-wiki
+- ✅ Test modularity thresholds/resolution parameters on labeled data
+- ✅ Validate community sizes are interpretable for the task
+- ✅ Monitor community-level vs whole-graph metrics
+- ✅ Compare with alternative approaches (e.g., consensus clustering)
+- ✅ Review community boundaries for missed or over-split structure
 
 ## Related Terms
 
-**Pipeline Components**:
-- [Tattletale](term_tattletale.md) - Parent MO detection system
-- [MODE](term_mode.md) - MO Detection Engine (clustering before CD)
-- [EVINCE](term_evince.md) - Expansion stage (includes CD)
-- [SCAP](term_scap.md) - Cluster/community prioritization
-- [TTUX](term_ttux.md) - Visualization platform
-
 **Related Algorithms**:
+- [Modularity](term_modularity.md) - Graph metric optimized by community detection
 - [Consensus Clustering](term_consensus_clustering.md) - Alternative clustering approach
-- [Modularity](term_modularity.md) - Graph metric optimized by CD
 - [Graph Neural Networks](term_gnn.md) - Advanced graph ML
 - [GraphRAG](term_graphrag.md) - Graph-based RAG using Leiden community detection for hierarchical summarization (Edge et al., 2024)
 
 **Research References**:
 - [GraphRAG (Edge et al., 2024)](../papers/lit_edge2024local.md) — Uses Leiden community detection to partition entity knowledge graphs into hierarchical communities for global sensemaking
 
-**Abuse Detection**:
-- [MAA (Multi-Account Abuse)](term_maa.md) - Primary abuse type
-- [MO (Modus Operandi)](term_mo.md) - Abuse patterns detected
-- [ARM (Abuse Risk Mining)](term_arm.md) - Investigation team
+## References
+
+### External Resources
+- **"From Local to Global: A GraphRAG Approach to Query-Focused Summarization"** (Edge et al., 2024): https://arxiv.org/abs/2404.16130
+- **Louvain method** (Blondel et al., 2008): https://arxiv.org/abs/0803.0476
+- **Leiden algorithm** (Traag et al., 2019): https://www.nature.com/articles/s41598-019-41695-z
+- **NetworkX community detection**: https://networkx.org/documentation/stable/reference/algorithms/community.html
 
 ## Summary
 
 | Aspect | Details |
 |--------|---------|
 | **Full Name** | Community Detection (CD) |
-| **Purpose** | Partition large clusters into densely connected communities for better investigation |
-| **Algorithm** | Greedy Modularity Maximization |
-| **Pipeline Position** | Expansion stage (after MODE, before SCAP) |
-| **Key Benefit** | +25% MO detection improvement |
-| **Launch Date** | July 2023 (NCL), September 2023 (HeavyHitter) |
-| **Output** | Communities of 10-30 accounts with risk scores |
-| **Team** | BAP ML Tattletale |
-| **Status** | ✅ Active - deployed to multiple queues |
+| **Purpose** | Partition graphs into densely connected communities |
+| **Algorithm** | Greedy Modularity Maximization (also Louvain, Leiden) |
+| **Key Metric** | Modularity (Q) |
+| **Output** | Node communities with density metrics and scores |
+| **Status** | Active - core graph analysis technique |
 
-**Key Insight**: Community Detection bridges the gap between large behavioral clusters (MODE) and individual account investigation. By identifying the **dense cores** within clusters, CD ensures investigators focus on the most suspicious account networks while filtering out loosely connected accounts that may be false positives. The 25% improvement in MO detection validates that **relationship density** is a strong signal of coordinated abuse - accounts in tight communities are more likely to be working together on the same MO than accounts with sparse connections.
+**Key Insight**: Community Detection bridges the gap between large graphs and individual-node analysis. By identifying the **dense cores** within a graph, it lets analysis focus on the most cohesive node groups while filtering out loosely connected nodes. **Relationship density** is a strong structural signal — nodes in tight communities are more likely to be genuinely related than nodes with only sparse connections.
 
 ---
 
 **Last Updated**: January 30, 2026  
-**Status**: Active - deployed in Tattletale expansion stage  
-**Next Review**: Q2 2026 - expansion to all stores worldwide
+**Status**: Active - core graph partitioning technique

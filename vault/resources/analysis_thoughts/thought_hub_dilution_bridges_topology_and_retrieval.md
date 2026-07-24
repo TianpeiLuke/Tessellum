@@ -23,7 +23,7 @@ keywords:
   - retrieval irrelevance
   - benchmark circularity
   - re-ranking
-  - Abuse Slipbox
+  - knowledge vault
 topics:
   - retrieval evaluation
   - knowledge building blocks
@@ -43,7 +43,7 @@ author: lukexie
 
 ## The Hypothesis
 
-> The Abuse SlipBox vault has strong topological properties (scale-free $\alpha$=1.5-1.8, small-world L=3.54/C=0.441, 83.3% reachable in 3-4 hops) yet all graph-based retrieval strategies are Pareto-dominated by dense_retrieval (Hit@5=0.815). This is NOT a coincidence or measurement error — it is a direct CONSEQUENCE of the same structural properties. Hub dilution is the mechanism: the high-degree hub nodes that produce impressive topology metrics (short paths, high clustering relative to random) also produce candidate explosion during graph traversal (6,222 avg BFS candidates). The property that makes the graph look good IS the property that makes graph retrieval fail. The disconnect is further amplified by benchmark circularity: ~80% of gold sets are single-note (graph-blind by construction), so graph traversal's neighborhood-discovery advantage is never measured (5e1d2).
+> The vault has strong topological properties (scale-free $\alpha$=1.5-1.8, small-world L=3.54/C=0.441, 83.3% reachable in 3-4 hops) yet all graph-based retrieval strategies are Pareto-dominated by dense_retrieval (Hit@5=0.815). This is NOT a coincidence or measurement error — it is a direct CONSEQUENCE of the same structural properties. Hub dilution is the mechanism: the high-degree hub nodes that produce impressive topology metrics (short paths, high clustering relative to random) also produce candidate explosion during graph traversal (6,222 avg BFS candidates). The property that makes the graph look good IS the property that makes graph retrieval fail. The disconnect is further amplified by benchmark circularity: ~80% of gold sets are single-note (graph-blind by construction), so graph traversal's neighborhood-discovery advantage is never measured (5e1d2).
 
 ## Motivation — The Paradox
 
@@ -171,7 +171,6 @@ The hub dilution mechanism is amplified by benchmark design ([5e1d2 analysis](an
 - **[FZ 5e1d2: Benchmark Circularity Analysis](analysis_benchmark_circularity_graph_sampled_questions.md)**: analysis of benchmark confounding
 - **[FZ 5e1d1-app: Full Run Results + v2 Question Lineage](../../archives/experiments/experiment_llm_question_regeneration_appendix_full_run.md)**: empirical evidence — v2 used 98.5% LLM-regenerated questions; gold sets unchanged (86.6% single-note)
 - **[FZ 5i: Term Notes as Cross-Subcategory Hubs](thought_term_hub_bfs_retrieval_hypothesis.md)**: hub hypothesis (confirmed structurally, refuted for retrieval)
-- **[FZ 5i1: Counter — Hub Dilution Refutes Term BFS](counter_hub_dilution_refutes_term_bfs.md)**: hub dilution evidence this hypothesis generalizes
 - **[FZ 5i1a: Term Hub Value for Re-Ranking](thought_term_hub_value_for_reranking_context.md)**: surviving use of hub property
 - **[FZ 5e1: Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md)**: v2 benchmark data
 - **[FZ 5e1d: QA Benchmark Quality Analysis](../../archives/experiments/experiment_qa_benchmark_quality_analysis.md)**: quality metrics

@@ -102,10 +102,9 @@ The use of retrieval-augmented generation (RAG) to retrieve relevant information
 ## Relevance to Our Work
 
 - [RAG](../term_dictionary/term_rag.md) — GraphRAG extends the foundational RAG paradigm toward global sensemaking, complementary to the factual RAG in Lewis et al. 2020
-- [Knowledge Graph](../term_dictionary/term_knowledge_graph.md) — LLM-derived entity knowledge graph is the core index structure; relevant to Nexus's KG approach
-- [Community Detection](../term_dictionary/term_community_detection.md) — Leiden community detection is central to the method; community-based organization could structure abuse knowledge
+- [Knowledge Graph](../term_dictionary/term_knowledge_graph.md) — LLM-derived entity knowledge graph is the core index structure; relevant to graph-based retrieval approaches
+- [Community Detection](../term_dictionary/term_community_detection.md) — Leiden community detection is central to the method; community-based organization could structure domain knowledge
 - [HippoRAG](../term_dictionary/term_hipporag.md) — Complementary graph-RAG approach using PPR over open KG; HippoRAG focuses on multi-hop factual retrieval, GraphRAG on global summarization
-- [Nexus](../../areas/area_nexus.md) — BRP's graph-RAG system; community summarization and hierarchical query patterns are directly applicable
 - [LLM](../term_dictionary/term_llm.md) — GPT-4-turbo used throughout; the approach could be adapted to smaller models
 - [Embedding](../term_dictionary/term_embedding.md) — Vector RAG baseline uses embedding similarity; GraphRAG replaces this with community-based retrieval
 
@@ -122,8 +121,3 @@ The use of retrieval-augmented generation (RAG) to retrieve relevant information
 - [lit_lewis2020retrieval](lit_lewis2020retrieval.md) — RAG: the foundational retrieval-augmented generation paper that GraphRAG extends
 - [lit_gutierrez2025rag](lit_gutierrez2025rag.md) — HippoRAG 2: complementary graph-RAG approach using PPR + dense-sparse coding
 - [lit_gao2025survey](lit_gao2025survey.md) — Survey of RAG approaches including graph-based methods
-
-## Related Documentation
-
-- [Nexus](../../areas/area_nexus.md) — BRP's production graph-RAG system
-- [Nexus Project](../../projects/project_nexus.md) — Active Nexus development project

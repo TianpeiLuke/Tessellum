@@ -4,18 +4,14 @@ tags:
   - terminology
   - data_engineering
   - data_pipeline
-  - buyer_abuse_prevention
 keywords:
   - ETL
   - Extract Transform Load
-  - Datanet
-  - ETLM
+  - ELT
   - data pipeline
-  - Cradle
-  - Redshift
+  - data warehouse
   - data engineering
 topics:
-  - buyer abuse prevention
   - data engineering
   - data pipelines
   - analytics infrastructure
@@ -23,14 +19,13 @@ language: markdown
 date of note: 2026-03-02
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # Term: ETL - Extract, Transform, Load
 
 ## Definition
 
-**ETL** (Extract, Transform, Load) is the data engineering pattern for moving data between systems: **extracting** raw data from source systems (Kinesis streams, EDX, Andes, external FCs), **transforming** it by cleaning, aggregating, joining, and enriching it according to business logic, and **loading** it into target warehouses (Redshift) or catalogs (Andes) for analytics and ML consumption. In Buyer Risk Prevention (BRP) and Buyer Abuse Prevention (BAP), ETL jobs are the **backbone of the abuse detection data stack** — converting raw events (order placements, concessions, return scans, investigator annotations) into structured, ML-ready features and ground-truth labels. Amazon's primary ETL tools are **Datanet** (also called ETLM — ETL Manager) for SQL-based Redshift pipelines and **Cradle** for large-scale Spark processing, both managed by BDT (Big Data Technologies).
+**ETL** (Extract, Transform, Load) is the data engineering pattern for moving data between systems: **extracting** raw data from source systems (event streams, batch feeds, catalogs, external APIs), **transforming** it by cleaning, aggregating, joining, and enriching it according to business logic, and **loading** it into target warehouses or catalogs for analytics and ML consumption. ETL pipelines are the backbone of most analytics and ML data stacks — converting raw events into structured, ML-ready features and ground-truth labels.
 
 ## Core Concepts
 
@@ -39,77 +34,41 @@ related_wiki: https://internal-wiki
 ```
 Source Systems                  Transform                     Target
 ─────────────────────     ──────────────────────────     ──────────────
-Kinesis (real-time)    →  Clean / deduplicate         →  Redshift (analytics)
-EDX (batch events)     →  Join tables                 →  MDS (ML training)
-Andes (catalog)        →  Aggregate / window          →  Andes (enriched)
-FC systems (returns)   →  Apply business logic        →  OTF variables
-Investigation data     →  Add ground truth labels     →  Feature store
+Event streams (RT)     →  Clean / deduplicate         →  Data warehouse
+Batch feeds            →  Join tables                 →  ML training store
+Catalog datasets       →  Aggregate / window          →  Enriched catalog
+Operational systems    →  Apply business logic        →  Feature store
+Labeling data          →  Add ground truth labels     →  Feature store
 ```
 
-**Extract**: Pull data from upstream sources at defined cadences (real-time via Kinesis, daily batch via Cradle/Datanet, on-demand via API)
+**Extract**: Pull data from upstream sources at defined cadences (real-time via streaming, daily batch, or on-demand via API)
 
 **Transform**: Apply SQL/Spark logic to clean, enrich, and reshape data:
-- Join order data with concession data
-- Add abuse vector labels (DNR, MDR, FLR, PDA tags)
-- Compute aggregate features (trailing concession rates, velocity)
-- Apply ground truth labeling from investigator outcomes
+- Join fact and dimension tables
+- Add derived labels and categories
+- Compute aggregate features (trailing rates, velocity, windows)
+- Apply ground-truth labeling from downstream outcomes
 
 **Load**: Write processed data to target destinations:
-- Redshift tables (analytics and ML feature queries)
-- MDS (Modeling Data Store, for ML training)
-- Andes datasets (for catalog-based consumption)
-- OTF (On-The-Fly) data streams (for real-time feature serving)
+- Warehouse tables (analytics and ML feature queries)
+- ML training / modeling data stores
+- Catalog datasets (for catalog-based consumption)
+- Real-time feature-serving stores
 
-## ETL Tools in BRP/BAP
+## ETL Tools and Platforms
 
-### 1. Datanet (ETLM - ETL Manager)
+Common ETL/ELT platforms include SQL-based warehouse pipeline schedulers, distributed Spark processing engines, and managed ingestion services. In general:
 
-**Primary tool for SQL-based ETL pipelines targeting Redshift.**
+- **SQL-based, warehouse-targeted schedulers** run cron-scheduled SQL transformations with dependency tracking and merge/insert load templates. Best for medium-scale data, daily/weekly batch, and standard analytics/feature tables.
+- **Distributed Spark engines** handle large-scale (50TB+) processing, complex transformations requiring Python/Scala, and graph or network processing.
 
-| Attribute | Details |
-|-----------|---------|
-| **Full Name** | Datanet (formerly ETLM - ETL Manager) |
-| **Type** | SQL-based, Redshift-targeted |
-| **Scheduling** | Cron-based with dependency tracking |
-| **Load Templates** | Merge (upsert/insert/update), Insert (table/partition) |
-| **BAP Clusters** | trmsopsadhoc (dev), trmsopsetl1/2 (prod) |
-| **Portal** | https://internal-host |
-| **Owner** | BDT (Big Data Technologies) |
+**When to use a distributed engine vs a SQL scheduler**:
+- Very large datasets (50TB+) → distributed engine
+- Complex transformations requiring Python/Scala → distributed engine
+- Standard SQL on warehouse-scale data → SQL scheduler
+- Standard analytics pipelines → SQL scheduler
 
-**Job Components**:
-1. **Job Profile**: SQL query defining the transformation logic
-2. **Scheduler**: Cron expression for execution frequency (daily, hourly)
-3. **Dependencies**: Upstream job completion triggers
-4. **Load Template**: How to write to target table (Merge vs Insert)
-
-**When to use Datanet**:
-- SQL-based transformations on Redshift
-- Medium-scale data (fits within Redshift query limits)
-- Daily/weekly batch processing
-- Standard BAP analytics and feature tables
-
-### 2. Cradle (Spark ETL)
-
-**Used for large-scale distributed ETL processing on S3/Andes.**
-
-| Attribute | Details |
-|-----------|---------|
-| **Full Name** | Cradle (formerly Dryad) |
-| **Type** | Apache Spark, distributed |
-| **Scale** | 50TB+, quadrillions of records |
-| **Data Sources/Sinks** | S3, Andes, EDX, Redshift, Kinesis |
-| **Cost** | ~$0.0004 per million records |
-| **Profile Types** | SQL, Scala, Closure |
-| **Owner** | BDT |
-
-**When to use Cradle vs Datanet**:
-- Very large datasets (50TB+) → Cradle
-- Complex transformations requiring Python/Scala → Cradle
-- Standard SQL on Redshift-scale data → Datanet
-- Network detection or graph processing → Cradle
-- Standard analytics pipelines → Datanet
-
-### 3. ELT vs ETL (Modern Pattern)
+### ELT vs ETL (Modern Pattern)
 
 Modern data stacks increasingly use **ELT** (Extract, Load, Transform), which reverses the T and L steps: raw data is loaded directly into the target warehouse or lake first, then transformed in-place using the warehouse's own compute engine.
 
@@ -121,113 +80,59 @@ Modern data stacks increasingly use **ELT** (Extract, Load, Transform), which re
 | **Flexibility** | Must re-extract to change transforms | Re-run transforms on stored raw data |
 | **Best fit** | On-premise, structured, compliance-heavy | Cloud-native, high-volume, iterative |
 
-ELT became practical with cloud warehouses (Redshift, Snowflake, BigQuery) that decouple storage from compute. Key ELT tools include **dbt** (data build tool) for SQL-based transformations, and **Fivetran/Airbyte** for managed ingestion. At Amazon, Cradle and Datanet both support ELT patterns — loading raw data to Andes/S3 first, then transforming in-place.
+ELT became practical with cloud warehouses (Redshift, Snowflake, BigQuery) that decouple storage from compute. Key ELT tools include **dbt** (data build tool) for SQL-based transformations, and **Fivetran/Airbyte** for managed ingestion.
 
-## Key BAP ETL Jobs
-
-### Concession & Abuse Vector Tagging
-
-| Job | Purpose | Output Table |
-|-----|---------|-------------|
-| **d_bap_concessions_vtag** | Master concession vector tagging (DNR/MDR/FLR/PDA/NSR) | buyer_abuse_prod.d_bap_concessions_vtag |
-| **d_unified_concessions** | Unified concessions with financial metrics | BUYER_ABUSE_PROD.D_UNIFIED_CONCESSIONS |
-| **d_unified_concessions_net** | Net concessions with recovery calculations | D_UNIFIED_CONCESSIONS_NET |
-
-### Delivery & Shipment Data
-
-| Job | Purpose | Source |
-|-----|---------|--------|
-| **d_pre_delivery_details** | Pre-delivery events for PDA detection | Perfect Mile OPLS events |
-| **d_bad_returns** | FC grading for MDR/FLR/NSR labeling | BRW return inspection |
-| **bap_mfn_concessions_vtag** | MFN-specific concession tagging | MFN seller grading (SGS) |
-
-### ML Training Data
-
-| Job | Purpose | Output |
-|-----|---------|--------|
-| **MDS pipeline** | Point-in-time ML feature snapshots | MDS (Modeling Data Store) |
-| **GoldMiner pipeline** | Annotation extraction → reason codes/blurbs | buyer_abuse_prod/OTF |
-| **OTF data streams** | Real-time feature computation | FORTRESS/URES |
-
-## ETL Job Lifecycle in BAP
+## ETL Job Lifecycle
 
 ```
-1. Data arrives → Source systems (FC scan, concession event, investigator action)
+1. Data arrives → Source systems (operational event, transaction, action)
          ↓
-2. Ingestion → Kinesis (real-time) or EDX batch (daily)
+2. Ingestion → Streaming (real-time) or batch (daily)
          ↓
-3. Raw storage → S3 / Andes / EDX datasets
+3. Raw storage → Object store / catalog / raw datasets
          ↓
-4. Transform (Datanet SQL or Cradle Spark)
+4. Transform (SQL or Spark)
    - Clean nulls/duplicates
-   - Join order + concession + shipment tables
-   - Apply abuse vector labels (VTAG ETL)
-   - Compute customer aggregate features
+   - Join fact + dimension tables
+   - Apply derived labels
+   - Compute aggregate features
          ↓
-5. Load → Redshift (buyer_abuse_prod schema) or Andes
+5. Load → Data warehouse or catalog
          ↓
-6. Feature computation → OTF real-time variables
+6. Feature computation → Real-time variables
          ↓
-7. ML model training → MDS feature snapshots
+7. ML model training → Feature snapshots
          ↓
-8. Analytics → WBR/QBR dashboards, model metrics
+8. Analytics → Dashboards, model metrics
 ```
 
-## BAP Data Schemas (Key Redshift Tables)
-
-| Schema | Purpose |
-|--------|---------|
-| `buyer_abuse_prod.*` | Production BAP data (concessions, labels, models) |
-| `buyer_abuse_dev.*` | Development/testing BAP data |
-| `trmsdw.*` | TRMS data warehouse (enforcement history) |
-| `booker.*` | Amazon retail order/return data |
-| `brp_abuse.*` | Broader BRP abuse data |
-
-**Key ETL-produced tables**:
-- `BUYER_ABUSE_PROD.D_BAP_CONCESSIONS_VTAG` — abuse vector-tagged concessions
-- `BUYER_ABUSE_PROD.D_FAP_GOLDMINER` — GoldMiner annotation extractions
-- `BRP_ABUSE.BAP_ML_DSI_SECUREDDEL` — DSI measurement data
-- `BRP_ABUSE.D_CAP_CDA_ASSESSMENT_FINAL` — CAP Decision Accuracy labels
-
-## ETL Best Practices in BRP
+## ETL Best Practices
 
 1. **Idempotency**: ETL jobs should be re-runnable without duplicating data (use Merge not Insert when possible)
 2. **Partitioning**: Partition by date to enable efficient backfills and time-range queries
-3. **Dependency management**: Use Datanet job dependencies to avoid stale data
-4. **TALFS compliance**: For fraud data requiring GDPR exemption, use `_TALFS` table variants
-5. **DIG Score**: Monitor Redshift DIG score (target 90+) to ensure ETL efficiency
-6. **Backfill pipelines**: Maintain separate backfill pipelines for historical data corrections
+3. **Dependency management**: Use job dependencies to avoid stale data
+4. **Backfill pipelines**: Maintain separate backfill pipelines for historical data corrections
+5. **Data quality monitoring**: Track freshness, completeness, and schema drift to catch pipeline failures early
 
 ## Related Terms
 
-### ETL Platforms
-- **[Term: Datanet](term_datanet.md)** - Primary SQL-based ETL platform for Redshift (also called ETLM)
-- **[Term: Cradle](term_cradle.md)** - Spark-based distributed ETL for large-scale S3/Andes processing
+### ETL Target and Source Systems
+- **[Term: Redshift](term_redshift.md)** - Cloud data warehouse; common ETL/ELT target
 - **[Term: Kinesis](term_kinesis.md)** - Real-time event streaming (upstream ETL source)
-- **[Term: EDX](term_edx.md)** - Legacy batch data exchange (ETL source, being deprecated)
+- **[Term: SQL](term_sql.md)** - Language used to write ETL transform logic
 
-### ETL Target Systems
-- **[Term: Redshift](term_redshift.md)** - Primary data warehouse target for Datanet ETL jobs
-- **[Term: Andes](term_andes.md)** - Amazon data catalog; source and target for Cradle ETL
-- **[Term: MDS](term_mds.md)** - Modeling Data Store; receives ML training feature data from ETL
-
-### ETL in BAP Context
-- **[Term: SQL](term_sql.md)** - Language used to write Datanet ETL job transform logic
-- **[Term: OTF](term_otf.md)** - On-The-Fly variable system; consumes ETL-produced data for real-time features
-
+### ETL and Distributed Systems Concepts
 - **[Message Queue](term_message_queue.md)**: Message queues decouple ETL pipeline stages, enabling asynchronous data flow between extract, transform, and load phases
 - **[Pub/Sub](term_pub_sub.md)**: Pub/Sub enables fan-out from ETL outputs to multiple downstream consumers (dashboards, ML training, alerting)
 - **[CAP Theorem](term_cap_theorem.md)**: Data pipeline consistency vs availability affects data freshness
 - **[Consistency](term_consistency.md)**: ETL jobs must decide between consistent snapshots and available partial data
 - **[Partition Tolerance](term_partition_tolerance.md)**: Data pipelines must handle transient network partitions
+
 ## References
 
-### Amazon Internal
-- **Datanet Overview Wiki**: https://internal-wiki
-- **Datanet Portal**: https://internal-host
-- **BAP Datanet Report**: https://internal-wiki
-- **Cradle Overview**: https://internal-wiki
-- **BDT Overview**: https://internal-wiki
+### External Resources
+- [Wikipedia: Extract, transform, load](https://en.wikipedia.org/wiki/Extract,_transform,_load)
+- [dbt Documentation](https://docs.getdbt.com/)
 
 ## Summary
 
@@ -236,16 +141,15 @@ ELT became practical with cloud warehouses (Redshift, Snowflake, BigQuery) that 
 | Aspect | Details |
 |--------|---------|
 | **Full Name** | Extract, Transform, Load |
-| **Primary BAP Tool** | Datanet (SQL/Redshift) + Cradle (Spark/S3) |
-| **Key Transform Logic** | Abuse vector labeling (VTAG), feature aggregation, ground truth joining |
-| **Key Output** | Redshift analytics tables, MDS training features, OTF variables |
-| **Core BAP ETL Jobs** | d_bap_concessions_vtag, d_bad_returns, d_pre_delivery_details, GoldMiner pipeline |
-| **Scheduling** | Cron-based (Datanet), trigger-based (Cradle Step Functions) |
-| **Data Volume** | Datanet: Redshift-scale; Cradle: 50TB+ distributed |
+| **Modern Variant** | ELT (transform in-warehouse after load) |
+| **Key Transform Logic** | Labeling, feature aggregation, ground-truth joining |
+| **Key Output** | Warehouse analytics tables, ML training features, real-time variables |
+| **Scheduling** | Cron-based (SQL schedulers), trigger-based (distributed engines) |
+| **Data Volume** | SQL scheduler: warehouse-scale; distributed engine: 50TB+ |
 
-**Key Insight**: In BRP/BAP, ETL is not just data movement — it is where **raw events become abuse intelligence**. The concession vector tagging ETL job (`d_bap_concessions_vtag`) is perhaps the most critical pipeline: it joins order, shipment, return, and concession data to produce the `abuse_vector` labels that drive every downstream ML model, investigation queue, and analytics dashboard in the BAP ecosystem. Without properly functioning ETL, model training labels degrade, investigation queues go stale, and abuse detection performance deteriorates.
+**Key Insight**: ETL is not just data movement — it is where **raw events become analytics-ready and ML-ready intelligence**. Labeling and feature-aggregation ETL jobs join transactional, event, and outcome data to produce the labels and features that drive downstream ML models, review queues, and analytics dashboards. Without properly functioning ETL, model training labels degrade, queues go stale, and detection performance deteriorates.
 
 ---
 
 **Last Updated**: March 2, 2026  
-**Status**: Active - foundational data engineering pattern powering BAP analytics, ML, and abuse detection
+**Status**: Active - foundational data engineering pattern powering analytics and ML

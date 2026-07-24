@@ -6,8 +6,6 @@ tags:
   - deep_learning
   - transfer_learning
   - few_shot_learning
-  - buyer_risk_prevention
-  - buyer_abuse_prevention
 keywords:
   - meta-learning
   - learning to learn
@@ -16,18 +14,14 @@ keywords:
   - model-agnostic meta-learning
   - MAML
   - rapid adaptation
-  - fraud prevention
 topics:
   - Machine Learning
   - Deep Learning
   - Transfer Learning
-  - Fraud Prevention
-  - Buyer Risk Prevention
 language: markdown
 date of note: 2026-03-04
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # Meta-Learning
@@ -40,9 +34,9 @@ A useful analogy: if you have been trained to fly a fighter jet, you don't need 
 
 ## Context
 
-Meta-learning is increasingly important in Buyer Risk Prevention (BRP) and Buyer Abuse Prevention (BAP) at Amazon due to the adversarial nature of fraud and the constant emergence of new abuse patterns. Traditional ML approaches require substantial historical data and lengthy training cycles, making them slow to respond to new fraud methods. Meta-learning addresses this by enabling rapid adaptation to new abuse vectors, payment methods, and business launches with minimal data.
+Meta-learning is especially valuable in adversarial domains such as fraud and abuse prevention, where new attack patterns emerge constantly. Traditional ML approaches require substantial historical data and lengthy training cycles, making them slow to respond to new methods. Meta-learning addresses this by enabling rapid adaptation to new patterns, product launches, and low-data segments with minimal examples.
 
-Within BRP, meta-learning is being explored for: (1) rapid MO/fraud prevention at early stages (e.g., branded gift card launches in EU stores), (2) scalable solutions for new payment method launches (20+ Alternative Payment Methods across 24+ Amazon stores), and (3) quick adaptation to emerging fraud patterns without maintaining separate models for each abuse vector. The approach is particularly valuable for handling risky minority groups and new business launches where traditional FARM models struggle due to limited data.
+Typical applications include: (1) rapid detection at the early stages of a new business or product launch, before much labeled data has accumulated; (2) scalable adaptation across many related sub-tasks (for example, numerous payment methods or marketplaces) without maintaining a separate model for each; and (3) quick adaptation to emerging patterns. The approach is particularly useful for risky minority groups and cold-start scenarios where conventional models struggle due to limited data.
 
 ## Key Characteristics
 
@@ -58,11 +52,11 @@ Within BRP, meta-learning is being explored for: (1) rapid MO/fraud prevention a
 ## Performance / Metrics
 
 - **Few-Shot Performance**: Achieves comparable accuracy to fully-trained models using only 5-10 examples per class
-- **Adaptation Speed**: 5x faster convergence compared to vanilla RL agents in BRP experiments
+- **Adaptation Speed**: Substantially faster convergence than training a task-specific model from scratch
 - **Data Efficiency**: Requires significantly less data for new task adaptation (orders of magnitude reduction)
 - **Transfer Robustness**: Maintains performance even with distribution shift between source and target tasks
-- **Early-Stage Detection**: Enables fraud prevention at early stages of new business launches (e.g., EU BGC launch)
-- **Scalability**: Single meta-learned model can adapt to 20+ new payment methods without retraining from scratch
+- **Early-Stage Detection**: Enables detection at the early stages of new business or product launches
+- **Scalability**: A single meta-learned model can adapt to many related sub-tasks without retraining from scratch
 
 ## Related Terms
 
@@ -74,7 +68,7 @@ Within BRP, meta-learning is being explored for: (1) rapid MO/fraud prevention a
 
 ## References
 
-- [Meta-Learning Expansion in Buyer Risk Prevention](https://internal-wiki) - Internal wiki page on meta-learning applications in BRP
-- [BRP ML Research Weekly 2023](https://internal-wiki) - Research presentations including transfer learning and multi-task learning approaches
-- [BRP Learn and Be Curious Expo Q4 2022](https://internal-wiki) - Presentations on transfer, federated, and few-shot learning
-- [COAP: Context Enhanced Buyer Abuse Prevention](https://internal-wiki) - Project using zero-shot and few-shot learning for abuse detection
+- [Model-Agnostic Meta-Learning for Fast Adaptation of Deep Networks (Finn et al., 2017)](https://arxiv.org/abs/1703.03400) - foundational MAML paper
+- [Prototypical Networks for Few-shot Learning (Snell et al., 2017)](https://arxiv.org/abs/1703.05175) - metric-based meta-learning
+- [Matching Networks for One Shot Learning (Vinyals et al., 2016)](https://arxiv.org/abs/1606.04080) - early few-shot meta-learning approach
+- [Meta-Learning in Neural Networks: A Survey (Hospedales et al., 2020)](https://arxiv.org/abs/2004.05439) - comprehensive survey of meta-learning methods

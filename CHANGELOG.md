@@ -19,7 +19,7 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 **Changed — the 17 shipped skills + tooling.**
 - Migrated all 13 sidecar-bearing skills to single-file (contract block + composed prompt: the sidecar's data-wiring + the canonical's SOP prose inlined where the old "apply section X" reference stood). One-shot migrator at `scripts/migrate_skill_to_single_md.py`.
 - Repaired 3 skills (`classify_content`, `meta_dks_cycle`, `route_content`) that had **never compiled** in either format — they declared fictional materializers (`deterministic_no_llm`, `json_segments`, `json_to_dataclass`); mapped to the real `no_op`.
-- **Platform-neutral scrub** (Tessellum is a public repo): generalized the few internal-platform references in the shipped skills (`BuilderHub`/`Quip`/`internal wiki`/`MTR`) to neutral language (`docs portal`/`shared doc`/`report notes`).
+- **Platform-neutral scrub** (Tessellum is a public repo): generalized the few internal-platform references in the shipped skills (a docs portal, a collaborative doc tool, an internal wiki, meeting-report docs) to neutral language (`docs portal`/`shared doc`/`report notes`).
 - `template_skill.md` shows the contract-block-per-step pattern (dropped `pipeline_metadata`); `tessellum composer scaffold-sidecar` now prints per-section contract blocks to paste in rather than writing a sidecar file; `tessellum capture skill` emits a single file; the MCP `get-skill`/`list-skills` tools return a `pipeline_step_count` instead of sidecar paths. Docs updated across README + `docs/`.
 
 ## [1.1.0] — 2026-07-23
@@ -264,10 +264,10 @@ Closes the last v4 fidelity gap: `run_pipeline_dynamic` was a per-*round* wave b
 
 ### Added — Composer + DKS robustness layer (plan_composer_dks_robustness)
 
-Four reliability-pattern-pattern ports closing validated structural gaps in the
+Four reliability-pattern ports closing validated structural gaps in the
 Composer pipeline scheduler + DKS dispatcher. Lands *before* the
 alpha → public-beta cut (v0.1.0) so external users don't hit the
-gaps first. Patterns ported from FZ 15 of the source vault + the
+gaps first. Patterns ported from FZ 15 of the originating research vault + the
 companion code-snippet documentation (circuit-breaker, task-retry,
 context-budgets, task-runner-lifecycle).
 
@@ -355,11 +355,11 @@ outputs." Now:
 - **No async-everywhere refactor.** Only the watchdog's backend-call
   boundary uses threads; the scheduler stays sync. A full async
   migration is a v0.2+ concern.
-- **No DKS escalation tracking** (reliability-pattern Pattern 7) — Tessellum's
+- **No DKS escalation tracking** (the escalation-tracking pattern) — Tessellum's
   DKS doesn't currently do LLM-driven replan; escalation tracking has
   no failure mode to prevent. Defer until DKS adds a meta-cycle that
   proposes its own continuation.
-- **No tier-based safe-tool classifier** (reliability-pattern Pattern 8) —
+- **No tier-based safe-tool classifier** (the safe-tool-classifier pattern) —
   Tessellum doesn't dispatch arbitrary tools. Not applicable yet.
 
 ### Tests
@@ -380,12 +380,12 @@ Full suite: **913 passed** (+27 from v0.0.59's 886).
 
 ### Heritage
 
-Ports four reliability-pattern patterns from the source vault:
+Ports four reliability patterns from the originating research vault:
 
-- `snippet_meshclaw_circuit_breaker.md` → A.1 retry decision logic
-- `snippet_meshclaw_task_retry_recovery.md` → A.2 retry-aware prompts
-- `snippet_meshclaw_context_budgets.md` → B.3 two-tier budget model
-- `snippet_meshclaw_task_runner_lifecycle.md` → B.1 watchdog escalation
+- a circuit-breaker snippet → A.1 retry decision logic
+- a task-retry-recovery snippet → A.2 retry-aware prompts
+- a context-budgets snippet → B.3 two-tier budget model
+- a task-runner-lifecycle snippet → B.1 watchdog escalation
 
 See `plan_composer_dks_robustness.md` §Heritage for the full citation.
 
@@ -476,9 +476,9 @@ alpha → public-beta cut.
 
 ### Added — Phase IV of plan_v01_completion_roadmap: capture-side helper skills + catalog cleanup
 
-Two new skills ported from the source vault + a rewritten skill catalog
+Two new skills ported from the originating research vault + a rewritten skill catalog
 that reflects what actually ships in Tessellum (rather than the
-84-skill AB catalog that was copied wholesale into the seed vault).
+84-skill source catalog that was copied wholesale into the seed vault).
 
 **`tessellum-classify-content`** — ported + adapted from
 `skill_slipbox_classify_content.md`. Domain-agnostic. 5-step
@@ -509,7 +509,7 @@ load-bearing **Sub-Category Novelty Framework** ported verbatim:
   for periodic audit
 - 2-3 novel → propose new sub-category label
 
-AB's 200-line vault-specific routing table replaced with a smaller
+The source vault's 200-line vault-specific routing table replaced with a smaller
 Tessellum routing matrix that defers to `tessellum.capture.REGISTRY`
 as the source of truth for default (destination, prefix) per BB
 type. The skill produces a per-segment routing plan; it does not
@@ -521,7 +521,7 @@ Both skills ship with their Composer-pipeline sidecars
 (`*.pipeline.yaml`).
 
 **Skill catalog rewrite.** `entry_skill_catalog.md` previously
-contained a wholesale copy of AB's catalog — 84 `/slipbox-*` skill
+contained a wholesale copy of the source vault's catalog — 84 `/slipbox-*` skill
 references, none of which exist in Tessellum's seed vault. Replaced
 with an honest catalog of Tessellum's 13 actual skills, organised
 into 5 clusters:
@@ -545,7 +545,7 @@ skill-authoring procedure for adding more skills.
 ### Scope decision: 13 skills, not 20
 
 The original Phase IV plan called for "9 new skills to reach 20."
-After authoring the 2 AB ports + the catalog rewrite + the v0.0.57
+After authoring the 2 source-vault ports + the catalog rewrite + the v0.0.57
 question-oriented BB exemplar work, the right scope is to ship at
 13 well-curated skills covering all 5 essential modes — not
 mechanically inflate to a symbolic "20" target. The 7 originally-
@@ -654,7 +654,7 @@ each to retarget).
 ### What this phase scrapped
 
 The plan originally projected 8 new "BB-type example notes" + a
-PARA primer term + AB content port. All three reduced to no-ops:
+PARA primer term + a source-vault content port. All three reduced to no-ops:
 
 - The 8 example notes — 5 drafts written, then scrapped after the
   user observed: "examples should not be a separate namespace; every
@@ -663,7 +663,7 @@ PARA primer term + AB content port. All three reduced to no-ops:
   to point at real canonicals.
 - The PARA primer — gap-check found `term_para_method.md` already
   shipped at v0.0.49.
-- AB port — survey found AB's content is heavily ML-domain-specific;
+- Source-vault port — survey found the source content is heavily ML-domain-specific;
   porting it would change Tessellum's character without improving
   exemplar coverage. Tessellum's seed vault already has 5+ canonical
   exemplars per BB type.
@@ -1361,21 +1361,21 @@ notes the new exemption in its LINK-006 rule row. This file is in
 - `test_link_006_skipped_for_status_template` — new behaviour
 - `test_link_006_still_fires_for_status_draft` — drafts not exempt
 
-#### Dogfood vault — 553 notes ported from the source vault
+#### Dogfood vault — 553 notes ported from the originating research vault
 
 The original Tessellum seed (~50 notes) emitted 1111 LINK-003 warnings
-for body-links into the parent AB project's broader vault — references
-to per-BB term notes, paper digests, AB-specific entry points that
+for body-links into the parent project's broader vault — references
+to per-BB term notes, paper digests, source-specific entry points that
 the narrower seed doesn't carry. Rather than strip the references
 (loss of information) or author stubs for each (vault bloat with no
-content), this version *ports* the source notes from AB into
+content), this version *ports* the source notes from the parent project into
 Tessellum's dogfood `vault/` directory.
 
 Scope:
 
 - **Single pass, no transitive recursion.** Only directly-referenced
-  AB notes (the 553 LINK-003 targets) get copied; their own internal
-  references to deeper AB content stay as in-note LINK-003s. Pulling
+  source notes (the 553 LINK-003 targets) get copied; their own internal
+  references to deeper source content stay as in-note LINK-003s. Pulling
   the transitive closure would import ~18k files — well beyond
   Tessellum's scope.
 - **Dogfood-only, NOT shipped to new users.** `SEED_VAULT_MANIFEST`
@@ -1383,7 +1383,7 @@ Scope:
   starter kit as v0.0.49. The 553 notes live in `vault/` (the
   source-tree dogfood) and ride in the sdist but not the wheel's
   per-file seed graft.
-- **5 AB-format quirks fixed at port time** to satisfy Tessellum's
+- **5 source-format quirks fixed at port time** to satisfy Tessellum's
   stricter validator:
     - YAML-015 (2): `DKS` tag lowercased to `dks`
     - TESS-001 (2): added `folgezettel_parent: ""` after `folgezettel:`
@@ -1395,13 +1395,13 @@ Scope:
 
 | Metric | v0.0.49 | v0.0.50 |
 |---|---|---|
-| vault/ files | 113 | **666** (+553 AB-ported) |
+| vault/ files | 113 | **666** (+553 ported from source) |
 | Errors | 0 | 0 |
 | Warnings | 1286 | 5234 |
 
-The warning growth is internal to the ported AB notes — every LINK-003
+The warning growth is internal to the ported source notes — every LINK-003
 from the *original Tessellum seed* now resolves. The new 3964
-LINK-003s are emitted by ported AB notes pointing at *deeper* AB
+LINK-003s are emitted by ported source notes pointing at *deeper* source
 content the user explicitly said may not be ported. The 1255 new
 TESS-005s are architectural-layer body-links (intentional per FZ 1c).
 
@@ -2292,7 +2292,7 @@ skipped (+13 new).
 
 ### Added — FZ trail tooling
 
-Brings the Folgezettel-trail explorer from the parent AB project across to Tessellum, adapted for the simpler `notes`-only schema (no materialised `folgezettel_trails` view — topology is derived from `notes.folgezettel` + `notes.folgezettel_parent` in memory).
+Brings the Folgezettel-trail explorer from the parent project across to Tessellum, adapted for the simpler `notes`-only schema (no materialised `folgezettel_trails` view — topology is derived from `notes.folgezettel` + `notes.folgezettel_parent` in memory).
 
 #### `src/tessellum/cli/fz.py` — new CLI module
 
@@ -2472,7 +2472,7 @@ Trail 1 grows from 4 nodes (linear) to 6 nodes (branching at 1a1). The branching
 
 #### `thought_cqrs_r_cross_rules.md` (FZ 1a1b)
 
-Formalises the three CQRS discipline rules sourced from the source vault's FZ 7g1a1a1a1a1 synthesis:
+Formalises the three CQRS discipline rules sourced from the originating research vault's FZ 7g1a1a1a1a1 synthesis:
 
 | Rule | Polices | Statement |
 |------|---------|-----------|
@@ -2583,7 +2583,7 @@ The seed vault now ships the full COE practice — the method, the agent-executa
 
 | File | Role |
 |------|------|
-| `vault/resources/term_dictionary/term_coe.md` | The method, the 9-section document shape, the 5 Whys discipline, the action-item priorities, the anti-patterns. Scrubbed of all Amazon-internal references (`internal-host`, `internal-wiki`, "REDACTED_LIST@", Leadership Principles, "all Amazonians"). |
+| `vault/resources/term_dictionary/term_coe.md` | The method, the 9-section document shape, the 5 Whys discipline, the action-item priorities, the anti-patterns. Scrubbed of all internal references (internal URLs, internal mailing lists, corporate leadership principles, company-specific audience phrasing). |
 | `vault/resources/skills/skill_tessellum_write_coe.md` | Agent-executable skill canonical. 6 steps: gather incident details → 5 Whys → write COE → check duplicates → verify → update index. Renamed from `slipbox-write-coe` → `tessellum-write-coe`; the `note_second_category`, `related_skill_headers`, and FZ-12a references are stripped. |
 | `vault/resources/skills/skill_tessellum_write_coe.pipeline.yaml` | Composer-compatible sidecar. Dropped `mcp_dependencies: session-mcp` — agents pass incident details directly via leaf metadata (`title` + `summary`). Schema converted from non-standard `format: markdown_with_frontmatter` / `xml_tag_list` to Tessellum's JSON-schema shape with `required: [output_path]` / `[edits]`. |
 | `vault/0_entry_points/entry_coes.md` | The COE index — Quick Stats counters + COE Index table + Recurring Patterns section. Step 6 of the skill updates this file with each new COE. |
@@ -2610,13 +2610,13 @@ Run end-to-end with `tessellum composer run vault/resources/skills/skill_tessell
 
 What was removed from the source notes to ship as public knowledge:
 
-- Amazon-internal URLs (`internal-host`, `internal-wiki`, `internal-host`, `internal-host`, `internal-host`)
-- Amazon-specific Leadership Principles section (Ownership / Customer Obsession / Dive Deep / etc.)
-- Visibility classifications (Standard / Secure / Team-Only COE — Amazon's mailing-list-based escalation)
-- "All Amazonians" / "REDACTED_LIST@" / "VP escalation" / "manager-level" — replaced with neutral "team" / "organization" language
+- Internal-host URLs
+- The corporate-specific Leadership Principles section (Ownership / Customer Obsession / Dive Deep / etc.)
+- Visibility classifications (Standard / Secure / Team-Only COE — the mailing-list-based escalation)
+- Internal audience phrasing / internal mailing lists / "VP escalation" / "manager-level" — replaced with neutral "team" / "organization" language
 - Two-week mandatory timeline framed as a *common convention* rather than a corporate mandate
-- Internal training-doc links to AB-specific paths
-- Specific COE examples (Amazon Video EU outage, S3 multi-region) — dropped
+- Internal training-doc links to source-specific paths
+- Specific corporate COE examples (a video-service regional outage, a multi-region storage incident) — dropped
 
 What's kept (the load-bearing content):
 
@@ -2788,7 +2788,7 @@ Every Tessellum install now ships **Trail 1 — Architecture**, a 4-note Folgeze
 |-------|------|------|
 | `1` | `thought_building_block_ontology_relationships.md` | The 8 BB types + 10 epistemic edges Sascha-extension graph that everything else descends from. Pre-existed in v0.0.28+; v0.0.31 adds FZ fields (`folgezettel: "1"`, `folgezettel_parent: ""`) to mark it as trail root. |
 | `1a` | `thought_cqrs_design_evolution.md` (NEW) | The four-step descent: substrate → three-regime framing (rejected) → two-systems counter → CQRS synthesis. The "what was tried and why" record. |
-| `1a1` | `thought_synthesis_two_systems_cqrs_value_proposition.md` | The pivotal synthesis — System P (Ontology + DKS, prescriptive) ⊥ System D (Retrieval, descriptive) ⊥ one shared substrate. Pre-existed in v0.0.28+; v0.0.31 renumbers from AB's `7g1a1a1a1a1` to Tessellum-native `1a1`. |
+| `1a1` | `thought_synthesis_two_systems_cqrs_value_proposition.md` | The pivotal synthesis — System P (Ontology + DKS, prescriptive) ⊥ System D (Retrieval, descriptive) ⊥ one shared substrate. Pre-existed in v0.0.28+; v0.0.31 renumbers from the source vault's `7g1a1a1a1a1` to Tessellum-native `1a1`. |
 | `1a1a` | `thought_cqrs_essence_for_tessellum.md` (NEW) | The distilled user-facing thesis: one boundary (declaration vs computation), two disciplines, one substrate. Plus the 5 rules that fall out, and the explicit "what CQRS is *not*" carve-outs. |
 
 #### `entry_folgezettel_trails.md` — the trail map (NEW)
@@ -2913,7 +2913,7 @@ Seed now ships 11 foundation term notes total — every term a new user needs to
 
 ### Fixed — Scrubbed residual internal references from 3 shipped term notes
 
-The v0.0.28 ship included three terms with leftover Amazon / abuse-domain references in their bodies. Scrubbed to ship as general public knowledge:
+The v0.0.28 ship included three terms with leftover internal / abuse-domain references in their bodies. Scrubbed to ship as general public knowledge:
 
 | Term | Was | Now |
 | ---- | --- | --- |
@@ -2921,7 +2921,7 @@ The v0.0.28 ship included three terms with leftover Amazon / abuse-domain refere
 | `term_slipbox.md` | 4 internal hits — "Abuse slipbox" H3 sub-section, internal-wiki link list, contact line | 0 hits. Internal sub-section dropped. Internal-wiki link list dropped. Contact line dropped. |
 | `term_dialectic_knowledge_system.md` | 2 internal hits — one row in the "Dialectic Spectrum" table, one See Also link referring to internal architecture | 0 hits. Table row genericized to "typical typed slipbox". See Also link genericized to "a typed-slipbox architecture". |
 
-All 11 foundation terms now pass `tessellum format check` with 0 errors, 0 Amazon-internal word-boundary hits, and 0 Amazon-domain phrase hits.
+All 11 foundation terms now pass `tessellum format check` with 0 errors, 0 internal word-boundary hits, and 0 internal-domain phrase hits.
 
 ### Added — `pyproject.toml` force-include entries
 
@@ -3019,7 +3019,7 @@ Install footprint drops substantially (matplotlib + Pillow + igraph + fa2 are he
 
 ### Added — Two ported capture skills (closes `plan_code_artifacts_port`)
 
-Phase 3 (final) of the code-artifact port. Two production-grade capture skill canonicals + Composer pipeline sidecars ported from the source vault and adapted to Tessellum's runtime.
+Phase 3 (final) of the code-artifact port. Two production-grade capture skill canonicals + Composer pipeline sidecars ported from the originating research vault and adapted to Tessellum's runtime.
 
 ```
 vault/resources/skills/
@@ -3055,21 +3055,21 @@ Compiles to a 7-step DAG that orchestrates the production of a single code-snipp
 6. **step_6_update_entry_point** (cross_leaf, `edits_apply_xml_tags`) — add to `entry_code_snippets.md`
 7. **step_7_verify** (INFRA) — structural validation pass
 
-#### Adaptations from the source vault
+#### Adaptations from the originating research vault
 
 Both skills were ported via systematic find-replace + manual editing:
 
 - **Rename**: `slipbox-*` → `tessellum-*` across header, slugs, sidecar filename, and `pipeline_metadata:` references.
-- **Source repo URLs**: `internal-repo` → `https://github.com/<owner>/<repo>` placeholder. `internal-repo` → `https://github.com/<owner>/<repo>/blob/main/<path>`.
-- **Internal URL scrubs**: `*.amazon.com` patterns replaced with placeholders or removed.
+- **Source repo URLs**: internal repo-tree URL patterns → `https://github.com/<owner>/<repo>` placeholder. Internal repo-blob URL patterns → `https://github.com/<owner>/<repo>/blob/main/<path>`.
+- **Internal URL scrubs**: internal-host URL patterns replaced with placeholders or removed.
 - **Script invocations**: `bash scripts/update_notes_database.sh` → `tessellum index build`; `python3 $SCRIPTS_DIR/bm25_search.py` → `tessellum search --bm25`.
-- **Setup block**: replaced the AB-specific `SCRIPTS_DIR=./scripts; DB_PATH=...; VAULT_PATH=...` bootstrap with `VAULT_PATH="."   # run from your vault root`.
+- **Setup block**: replaced the source-specific `SCRIPTS_DIR=./scripts; DB_PATH=...; VAULT_PATH=...` bootstrap with `VAULT_PATH="."   # run from your vault root`.
 - **Ecosystem shims**: dropped `related_skill_headers:` YAML key (no `.claude/skills/` or `.kiro/skills/` thin headers in Tessellum). Replaced the "thin headers point here" paragraph with a direct-invocation note.
-- **MCP dependencies**: stripped `mcp_dependencies:` blocks from sidecars. Tessellum's Composer Wave 4 ships an `AnthropicBackend` but no MCP dispatcher (deferred per `plan_composer_port.md`). The `builder-mcp` references that fetched from `internal-repo` are gone; the agent now does the fetching directly.
-- **Schema rewrite**: AB used a non-standard `expected_output_schema` with `format: markdown_with_frontmatter`, `required_frontmatter_keys: [output_path]`. Tessellum's compiler expects JSON Schema with `required: [output_path]` — converted via regex. Same for `format: xml_tag_list` → `required: [edits]`.
+- **MCP dependencies**: stripped `mcp_dependencies:` blocks from sidecars. Tessellum's Composer Wave 4 ships an `AnthropicBackend` but no MCP dispatcher (deferred per `plan_composer_port.md`). The internal MCP references that fetched from internal repo URLs are gone; the agent now does the fetching directly.
+- **Schema rewrite**: the source used a non-standard `expected_output_schema` with `format: markdown_with_frontmatter`, `required_frontmatter_keys: [output_path]`. Tessellum's compiler expects JSON Schema with `required: [output_path]` — converted via regex. Same for `format: xml_tag_list` → `required: [edits]`.
 - **Forbidden field**: dropped `note_second_category:` from frontmatter (Tessellum's validator says `tags[1]` is the canonical source of truth for the second category).
 - **FZ trail references** (e.g., `(FZ 12a)`) — stripped from headers.
-- **Reference-example paths**: AB-specific example notes (`repo_amazon_cursus.md`, `snippet_slipbox_resolve_ghost_term_matches.md`) → generic `<example>` placeholders.
+- **Reference-example paths**: source-specific example notes → generic `<example>` placeholders.
 
 #### Validation
 
@@ -3089,7 +3089,7 @@ Full suite: **468 passed, 1 skipped** (the optional Anthropic-SDK constructor te
 | 2     | v0.0.25 | 5 universal acronym glossaries (397 acronyms) + master index |
 | 3     | v0.0.26 | 2 capture skill canonicals + Composer sidecars |
 
-All Amazon-internal references scrubbed across the three phases; the public vault reads clean.
+All internal references scrubbed across the three phases; the public vault reads clean.
 
 ## [0.0.25] — 2026-05-10
 
@@ -3109,28 +3109,28 @@ vault/0_entry_points/
 
 #### Why these 5 (and not the original 16)
 
-The source library (the source vault) has 16 glossaries built around the parent project's domain: fraud / abuse / Amazon-internal tooling. Many sections in those glossaries reference internal-only systems (Cradle, Wasabi, Paragon, Triton, Brazil, Coral, Midway, etc.) or Amazon-domain examples (BRP, CUBES, DSI, Weblab, Guardian, GREENTea, etc.) that don't belong in a public OSS slipbox.
+The source library has 16 glossaries built around the parent project's domain: fraud / abuse / internal tooling. Many sections in those glossaries reference internal-only systems (various internal build systems, data platforms, and auth infrastructure) or domain-specific business examples (abuse-prevention acronyms and internal program codenames) that don't belong in a public OSS slipbox.
 
 Per the plan's design principle ("the public vault must read clean — a first-time reader should not encounter internal jargon"), 11 glossaries were dropped entirely rather than partially scrubbed:
 
-- **`tools`** — overwhelmingly Amazon-internal tool names.
-- **`security`** — Amazon-internal security framework (AAA, ASR, Anvil, Shepherd).
-- **`developer`** — Amazon-internal infrastructure (LDAP/POSIX groups, BuilderHub, AgentSpaces, Cloud Desktop, Bindle, Brazil).
-- **`data_governance`** — Amazon-internal compliance frameworks (RED/Orange/Yellow taxonomy, CAZ, Shepherd).
-- **`ml`** — too entwined with Amazon-internal ML projects (Pangaea, GRAIL, BEAD, Ship2Vec, AmazonBoost, COSA, TFCM, GUARDIAN, etc.). The universal ML concepts are still findable via published references; we don't need to gate access to "Transformer" or "GBDT" through a glossary.
-- **`business`**, **`workflows`**, **`teams`**, **`systems`**, **`data_metrics`**, **`abuse_networks`** — all heavily Amazon-internal.
+- **`tools`** — overwhelmingly internal tool names.
+- **`security`** — an internal security framework.
+- **`developer`** — internal developer infrastructure (LDAP/POSIX groups, a docs portal, agent workspaces, cloud desktops, and internal build/auth systems).
+- **`data_governance`** — internal compliance frameworks (data-classification taxonomy and internal access-control tooling).
+- **`ml`** — too entwined with internal ML projects and program codenames. The universal ML concepts are still findable via published references; we don't need to gate access to "Transformer" or "GBDT" through a glossary.
+- **`business`**, **`workflows`**, **`teams`**, **`systems`**, **`data_metrics`**, **`abuse_networks`** — all heavily internal.
 
 The 5 kept glossaries (statistics, critical thinking, cognitive science, network science, LLM) are dominated by published research concepts. Each was scrubbed of:
 
-- Sections whose H3 title named an Amazon-internal tool or project codename.
-- Sections whose body opened with an Amazon-domain example (BRP, fraud, abuse, enforcement).
-- Inline mentions of `Amazon`, `BRP`, `CUBES`, `DSI`, `Weblab` (replaced with neutral phrasings or removed).
-- Internal-host URLs (`*.amazon.com`, `*.corp.amazon.com`, `*internal-host`).
+- Sections whose H3 title named an internal tool or project codename.
+- Sections whose body opened with a domain-specific business example (abuse-prevention, fraud, abuse, enforcement).
+- Inline mentions of the company name and business acronyms (replaced with neutral phrasings or removed).
+- Internal-host URLs.
 - `**Source**: Internal: ...` lines.
 - "Back to Main Glossary" footer links pointing at non-existent index.
 - YAML keyword entries naming internal tools.
 
-After scrubbing, the 5 files have **0 word-boundary hits** for `Amazon`, `BRP`, `CUBES`, `DSI`, `Weblab`, `Cradle`, `Wasabi`.
+After scrubbing, the 5 files have **0 word-boundary hits** for the company name, business acronyms, or internal tool names.
 
 #### `entry_acronym_glossary.md` — master index
 
@@ -3142,7 +3142,7 @@ All 6 files pass `tessellum format check` with 0 errors. Warnings are expected (
 
 #### What's coming
 
-- **v0.0.26 — Phase 3 of `plan_code_artifacts_port.md`**: port two capture skills (`skill_tessellum_capture_code_repo_note` + `skill_tessellum_capture_code_snippet`) from the source vault with sidecars, validated via `tessellum composer validate`.
+- **v0.0.26 — Phase 3 of `plan_code_artifacts_port.md`**: port two capture skills (`skill_tessellum_capture_code_repo_note` + `skill_tessellum_capture_code_snippet`) from the originating research vault with sidecars, validated via `tessellum composer validate`.
 
 ## [0.0.24] — 2026-05-10
 
@@ -3164,7 +3164,7 @@ created: ./areas/code_repos/repo_my_repo.md
 
 #### `template_code_snippet.md`
 
-Distills the source vault's snippet shape (FZ 12a) into a Tessellum-clean placeholder template:
+Distills the originating research vault's snippet shape (FZ 12a) into a Tessellum-clean placeholder template:
 
 - YAML frontmatter with `building_block: procedure` (the most common; concept/model are alternatives via comment)
 - BB-specific block between Purpose and Patterns: `## Procedure` (Mermaid flowchart) for procedures, `## Mathematical Definition` (MathJax) for concepts, `## Architecture / Model` (Mermaid flowchart or classDiagram) for models
@@ -3216,8 +3216,8 @@ Existing `@pytest.mark.parametrize("flavor", sorted(REGISTRY))` smoke tests auto
 
 #### What's coming
 
-- v0.0.25 — Phase 2: 10 acronym glossaries dropped into `vault/0_entry_points/` with Amazon-internal references scrubbed.
-- v0.0.26 — Phase 3: two capture skills (`skill_tessellum_capture_code_repo_note` + `skill_tessellum_capture_code_snippet`) ported from the source vault with sidecars, `tessellum composer validate` as the gate.
+- v0.0.25 — Phase 2: 10 acronym glossaries dropped into `vault/0_entry_points/` with internal references scrubbed.
+- v0.0.26 — Phase 3: two capture skills (`skill_tessellum_capture_code_repo_note` + `skill_tessellum_capture_code_snippet`) ported from the originating research vault with sidecars, `tessellum composer validate` as the gate.
 
 ## [0.0.23] — 2026-05-10
 
@@ -3322,7 +3322,7 @@ Full suite: 464 passed, 1 skipped.
 
 #### What's done
 
-The Composer port from the source vault is now feature-complete for Tessellum v0.1. Six waves shipped across v0.0.9 → v0.0.23:
+The Composer port from the originating research vault is now feature-complete for Tessellum v0.1. Six waves shipped across v0.0.9 → v0.0.23:
 
 | Wave | What            | Module                                    |
 | ---- | --------------- | ----------------------------------------- |

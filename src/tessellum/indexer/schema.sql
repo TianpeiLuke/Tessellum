@@ -4,8 +4,8 @@
 -- are deferred to v0.0.13 / v0.0.14. Ghost-note + broken-link diagnostic
 -- tables are deferred to v0.0.13.
 --
--- Schema is portable to and from the parent project: column names match
--- the source vault's `notes` and `note_links` tables verbatim, modulo columns
+-- Schema is portable to and from the originating research vault: column
+-- names match its `notes` and `note_links` tables verbatim, modulo columns
 -- that depend on subsystems Tessellum hasn't shipped yet
 -- (static_ppr_score, in_degree, note_int_id).
 

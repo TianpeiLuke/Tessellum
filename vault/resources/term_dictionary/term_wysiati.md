@@ -102,12 +102,12 @@ WYSIATI has direct implications for abuse prevention:
 - **Model design**: Machine learning models trained on available features are inherently WYSIATI-prone -- they can only use what is in the feature set. Deliberately engineering features that capture "what is missing" (e.g., absence of expected behavior, gaps in activity) can counteract this
 - **Policy decisions**: When designing abuse prevention policies, decision-makers may anchor on the most recent or most visible abuse type without considering the full landscape of abuse modalities
 
-### Knowledge Management and the Vault
+### Knowledge Management and Note-Taking
 
-WYSIATI directly motivates several design features in the Zettelkasten/SlipBox approach:
-- **Ghost notes** (placeholder notes for concepts not yet documented) make the absence of knowledge *visible*, counteracting WYSIATI
-- **Broken link detection** (`slipbox-check-broken-links`) systematically surfaces what is missing from the knowledge graph
-- **Multi-tier relevance analysis** (`slipbox-analyze-term-relevance`) deliberately explores beyond the immediately available Tier 1 connections through Tiers 2-5, forcing consideration of more distant (and therefore less "available") knowledge
+WYSIATI directly motivates several design features in the Zettelkasten approach to knowledge management:
+- **Placeholder/ghost notes** (stub notes for concepts not yet documented) make the absence of knowledge *visible*, counteracting WYSIATI
+- **Broken link detection** systematically surfaces what is missing from the knowledge graph
+- **Multi-tier relevance analysis** deliberately explores beyond the immediately available direct connections, forcing consideration of more distant (and therefore less "available") knowledge
 
 ### Decision Hygiene Practices
 

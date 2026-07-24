@@ -37,13 +37,13 @@ Four concrete gaps, validated against the actual source code in `src/tessellum/c
 3. **No context budget enforcement.** `compiler.py` validates pipeline structure but never measures rendered prompt size. Oversized prompts surface as opaque API errors at runtime, not compile-time warnings.
 4. **DKS silently swallows backend failures.** Three `except Exception: return None` sites in `dks/core.py` (`_llm_check_disagreement`, `_format_retrieval_context`, and JSON parse paths) preserve graceful degradation but emit no signal — a degraded backend's effects show up only as a vague "DKS produces worse outputs."
 
-The patterns to address these are battle-tested in the source vault's **reliability-pattern** framework (production Task Runner handling multi-day sessions over multi-thousand-leaf corpora). FZ 15 in the AB vault documents the architectural divergence between reliability-pattern and OpenClaw; this plan ports the four reliability-pattern-specific patterns that close Tessellum's gaps, leaving OpenClaw's distributed-gates patterns for a later release if needed.
+The patterns to address these are battle-tested in the originating research vault's **reliability-pattern framework** (a production task runner handling multi-day sessions over multi-thousand-leaf corpora). FZ 15 in the source vault documents the architectural divergence between this reliability-pattern framework and a distributed-gates variant; this plan ports the four reliability-pattern-specific patterns that close Tessellum's gaps, leaving the distributed-gates patterns for a later release if needed.
 
-## What Tessellum already does better than AB (don't reinvent)
+## What Tessellum already does better than the source vault (don't reinvent)
 
-Three patterns are *more* sophisticated in Tessellum than in AB and stay as-is:
+Three patterns are *more* sophisticated in Tessellum than in the source vault and stay as-is:
 
-| Surface | Tessellum | AB equivalent |
+| Surface | Tessellum | Source-vault equivalent |
 |---|---|---|
 | Eval framework | 6-dim LLMJudge rubric (`composer/eval.py` Wave 5b): relevance / completeness / accuracy / clarity / structural_integrity / epistemic_congruence | Single LLM-judge rating |
 | Typed-output contracts | Frozen `dataclass(kw_only=True)` + BB-typed subclasses with `field(default=BBType.X, init=False)` (Phase 8 D1) | Structural Python types via TypedDict |
@@ -55,8 +55,8 @@ This plan does *not* touch these surfaces.
 
 | # | Question | Resolution | Rationale |
 |---|----------|------------|-----------|
-| **R-1** | Retry budgets: separate logic-vs-crash, or single budget? | **Separate** — `MAX_LOGIC_RETRIES = 3` for schema/materializer/validation failures; `MAX_CRASH_RECOVERIES = 2` for backend exceptions (network, OOM, timeout, etc.) | reliability-pattern's experience: subprocess flakes shouldn't consume the algorithmic retry budget for actual prompt-vs-schema mismatches. Same-error loop detection (3 consecutive identical errors → fail early) prevents retry storms regardless of budget. |
-| **R-2** | Retry context injection: prompt-template variables or system-prompt augmentation? | **Both: template variables `{{retry.attempt}}` and `{{retry.error}}` AND system-prompt augmentation** | The error needs to land in the user-prompt for the model to address; the attempt count is more useful as a system-prompt nudge ("you're on attempt 2"). reliability-pattern injects both. |
+| **R-1** | Retry budgets: separate logic-vs-crash, or single budget? | **Separate** — `MAX_LOGIC_RETRIES = 3` for schema/materializer/validation failures; `MAX_CRASH_RECOVERIES = 2` for backend exceptions (network, OOM, timeout, etc.) | The reliability-pattern framework's experience: subprocess flakes shouldn't consume the algorithmic retry budget for actual prompt-vs-schema mismatches. Same-error loop detection (3 consecutive identical errors → fail early) prevents retry storms regardless of budget. |
+| **R-2** | Retry context injection: prompt-template variables or system-prompt augmentation? | **Both: template variables `{{retry.attempt}}` and `{{retry.error}}` AND system-prompt augmentation** | The error needs to land in the user-prompt for the model to address; the attempt count is more useful as a system-prompt nudge ("you're on attempt 2"). The reliability-pattern framework injects both. |
 | **R-3** | Watchdog mechanism: asyncio task with timeout, or thread + signal? | **asyncio task with `asyncio.wait_for`** | The MCP SDK is already async (used by `tessellum.mcp.server`). Going async-first across the executor is a one-time refactor that pays off when the MCP host calls into Composer. Thread + signal is harder to test + portable across OSes. |
 | **R-4** | Context budget cap: per-step or global? | **Both: global `HARD_PROMPT_CAP_CHARS = 150_000` + per-upstream `max_chars` in sidecar YAML** | Global cap protects against pipeline composition error (e.g., 5 upstream sources fanning in); per-upstream caps protect against any single source dominating. Sum(soft) ≤ hard validated at compile time. |
 | **R-5** | DKS silent-failure observability: change semantics or just instrument? | **Just instrument** — preserve `except: return None` semantics; add a `silent_failures: tuple[str, ...]` field on `DKSCycleResult` that records each swallowed exception | Phase 5's `decide_escalation` contract depends on graceful degradation. Changing the silent-fallback semantics would break confidence-gating in subtle ways. Telemetry is enough. |
@@ -277,7 +277,7 @@ silent_failure_count: int = 0
 **Goal:** version bump + CHANGELOG + clean-venv wheel smoke + commit + push + PyPI.
 
 - Bump `pyproject.toml` + `src/tessellum/__about__.py` to `0.0.60`
-- CHANGELOG entry summarising Phases A-C with the four gap descriptions + the four reliability-pattern patterns ported
+- CHANGELOG entry summarising Phases A-C with the four gap descriptions + the four reliability patterns ported
 - Full pytest suite (target: ~920 passed, +30 from v0.0.59's 886)
 - Clean-venv wheel smoke covers the new code paths (retry executor, async backend, context-budget compile, silent_failures field)
 - Commit + push + PyPI
@@ -314,10 +314,10 @@ silent_failure_count: int = 0
 
 - **No async-everywhere refactor.** Only `executor.py` and the backend layer go async; the scheduler stays largely sync (with one `asyncio.run` wrapper). A full async migration is a v0.2+ concern.
 - **No retry of materialization side-effects.** If a step writes a file successfully then a later step fails, the file is not rolled back. Idempotency is the materialiser's responsibility; this plan doesn't add transactional semantics.
-- **No OpenClaw pattern port.** OpenClaw's distributed-gates patterns (per-layer reliability ownership) are interesting but a structural redesign — the four reliability-pattern patterns here are *additive* + far smaller blast radius. OpenClaw integration would be a v0.2+ plan.
+- **No distributed-gates pattern port.** The distributed-gates patterns (per-layer reliability ownership) are interesting but a structural redesign — the four reliability patterns here are *additive* + far smaller blast radius. Distributed-gates integration would be a v0.2+ plan.
 - **No new Composer features beyond robustness.** No batching, no parallel execution, no caching — orthogonal to robustness.
-- **No DKS escalation tracking (reliability-pattern Pattern 7).** Tessellum's DKS doesn't currently do LLM-driven replan; escalation tracking has no failure mode to prevent. Defer until DKS adds a meta-cycle that proposes its own continuation.
-- **No tier-based safe-tool classifier (reliability-pattern Pattern 8).** Tessellum doesn't dispatch arbitrary tools the way Claude Code does. Not applicable yet.
+- **No DKS escalation tracking (the escalation-tracking pattern).** Tessellum's DKS doesn't currently do LLM-driven replan; escalation tracking has no failure mode to prevent. Defer until DKS adds a meta-cycle that proposes its own continuation.
+- **No tier-based safe-tool classifier (the safe-tool-classifier pattern).** Tessellum doesn't dispatch arbitrary tools the way an agentic coding CLI does. Not applicable yet.
 
 ## Sequencing summary
 
@@ -359,15 +359,15 @@ v0.1.0  └─ Phase VI of plan_v01_completion_roadmap.md
 
 ## Heritage
 
-This plan ports patterns from the source vault's **reliability-pattern** framework. Specifically:
+This plan ports patterns from the originating research vault's **reliability-pattern framework**. Specifically:
 
-- FZ 15 trail's argumentative chain (reliability-pattern vs OpenClaw 9-axis divergence map)
-- `snippet_meshclaw_circuit_breaker.md` — informs A.1 retry decision logic + R-1 same-error short-circuit
-- `snippet_meshclaw_task_retry_recovery.md` — informs A.2 retry-aware prompts
-- `snippet_meshclaw_context_budgets.md` — informs B.3 two-tier budget model
-- `snippet_meshclaw_task_runner_lifecycle.md` — informs B.1 watchdog cancel-at-Xs escalation
+- FZ 15 trail's argumentative chain (reliability-pattern vs distributed-gates 9-axis divergence map)
+- a circuit-breaker snippet — informs A.1 retry decision logic + R-1 same-error short-circuit
+- a task-retry-recovery snippet — informs A.2 retry-aware prompts
+- a context-budgets snippet — informs B.3 two-tier budget model
+- a task-runner-lifecycle snippet — informs B.1 watchdog cancel-at-Xs escalation
 
-The patterns are well-established in reliability-pattern's multi-day production sessions; this plan adapts them to Tessellum's Composer + DKS shape without porting reliability-pattern's vault-specific session.py concentration.
+The patterns are well-established in the framework's multi-day production sessions; this plan adapts them to Tessellum's Composer + DKS shape without porting the framework's vault-specific session.py concentration.
 
 ---
 

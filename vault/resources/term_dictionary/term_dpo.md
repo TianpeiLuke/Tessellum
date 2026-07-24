@@ -125,7 +125,7 @@ DPO has become the default alignment method for open-source LLMs due to its simp
 ## Applications to Our Work
 
 - **Abuse classifier alignment**: DPO could align abuse detection models to investigator preferences using pairwise comparisons of classification outputs — simpler than building a full RLHF pipeline with a separate reward model
-- **Efficient fine-tuning**: DPO's lower compute cost makes it practical for aligning smaller, domain-specific models (e.g., BSM-BERT variants) to abuse detection preferences
+- **Efficient fine-tuning**: DPO's lower compute cost makes it practical for aligning smaller, domain-specific models (e.g., fine-tuned BERT variants) to abuse detection preferences
 - **Offline alignment**: DPO works on fixed preference datasets — suitable for abuse domains where generating new model outputs during training is impractical or unsafe
 
 ## Related Terms

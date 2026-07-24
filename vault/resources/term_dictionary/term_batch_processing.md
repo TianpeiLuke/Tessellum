@@ -13,8 +13,6 @@ keywords:
   - bulk data
   - offline processing
   - data warehouse
-  - Datanet
-  - Cradle
 topics:
   - data engineering
   - data processing paradigms
@@ -89,8 +87,6 @@ Data written to       Transform (clean/join/agg)     ML training kicks off
 | **dbt** | SQL transformation | Warehouse-scale | Declarative SQL transforms |
 | **Apache Airflow** | Orchestrator | Any | DAG-based workflow scheduling |
 | **AWS Glue** | Managed ETL | Cloud-scale | Serverless Spark |
-| **Datanet/ETLM** | SQL ETL | Redshift-scale | Cron + dependency tracking |
-| **Cradle** | Spark ETL | 50TB+ | Distributed S3/Andes processing |
 
 ## Batch Processing Anti-Patterns
 
@@ -109,7 +105,6 @@ Data written to       Transform (clean/join/agg)     ML training kicks off
 
 ### Frameworks and Platforms
 - **[Term: Apache Spark](term_spark.md)** -- Dominant engine for modern batch (and micro-batch) processing
-- **[Term: Cradle](term_cradle.md)** -- Amazon's Spark-based batch ETL platform for large-scale processing
 - **[Term: Kinesis](term_kinesis.md)** -- AWS streaming platform; contrast with batch patterns
 - **[Term: Directed Acyclic Graph](term_directed_acyclic_graph.md)** -- DAG structure used to model batch job dependencies
 
@@ -142,7 +137,7 @@ Data written to       Transform (clean/join/agg)     ML training kicks off
 | **Latency** | Minutes to hours |
 | **Throughput** | Very high (bulk-optimized) |
 | **Scheduling** | Cron, event-triggered, or DAG-based |
-| **Key frameworks** | Spark, Hadoop MapReduce, dbt, Airflow, Cradle, Datanet |
+| **Key frameworks** | Spark, Hadoop MapReduce, dbt, Airflow, AWS Glue |
 | **Best for** | ETL, reporting, ML training, reconciliation, backfills |
 | **Trade-off** | Higher latency in exchange for simplicity, cost, and throughput |
 

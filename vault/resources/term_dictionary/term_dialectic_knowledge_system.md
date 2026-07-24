@@ -47,7 +47,7 @@ This term does not come from existing literature. It was synthesized in this vau
 
 1. **Dialectic** — from Hegel's thesis → antithesis → synthesis, applied to knowledge systems where decisions (arguments) generate counter-evidence that sharpens the original claim
 2. **Knowledge System** — from the Zettelkasten/SlipBox architecture of typed atomic notes connected by a knowledge graph with [building blocks](term_knowledge_building_blocks.md) as structural units
-3. **Empirical observation** — from the production system's production evidence that the pattern works: 1,855 conversations → 59 behaviors → 29 patterns → 23 rules → 1,846 agent decisions → disagreement analysis → rule improvement (PDA F1 +32.7%, DNR F1 +16.2%)
+3. **Empirical observation** — from the production system's production evidence that the pattern works: 1,855 conversations → 59 behaviors → 29 patterns → 23 rules → 1,846 agent decisions → disagreement analysis → rule improvement (double-digit F1 gains on the affected classification rules)
 
 ## The 7-Component Pattern
 
@@ -78,7 +78,7 @@ The feedback loop closes when improved rules (component 7) are applied to new ob
 
 | Instance | Domain | Observation | Arg A | Arg B | Status |
 |----------|--------|-------------|-------|-------|--------|
-| **the production system** | an internal data system conversation investigation | 1,855 `conv_` notes | LLM classification (`agent_`) | ARI investigator (`human_`) | Production |
+| **the production system** | an internal data system conversation investigation | 1,855 `conv_` notes | LLM classification (`agent_`) | human investigator (`human_`) | Production |
 | **a behavior-pattern memory system** | Behavioral pattern memory for a knowledge graph | Clickstream + model outputs | a knowledge graph risk decision | Buyer writeback / holdout | Proposed (design only) |
 | **static descriptive systems** | a domain workflow governance | ARM tickets | — (no arguments) | — | Production, but **not a DKS** (accumulation only, no dialectic) |
 | **Tessellum** | Domain knowledge | Documents, wikis, papers | — (implicit in Folgezettel counters) | — | Production, but **implicit dialectic** (not operational) |
@@ -131,8 +131,7 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 - **[Compound AI System](term_compound_ai_system.md)**: Systems combining multiple AI components; DKS is a compound system with deterministic routing + LLM reasoning + human review
 
 **Applied Systems**:
-- **[static descriptive systems](term_mo_slipbox.md)**: a domain workflow governance knowledge graph — accumulation without dialectic; DKS's non-dialectic baseline
-- **[an LLM rule optimizer](term_spot_x.md)**: Prompt optimization engine; implements the rule improvement stage (component 7) of the DKS cycle
+- **an LLM rule optimizer**: Prompt optimization engine; implements the rule improvement stage (component 7) of the DKS cycle
 
 **Optimization Frameworks**:
 - **[DSPy](term_dspy.md)**: Composable module optimization; DKS rules are analogous to DSPy signatures compiled from execution traces
@@ -148,8 +147,6 @@ The DKS cycle is the building block ontology's epistemic reasoning cycle realize
 
 - DKS Design Note — Sub-project note documenting the full DKS design
 - [Building Block Ontology ](../../resources/analysis_thoughts/thought_building_block_ontology_relationships.md) — The 10 ontology edges that form the DKS cycle
-
-- [Three-Layer Intelligence System ](../../resources/analysis_thoughts/thought_three_layer_intelligence_system.md) — a knowledge graph × a behavior-pattern memory system × a typed-slipbox architecture
 
 ### External Sources
 - [Hegel, G.W.F. (1807). *Phenomenology of Spirit*](https://en.wikipedia.org/wiki/Phenomenology_of_Spirit) — Original thesis → antithesis → synthesis dialectic

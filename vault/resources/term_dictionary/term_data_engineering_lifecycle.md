@@ -127,7 +127,6 @@ The lifecycle framework does not replace ETL — rather, ETL (and ELT) are speci
 ## Related Terms
 
 - **[Term: ETL - Extract, Transform, Load](term_etl.md)** — The foundational data movement pattern; ETL and ELT are specific implementations within the ingestion and transformation stages of the lifecycle
-- **[Term: Datanet](term_datanet.md)** — Amazon's SQL-based ETL platform for Redshift; an ingestion/transformation tool within the lifecycle
 - **[Term: Data Flywheel](term_data_flywheel.md)** — Virtuous cycle where data improves products which generate more data; complementary concept to the lifecycle
 - **[Term: Vector Database](term_vector_database.md)** — Specialized storage for embedding vectors; a storage technology within the lifecycle
 - **[Term: Data Parallelism](term_data_parallelism.md)** — Parallel processing strategy relevant to the transformation and ingestion stages

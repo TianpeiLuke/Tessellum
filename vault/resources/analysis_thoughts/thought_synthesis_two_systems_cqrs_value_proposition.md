@@ -38,7 +38,7 @@ folgezettel_parent: "1a"
 
 ## Thesis
 
-After ten dialectical steps starting at , the architecture stabilizes on a single, sharp claim:
+After ten dialectical steps, the architecture stabilizes on a single, sharp claim:
 
 > **The Tessellum vault is a [CQRS](../term_dictionary/term_cqrs.md) knowledge system. Two systems share one substrate; they are joined by one cross-system rule; they are valuable for two distinct, complementary reasons. Every other layer, edge, or routing scheme proposed in the chain is either internal hygiene of one of the two systems or a violation of the one cross-system rule.**
 
@@ -139,12 +139,12 @@ The vault's value claim splits cleanly along the system boundary. Each half is i
 
 **What it provides**:
 
-- **Typed atomic notes** (): every fact carries an epistemic type (concept/model/hypothesis/argument/counter/observation/procedure/navigation). Filterable, composable, comparable.
-- **Closed-loop quality control** (): warrants are generated from disagreement; rules that fail are demoted, refined, or replaced. the production system showed +32.7% F1 improvement from this loop.
+- **Typed atomic notes**: every fact carries an epistemic type (concept/model/hypothesis/argument/counter/observation/procedure/navigation). Filterable, composable, comparable.
+- **Closed-loop quality control**: warrants are generated from disagreement; rules that fail are demoted, refined, or replaced. A production deployment of this loop showed +32.7% F1 improvement.
 - **Provenance and defensibility**: every DKS-generated rule carries its full Booth/Toulmin chain — which observations supported it, which counter-arguments survived, which gap reports motivated revision.
-- **Folgezettel trails** (): authored reasoning sequences with dialectic structure — argument → counter → synthesis as first-class objects, not buried in prose.
+- **Folgezettel trails**: authored reasoning sequences with dialectic structure — argument → counter → synthesis as first-class objects, not buried in prose.
 
-**Differentiator**: Generic note-taking systems (Obsidian, Notion, BASB) have no typing. KGs (Neo4j, a knowledge graph) have typing but no closed loop. Constitutional AI has rules but a fixed constitution. **Closed-loop dialectic for warrant precision** is the System P literature contribution (, ).
+**Differentiator**: Generic note-taking systems (Obsidian, Notion, BASB) have no typing. KGs (Neo4j, a knowledge graph) have typing but no closed loop. Constitutional AI has rules but a fixed constitution. **Closed-loop dialectic for warrant precision** is the System P literature contribution.
 
 ### Value Half 2 — System D: "Schema-free retrieval over typed substrate"
 
@@ -153,8 +153,8 @@ The vault's value claim splits cleanly along the system boundary. Each half is i
 **What it provides**:
 
 - **Sub-second answers at competitive accuracy**: dense retrieval Hit@5 = 0.83+ for every BB except emp_obs, at 58.7ms latency (FZ 5e2). Pareto-dominates every graph strategy and routed strategy.
-- **Schema-free interface**: the user query never has to know what a "BB type" is. New sub-kinds work on day one without schema migration ().
-- **Hybrid re-ranking that uses System P's artifacts where they help**: PPR proximity, BB alignment, link context, FZ trail ordering — all enter at stage 3–4, not stage 1 ().
+- **Schema-free interface**: the user query never has to know what a "BB type" is. New sub-kinds work on day one without schema migration.
+- **Hybrid re-ranking that uses System P's artifacts where they help**: PPR proximity, BB alignment, link context, FZ trail ordering — all enter at stage 3–4, not stage 1.
 - **Operationally cheap**: no schema migration, no capture-skill rewriting, no ontology coordination required to evolve the retriever.
 
 **Differentiator**: Pure RAG systems have no typed substrate, so re-ranking signals are limited to embedding similarity. Pure GraphRAG systems try to use ontology at candidate generation, where it underperforms. **Dense-primary candidate generation + hybrid re-ranking using typed-substrate artifacts** is the System D literature contribution.
@@ -181,12 +181,12 @@ The Phase 3 trail (FZ 5–5l1) was authored *before* this CQRS framing existed. 
 | **[FZ 5h1a: BB Demand Redirected to Re-Ranking](thought_bb_demand_redirected_to_reranking.md)** | BB demand classification adds value for *re-ranking* and *assembly*, not routing | System P signals enter System D at stage 3, never stage 1 |
 | **[FZ 5i1a: Term Hub Value for Re-Ranking](thought_term_hub_value_for_reranking_context.md)** | Term hubs are valuable for re-ranking and context assembly, not BFS retrieval | Same pattern — System P's structural artifacts are stage-3/4 signals |
 | **[FZ 5j: Hub Dilution Bridges Topology and Retrieval](thought_hub_dilution_bridges_topology_and_retrieval.md)** | Strong graph topology (System P artifact) causes weak naive retrieval (System D failure) | The boundary exists because System P optimizations and System D performance can be in tension |
-| **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** | Proposes a BB-aware evaluation metric for the QA system answers | A System D *evaluation* signal that uses System P typing — exactly the right place for ontology to enter D |
+| **FZ 5g3a: Epistemic Congruence Metric** | Proposes a BB-aware evaluation metric for the QA system answers | A System D *evaluation* signal that uses System P typing — exactly the right place for ontology to enter D |
 | **[FZ 5l1a1b2: Multi-BB Is Graph Traversal, Not Congruence](thought_multi_bb_is_graph_traversal_not_congruence.md)** | The QA review system was confusing two distinct things; multi-BB demand needs traversal, not a congruence score | Same dialectical move as this trail — separating two problems that share vocabulary |
 | **[FZ 5l1a1c: Four Purposes of QA Review](thought_synthesis_four_purposes_of_qa_review.md)** | QA review serves multiple distinct purposes that should not be conflated | The same anti-conflation discipline applied to System D's evaluation layer |
 | **[FZ 5e1c1c: Hybrid Retrieval (Dense + Graph)](thought_hybrid_retrieval_dense_plus_graph.md)** | Recipe for combining dense candidate generation with graph re-ranking | The internal architecture of System D, ratified |
-| **[FZ 5c: PlugMem Lens](analysis_plugmem_lens_on_source_vault.md)** | Typed knowledge enables questions that flat memory cannot answer | The System P value half — typing is the differentiator |
-| **[FZ 5d: Meta-Harness Lens](analysis_metaharness_lens_on_source_vault.md)** | Skills are model harnesses; execution traces > summaries | Skills are System P's runtime; traces are evidence System D could use |
+| **[FZ 5c: PlugMem Lens](analysis_plugmem_lens_on_vault.md)** | Typed knowledge enables questions that flat memory cannot answer | The System P value half — typing is the differentiator |
+| **FZ 5d: Meta-Harness Lens** | Skills are model harnesses; execution traces > summaries | Skills are System P's runtime; traces are evidence System D could use |
 | **[FZ 5f: Folgezettel Trails as Fifth Retrieval Modality](thought_folgezettel_trails_as_retrieval_modality.md)** | FZ trails are a distinct retrieval modality with dialectic structure | A System P artifact (authored sequence) consumed by System D at stage 4 |
 
 **The pattern across all 13 notes**: **System P artifacts (types, edges, hubs, trails, demand classifications) are valuable to System D at stages 3–4, never at stage 1.** This is exactly what the CQRS view *predicts* — the boundary at the query path is sacred, but there is no boundary at the re-rank/assembly path. The Phase 3 trail discovered this architecture by exhaustive negative example; this synthesis names it.
@@ -236,36 +236,23 @@ If a proposed change violates any of R-P, R-D, R-Cross, it is by construction wr
 ## Related Notes
 
 ### Folgezettel Trail (the chain this synthesizes)
-- **Child **: AMLC 2026 paper proposal that packages this synthesis as a publishable contribution — Track 8, 4 authors (Luke + Mark + Weber + Cecile), 8 pages, ~2-day drafting effort given heavy lift from this note's §1–§3.
-- **Parent **: the counter that produced the two-system frame; this synthesis sharpens that counter's diagram and value claim.
--  — the three-regime synthesis the counter sharpened.
--  — FZ 5 empirical sweep that confirmed the architecture.
--  — the original three-layer reframe; in CQRS terms, P (write) vs D (read).
--  — within-BB navigation moved out of ontology (now System D internal).
--  — sub-kinds are PARA Areas; live as System D facets, not System P schema.
--  — superseded; typed architectural edges as schema was the wrong tool.
--  — the deep-dive problem that opened the chain (now System D's problem to solve).
--  — the original Ontology, now System P's schema.
+- **Child**: a paper proposal that packages this synthesis as a publishable contribution, drawing heavily on this note's §1–§3.
+- **Parent**: the counter that produced the two-system frame; this synthesis sharpens that counter's diagram and value claim.
+- The three-regime synthesis the counter sharpened.
+- The empirical sweep that confirmed the architecture.
+- The original three-layer reframe; in CQRS terms, P (write) vs D (read).
+- Within-BB navigation moved out of ontology (now System D internal).
+- Sub-kinds are PARA Areas; live as System D facets, not System P schema.
+- Superseded; typed architectural edges as schema was the wrong tool.
+- The deep-dive problem that opened the chain (now System D's problem to solve).
+- The original Ontology, now System P's schema.
 
 ### Phase 3 (Unification) Convergence Evidence
 - [FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md) — the question this synthesis finally answers (split value across two systems).
-- [FZ 5c: PlugMem Lens](analysis_plugmem_lens_on_source_vault.md) — typed knowledge differentiator; System P value half evidence.
-- [FZ 5d: Meta-Harness Lens](analysis_metaharness_lens_on_source_vault.md) — skills as harnesses; System P runtime evidence.
--  — Pareto dominance; R-Cross evidence.
--  — BB value redirected to evaluation; R-D evidence.
--  — hybrid recipe; System D internal architecture ratified.
--  — FZ trails as System D stage-4 input.
--  — BB-aware evaluation metric; correct place for System P typing inside System D.
--  — pre-routing refuted; R-Cross evidence.
--  — BB demand for re-ranking, not routing; R-D pattern.
--  — term hub value at re-ranking; R-D pattern.
--  — System P topology causing System D failure; R-Cross necessity.
--  — same anti-conflation discipline applied inside System D's evaluation layer.
+- [FZ 5c: PlugMem Lens](analysis_plugmem_lens_on_vault.md) — typed knowledge differentiator; System P value half evidence.
 
 ### DKS Notes (System P Runtime)
 - FZ 8c5c1a: DKS Design — System P's runtime documented.
-- [FZ 8c5c1a3: DKS Novelty Assessment](analysis_dks_novelty_assessment.md) — System P literature contribution.
-- [FZ 8c5c1a9: DKS Literature Review](thought_dks_literature_review_and_contribution.md) — sharpened to "closed-loop dialectic for warrant precision."
 - [FZ 8c5c1a10: DKS as Thinking Protocol on Slipbox KG](thought_dks_is_thinking_protocol_on_slipbox_kg.md) — two-entity model upgraded here to two-system model.
 
 ### Source Lenses
@@ -276,7 +263,7 @@ If a proposed change violates any of R-P, R-D, R-Cross, it is by construction wr
 - **CQRS pattern** (Command Query Responsibility Segregation, Greg Young, ~2010) — the software-architecture pattern this synthesis recognizes the vault as instantiating. Worth a future term note.
 
 ### Entry Points
-- [Entry: Argument Trail](../../0_entry_points/entry_source_vault_argument_trail.md) — this note is FZ 7g1a1a1a1a1 (★).
+- This note is FZ 7g1a1a1a1a1 (★) in the argument trail.
 
 ---
 

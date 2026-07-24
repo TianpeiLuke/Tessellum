@@ -104,7 +104,7 @@ Large pre-trained language models have been shown to store factual knowledge in 
 
 ## Relevance to Our Work
 
-- [RAG](../term_dictionary/term_rag.md) — The foundational technique this paper introduces; used extensively in BRP for GreenTEA, AskNexus, DeepCARE, and Abuse Slipbox
+- [RAG](../term_dictionary/term_rag.md) — The foundational technique this paper introduces
 - [LLM](../term_dictionary/term_llm.md) — Large Language Models whose knowledge limitations RAG addresses
 - [Embedding](../term_dictionary/term_embedding.md) — Dense vector representations enabling the DPR retrieval component
 - [FAISS](../term_dictionary/term_faiss.md) — Facebook AI Similarity Search used for efficient MIPS in RAG's retriever

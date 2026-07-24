@@ -60,7 +60,7 @@ LangGraph is designed for production use cases requiring controllable, observabl
 
 | System | Use Case | Key Feature |
 |--------|----------|-------------|
-| Deep Research Agent (BRP) | Automated research-to-report generation | Multi-phase workflow with hybrid search across web/academic/enterprise sources |
+| Deep research agents | Automated research-to-report generation | Multi-phase workflow with hybrid search across web/academic/enterprise sources |
 | LangGraph Platform | Managed agent deployment | Production infrastructure for long-running stateful agents |
 | LangGraph Studio | Agent development IDE | Visual debugging and testing of graph-based workflows |
 | Customer support agents | Multi-turn conversation with tool use | State persistence across conversation turns |
@@ -70,7 +70,7 @@ LangGraph is designed for production use cases requiring controllable, observabl
 
 | Domain | Application |
 |--------|-------------|
-| **Research Automation** | Multi-phase research workflows with iterative deepening (e.g., BRP Deep Research Agent) |
+| **Research Automation** | Multi-phase research workflows with iterative deepening |
 | **Customer Support** | Stateful conversation agents with escalation paths and human handoff |
 | **Code Generation** | Iterative code writing, testing, and debugging with self-correction loops |
 | **Data Analysis** | Multi-step analytical pipelines with conditional branching based on results |
@@ -95,15 +95,9 @@ LangGraph is designed for production use cases requiring controllable, observabl
 
 ## References
 
-### Vault Sources
-- [BRP ML Research 2026 - #12 Deep Research Agent](../../0_entry_points/entry_brp_ml_research_2026.md) — Built on LangGraph and Amazon Bedrock for research-to-report automation
-
 ### External Sources
 - [Wikipedia: LangChain](https://en.wikipedia.org/wiki/LangChain)
 - [LangGraph Official Documentation](https://langchain-ai.github.io/langgraph/)
 - [LangGraph Tutorial: Building LLM Agents (Zep)](https://www.getzep.com/ai-agents/langgraph-tutorial)
 - [Pangea: What is LangGraph?](https://www.pangea.app/glossary/langgraph)
 - [LangGraph Platform GA Announcement (May 2025)](https://blog.langchain.com/langgraph-platform-ga/)
-
-### Related Code Repos
-- [SlipBot](../../areas/code_repos/repo_slipbot.md) — Slack Q&A chatbot using LangGraph ReAct agent for slipbox knowledge base search

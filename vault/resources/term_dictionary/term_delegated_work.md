@@ -42,9 +42,9 @@ Delegated work as a research framing emerged in 2025-2026 alongside agentic AI t
 - **Knowledge worker integration of LLMs** — Bick et al. (2024) report ~40% of working-age Americans used generative AI at work in late 2024; Brachman et al. (2024) survey active LLM integration into workflows.
 - **Beyond chat** — delegated work is positioned as the paradigm *after* chat (single-turn) and *after* basic agent-with-tools. The user moves further from the artifact, supervising outcomes rather than steps.
 
-Within Amazon buyer-abuse prevention, delegated-work concerns map onto:
+Within abuse-prevention workflows, delegated-work concerns map onto:
 
-- LLM-driven **investigator pipelines** (e.g., [Greentea LLM Pipeline](../../areas/models/model_greentea_llm_pipeline.md), [SOPA LLM Pipeline](../../areas/models/model_sopa_llm_pipeline.md)) — the LLM produces case decisions and policy citations the human then reviews; trust in faithful execution is critical.
+- LLM-driven **investigator pipelines** — the LLM produces case decisions and policy citations the human then reviews; trust in faithful execution is critical.
 - **Automated case enforcement** — when a model's output is the action (refund, decision, restoration), the operator delegates the artifact creation to the model.
 - **Multi-step LLM workflows** — pipelines that ingest evidence, summarize, classify, and explain are subject to the same long-horizon degradation patterns DELEGATE-52 studies.
 
@@ -82,7 +82,6 @@ From DELEGATE-52 (Laban et al., 2026), 19 LLMs evaluated on 310 work environment
 - **[Self-Evolving Agent](term_self_evolving_agent.md)**: a related research direction; agents that improve through interaction must avoid corrupting the artifacts they evolve over.
 - **[RAG](term_rag.md)**: distractor-context findings in delegated work evaluation directly inform retrieval system design — long-horizon benchmarks capture lasting effects of imperfect retrieval.
 - **[LLM](term_llm.md)**: the substrate; delegation is one mode of LLM use, alongside chat, classification, and retrieval-augmented generation.
-- **[Greentea](term_greentea.md)**: BRP investigation system; delegated-work findings on long-horizon degradation are directly applicable to multi-turn LLM-based investigator pipelines.
 - **[Knowledge Graph](term_knowledge_graph.md)**: related infrastructure — supervisable artifacts include KGs, where edits must preserve graph semantics rather than corrupt nodes/edges.
 
 ## References

@@ -107,7 +107,7 @@ PlugMem grounds its design in cognitive science: Tulving (1972) distinguished ep
 | [A-Mem](term_agentic_memory.md) | Zettelkasten-inspired alternative | Emergent structure via agent agency; no cognitive science constraints |
 | [AWM](../papers/lit_yang2026plugmem.md) | Task-specific procedural memory | Only procedural memory; web navigation only |
 | [ReasoningBank](../papers/lit_yang2026plugmem.md) | Task-specific reasoning memory | Tightly coupled to specific benchmarks |
-| **Abuse SlipBox** | Structural analog | Term notes ≈ Fact Blocks; SOP notes ≈ Workflow Blocks; entry points ≈ concept routing nodes |
+| **This knowledge base** | Structural analog | Term notes ≈ Fact Blocks; SOP notes ≈ Workflow Blocks; entry points ≈ concept routing nodes |
 
 ## Applications
 
@@ -180,7 +180,7 @@ PlugMem grounds its design in cognitive science: Tulving (1972) distinguished ep
 5. How does PlugMem's concept-centric semantic memory compare to [HippoRAG](term_hipporag.md)'s PPR-based entity routing — could the two be combined (hippocampal indexing for entity discovery + knowledge graphs for abstraction)?
    - **Tests**: Complementarity of two graph-based memory approaches (Liquid Network)
 
-6. The Abuse SlipBox already implements PlugMem's architecture informally (term notes ≈ Fact Blocks, SOPs ≈ Workflow Blocks, entry points ≈ concept routing) — what specific vault improvements would formalize this mapping? See [analysis_plugmem_lens_on_source_vault](../analysis_thoughts/analysis_plugmem_lens_on_source_vault.md).
+6. This knowledge base already implements PlugMem's architecture informally (term notes ≈ Fact Blocks, SOPs ≈ Workflow Blocks, entry points ≈ concept routing) — what specific vault improvements would formalize this mapping? See [PlugMem lens analysis](../analysis_thoughts/analysis_plugmem_lens_on_vault.md).
    - **Tests**: Practical vault improvement roadmap (Operationalization)
 
 ## Related Terms
@@ -207,7 +207,7 @@ PlugMem grounds its design in cognitive science: Tulving (1972) distinguished ep
 - [PlugMem Experiment Design](../papers/paper_yang2026plugmem_exp_design.md) — Three benchmarks, baselines, and PMI framework
 - [PlugMem Experiment Results](../papers/paper_yang2026plugmem_exp_result.md) — Results tables, ablations, and knowledge transfer analysis
 - [PlugMem Review](../papers/review_yang2026plugmem.md) — OpenReview-style evaluation: Soundness 3/4, Overall 7/10
-- [PlugMem Lens on Abuse SlipBox](../analysis_thoughts/analysis_plugmem_lens_on_source_vault.md) — How PlugMem's framework explains and improves the vault
+- [PlugMem Lens on This Knowledge Base](../analysis_thoughts/analysis_plugmem_lens_on_vault.md) — How PlugMem's framework explains and improves the vault
 
 ### External Sources
 - [Yang et al. (2026). "PlugMem: A Task-Agnostic Plugin Memory Module for LLM Agents." arXiv:2603.03296.](https://arxiv.org/abs/2603.03296)

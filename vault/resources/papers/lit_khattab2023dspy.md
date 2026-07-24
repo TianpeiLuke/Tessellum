@@ -73,26 +73,25 @@ The key insight: **prompt engineering should be compiled, not hand-crafted.** Ju
 4. **Compilation = automated optimization**: `dspy.compile()` takes a program + training examples + metric → produces an optimized pipeline. This is analogous to compiling source code.
 5. **Small models can compete with large**: T5-770M and llama2-13b with DSPy optimization achieve performance competitive with GPT-3.5 expert-crafted chains.
 
-## Relevance to Abuse Slipbox
+## Relevance to This Knowledge Base
 
-DSPy's architecture directly parallels the Abuse SlipBox's skill system:
+DSPy's architecture directly parallels this knowledge base's skill system:
 
-| DSPy Concept | SlipBox Equivalent |
+| DSPy Concept | Knowledge-Base Equivalent |
 |-------------|-------------------|
 | **Signature** | Skill's `argument-hint` + expected output format |
-| **Module** | Individual skill (e.g., `/slipbox-capture-term-note`) |
+| **Module** | Individual skill (e.g., a capture-term-note skill) |
 | **Composed pipeline** | Skill chain (search → save → digest → review → capture term) |
 | **Teleprompter** | Meta-Harness-style optimization of skill code |
-| **Compilation** | Not yet implemented — but the SlipBox's skill pipelines could be "compiled" |
+| **Compilation** | Not yet implemented — but the skill pipelines could be "compiled" |
 
-**Key difference**: DSPy optimizes *prompts and demonstrations*; the SlipBox's skills optimize the *entire harness* (retrieval strategy, context assembly, output formatting). Meta-Harness (Lee et al., 2026) addresses this gap — it optimizes harness code, not just prompts.
+**Key difference**: DSPy optimizes *prompts and demonstrations*; the skills optimize the *entire harness* (retrieval strategy, context assembly, output formatting). Meta-Harness (Lee et al., 2026) addresses this gap — it optimizes harness code, not just prompts.
 
 **Key connection**: DSPy's Omar Khattab is also a co-author of Meta-Harness — the two systems form a progression: DSPy optimizes prompt-level modules; Meta-Harness optimizes code-level harnesses.
 
 ## Related Notes
 
 - [Meta-Harness Literature Note](lit_lee2026metaharness.md) — Co-authored by Khattab; extends DSPy's optimization to full harness code
-- [Meta-Harness Lens Analysis](../analysis_thoughts/analysis_metaharness_lens_on_source_vault.md) — Skills as harnesses
 - [Agentic Pipeline Analysis](../analysis_thoughts/analysis_agentic_pipelines_skill_chaining.md) — 15 skill pipelines as composed modules
 - [Term: Meta-Harness](../term_dictionary/term_meta_harness.md) — Harness optimization beyond DSPy
 - [Term: LLM](../term_dictionary/term_llm.md) — The models DSPy programs

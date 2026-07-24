@@ -132,7 +132,7 @@ DeepSeek-R1 demonstrated GRPO's potential at scale:
 ## Applications to Our Work
 
 - **Abuse rule verification**: Abuse detection rules have verifiable outcomes — a rule either correctly classifies a transaction or doesn't. GRPO could optimize rule parameters using verification against labeled data without a learned reward model.
-- **Investigation automation quality**: [GreenTEA](term_greentea.md) investigation decisions can be verified against ground truth outcomes (was the enforcement action upheld?). GRPO could optimize investigation prompts using these verifiable signals.
+- **Investigation automation quality**: Automated investigation decisions can be verified against ground truth outcomes (was the enforcement action upheld?). GRPO could optimize investigation prompts using these verifiable signals.
 - **SQL/code generation**: Abuse analytics queries have verifiable outputs (query runs and returns expected results). GRPO could optimize LLM-generated SQL for abuse reporting.
 
 ## Related Terms

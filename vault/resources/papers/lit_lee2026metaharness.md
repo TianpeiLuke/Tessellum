@@ -74,13 +74,13 @@ The key insight: **harness behavior has long-horizon dependencies** — early de
 5. **Discovered strategies are interpretable**: Draft-Verification for classification, four-route BM25 router for math, environment bootstrapping for coding — all human-readable and auditable
 6. **Claude Code as proposer**: The system itself runs Claude Code (Opus-4.6) as the harness proposer — demonstrating Claude's capability as an automated code optimization agent
 
-## Relevance to Abuse Slipbox
+## Relevance to This Knowledge Base
 
-Meta-Harness directly connects to the Abuse Slipbox's skill architecture:
-- **Skills as harnesses**: Each Claude/Kiro skill is a harness — code that wraps an LLM to perform a specific task (search, digest, review, etc.)
+Meta-Harness directly connects to this knowledge base's skill architecture:
+- **Skills as harnesses**: Each skill is a harness — code that wraps an LLM to perform a specific task (search, digest, review, etc.)
 - **Skill optimization opportunity**: Meta-Harness suggests that automated optimization of skill code (not just prompts) could improve performance — e.g., optimizing the paper review skill's question generation or the term capture skill's web search strategy
-- **Filesystem-as-memory**: The Abuse Slipbox already uses a filesystem (vault notes + database) as persistent memory for LLM interactions — Meta-Harness formalizes this pattern
-- **Execution traces**: The Slipbox's skill pipeline could log execution traces to enable Meta-Harness-style optimization across skill invocations
+- **Filesystem-as-memory**: This knowledge base already uses a filesystem (vault notes + database) as persistent memory for LLM interactions — Meta-Harness formalizes this pattern
+- **Execution traces**: The skill pipeline could log execution traces to enable Meta-Harness-style optimization across skill invocations
 
 ## Related Notes
 

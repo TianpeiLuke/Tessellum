@@ -126,7 +126,6 @@ The paper defines four requirements for a fully realized CNC:
 - **[Transformer](term_transformer.md)**: DiT (Diffusion Transformer) architecture underlies current NC implementations
 - **[Foundation Model](term_foundation_model.md)**: NCs build on foundation model capabilities but propose a paradigm shift from tool to computer
 - **[Generative Latent Prediction](term_generative_latent_prediction.md)**: Related approach for prediction in latent space; NCs extend this to interactive computing
-- **[Genie](term_genie.md)**: Interactive world model from video — a precursor to the NC concept, operating as an environment simulator
 - **[Agentic AI](term_agentic_ai.md)**: NCs are the "computer" counterpart to agentic AI's "agent" — both are neural but serve different system objects
 - **[SSM](term_ssm.md)**: State Space Models share the recurrent state-update formalism $h_t = f(h_{t-1}, x_t)$ with NCs
 - **[Agentic Memory](term_agentic_memory.md)**: NCs embed memory implicitly in latent state; agentic systems use explicit memory modules

@@ -34,7 +34,6 @@ building_block: navigation
 
 **Related Glossaries**:
 - [Statistics Glossary](acronym_glossary_statistics.md) — causal inference, experimental design, Bayesian methods
-- [ML Glossary](acronym_glossary_ml.md) — graph neural networks (GNN, TGN, RGAT) that learn on network data
 - [Cognitive Science Glossary](acronym_glossary_cognitive_science.md) — behavioral concepts (information cascades, game theory) that operate on networks
 
 ---
@@ -127,7 +126,7 @@ building_block: navigation
 **Full Name**: Graph (Network)
 **Description**: A mathematical structure consisting of nodes (vertices) and edges (links) that model pairwise relationships between entities. **The foundational data structure of network science** — every concept in this glossary (centrality, clustering, community detection, random graphs, diffusion, game theory on networks) operates on graphs. Key variants include directed/undirected, weighted/unweighted, bipartite, heterogeneous (multiple node/edge types), temporal (time-evolving), and hypergraphs (edges connecting 3+ nodes). The adjacency matrix $A$ and graph Laplacian $L = D - A$ are the two matrix representations that enable spectral analysis.
 **Documentation**: [Graph](../resources/term_dictionary/term_graph.md)
-**Related**: [Adjacency Matrix](#adjacency-matrix), [Graph Laplacian](#graph-laplacian), [DAG](#dag---directed-acyclic-graph), [GNN](acronym_glossary_ml.md#gnn---graph-neural-networks), [Random Graph](#random-graph), [Knowledge Graph](../resources/term_dictionary/term_knowledge_graph.md)
+**Related**: [Adjacency Matrix](#adjacency-matrix), [Graph Laplacian](#graph-laplacian), [DAG](#dag---directed-acyclic-graph), [Random Graph](#random-graph), [Knowledge Graph](../resources/term_dictionary/term_knowledge_graph.md)
 
 ### DAG - Directed Acyclic Graph
 **Full Name**: DAG — Directed Acyclic Graph
@@ -179,7 +178,7 @@ building_block: navigation
 **Full Name**: Graph Signal Processing
 **Description**: The extension of classical signal processing (Fourier transforms, filtering, sampling) from regular domains (time series, images) to irregular graph domains using the graph Laplacian's eigenvectors as a frequency basis. **The Graph Fourier Transform (GFT) decomposes signals on nodes into spectral components**, where low-frequency components vary smoothly across edges and high-frequency components change rapidly between neighbors. Spectral filtering on graphs enables denoising, compression, and feature extraction on network data. GSP provides the theoretical foundation for spectral GNN architectures (ChebNet, GCN) — graph convolution IS spectral filtering. Pioneered by Shuman et al. (2013) and Sandryhaila & Moura (2013).
 **Documentation**: [Graph Signal Processing](../resources/term_dictionary/term_graph_signal_processing.md)
-**Related**: [Graph Laplacian](#graph-laplacian), [Spectral Graph Theory](#spectral-graph-theory), [Spectral Clustering](#spectral-clustering), [GNN](acronym_glossary_ml.md#gnn---graph-neural-networks)
+**Related**: [Graph Laplacian](#graph-laplacian), [Spectral Graph Theory](#spectral-graph-theory), [Spectral Clustering](#spectral-clustering)
 
 ---
 
@@ -229,7 +228,7 @@ building_block: navigation
 
 ### PageRank
 **Full Name**: PageRank
-**Description**: The parent graph-importance algorithm whose stationary distribution under a damped random walk on the row-stochastic transition matrix scores each node by global authority. **Originally developed by Brin and Page (1998) to rank web pages by link structure**, PageRank is the basis for a family of variants (Personalized PageRank, Topic-Sensitive PageRank, TrustRank). Computed by power iteration; convergence governed by the spectral gap and guaranteed by the teleportation step that makes the walk irreducible and aperiodic. In the SlipBox, static PageRank was empirically shown to be ≈ in-degree on the vault corpus, motivating the production swap to a SQL `COUNT(*)` aggregate.
+**Description**: The parent graph-importance algorithm whose stationary distribution under a damped random walk on the row-stochastic transition matrix scores each node by global authority. **Originally developed by Brin and Page (1998) to rank web pages by link structure**, PageRank is the basis for a family of variants (Personalized PageRank, Topic-Sensitive PageRank, TrustRank). Computed by power iteration; convergence governed by the spectral gap and guaranteed by the teleportation step that makes the walk irreducible and aperiodic.
 **Documentation**: [PageRank](../resources/term_dictionary/term_pagerank.md)
 **Related**: [PPR](#ppr---personalized-pagerank), [Random Walk](#random-walk), [Eigenvector Centrality](#eigenvector-centrality), [Spectral Graph Theory](#spectral-graph-theory)
 
@@ -241,18 +240,17 @@ building_block: navigation
 
 ### PPR - Personalized PageRank
 **Full Name**: Personalized PageRank
-**Description**: A graph ranking algorithm that ranks nodes by relevance to a set of seed nodes via biased random walks. **The computational implementation of eigenvector centrality** — the theoretical measure Jackson identifies as determining long-run influence in networks. Introduced as PageRank by Brin and Page (1998) for web search, generalized to personalized/topic-sensitive variants by Haveliwala (2002). In network science, PPR quantifies a node's structural importance relative to a query: nodes reachable via many short paths from the seeds score highest. Used in the vault itself as `static_ppr_score` for note importance ranking.
+**Description**: A graph ranking algorithm that ranks nodes by relevance to a set of seed nodes via biased random walks. **The computational implementation of eigenvector centrality** — the theoretical measure Jackson identifies as determining long-run influence in networks. Introduced as PageRank by Brin and Page (1998) for web search, generalized to personalized/topic-sensitive variants by Haveliwala (2002). In network science, PPR quantifies a node's structural importance relative to a query: nodes reachable via many short paths from the seeds score highest. Widely used for note-importance ranking in knowledge-graph retrieval.
 **Documentation**: [PPR](../resources/term_dictionary/term_ppr.md)
 **Related**: [PageRank](#pagerank), [Random Walk](#random-walk), [Network Centrality](#network-centrality), [Eigenvector Centrality](#eigenvector-centrality)
 
 ### Pixie - Pinterest's Monte Carlo Random Walk
 **Full Name**: Pixie (Pinterest random-walk recommendation system)
-**Description**: A production random-walk system Pinterest built to recommend 3+ billion items to 200+ million users in real time, introduced by Eksombatchai et al. (WWW 2018). **Approximates Personalized PageRank by running N independent Monte Carlo random walks from seed nodes**, each with restart probability `p` at every step, ranking candidates by visit-count frequency. No matrix algebra, no global precomputation — pure local traversal that parallelizes trivially. Complexity is `O(N × L)` per query, independent of graph size. In the slipbox vault, included as the `pixie_random_walk` strategy (S7) in the FZ 5e2b1a benchmark to serve as the **no-semantic-bias structural baseline** that establishes a lower bound for the random-walk family. The empirical result (Hit@5 = 0.235 synth / 0.337 SlipBot — losing badly to PPR variants seeded via dense retrieval) was the load-bearing evidence for the conclusion *"the signal lives in the seeds, not in the walk dynamics."*
+**Description**: A production random-walk system Pinterest built to recommend 3+ billion items to 200+ million users in real time, introduced by Eksombatchai et al. (WWW 2018). **Approximates Personalized PageRank by running N independent Monte Carlo random walks from seed nodes**, each with restart probability `p` at every step, ranking candidates by visit-count frequency. No matrix algebra, no global precomputation — pure local traversal that parallelizes trivially. Complexity is `O(N × L)` per query, independent of graph size. Serves as a no-semantic-bias structural baseline for the random-walk retrieval family, isolating the effect of seeding strategy from that of walk dynamics.
 **Documentation**: [Pixie Random Walk](../resources/term_dictionary/term_pixie_random_walk.md)
-**Wiki**: [Eksombatchai et al. WWW 2018, arXiv:1711.07601](https://arxiv.org/abs/1711.07601)
-**Slipbox Application**: Strategy S7 in [FZ 5e2b1a Priority Graph Search Benchmark](../archives/experiments/experiment_priority_graph_search_benchmark.md); diagnostic baseline that isolates seeding-strategy effect from walk-dynamics effect
-**Key Benefits**: Trivially parallel; no global precomputation; latency bounded by walk length × walks-per-seed; pure-Python implementation in `scripts/retrieval_strategies/pixie_random_walk.py`
-**Related**: [PPR](#ppr---personalized-pagerank), [PageRank](#pagerank), [Random Walk](#random-walk), [BFS](../resources/term_dictionary/term_bfs.md), [](../resources/term_dictionary/term_hipporag.md)
+**Paper**: [Eksombatchai et al. WWW 2018, arXiv:1711.07601](https://arxiv.org/abs/1711.07601)
+**Key Benefits**: Trivially parallel; no global precomputation; latency bounded by walk length × walks-per-seed
+**Related**: [PPR](#ppr---personalized-pagerank), [PageRank](#pagerank), [Random Walk](#random-walk), [HippoRAG](../resources/term_dictionary/term_hipporag.md)
 
 ---
 
@@ -348,32 +346,26 @@ building_block: navigation
 
 ---
 
-### CDK (domain) — Centralized Documented Knowledge
-**Full Name**: Centralized Documented Knowledge
-**Definition**: [term_cdk_knowledge](../resources/term_dictionary/term_cdk_knowledge.md) — domain shared knowledge control plane combining document stores + vector stores + knowledge graphs with unified metadata governance.
-**Related**: [Knowledge Graph](../resources/term_dictionary/term_knowledge_graph.md), [Slipbox](../resources/term_dictionary/term_slipbox.md), [RAG](../resources/term_dictionary/term_rag.md)
-
 ### Scale-Free Network
-**Definition**: [term_scale_free_network](../resources/term_dictionary/term_scale_free_network.md) — Network with power-law degree distribution (P(k) ~ k^-γ). Generated by preferential attachment. The Abuse Slipbox exhibits scale-free properties (α=1.4-1.8).
+**Definition**: [term_scale_free_network](../resources/term_dictionary/term_scale_free_network.md) — Network with power-law degree distribution (P(k) ~ k^-γ). Generated by preferential attachment.
 **Related**: [Power Law](../resources/term_dictionary/term_power_law.md), [Preferential Attachment](../resources/term_dictionary/term_preferential_attachment.md)
 
 ## Cross-Reference: Theory to Practice
 
-| Theory Concept | Vault Application | Connection |
+| Theory Concept | Knowledge-Graph Application | Connection |
 |---------------|-------------------|------------|
-| Eigenvector centrality / PageRank | Vault PPR scoring (`static_ppr_score`) | Jackson's centrality theory IS the foundation of the vault's note importance ranking |
-| Power law degree distributions | Abuse network detection | Fraud rings exhibit non-random degree distributions detectable by GNN models |
-| Preferential attachment | Knowledge graph growth | High-PPR notes attract more links over time — the vault itself exhibits preferential attachment |
-| Homophily | Abuse ring identification | Bad actors cluster with similar bad actors; community detection exploits this |
-| Information cascades | Abuse technique propagation | New anomaly vectors spread through bad-actor networks via cascade dynamics |
-| Small world property | Vault navigation | Short average path length means any two notes are ~3 hops apart despite local clustering |
-| Assortative mixing | Abuse ring structure analysis | Fraud rings may exhibit anomalous assortativity patterns — degree correlations reveal coordinated account clusters |
-| Complex contagion | Coordinated anomaly spreading | Abuse techniques require social reinforcement (multiple sources) to adopt — complex contagion dynamics explain why anomaly clusters in communities |
+| Eigenvector centrality / PageRank | PPR note-importance scoring | Jackson's centrality theory is the foundation of graph-based note importance ranking |
+| Power law degree distributions | Network anomaly detection | Coordinated clusters exhibit non-random degree distributions detectable by graph models |
+| Preferential attachment | Knowledge graph growth | High-PPR notes attract more links over time — the graph itself exhibits preferential attachment |
+| Homophily | Community identification | Similar nodes cluster together; community detection exploits this |
+| Information cascades | Technique propagation | Behaviors spread through networks via cascade dynamics |
+| Small world property | Graph navigation | Short average path length means any two notes are ~3 hops apart despite local clustering |
+| Assortative mixing | Cluster structure analysis | Degree correlations reveal coordinated node clusters |
+| Complex contagion | Coordinated adoption | Adoption requiring social reinforcement (multiple sources) explains why behaviors cluster in communities |
 
 ## Related Entry Points
 
 - [Statistics Glossary](acronym_glossary_statistics.md) — causal inference, Mediocristan/Extremistan, tail risk, Bayesian inference
-- [ML Glossary](acronym_glossary_ml.md) — GNN, TGN, graph neural network architectures
 - [Cognitive Science Glossary](acronym_glossary_cognitive_science.md) — game theory, information cascades, behavioral economics
 
 ## References

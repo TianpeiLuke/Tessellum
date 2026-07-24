@@ -93,7 +93,7 @@ Memory Network ──────── Interconnected "boxes" of related memori
    - **Tests**: Robustness under non-ideal conditions (WYSIATI)
 
 ### Application (Taxonomic — "What If? / How?")
-3. How would agentic memory apply to abuse investigation agents that accumulate case knowledge over hundreds of investigations — would the memory evolution mechanism (merge, restructure) prevent knowledge graph bloat while preserving investigation insights?
+3. How would agentic memory apply to investigation agents that accumulate case knowledge over hundreds of investigations — would the memory evolution mechanism (merge, restructure) prevent knowledge graph bloat while preserving investigation insights?
    - **Tests**: Scalability in a domain-specific long-running agent scenario (Scale Shift)
 
 4. What if agentic memory were combined with PlugMem's knowledge-centric structuring — could A-MEM's emergent linking + PlugMem's proposition/prescription extraction produce a system that is both principled and adaptive?
@@ -113,27 +113,17 @@ Memory Network ──────── Interconnected "boxes" of related memori
 - [RAG](term_rag.md) — Complementary retrieval paradigm; RAG retrieves from static corpora, agentic memory retrieves from a self-organizing evolving network
 - [Self-Evolving Agent](term_self_evolving_agent.md) — Agentic memory implements the memory evolution locus of self-evolving agents
 - [Prompt Optimization](term_prompt_optimization.md) — Complementary context evolution; prompt optimization refines instructions, agentic memory organizes accumulated knowledge
-- [Continual Learning](term_continual_learning.md) — Related paradigm; agentic memory enables non-parametric continual knowledge refinement without catastrophic forgetting
-- [AgentZ](term_agentz.md) — Amazon's agent platform that maintains task context across HITL interactions
-- [Embedding](term_embedding.md) — Dense vector representations for similarity-based pre-filtering in link generation
+- [Continual Learning](term_continual_learning.md) — Related paradigm; agentic memory enables non-parametric continual knowledge refinement without catastrophic forgetting- [Embedding](term_embedding.md) — Dense vector representations for similarity-based pre-filtering in link generation
 - [Knowledge Graph](term_knowledge_graph.md) — Alternative structured approach; knowledge graphs impose schemas while agentic memory allows emergent structure
 - [PlugMem](term_plugmem.md) — Task-agnostic plugin memory using knowledge-centric graphs with propositional and prescriptive knowledge
 - [Propositional Knowledge](term_propositional_knowledge.md) — "Knowing that" — factual knowledge extracted from episodic memory in PlugMem
 - [Prescriptive Knowledge](term_prescriptive_knowledge.md) — "Knowing how" — procedural knowledge extracted from episodic memory in PlugMem
 - [Memory Information Density](term_memory_information_density.md) — Information-theoretic metric for evaluating agentic memory efficiency
-
-- [MO SlipBox](term_mo_slipbox.md) — Internal Zettelkasten-inspired knowledge system; structural parallel to A-MEM
-
 ## References
 
 - Source: [Xu et al. (2025). "A-MEM: Agentic Memory for LLM Agents"](../papers/lit_xu2025amem.md) — introduces the agentic memory concept with Note Construction, Link Generation, and Memory Evolution mechanisms
 - Source: [Gao et al. (2025). "A Survey of Self-Evolving Agents"](../papers/lit_gao2025survey.md) — situates memory evolution within the self-evolving agent taxonomy
 - Source: [Yang et al. (2026). "PlugMem: A Task-Agnostic Plugin Memory Module for LLM Agents"](../papers/lit_yang2026plugmem.md) — knowledge-centric memory graph approach with cognitive science foundations
-
-### Related Vault Notes
-
-- [GreenTEA 2.0](../../projects/project_greentea.md) — Agentic AI project with agent memory capabilities
-- [BRP Agentic AI Projects](../../0_entry_points/entry_brp_agentic_ai_projects.md) — Index of 33 agentic AI projects in BRP
 
 ---
 

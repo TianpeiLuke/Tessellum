@@ -88,8 +88,6 @@ Our ability to continuously acquire, organize, and leverage knowledge is a key f
 - Related: [RAG](../term_dictionary/term_rag.md) — HippoRAG 2 advances RAG beyond simple vector retrieval
 - Related: [Knowledge Graph](../term_dictionary/term_knowledge_graph.md) — Uses open knowledge graphs for structured retrieval
 - Related: [Continual Learning](../term_dictionary/term_continual_learning.md) — Non-parametric continual learning as alternative to fine-tuning
-- Related: [Nexus](../../areas/area_nexus.md) — Nexus also uses graph-based retrieval; PPR could enhance it
-- Related: [Continual Learning ATO](../../projects/project_continual_learning_ato.md) — Continual learning project could adopt non-parametric approach
 - Related: [Embedding](../term_dictionary/term_embedding.md) — Dense-sparse coding combines embeddings with graph structure
 - Related: [HippoRAG](../term_dictionary/term_hipporag.md) — Core subject of this paper; hippocampus-inspired RAG with KG + PPR
 - Related: [PPR](../term_dictionary/term_ppr.md) — Personalized PageRank is the retrieval mechanism in HippoRAG's hippocampal index
@@ -98,8 +96,8 @@ Our ability to continuously acquire, organize, and leverage knowledge is a key f
 
 ## Questions
 
-- Could HippoRAG 2's dense-sparse passage integration improve Nexus's retrieval quality?
-- How does the PPR approach scale with graph size compared to Nexus's current traversal?
+- Could HippoRAG 2's dense-sparse passage integration improve a graph-based retrieval system's quality?
+- How does the PPR approach scale with graph size compared to a conventional graph-traversal retriever?
 - Would the recognition memory (LLM-based triple filtering) add too much latency for production use?
 - Can the OpenIE triple extraction be replaced with domain-specific KG construction?
 
@@ -129,5 +127,3 @@ Our ability to continuously acquire, organize, and leverage knowledge is a key f
 - [PPR](../term_dictionary/term_ppr.md)
 - [OpenIE](../term_dictionary/term_open_ie.md)
 - [Catastrophic Forgetting](../term_dictionary/term_catastrophic_forgetting.md)
-- [Nexus](../../areas/area_nexus.md)
-- [Project Nexus](../../projects/project_nexus.md)

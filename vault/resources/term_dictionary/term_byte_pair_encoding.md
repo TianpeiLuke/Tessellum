@@ -126,7 +126,7 @@ This "tokenizer tax" means non-English languages use more context window budget 
 
 ## Applications to Our Work
 
-- **BERT tokenizers in abuse detection**: [RnR BSM BERT](../../areas/models/model_rnr_bsm_bert.md) and [CrossBERT](../../areas/models/model_x2risk_crossbert.md) use WordPiece tokenization — understanding subword decomposition is essential for interpreting attention patterns over buyer-seller messages
+- **BERT tokenizers in abuse detection**: abuse-detection classifiers built on BERT use WordPiece tokenization — understanding subword decomposition is essential for interpreting attention patterns over buyer-seller messages
 - **LLM prompt budgets**: BPE tokenization determines the effective length of prompts in LLM-based abuse classification — knowing the token-to-character ratio helps estimate how much context fits in the model's window
 - **Multilingual abuse detection**: Non-English marketplaces face higher tokenization fertility, consuming more context budget for equivalent text length
 

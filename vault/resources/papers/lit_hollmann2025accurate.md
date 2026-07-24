@@ -91,26 +91,26 @@ Tabular data, spreadsheets organized in rows and columns, are ubiquitous across 
 
 ## Relevance to Our Work
 
-This paper is highly relevant to Buyer Abuse Prevention in the following ways:
+This paper is highly relevant to abuse prevention in the following ways:
 
-- **[XGBoost](../term_dictionary/term_xgboost.md)**: TabPFN directly challenges XGBoost's dominance in tabular data, which is the primary algorithm used in BAP (~60% of production models). Could potentially replace or augment XGBoost for small-data scenarios.
+- **[XGBoost](../term_dictionary/term_xgboost.md)**: TabPFN directly challenges XGBoost's dominance in tabular data, which is the primary algorithm used in the domain (~60% of production models). Could potentially replace or augment XGBoost for small-data scenarios.
 
 - **Small Data Scenarios**: Many abuse detection use cases have limited labeled data (new fraud patterns, emerging abuse vectors, new payment methods). TabPFN's ability to work with <10K samples is directly applicable.
 
 - **Rapid Training**: 2.8s training time enables rapid iteration and response to new threats, compared to hours for traditional hyperparameter tuning.
 
-- **[Transfer Learning](../term_dictionary/term_transfer_learning.md)**: TabPFN's meta-learning approach aligns with BRP's need for rapid adaptation to new abuse patterns.
+- **[Transfer Learning](../term_dictionary/term_transfer_learning.md)**: TabPFN's meta-learning approach aligns with the domain's need for rapid adaptation to new abuse patterns.
 
 - **[Transformer](../term_dictionary/term_transformer.md)**: Demonstrates successful application of transformer architecture to tabular data, opening new possibilities for abuse detection.
 
-- **[LightGBM](../term_dictionary/term_lightgbm.md)**: Outperforms LightGBM, another key algorithm in BRP's toolkit.
+- **[LightGBM](../term_dictionary/term_lightgbm.md)**: Outperforms LightGBM, another key algorithm in the domain's toolkit.
 
 ## Questions
 
 1. How does TabPFN perform on imbalanced datasets typical in fraud detection (e.g., 1% abuse rate)?
 2. Can TabPFN handle categorical features with high cardinality (e.g., customer IDs, product ASINs)?
 3. What is the inference latency compared to PMML-deployed XGBoost models (<10ms requirement)?
-4. Can TabPFN be deployed in AMES infrastructure for real-time scoring?
+4. Can TabPFN be deployed in real-time scoring infrastructure?
 5. How does the model handle concept drift over time in adversarial environments?
 6. Can the synthetic data generation approach be adapted to generate realistic fraud scenarios?
 7. What is the maximum dataset size TabPFN can handle (paper focuses on <10K)?
@@ -118,7 +118,7 @@ This paper is highly relevant to Buyer Abuse Prevention in the following ways:
 
 ## Related Documentation
 
-- [XGBoost](../term_dictionary/term_xgboost.md) - Current dominant algorithm in BAP that TabPFN outperforms
+- [XGBoost](../term_dictionary/term_xgboost.md) - Current dominant algorithm in the domain that TabPFN outperforms
 - [LightGBM](../term_dictionary/term_lightgbm.md) - Alternative gradient boosting method also outperformed by TabPFN
 - [Transformer](../term_dictionary/term_transformer.md) - Architecture underlying TabPFN
 - [Transfer Learning](../term_dictionary/term_transfer_learning.md) - Meta-learning paradigm that TabPFN exemplifies
@@ -127,7 +127,7 @@ This paper is highly relevant to Buyer Abuse Prevention in the following ways:
 
 ## Domain Mappings
 
-- **Problem Facet**: [map_hollmann2025accurate_problem](map_hollmann2025accurate_problem.md) - Small data challenges in buyer abuse (new stores, payment methods, emerging fraud)
+- **Problem Facet**: [map_hollmann2025accurate_problem](map_hollmann2025accurate_problem.md) - Small data challenges in abuse prevention (new stores, payment methods, emerging fraud)
 - **Solution Facet**: [map_hollmann2025accurate_solution](map_hollmann2025accurate_solution.md) - Foundation model approach for transfer learning and few-shot detection
 - **Data Facet**: [map_hollmann2025accurate_data](map_hollmann2025accurate_data.md) - Tabular feature integration with OTF and customer profiling
 

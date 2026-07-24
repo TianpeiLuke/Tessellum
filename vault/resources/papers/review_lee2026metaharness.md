@@ -100,9 +100,9 @@ Harness optimization maximizes evaluation scores — but no analysis of whether 
 - **Goal**: Assess novelty vs integration.
 - **If the novelty is primarily "apply program synthesis to harnesses"**: The contribution is the framing (harness as target), not the algorithm.
 
-**Q4.** How does Meta-Harness relate to the Abuse Slipbox's skill architecture? Could Meta-Harness optimize individual skills (e.g., the paper review skill's question generation) by logging execution traces and searching over skill code variants?
+**Q4.** How does Meta-Harness relate to this knowledge base's skill architecture? Could Meta-Harness optimize individual skills (e.g., the paper review skill's question generation) by logging execution traces and searching over skill code variants?
 - **Goal**: Assess applicability to the vault.
-- **If applicable**: Meta-Harness could be a self-improvement mechanism for the Slipbox's own skills.
+- **If applicable**: Meta-Harness could be a self-improvement mechanism for this knowledge base's own skills.
 
 ### Lens 7: Alternative Explanations
 
@@ -126,7 +126,7 @@ Harness optimization maximizes evaluation scores — but no analysis of whether 
 
 ## Reviewer Bias Self-Check
 
-1. **Excitement bias**: The connection to Abuse Slipbox skills may inflate assessment. Counterbalanced by probing W1-W4.
+1. **Excitement bias**: The connection to this knowledge base's skills may inflate assessment. Counterbalanced by probing W1-W4.
 2. **Authority bias**: Chelsea Finn (Stanford) + Omar Khattab (DSPy) are high-profile authors. Evaluated on merits.
 3. **WYSIATI**: Full paper content available — well-grounded evaluation.
 

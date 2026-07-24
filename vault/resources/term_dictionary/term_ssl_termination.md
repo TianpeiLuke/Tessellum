@@ -99,7 +99,6 @@ SSL termination is a foundational pattern in modern web infrastructure. Nearly e
 - **[GDPR](term_gdpr.md)**: Data protection regulations may impose constraints on where SSL termination occurs and who can access decrypted traffic
 - **[Phishing](term_phishing.md)**: SSL termination points can inspect decrypted traffic for phishing indicators, malicious payloads, and suspicious request patterns
 - **[Traffic Stream](term_traffic_stream.md)**: SSL termination is the entry point where encrypted traffic streams are decrypted and become available for downstream analysis and routing
-- **[CSMO Technology and Performance](term_csmo_technology_and_performance.md)**: Performance optimization through SSL offloading parallels CSMO's technology-driven performance considerations
 - **[API Gateway](term_api_gateway.md)**: SSL/TLS termination is a core responsibility of API Gateways, which handle encryption at the edge so internal service-to-service traffic can use lighter protocols
 - **[HAProxy](term_haproxy.md)**: HAProxy supports SSL termination, SSL passthrough, and SSL re-encryption modes, serving as a dedicated TLS offloading layer in front of backend servers
 - **[NGINX](term_nginx.md)**: NGINX handles TLS termination at the edge with support for TLS 1.2/1.3, OCSP stapling, and session resumption, centralizing certificate management for backend services

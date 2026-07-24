@@ -125,7 +125,7 @@ Long-term memory is essential for large language model (LLM) agents operating in
 
 ### Application (Taxonomic — "What If? / How?")
 4. How would PlugMem's structuring module perform on abuse investigation memory — could raw abuse case interactions be standardized into $(o_t, s_t, a_t, r_t, g_t)$ tuples where $s_t$ = investigation state, $g_t$ = abuse detection subgoal, and $r_t$ = outcome quality?
-   - **Tests**: Transferability to the buyer abuse domain (Adjacent Possible)
+   - **Tests**: Transferability to the abuse-prevention domain (Adjacent Possible)
 
 5. What if the structuring module used a weaker LLM (e.g., 7B parameters instead of 32B/72B) — would the knowledge extraction quality degrade gracefully or catastrophically? Where is the quality cliff?
    - **Tests**: Practical deployability under cost constraints (Scale Shift)

@@ -113,7 +113,7 @@ MIPRO yields the highest scores but at ~10× the cost of BootstrapFewShot. Boots
 1. **For LLM practitioners**: The gap between few-shot prompting and optimized prompting is large enough (~30pp) to justify the compilation overhead even for simple tasks.
 2. **For model selection**: Small models (Llama2-13b) compiled with DSPy can replace GPT-3.5 in many production settings — significant cost reduction.
 3. **For the field**: Prompt engineering as a manual discipline may become obsolete for well-structured pipelines; compilation subsumes it.
-4. **For Abuse SlipBox / BAP**: DSPy-style compilation is directly applicable to multi-step abuse detection pipelines (e.g., retrieval → reasoning → decision chains) where brittle prompt chains are a known operational pain point.
+4. **For abuse-prevention pipelines**: DSPy-style compilation is directly applicable to multi-step abuse detection pipelines (e.g., retrieval → reasoning → decision chains) where brittle prompt chains are a known operational pain point.
 
 ## Related Notes
 

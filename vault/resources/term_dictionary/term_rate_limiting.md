@@ -203,7 +203,7 @@ When consuming rate-limited APIs, clients should implement:
 ### Abuse Prevention
 - **[Term: Blocklist](term_blocklist.md)** -- Rate limiting is a soft enforcement mechanism; blocklisting is the hard enforcement counterpart for known-bad actors
 - **[Term: Safelist](term_safelist.md)** -- Safelisted clients may bypass rate limits entirely, representing the opposite enforcement pole
-- **[Term: Abuse Polygraph](term_abuse_polygraph.md)** -- Rate limiting feeds behavioral signals (request frequency, burst patterns) into abuse detection models
+- **Behavioral abuse detection** -- Rate limiting feeds behavioral signals (request frequency, burst patterns) into downstream abuse-detection models
 - **[Redis](term_redis.md)**: Redis is the most common shared state store for distributed rate limiters -- atomic INCR + EXPIRE commands and Lua scripting enable accurate, low-latency rate limit enforcement across multiple gateway instances
 - **[Graceful Degradation](term_graceful_degradation.md)**: Rate limiting is a form of graceful degradation -- load shedding rejects a percentage of requests to protect the system from overload, preserving core functionality for the remaining traffic
 - **[Latency](term_latency.md)**: Rate limiting protects latency for well-behaved clients by throttling excessive requests before they cause congestion

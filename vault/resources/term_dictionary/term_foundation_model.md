@@ -62,9 +62,9 @@ A **foundation model** is a large-scale machine learning model trained on broad 
 3. **In-Context Learning**: Show examples in the input
 4. **Parameter-Efficient Fine-Tuning (PEFT)**: Update small subset of parameters (e.g., [LoRA](term_lora.md))
 
-## Relevance to Buyer Abuse Prevention
+## Relevance to Abuse Prevention
 
-**Current State**: BRP primarily uses task-specific models (XGBoost, PyTorch) trained from scratch for each abuse vector.
+**Current State**: The domain primarily uses task-specific models (XGBoost, PyTorch) trained from scratch for each abuse vector.
 
 **Potential Applications**:
 - **[TabPFN](../papers/lit_hollmann2025accurate.md)**: Foundation model for tabular data, could replace XGBoost for small-data scenarios
@@ -86,7 +86,6 @@ A **foundation model** is a large-scale machine learning model trained on broad 
 - [PEFT](term_peft.md) - Parameter-efficient fine-tuning methods
 - [LoRA](term_lora.md) - Low-rank adaptation for efficient fine-tuning
 - [XGBoost](term_xgboost.md) - Traditional task-specific model that foundation models may replace
-- [CRFM](term_crfm.md) - Center for Research on Foundation Models at Stanford
 - **[Neural Computer](term_neural_computer.md)**: NCs build on foundation model capabilities but propose a paradigm shift from tool to computer
 
 ## References

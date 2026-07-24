@@ -93,7 +93,7 @@ The AIPW estimator augments IPW with a regression outcome model $\hat{m}(X, Z) =
 
 ### Application
 2. How would IPW be applied to estimate the causal effect of concession grant policy changes on refund rates — what confounders must be in $X$, and where does the positivity assumption likely fail (e.g., high-value ASIN buyers almost always granted concessions)?
-   - **Tests**: Domain applicability to buyer concessions and abuse (Adjacent Possible)
+   - **Tests**: Domain applicability to concessions and abuse prevention (Adjacent Possible)
 
 ### Synthesis
 3. When should AIPW be preferred over IPW, and under what conditions does the doubly-robust property of AIPW fail to protect against bias (e.g., both models misspecified in correlated ways due to the same omitted confounder)?
@@ -113,8 +113,7 @@ The AIPW estimator augments IPW with a regression outcome model $\hat{m}(X, Z) =
 - **[Double Machine Learning](term_double_machine_learning.md)**: DML extends AIPW with Neyman orthogonality and cross-fitting to achieve root-n consistency under flexible ML propensity models
 - **[Contextual Bandit](term_contextual_bandit.md)**: Off-policy evaluation in bandits uses IPW-style importance sampling with logging policy probabilities as propensity scores
 - **[Logistic Regression](term_logistic_regression.md)**: The standard model for estimating propensity scores $e(X)$ in binary treatment settings
-- **[Weblab](term_weblab.md)**: Amazon's A/B testing platform — the randomized experimental counterpart that IPW approximates from observational data
-- **[DSI](term_dsi.md)**: Downstream Impact metrics in buyer abuse — IPW enables causal DSI estimation from observational enforcement data
+- **A/B testing platforms**: the randomized experimental counterpart that IPW approximates from observational data
 - **[Drift Detection](term_drift_detection.md)**: Covariate shift correction via importance weighting is structurally analogous to IPW — both reweight observations by likelihood ratios
 - **[MAB](term_mab.md)**: Multi-armed bandit off-policy evaluation uses IPW estimators for counterfactual policy comparison
 

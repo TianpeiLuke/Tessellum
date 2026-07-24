@@ -71,11 +71,11 @@ The key insight: **functional caching** — instead of caching responses (which 
 3. **Model role specialization**: GPT-4 as the "tool maker" (creative, expensive); GPT-3.5 as the "tool user" (efficient, cheap). Different models for different cognitive demands.
 4. **Tool dispatch**: A dispatcher routes incoming problems to existing cached tools or triggers tool creation for new problem classes.
 
-## Relevance to Abuse Slipbox
+## Relevance to This Knowledge Base
 
-LATM's framework is a **direct analogy** to the Abuse SlipBox's skill architecture:
+LATM's framework is a **direct analogy** to this knowledge base's skill architecture:
 
-| LATM | Abuse SlipBox |
+| LATM | This Knowledge Base |
 |------|---------------|
 | **Tool Maker** (GPT-4) | Human skill designer (writes SKILL.md) |
 | **Tool User** (GPT-3.5) | Agent executing the skill |
@@ -84,9 +84,9 @@ LATM's framework is a **direct analogy** to the Abuse SlipBox's skill architectu
 | **Tool Dispatch** | Claude Code skill matching from description |
 | **Functional caching** | Skill reuse across invocations |
 
-The human invests time designing a skill (expensive, one-time) so the agent can execute it repeatedly (cheap, many times). **The SlipBox's 60+ skills are LATM's tool cache** — each skill is a "functional cache" encoding a reusable knowledge workflow.
+The human invests time designing a skill (expensive, one-time) so the agent can execute it repeatedly (cheap, many times). **The knowledge base's 60+ skills are LATM's tool cache** — each skill is a "functional cache" encoding a reusable knowledge workflow.
 
-**Key difference**: LATM's tools are simple Python functions; the SlipBox's skills are full harnesses (retrieval + context assembly + output formatting + database updates). Meta-Harness bridges this gap — optimizing the harness, not just the function.
+**Key difference**: LATM's tools are simple Python functions; the knowledge base's skills are full harnesses (retrieval + context assembly + output formatting + database updates). Meta-Harness bridges this gap — optimizing the harness, not just the function.
 
 ## Related Notes
 
@@ -97,7 +97,6 @@ The human invests time designing a skill (expensive, one-time) so the agent can 
 - [Term: Meta-Harness](../term_dictionary/term_meta_harness.md) — Harness optimization
 - [Term: Toolformer](../term_dictionary/term_toolformer.md) — Tool use (not creation)
 - [Term: Voyager](../term_dictionary/term_voyager.md) — Skill library for embodied agents
-- [Agentic Pipeline Analysis](../analysis_thoughts/analysis_agentic_pipelines_skill_chaining.md) — SlipBox's skill pipelines as LATM's tool chains
 
 ---
 

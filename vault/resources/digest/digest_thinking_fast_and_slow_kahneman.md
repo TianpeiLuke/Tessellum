@@ -280,9 +280,7 @@ Kahneman's frameworks map directly to vault practices, questioning skills, and t
 - **Anchoring** is relevant to the vault's PageRank scoring: awareness that the first notes retrieved (highest-ranked) will disproportionately anchor analysis argues for the multi-tier approach in `slipbox-analyze-term-relevance`, which deliberately explores beyond Tier 1 (direct links) through Tier 5 (graph-distant)
 - **Algorithms beat experts** validates the vault's database-driven approach over pure human recall — SQL queries, link analysis, and automated scoring consistently outperform intuitive "I think the relevant note is..." retrieval
 - **The planning fallacy and outside view** connect to Burger/Starbird's Earth element (understand deeply before estimating) and Hartley's Define step — both are process-level countermeasures against inside-view optimism
-- **Loss aversion and framing** are directly relevant to the buyer abuse prevention domain — understanding how customers frame returns/refunds as losses vs. gains informs detection models and policy design
 - **The premortem technique** maps to Sprint 1 (Socratic Stress Test) in `/slipbox-generate-questions` — both ask "What could go wrong?" before committing to a conclusion
-- **Prospect theory's reference dependence** connects to the vault's analysis of abuse patterns — abusers exploit the gap between what customers expect (reference point) and what they receive, and detection models must account for this framing
 
 ## Related Terms
 

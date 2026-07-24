@@ -142,14 +142,14 @@ Unlike response caching (where correctness cannot be checked without a ground-tr
 - **Cost-sensitive production deployment**: High-volume LLM APIs where paying GPT-4 prices per query is unsustainable but GPT-3.5 quality is insufficient for complex sub-tasks
 - **Knowledge distillation via code**: Encoding GPT-4's reasoning capability in verifiable Python functions that lightweight models can leverage
 
-### Abuse SlipBox Applications
+### Knowledge Base Applications
 
-The LATM framework provides the theoretical grounding for the Abuse SlipBox's human-as-maker, agent-as-user architecture:
+The LATM framework provides the theoretical grounding for this knowledge base's human-as-maker, agent-as-user architecture:
 
-| LATM | Abuse SlipBox | Notes |
+| LATM | This Knowledge Base | Notes |
 |------|--------------|-------|
 | Tool Maker (GPT-4) | Human skill designer (model dev, PM, investigator) | Human expertise is the expensive, one-time input |
-| Tool User (GPT-3.5) | SlipBox agent | Agent execution is cheap and repeated |
+| Tool User (GPT-3.5) | Knowledge base agent | Agent execution is cheap and repeated |
 | Python function | Skill (`.claude/skills/<name>/SKILL.md`) | Skill encodes the general procedure for a task class |
 | Tool Cache | `.claude/skills/` library | Skill library is the organizational artifact |
 | Tool Dispatch | Skill invocation (`/skill-name`) | User explicitly routes requests to appropriate skills |
@@ -184,7 +184,7 @@ The LATM framework provides the theoretical grounding for the Abuse SlipBox's hu
 - [paper_cai2023latm_contrib](../papers/paper_cai2023latm_contrib.md) — Three contributions: two-phase framework, functional caching, tool dispatch
 - [paper_cai2023latm_algo](../papers/paper_cai2023latm_algo.md) — Architecture, tool making process, dispatch mechanism, caching comparison
 - [paper_cai2023latm_exp_design](../papers/paper_cai2023latm_exp_design.md) — Benchmarks (BBH), models, baselines (GPT-4, GPT-3.5, CoT, PoT)
-- [paper_cai2023latm_exp_result](../papers/paper_cai2023latm_exp_result.md) — Performance parity with GPT-4-only, cost analysis, Abuse SlipBox implications
+- [paper_cai2023latm_exp_result](../papers/paper_cai2023latm_exp_result.md) — Performance parity with GPT-4-only, cost analysis, knowledge base implications
 
 ### External
 

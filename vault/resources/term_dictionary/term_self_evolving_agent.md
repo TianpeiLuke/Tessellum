@@ -117,17 +117,17 @@ Three paradigms address the self-evolving strategy implementation:
 
 ## Applications to Our Work
 
-The self-evolving agent paradigm has several concrete applications for BRP:
+The self-evolving agent paradigm has several concrete applications for abuse prevention:
 
-1. **Memory Evolution for Abuse Patterns**: BRP models could maintain evolving memory of abuse MOs (like Expel's experiential learning) to prevent catastrophic forgetting during model refresh. This directly connects to the continual learning project's work on GEM/EWC.
+1. **Memory Evolution for Abuse Patterns**: Abuse-detection models could maintain evolving memory of abuse MOs (like Expel's experiential learning) to prevent catastrophic forgetting during model refresh. This directly connects to the continual learning project's work on GEM/EWC.
 
-2. **Tool Creation for Signal Generation**: AutoSignality-style automated feature discovery maps directly to the "Autonomous Discovery and Creation" evolutionary locus. Self-evolving agents that create and refine their own fraud signals could reduce manual signal engineering.
+2. **Tool Creation for Signal Generation**: Automated feature-discovery approaches map directly to the "Autonomous Discovery and Creation" evolutionary locus. Self-evolving agents that create and refine their own fraud signals could reduce manual signal engineering.
 
-3. **Prompt Optimization for Investigation**: GreenTEA's SOP-driven prompting could be formalized as SPO-style self-supervised prompt optimization, enabling the investigation agent to improve its prompting strategy based on investigation outcomes.
+3. **Prompt Optimization for Investigation**: SOP-driven agentic prompting could be formalized as SPO-style self-supervised prompt optimization, enabling the investigation agent to improve its prompting strategy based on investigation outcomes.
 
-4. **RL for Knowledge Agents**: KARL demonstrates that off-policy RL (OAPL) can train agents to iteratively query, retrieve, and reason over large data collections -- directly applicable to BRP's agentic investigation tools that search across case databases and policy documents.
+4. **RL for Knowledge Agents**: KARL demonstrates that off-policy RL (OAPL) can train agents to iteratively query, retrieve, and reason over large data collections -- directly applicable to agentic investigation tools that search across case databases and policy documents.
 
-5. **Safety Guardrails**: The survey's compliance checklist (sandboxing, audit trails, approval gates) provides a framework for deploying BRP's agentic automation safely, addressing the "misevolution" risk where safety alignment degrades during evolution.
+5. **Safety Guardrails**: The survey's compliance checklist (sandboxing, audit trails, approval gates) provides a framework for deploying agentic automation safely, addressing the "misevolution" risk where safety alignment degrades during evolution.
 
 ## Distinguishing from Related Paradigms
 
@@ -146,7 +146,6 @@ The self-evolving agent paradigm has several concrete applications for BRP:
 - [Continual Learning](term_continual_learning.md) -- Closest related paradigm; self-evolving agents extend lifelong learning with runtime context, active exploration, and structural change
 - [Reward Model](term_reward_model.md) -- Provides reward signals for reward-based self-evolution; trained value models enable test-time compute scaling (e.g., KARL's Value-Guided Search)
 - [OAPL](term_oapl.md) -- Off-policy RL algorithm used in KARL for training self-evolving knowledge agents
-- [AgentZ](term_agentz.md) -- Amazon's agent platform with self-improving onboarding (sandbox → shadow → production)
 - [Knowledge Agent](term_knowledge_agent.md) -- A class of self-evolving agent that iteratively queries and reasons over document collections
 - [KARLBench](term_karlbench.md) -- Multi-capability evaluation suite for knowledge agents
 - [Prompt Optimization](term_prompt_optimization.md) -- Context evolution mechanism; automated refinement of LLM inputs without weight updates (APE, DSPy, ACE)

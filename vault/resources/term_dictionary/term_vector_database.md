@@ -24,15 +24,13 @@ language: markdown
 date of note: 2026-02-20
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
-related_opensearch_wiki: https://internal-wiki
 ---
 
 # Vector Database (Vector DB)
 
 ## Definition
 
-**Vector Database (Vector DB)** is a specialized database system optimized for storing, indexing, and searching high-dimensional vector embeddings rather than traditional data types, enabling efficient similarity searches through techniques like Approximate Nearest Neighbor (ANN) to quickly retrieve the most semantically similar vectors even across massive datasets. Unlike traditional databases that store structured data in rows and columns, vector databases represent data as mathematical vectors in high-dimensional space where semantic similarity translates to geometric proximity, making them ideal for RAG systems, recommendation engines, and AI-powered search applications. At Amazon, vector databases power critical infrastructure including OpenSearch for enterprise search, Khoj for catalog similarity, Neptune for graph-based relationships, and various RAG implementations supporting generative AI applications across fraud detection, customer service automation, and knowledge management systems.
+**Vector Database (Vector DB)** is a specialized database system optimized for storing, indexing, and searching high-dimensional vector embeddings rather than traditional data types, enabling efficient similarity searches through techniques like Approximate Nearest Neighbor (ANN) to quickly retrieve the most semantically similar vectors even across massive datasets. Unlike traditional databases that store structured data in rows and columns, vector databases represent data as mathematical vectors in high-dimensional space where semantic similarity translates to geometric proximity, making them ideal for RAG systems, recommendation engines, and AI-powered search applications. Common vector database systems include OpenSearch (k-NN plugin), FAISS-backed services, Pinecone, Weaviate, Qdrant, and Chroma, supporting generative AI applications across fraud detection, customer service automation, and knowledge management systems.
 
 ## Purpose
 
@@ -81,7 +79,7 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 - **Recommendation Engine**: User/Item embeddings → Vector DB → Similarity → Recommendations  
 - **Fraud Detection**: Customer behavior embeddings → Vector DB → Pattern Matching → Risk Assessment
 
-## Amazon Applications
+## Applications
 
 ### OpenSearch Vector Database
 
@@ -94,19 +92,17 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 **Key Benefits**:
 - **Unified Platform**: Traditional search + vector search + analytics in single system
 - **Production Ready**: Proven scalability for enterprise workloads
-- **AWS Integration**: Native integration with AWS services and security
 - **Cost Efficiency**: Optimized infrastructure reducing operational overhead
 
-### Khoj Vector Search Service
+### Catalog-Scale Similarity Search
 
-**Catalog-Scale Applications**:
-- **UFC Integration**: Universal Feature Catalog vector similarity search service
+**Product and Catalog Applications**:
 - **Domain Querying**: Automatic routing to specialized index partitions
-- **Product Similarity**: Amazon catalog navigation and recommendation systems
-- **FAISS Backend**: Uses FAISS library for efficient similarity computation
+- **Product Similarity**: Catalog navigation and recommendation systems
+- **FAISS Backend**: Services commonly use the FAISS library for efficient similarity computation
 
 **Technical Implementation**:
-- **Index Management**: Index Status API for monitoring and metadata
+- **Index Management**: Index status APIs for monitoring and metadata
 - **Search Methods**: Top-k and range search capabilities with configurable parameters
 - **Online Service**: Real-time indexing through lightweight SDK integration
 - **Performance**: Sub-second response times for catalog-scale datasets
@@ -119,11 +115,10 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 - **Embedding Storage**: Efficient storage and retrieval of text embeddings
 - **Context Enhancement**: Provide relevant context for LLM response generation
 
-**Implementation Examples**:
-- **Paybot**: Slack chatbot using vector database for payments document retrieval
-- **Digital Acceleration Knowledge Base**: DA Engineering Productivity team's RAG system
-- **Helios**: India Payments RAG system for transaction and policy information
-- **Amazon Q Business**: Enterprise AI assistant with vector-powered knowledge retrieval
+**Common Implementation Patterns**:
+- **Chatbots**: Assistants using a vector database for document retrieval over policy or product docs
+- **Enterprise Knowledge Bases**: RAG systems grounding answers in an organization's document corpus
+- **Domain Q&A**: Retrieval over transaction and policy information for specialized assistants
 
 ## Vector Database Technologies
 
@@ -138,8 +133,7 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 **Amazon Neptune**:
 - **Graph Database**: Vector search capabilities for graph-based relationships
 - **Real-Time Processing**: Support for real-time graph and vector queries
-- **COSA Integration**: Used in Continuous One Step Ahead fraud detection
-- **GraMS Support**: Graph Modeling System with vector similarity features
+- **Graph + Vector**: Combine graph traversal with vector similarity for relationship-aware retrieval
 
 **Third-Party Options**:
 - **Pinecone**: Managed vector database service with high performance
@@ -215,19 +209,19 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 - **Pattern Libraries**: Search abuse pattern databases for similar modus operandi
 - **Decision Support**: Provide investigators with comprehensive context for decision-making
 
-## Regional Implementation
+## Deployment
 
-### Amazon Global Deployment
+### AWS Services Integration
 
-**AWS Services Integration**:
 - **OpenSearch**: Primary vector database service across AWS regions
-- **Neptune**: Graph database with vector capabilities for relationship analysis  
+- **Neptune**: Graph database with vector capabilities for relationship analysis
 - **Bedrock**: Foundation model platform with vector database integration
 - **Kendra**: Enterprise search service with semantic capabilities
 
-**Team Applications**:
-- **Digital Acceleration**: Knowledge base for engineering productivity
-- **Payments**: Paybot RAG system for transaction and policy information
+### Common Application Domains
+
+- **Engineering Productivity**: Knowledge bases for internal documentation search
+- **Payments and Policy Q&A**: RAG systems for transaction and policy information
 - **Abuse Prevention**: Pattern recognition and investigation support systems
 - **Customer Service**: AI assistants with vector-powered knowledge retrieval
 
@@ -249,24 +243,12 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 
 ## Documentation References
 
-### Internal Amazon Documentation
+### External Documentation
 
-**Technical Wikis**:
-- **[Understanding RAG, Knowledge Bases, Vector Databases](https://internal-wiki)** - Comprehensive guide to vector databases and RAG systems
-- **[OpenSearch as Vector Database](https://internal-wiki)** - OpenSearch vector capabilities and implementation
-- **[Digital Acceleration Knowledge Base](https://internal-wiki)** - DA Engineering team's vector-powered knowledge system
-
-**Application Examples**:
-- **[Paybot](https://internal-wiki)** - Slack chatbot using vector database for document retrieval
-- **[Khoj Vector Search](https://internal-wiki)** - Amazon catalog vector similarity service
-
-**AWS Documentation**:
-- **[AWS Vector Database Guide](https://apg-library.amazonaws.com/content/34bd35bb-382d-4951-8f14-111521edb094)** - Choosing AWS vector database for RAG use cases
-
-### Project Documentation
-
-**Vector Database Applications**:
-- **[Project: Phi-3.5-mini FAISS Explanations](../../projects/project_phi35_faiss_explanations.md)** - FAISS vector database for explainable AI
+- **[AWS Vector Database Guide](https://apg-library.amazonaws.com/content/34bd35bb-382d-4951-8f14-111521edb094)** - Choosing an AWS vector database for RAG use cases
+- **[OpenSearch k-NN Documentation](https://opensearch.org/docs/latest/search-plugins/knn/index/)** - OpenSearch approximate nearest neighbor search
+- **[FAISS Wiki](https://github.com/facebookresearch/faiss/wiki)** - Facebook AI Similarity Search library documentation
+- **[Pinecone: What is a Vector Database?](https://www.pinecone.io/learn/vector-database/)** - Introductory guide to vector databases and RAG
 
 ## Related Systems
 
@@ -291,9 +273,8 @@ Query Vector → Similarity Search → Ranking → Results Retrieval
 - **[NoSQL](term_nosql.md)** - Emerging NoSQL paradigm for similarity search
 - **[MongoDB](term_mongodb.md)** - MongoDB Atlas includes vector search capabilities
 
-### Amazon Applications
+### AWS Services
 
-- **[Khoj](term_khoj.md)** - UFC vector similarity search service *(if exists)*
 - **[Amazon Q](term_amazon_q.md)** - Enterprise AI assistant with vector-powered search *(if exists)*
 - **[Bedrock](term_bedrock.md)** - Foundation model platform with vector database integration
 

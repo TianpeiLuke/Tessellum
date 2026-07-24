@@ -41,7 +41,7 @@ The KV cache is central to every LLM inference system, including vLLM, TensorRT-
 - **Systems side**: Memory management of the KV cache (allocation, fragmentation, sharing) determines serving throughput
 - **Optimization techniques**: Grouped-query attention (GQA), multi-query attention (MQA), KV cache quantization, and PagedAttention all target KV cache efficiency from different angles
 
-In the buyer abuse prevention context, any system deploying LLM-based classifiers or reasoning agents (e.g., GreenTEA, SOPA, SPOT-X) must manage KV cache memory to achieve acceptable throughput and latency.
+Any system deploying LLM-based classifiers or reasoning agents must manage KV cache memory to achieve acceptable throughput and latency.
 
 ## Key Characteristics
 

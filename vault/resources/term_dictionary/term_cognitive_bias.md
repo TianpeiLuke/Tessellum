@@ -131,7 +131,7 @@ We edit and reinforce some memories after the fact:
 ### Abuse Prevention and Fraud Detection
 - **Exploiting biases**: Social engineers and abusers deliberately trigger cognitive biases in customer service agents -- urgency creates time pressure that keeps agents in System 1; emotional narratives exploit availability and representativeness
 - **Debiasing agents**: Algorithmic decision support acts as externalized System 2 for human agents, providing base rates and pattern detection that compensate for human heuristic processing
-- **Understanding abuser cognition**: Some buyer abuse may itself reflect cognitive biases (entitlement bias, self-serving bias) rather than calculated fraud -- this distinction matters for policy design
+- **Understanding abuser cognition**: Some abuse may itself reflect cognitive biases (entitlement bias, self-serving bias) rather than calculated fraud -- this distinction matters for policy design
 
 ### Personal Decision Hygiene
 - Kahneman's "decision hygiene" recommendations: use algorithms where possible, aggregate independent judgments, impose structure, and use mediating assessments before holistic evaluation

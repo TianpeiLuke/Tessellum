@@ -88,18 +88,18 @@ LLM-as-a-Judge has revolutionized AI evaluation by leveraging large language mod
 
 ## Relevance to Our Work
 
-- **[GreenTEA](../term_dictionary/term_greentea.md)**: GreenTEA's agentic investigation automation directly benefits from Agent-as-a-Judge principles -- the survey's tool-augmented verification and multi-agent collaboration patterns can inform how GreenTEA evaluates investigation quality and decision correctness
-- **[BAP](../term_dictionary/term_bap.md)**: BAP automation quality assessment maps to the survey's granularity dimension; moving from global pass/fail scoring to fine-grained evaluation of individual automation steps aligns with the Procedural-to-Self-Evolving trajectory
-- **[Prompt Optimization](../term_dictionary/term_prompt_optimization.md)**: The optimization paradigms methodology category (reward modeling, self-evolving agents) directly informs prompt optimization strategies for evaluation prompts used in BRP's agentic systems
-- **[LLM-as-a-Judge](../term_dictionary/term_llm_as_a_judge.md)**: This survey provides the roadmap for evolving BRP's current LLM-as-a-Judge evaluation patterns (e.g., AtoZ-Eval) into full Agent-as-a-Judge systems with tool verification and multi-agent robustness
+- **Investigation automation**: Agentic investigation automation directly benefits from Agent-as-a-Judge principles -- the survey's tool-augmented verification and multi-agent collaboration patterns can inform how an agent evaluates investigation quality and decision correctness
+- **Automation quality assessment**: Abuse-automation quality assessment maps to the survey's granularity dimension; moving from global pass/fail scoring to fine-grained evaluation of individual automation steps aligns with the Procedural-to-Self-Evolving trajectory
+- **[Prompt Optimization](../term_dictionary/term_prompt_optimization.md)**: The optimization paradigms methodology category (reward modeling, self-evolving agents) directly informs prompt optimization strategies for evaluation prompts used in agentic systems
+- **[LLM-as-a-Judge](../term_dictionary/term_llm_as_a_judge.md)**: This survey provides the roadmap for evolving current LLM-as-a-Judge evaluation patterns into full Agent-as-a-Judge systems with tool verification and multi-agent robustness
 - **[Red Teaming](../term_dictionary/term_red_teaming.md)**: The survey's multi-agent collaboration patterns (debate, court-of-law) relate to adversarial evaluation and red teaming of abuse detection models
 
 ## Questions
 
-- How would the Procedural-to-Reactive transition apply to GreenTEA's evaluation of investigation outcomes -- can the judge agent interact with the investigation environment?
-- Could BRP's abuse decision auditing benefit from the court-of-law multi-agent collaboration pattern (prosecution/defense/judge)?
+- How would the Procedural-to-Reactive transition apply to evaluation of investigation outcomes -- can the judge agent interact with the investigation environment?
+- Could abuse decision auditing benefit from the court-of-law multi-agent collaboration pattern (prosecution/defense/judge)?
 - What is the computational cost overhead of Agent-as-a-Judge vs LLM-as-a-Judge for high-volume abuse evaluation (millions of cases)?
-- Can the self-evolving evaluation paradigm be applied to continuously improve BRP's model evaluation criteria as abuse patterns shift?
+- Can the self-evolving evaluation paradigm be applied to continuously improve model evaluation criteria as abuse patterns shift?
 - How do the privacy challenges identified in §6 affect deployment of agentic judges that interact with sensitive customer data?
 
 ## Related Documentation
@@ -127,7 +127,6 @@ LLM-as-a-Judge has revolutionized AI evaluation by leveraging large language mod
 - [MT-Bench](../term_dictionary/term_mt_bench.md) — Benchmark from LLM-as-a-Judge era that Agent-as-a-Judge aims to surpass in evaluation depth
 - [Chatbot Arena](../term_dictionary/term_chatbot_arena.md) — Crowdsourced evaluation platform; Agent-as-a-Judge offers an alternative scalable approach
 - [Position Bias](../term_dictionary/term_position_bias.md) — Key parametric bias in LLM-as-a-Judge that multi-agent collaboration patterns mitigate
-- [GreenTEA](../term_dictionary/term_greentea.md) — BRP's agentic AI for investigation automation; Agent-as-a-Judge patterns inform quality evaluation of GreenTEA outputs
 
 ### Related Literature
 - Zheng et al. (2023). "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena" — [lit_zheng2023judging](lit_zheng2023judging.md) — Foundational LLM-as-a-Judge paper; establishes the paradigm that this survey traces forward

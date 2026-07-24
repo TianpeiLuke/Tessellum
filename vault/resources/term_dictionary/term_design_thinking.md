@@ -138,8 +138,8 @@ Related frameworks:
 - Design thinking is the standard methodology at design consultancies (IDEO, frog, Continuum) and increasingly at technology companies for product development.
 
 ### In Knowledge Management and Analytical Decision-Making
-- The Empathize phase maps to the Zettelkasten practice of capturing literature notes from diverse sources before synthesizing; the Define phase parallels formulating entry point questions for the vault.
-- In abuse prevention, design thinking's emphasis on understanding the user (buyer, seller, or bad actor) prevents the common pitfall of designing enforcement systems based on internal assumptions rather than actual behavioral patterns.
+- The Empathize phase maps to the Zettelkasten practice of capturing literature notes from diverse sources before synthesizing; the Define phase parallels formulating entry point questions for a knowledge base.
+- Design thinking's emphasis on understanding the end user counteracts the common pitfall of designing systems around internal assumptions rather than actual behavioral patterns.
 
 ### In Education
 - Stanford's d.school, MIT's Media Lab, and hundreds of universities worldwide teach design thinking as a cross-disciplinary approach to complex problems.

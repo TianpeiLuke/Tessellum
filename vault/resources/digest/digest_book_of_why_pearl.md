@@ -185,25 +185,24 @@ Pearl describes a systematic process for extracting causal information from data
 
 > "Current machine learning systems operate almost entirely in an associational mode. They are, in a sense, parsing the first rung of the Ladder of Causation."
 
-## Relevance to Our Work
+## Relevance to Data Science and Machine Learning
 
-The Book of Why provides the theoretical foundation for causal inference methods used extensively in buyer abuse prevention:
+The Book of Why provides the theoretical foundation for causal inference methods used throughout applied data science and ML:
 
-- **The Ladder of Causation** maps directly to the BRP analytics distinction between predictive models (rung 1 — "what is the abuse risk?") and causal impact measurement (rung 2 — "what happens when we enforce?"). The vault's [Term: Causal Inference](../term_dictionary/term_causal_inference.md) note documents how DSI, HonestSpot, and Causal ML vs RL all operate on rung 2, and the [Term: DSI](../term_dictionary/term_dsi.md) measurement framework is fundamentally a deconfounding exercise.
+- **The Ladder of Causation** maps directly to the distinction between predictive modeling (rung 1 — "what is the risk?") and causal impact measurement (rung 2 — "what happens when we act?"). Purely predictive models live on rung 1; policy and intervention questions require rung 2.
 
-- **Confounding and the back-door criterion** are directly relevant to enforcement impact measurement. When measuring whether Secure Delivery reduces DNR, confounders (customer risk profile, order value, seller quality) must be controlled. Pearl's framework formalizes what BRP does through [propensity score matching](../term_dictionary/term_propensity_score_matching.md) and covariate adjustment in DSI studies.
+- **Confounding and the back-door criterion** are directly relevant to any observational impact measurement. When estimating whether a treatment changes an outcome, confounders (subject risk profile, value, quality signals) must be controlled. Pearl's framework formalizes what practitioners do through [propensity score matching](../term_dictionary/term_propensity_score_matching.md) and covariate adjustment.
 
-- **Counterfactual reasoning** underlies the "fundamental problem of counterfactuals" central to HonestSpot's uplift modeling: for each enforced customer, the counterfactual outcome (what would have happened without enforcement) is never observed. Pearl's SCM framework provides the theoretical justification for the meta-learner approaches (T-Learner, X-Learner) used in BRP.
+- **Counterfactual reasoning** underlies the "fundamental problem of causal inference": for each treated unit, the counterfactual outcome (what would have happened without treatment) is never observed. Pearl's SCM framework provides the theoretical justification for the meta-learner approaches (T-Learner, X-Learner) used in uplift modeling.
 
-- **Simpson's paradox** is a constant risk in abuse analytics: aggregate trends can reverse within subgroups (e.g., overall enforcement reduces abuse, but within high-risk segments it may increase silent abandonment). Causal diagrams help analysts determine when to segment and when to aggregate.
+- **Simpson's paradox** is a constant risk in analytics: aggregate trends can reverse within subgroups. Causal diagrams help analysts determine when to segment and when to aggregate.
 
-- **Collider bias** explains selection effects in abuse data: conditioning on "investigated customers" (a collider) can create spurious correlations between risk factors that do not exist in the general population.
+- **Collider bias** explains selection effects in observational data: conditioning on a selected population (a collider) can create spurious correlations between risk factors that do not exist in the general population.
 
 - Pearl's argument that **AI cannot achieve intelligence without causal reasoning** connects to the vault's [Term: System 1 and System 2](../term_dictionary/term_system_1_and_system_2.md): current ML systems are System 1 thinkers (pattern matching from data) without System 2's capacity for causal and counterfactual reasoning.
 
 ## Related Terms
 
-- [Term: Causal Inference](../term_dictionary/term_causal_inference.md) — the vault's comprehensive note on causal methods used in BRP; covers DSI, HonestSpot, uplift modeling, and meta-learners
 - [Term: Ladder of Causation](../term_dictionary/term_ladder_of_causation.md) — Pearl's three-rung hierarchy: Association → Intervention → Counterfactual
 - [Term: Structural Causal Model](../term_dictionary/term_structural_causal_model.md) — the mathematical framework (variables + structural equations + DAG) that unifies all three rungs
 - [Term: Counterfactual Reasoning](../term_dictionary/term_counterfactual_reasoning.md) — the third rung; imagining alternative outcomes to attribute causes and assign responsibility
@@ -238,8 +237,6 @@ The Book of Why provides the theoretical foundation for causal inference methods
 - [Judea Pearl's Official Book Page](https://bayes.cs.ucla.edu/WHY/) — author's page with supplementary materials
 
 ### Related Vault Notes
-- [Term: Causal Inference](../term_dictionary/term_causal_inference.md) — BRP-specific applications of causal methods (DSI, HonestSpot, uplift modeling)
-- [Term: DSI](../term_dictionary/term_dsi.md) — Downstream Impact measurement; operationalizes Pearl's rung 2 (intervention) for enforcement impact
 - [Digest: Thinking, Fast and Slow](digest_thinking_fast_and_slow_kahneman.md) — Kahneman's dual-process theory; connects via System 1/2 distinction and cognitive biases in causal reasoning
 - [Digest: Thinking in Systems](digest_thinking_in_systems_meadows.md) — Pearl's causal DAGs and do-calculus formalize the feedback loop reasoning Meadows uses intuitively; Meadows' system structure diagrams are informal structural causal models; both argue that understanding structure (not just correlation) is essential for effective intervention
 - [Digest: The Black Swan](digest_black_swan_taleb.md) — Taleb's critique of confusing correlation with causation connects to Pearl's Ladder of Causation; the [ludic fallacy](../term_dictionary/term_ludic_fallacy.md) exposes the gap between Rung 1 and Rung 3

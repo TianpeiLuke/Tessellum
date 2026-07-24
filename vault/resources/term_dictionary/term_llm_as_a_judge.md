@@ -25,7 +25,6 @@ language: markdown
 date of note: 2026-03-15
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # LLM as a Judge - Large Language Model Automated Evaluation
@@ -41,7 +40,7 @@ related_wiki: https://internal-wiki
 **Large Language Model as a Judge**
 
 **Synonyms & Related Terms**:
-- **LLMaaJ**: Abbreviated form commonly used in Amazon
+- **LLMaaJ**: Abbreviated form
 - **LLM-as-a-Judge**: Hyphenated variant
 - **Automated LLM Evaluation**: Broader category term
 - **Model Evaluation Framework**: Generic evaluation approach
@@ -52,17 +51,9 @@ related_wiki: https://internal-wiki
 
 **Architecture and Evaluation Types**: LLM as a Judge operates through a three-layer architecture -- a superior judge model applies evaluation criteria and a scoring framework to produce structured reasoning outputs (numerical scores, qualitative feedback, JSON). The methodology supports three evaluation types: unsupervised (no ground truth needed, ideal for production monitoring), supervised (benchmarking against known answers), and multi-judge ensemble (multiple models reduce single-judge bias). Judge model selection hinges on superior reasoning capability, sufficient context window, domain expertise, and cost-performance balance.
 
-**Amazon Production Impact**: Seven major Amazon teams have deployed LLM-as-a-Judge in production, delivering dramatic efficiency gains. Eva completed 400 agentic AI evaluations in minutes versus weeks (98.6-99.6% quality similarity); IntelliOps evaluated 1,878 tickets at $5.73 total cost; Alexa replaced 2-3 weeks of native speaker review across 8 locales with hours of automated evaluation; and AGI Evaluations built centralized infrastructure with the Nova Judge model (8B parameters) serving standardized metrics across the company.
+**Production Impact**: LLM-as-a-Judge is widely deployed in production to deliver dramatic efficiency gains — completing large batches of agentic AI evaluations in minutes versus weeks, evaluating thousands of tickets at negligible cost, and replacing weeks of native-speaker review across multiple locales with hours of automated evaluation. Centralized evaluation infrastructure can serve standardized metrics across an organization using a shared judge model.
 
-**Implementation Best Practices**: Success requires a structured calibration process -- initial automated scoring, human expert review of a subset, comparison analysis, prompt refinement, and re-evaluation (Eva achieved 60% to 80% recall improvement through calibration). Prompt engineering should use structured JSON output formats with clear 1-5 numerical scales and reasoning requirements. Multi-judge approaches using diverse models (Claude 3.5 Sonnet, Llama 3.1, MistralLarge) mitigate bias, while hybrid human-LLM evaluation remains necessary for critical safety decisions.
-
-## See Also
-
-- [LLM as a Judge Architecture and Evaluation Types](../analysis_thoughts/thought_llm_as_a_judge_architecture.md) -- core architecture diagram, unsupervised/supervised/multi-judge evaluation types, and judge model selection criteria
-- [LLM as a Judge Amazon Implementations](../analysis_thoughts/thought_llm_as_a_judge_amazon_implementations.md) -- 7 production implementations (Eva, Search Tiles, Alexa, IntelliOps, Taser AI, AGI Evaluations, AWS T&C) with metrics and patterns
-- [LLM as a Judge Technical Implementation](../policy_sops/sop_llm_as_a_judge_implementation.md) -- evaluation framework code, calibration process, and best practices for judge model selection, prompt engineering, and multi-judge approaches
-- [LLM as a Judge vs Other Approaches](../analysis_thoughts/thought_llm_as_a_judge_comparison.md) -- comparison tables for LLM judge vs human evaluation, vs traditional metrics (BLEU/ROUGE/F1), and use-case recommendations
-- [LLM as a Judge Evolution and Research Context](../analysis_thoughts/thought_llm_as_a_judge_evolution.md) -- historical development from BERT-based scoring (2020) to multi-judge ensembles (2026) and Amazon adoption timeline
+**Implementation Best Practices**: Success requires a structured calibration process -- initial automated scoring, human expert review of a subset, comparison analysis, prompt refinement, and re-evaluation. Prompt engineering should use structured JSON output formats with clear 1-5 numerical scales and reasoning requirements. Multi-judge approaches using diverse models (e.g., Claude 3.5 Sonnet, Llama 3.1, Mistral Large) mitigate bias, while hybrid human-LLM evaluation remains necessary for critical safety decisions.
 
 ## Related Terms
 
@@ -71,49 +62,25 @@ related_wiki: https://internal-wiki
 - **[LLM](term_llm.md)**: Large Language Model (both judge and target)
 - **[Prompt Engineering](term_prompt_engineering.md)**: Critical for judge prompt design
 
-### Amazon GenAI Systems
+### GenAI Systems
 - **[Agentic AI](term_agentic_ai.md)**: Multi-step AI systems requiring complex evaluation
 - **[RAG](term_rag.md)**: Retrieval-Augmented Generation systems
-- **[Bedrock](term_bedrock.md)**: AWS service hosting judge models
 
 ### Evaluation & Quality
 - **[A/B Testing](term_ab_testing.md)**: Traditional experimentation approach
 - **[Model Evaluation](term_model_evaluation.md)**: Broader ML evaluation category
 - **[Quality Assurance](term_qa.md)**: Manual testing processes being automated
 
-### Amazon Teams & Services
-- **[Eva](term_eva.md)**: Data center assistant using LLM judge evaluation
-- **[IntelliOps](term_intelliops.md)**: Ticket automation system with automated evaluation
-- **[SynapseAI](term_synapseai.md)**: T&C RAG system using evaluation frameworks
-- **[AGI Evaluations](term_agi_evaluations.md)**: Centralized LLM evaluation service
-
-### Infrastructure & Tools
-- **[SageMaker](term_sagemaker.md)**: ML platform supporting evaluation pipelines
-- **[S3](term_s3.md)**: Storage for evaluation datasets and results
-- **[Apache Airflow](term_airflow.md)**: Workflow orchestration for automated evaluation
-
 ## References
-
-### Amazon Internal Resources
-- **Eva LLM Judge Wiki**: https://internal-wiki
-- **Search Tiles Implementation**: https://internal-wiki
-- **AGI Evaluations Service**: https://internal-wiki
-- **T&C GenAI Framework**: https://internal-wiki
-- **GenAI Builder Support**: https://internal-wiki
-
-### Broadcast Videos
-- **Translation Accuracy Validator**: https://internal-host
-- **IntelliOps Automated Evaluation**: https://internal-host
-- **Taser AI Summary Evaluation**: https://internal-host
-- **Calibrating LLM Judge**: https://internal-host
-- **Generalized LLM Judge Framework**: https://internal-host
 
 ### External Research
 - **AWS Prescriptive Guidance**: Reranker - LLM as judge and cross-encoder(s)
 - **NIST AI Risk Management Framework**: Foundation for evaluation governance
-- **Academic Research**: Multiple papers on LLM-as-judge methodologies and bias mitigation
+- **Judging LLM-as-a-Judge (Zheng et al., 2023)**: https://arxiv.org/abs/2306.05685
+- **G-Eval: NLG Evaluation using GPT-4 (Liu et al., 2023)**: https://arxiv.org/abs/2303.16634
 
 ---
 
 **Last Updated**: March 15, 2026
-**Status**: Active - critical methodology for GenAI system evaluation across Amazon
+**Status**: Active - critical methodology for GenAI system evaluation
+</content>

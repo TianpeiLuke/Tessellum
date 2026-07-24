@@ -31,7 +31,7 @@ related_wiki: null
 HippoRAG is a retrieval-augmented generation framework inspired by the hippocampal indexing theory of human long-term memory. It models the interaction between the neocortex (LLM for processing), the hippocampus (knowledge graph for indexing), and the entorhinal cortex (retrieval encoder for pattern separation) to enable deeper knowledge integration across documents. Unlike standard RAG which retrieves isolated text chunks via embedding similarity, HippoRAG constructs a persistent knowledge graph using LLM-based Open Information Extraction (OpenIE) and retrieves relevant subgraphs using Personalized PageRank (PPR), enabling multi-hop reasoning and associative memory across passages.
 
 ## Context
-HippoRAG was introduced as a NeurIPS 2024 paper (arXiv:2405.14831) by researchers at OSU. It addresses a fundamental limitation of standard RAG: the inability to integrate knowledge across multiple passages for complex reasoning tasks. At Amazon, GraphRAG approaches are actively explored by the DS3 gRAG team (Vassilis Ioannidis, Qi Zhu, Costas Mavromatis) through the Mercury framework, and by teams like AB Search (Cibeles) who use PPR-based graph retrieval in production hybrid search systems. HippoRAG's architecture is directly relevant to BRP knowledge systems that need to connect abuse patterns across disparate documents, investigations, and historical cases.
+HippoRAG was introduced as a NeurIPS 2024 paper (arXiv:2405.14831) by researchers at OSU. It addresses a fundamental limitation of standard RAG: the inability to integrate knowledge across multiple passages for complex reasoning tasks. Its architecture is directly relevant to any knowledge system that needs to connect information across disparate documents, cases, and historical records for multi-hop reasoning.
 
 ## Key Characteristics
 - **Neurobiological Architecture**: Maps three brain components to computational analogs — neocortex (LLM for processing), hippocampal index (knowledge graph for associative linking), entorhinal cortex (retrieval encoder for pattern separation)
@@ -65,6 +65,4 @@ HippoRAG was introduced as a NeurIPS 2024 paper (arXiv:2405.14831) by researcher
   - Source: [lit_gutierrez2025rag](../papers/lit_gutierrez2025rag.md) — first encountered in this paper
 - [RAG: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (Lewis et al., 2020)](../papers/lit_lewis2020retrieval.md) — foundational RAG paper that HippoRAG extends
 - [GraphRAG: From Local to Global (Edge et al., 2024)](../papers/lit_edge2024local.md) — complementary graph-RAG approach using community detection for global sensemaking
-- [TFL GraphRAG - Amazon AI Research](https://internal-wiki)
-- [GraphRAG AMLC 2024 Tutorial](https://internal-wiki)
 

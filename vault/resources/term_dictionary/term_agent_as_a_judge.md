@@ -91,9 +91,9 @@ You et al. (2026) identify three developmental stages of Agent-as-a-Judge system
 - **Finance**: SAEA/M-SAEA (trajectory auditing), FinDeepResearch (hierarchical rubrics)
 - **Education**: GradeOpt (iterative guideline refinement)
 
-## Relevance to BRP
+## Relevance to Abuse Prevention
 
-- **GreenTEA quality evaluation**: Agent-as-a-Judge patterns (tool-augmented verification, multi-agent collaboration) can evaluate investigation quality and decision correctness
+- **Investigation quality evaluation**: Agent-as-a-Judge patterns (tool-augmented verification, multi-agent collaboration) can evaluate investigation quality and decision correctness
 - **Abuse adjudication**: AgentsCourt adversarial debate (prosecution/defense/judge) maps to abuse case adjudication — one agent argues for abuse, another for legitimate behavior
 - **Self-evolving evaluation**: As abuse patterns shift, Self-Evolving Agent-as-a-Judge can continuously update evaluation criteria
 - **Deployment challenges**: 10-50× latency overhead requires careful triage — route simple cases to LLM-as-a-Judge, complex cases to Agent-as-a-Judge

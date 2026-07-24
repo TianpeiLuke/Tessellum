@@ -129,7 +129,7 @@ Where $\sigma_{st}$ is the total number of shortest paths from $s$ to $t$, $\sig
 | **SNAP (Stanford)** | All classical measures | Large-scale network analysis |
 | **Gephi** | All classical + PageRank | Interactive network visualization and analysis |
 | **Neo4j Graph Data Science** | Degree, betweenness, closeness, PageRank | Graph database analytics |
-| **Amazon Nexus KG** | PPR (PageRank variant) | Knowledge graph ranking for fraud detection |
+| **Graph-based risk model** | PPR (PageRank variant) | Knowledge graph ranking for fraud detection |
 | **HippoRAG** | PPR (PageRank variant) | Knowledge graph retrieval for LLM systems |
 | **Brandes' Algorithm** | Betweenness | $O(nm)$ exact betweenness for large networks (Brandes, 2001) |
 

@@ -120,7 +120,7 @@ The macro-trend is toward **constitution-as-specification**: declarative rules g
 
 ## Applications to Our Work
 
-- **Policy-as-constitution**: Buyer abuse policies could serve as constitutional principles for an RLAIF-based abuse detection model, enabling policy updates without retraining from scratch
+- **Policy-as-constitution**: Abuse-prevention policies could serve as constitutional principles for an RLAIF-based abuse detection model, enabling policy updates without retraining from scratch
 - **Critique-revision for classification**: The SL-CAI paradigm could be applied to align LLM-based abuse classifiers — have the model critique its own abuse classification rationale against explicit policy principles
 - **Scalable annotation**: RLAIF could reduce the human annotation burden for abuse detection training data at scale
 
@@ -132,8 +132,8 @@ The macro-trend is toward **constitution-as-specification**: declarative rules g
 3. Random principle sampling at each critique-revision step is claimed to provide "diversity." But random sampling means some principles are applied to prompts they're irrelevant for (e.g., a UN Declaration principle applied to a coding question). Does irrelevant principle application degrade response quality? Is there evidence that targeted principle selection (matching principle to prompt type) would outperform random sampling?
 
 ### Application (Taxonomic)
-4. The note proposes "policy-as-constitution" for abuse detection. Take this concrete: write 5 constitutional principles for buyer abuse classification (e.g., "Choose the response that correctly distinguishes between a legitimate return and a fraudulent one, considering the buyer's full history"). What would the SL-CAI critique-revision loop look like for an abuse classifier? What happens when the policy principle says "protect the customer" and another says "prevent financial loss"? *(What If / Divergent — Berger)*
-5. If CAI's non-evasive harmlessness (explaining objections instead of refusing) were applied to abuse investigation automation, what would it look like? Instead of [GreenTEA](term_greentea.md) outputting "abuse/not-abuse," it would output "this looks like abuse because X, but here's why it might be legitimate: Y." Would this increase investigator trust and decision quality, or would the nuance slow down high-volume investigation? *(Scale Shift — Burger)*
+4. The note proposes "policy-as-constitution" for abuse detection. Take this concrete: write 5 constitutional principles for abuse classification (e.g., "Choose the response that correctly distinguishes between a legitimate return and a fraudulent one, considering the buyer's full history"). What would the SL-CAI critique-revision loop look like for an abuse classifier? What happens when the policy principle says "protect the customer" and another says "prevent financial loss"? *(What If / Divergent — Berger)*
+5. If CAI's non-evasive harmlessness (explaining objections instead of refusing) were applied to abuse investigation automation, what would it look like? Instead of an investigation-automation system outputting "abuse/not-abuse," it would output "this looks like abuse because X, but here's why it might be legitimate: Y." Would this increase investigator trust and decision quality, or would the nuance slow down high-volume investigation? *(Scale Shift — Burger)*
 
 ### Synthesis (Lateral)
 6. [Pluralistic Alignment](term_pluralistic_alignment.md) argues that a single constitution authored by one team suppresses value diversity. Collective Constitutional AI (Anthropic, 2023) crowdsourced principles from ~1,000 participants. How does this relate to [Zettelkasten](term_zettelkasten.md) design philosophy — both are about building knowledge structures from diverse atomic inputs? Could a "living constitution" evolve like a Zettelkasten, with principles added, linked, and revised over time based on deployment feedback? *(Exaptation — Johnson)*

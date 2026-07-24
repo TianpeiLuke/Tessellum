@@ -26,13 +26,13 @@ building_block: concept
 
 ## Definition
 
-The anchoring effect is a cognitive bias where individuals rely too heavily on the first piece of information encountered (the "anchor") when making subsequent judgments or decisions. Once an anchor is set, adjustments from that anchor tend to be insufficient, leading to systematically biased estimates. In abuse prevention, anchoring can affect both investigators (anchoring on initial risk scores) and ML model design (anchoring on historical thresholds).
+The anchoring effect is a cognitive bias where individuals rely too heavily on the first piece of information encountered (the "anchor") when making subsequent judgments or decisions. Once an anchor is set, adjustments from that anchor tend to be insufficient, leading to systematically biased estimates. Anchoring can affect analytical work in many ways — for example, human reviewers anchoring on an initial risk score, or ML model design anchoring on historical thresholds.
 
 ## Context
 
-- **Investigation bias**: ARI investigators may anchor on initial risk band or sugar index when evaluating cases
+- **Reviewer bias**: Human reviewers may anchor on an initial risk band or score when evaluating cases
 - **Threshold setting**: ML model operating points can anchor on historical precision/recall targets
-- **Customer behavior**: Abusers may exploit anchoring by establishing a pattern of legitimate behavior before abuse
+- **Adversarial exploitation**: Bad actors may exploit anchoring by establishing a pattern of legitimate behavior before misbehaving
 - **Experimental design**: A/B test interpretation can be anchored by prior expectations
 
 ## Key Characteristics
@@ -44,9 +44,7 @@ The anchoring effect is a cognitive bias where individuals rely too heavily on t
 
 ## Related Terms
 
-- **[Sugar Index](term_sugar_index.md)**: Customer risk score — can serve as anchor for investigators
 - **[Precision](term_precision.md)**: Model precision — threshold anchoring in ML
-- **[ARI](term_ari.md)**: Investigators subject to anchoring bias
 - **[SOP](term_sop.md)**: Structured procedures that help mitigate anchoring
 
 ## References

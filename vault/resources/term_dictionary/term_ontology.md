@@ -25,7 +25,7 @@ language: markdown
 date of note: 2026-02-06
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
+related_wiki: null
 ---
 
 # Term: Ontology
@@ -42,12 +42,12 @@ An **Ontology** is a formal, explicit specification of a shared conceptualizatio
 
 | Component | Description | Example |
 |-----------|-------------|---------|
-| **Class** | A category or type of entity | "Customer", "Order", "AbusePattern" |
+| **Class** | A category or type of entity | "Customer", "Order", "Product" |
 | **Property** | Attributes of classes or relationships between classes | "has_name", "depends_on", "triggered_by" |
 | **Instance** | A specific individual belonging to a class | "Customer123", "Order456" |
 | **Relationship** | Defined connection between entities | "placed_order", "linked_to_account" |
 | **Axiom** | Logical rules constraining the ontology | "Every Order must have exactly one Customer" |
-| **Hierarchy** | Class inheritance structure | "DNRAbuse is-a ConcessionAbuse is-a AbuseType" |
+| **Hierarchy** | Class inheritance structure | "SUV is-a Car is-a Vehicle" |
 
 ### Ontology vs Taxonomy vs Schema
 
@@ -100,9 +100,9 @@ Examples:
 
 | Feature | Description | Example |
 |---------|-------------|---------|
-| **Subclass** | Inheritance relationship | `DNRAbuse ⊆ ConcessionAbuse` |
+| **Subclass** | Inheritance relationship | `SUV ⊆ Car` |
 | **Transitive Property** | Relationship propagates | If A depends-on B, B depends-on C → A depends-on C |
-| **Disjoint Classes** | Mutual exclusion | LegitimateCustomer ⊥ Abuser (cannot be both) |
+| **Disjoint Classes** | Mutual exclusion | Car ⊥ Motorcycle (cannot be both) |
 | **Cardinality** | Quantity constraints | Order has exactly one CustomerId |
 | **Domain/Range** | Property constraints | "placed_order" domain: Customer, range: Order |
 
@@ -116,95 +116,31 @@ Ontology (Schema) + Data (Instances) = Knowledge Graph
 - **Data**: Actual instances and facts
 - **Knowledge Graph**: Complete representation with explicit facts + inferred knowledge
 
-## Amazon Context
+## Applications
 
-### Amazon Ontology Teams and Systems
+### Where Ontologies Are Used
 
-| Team/System | Focus Area | Wiki |
-|-------------|------------|------|
-| **Product Knowledge (PK)** | Product catalog ontology | https://internal-wiki |
-| **KnowledgeCon** | Annual ontology/KM conference | https://internal-wiki |
-| **UMP** | Universal Metadata Platform ontology | https://internal-wiki |
-| **D2AS Pegasus** | Device support knowledge graph | https://internal-wiki |
-| **AWS IT Security** | Security issue ontology framework | https://internal-wiki |
+| Domain | Ontology Application |
+|--------|---------------------|
+| **Product Catalogs** | Modeling product categories, attributes, and relationships for search and recommendation |
+| **Life Sciences** | Gene Ontology (GO), SNOMED CT, and similar standards for biomedical knowledge |
+| **Knowledge Graphs** | Providing the schema layer that turns raw facts into a connected, queryable graph |
+| **Risk & Fraud Modeling** | Standardizing entity types (customers, accounts, orders) and their relationships |
+| **Enterprise Data Integration** | Shared vocabularies that reconcile terminology across teams and systems |
 
-### Product Knowledge Ontology Tenets
-
-From PK Knowledge Store Ontology Design Principles:
-
-| Principle | Description |
-|-----------|-------------|
-| **Consistent Design Patterns** | Reuse patterns instead of creating new ones |
-| **Decidability First** | OWL 2 DL compliant, expressiveness only when needed |
-| **Losslessness** | Preserve all information in migrations |
-| **Data-Tested Models** | Every model tested with real data |
-| **Self-Documenting** | Store design decisions in rdfs:comment and rdfs:seeAlso |
-
-### KnowledgeCon 2025 Sessions
-
-| Session | Presenter | Topic |
-|---------|-----------|-------|
-| **From Taxonomy to Ontology** | Heather Hedden | Comparisons and how to extend taxonomy to ontology |
-| **Knowledge at Scale** | Rayssa Küllian (BAP) | Building Nexus KG with billions of elements |
-| **Evolving PK Data Model** | Heather Moore, Ben Middleton | Ontology primitives and agentic support |
-
-## BAP Context
-
-### Ontology in Abuse Prevention
-
-| Application | Description |
-|-------------|-------------|
-| **Abuse Type Hierarchy** | Classification of abuse patterns (DNR, FLR, FRA, etc.) |
-| **Entity Relationships** | Customer → Account → Order → Concession chains |
-| **Risk Signal Schema** | OTF variables, model scores, behavioral signals |
-| **Investigation Workflow** | Actions, outcomes, enforcement states |
-| **Modus Operandi (MO)** | Abuse pattern definitions and relationships |
-
-### BAP Domain Ontology Concepts
+### Example Domain Hierarchy
 
 ```
-AbuseType
-├── ConcessionAbuse
-│   ├── DNR (Delivered Not Received)
-│   ├── FLR (Failed Return)
-│   └── FRA (Fraudulent Return)
-├── AccountAbuse
-│   ├── MAA (Multi-Account Abuse)
-│   ├── ATO (Account Takeover)
-│   └── NewAccountAbuse
-├── TransactionAbuse
-│   ├── QLA (Quantity Limits Abuse)
-│   └── ResellerAbuse
-└── FulfillmentAbuse
-    ├── AFN (Amazon Fulfillment Network)
-    └── MFN (Merchant Fulfillment Network)
+Vehicle
+├── Car
+│   ├── SUV
+│   ├── Sedan
+│   └── Hatchback
+├── Motorcycle
+└── Truck
+    ├── PickupTruck
+    └── SemiTruck
 ```
-
-### Nexus Knowledge Graph (BAP)
-
-From KnowledgeCon 2025 - Rayssa Küllian (Principal Scientist, Buyer Abuse Fixed):
-
-> "Nexus is a massive knowledge graph developed by Buyer Abuse Prevention to detect and prevent policy abuse on Amazon's marketplace. Our graph currently contains over **5.3 billion nodes** and **9.6 billion edges** spanning **21 entity types** and **23 relationship types** to form a complex network representing things like customers, orders, shipments, and financial instruments with over **19.8 billion property values**."
-
-| Nexus Ontology Aspect | Details |
-|----------------------|---------|
-| **Nodes** | 5.3+ billion entities |
-| **Edges** | 9.6+ billion relationships |
-| **Entity Types** | 21 types (customers, orders, shipments, payments, etc.) |
-| **Relationship Types** | 23 types (owns, placed, linked_to, etc.) |
-| **Properties** | 19.8+ billion property values |
-| **Write Throughput** | Up to 100K records/second |
-| **Storage** | AWS Neptune |
-
-### BAP Ontology Use Cases
-
-| Use Case | Ontology Application |
-|----------|---------------------|
-| **Risk Signal Standardization** | OTF variable naming conventions and relationships |
-| **Model Feature Organization** | Hierarchical feature groups with semantic meaning |
-| **Investigation Workflow** | State machines and outcome taxonomies |
-| **Abuse Pattern Classification** | MO hierarchy and detection rules |
-| **Cross-Team Communication** | Shared vocabulary and entity definitions |
 
 ## Best Practices
 
@@ -249,29 +185,17 @@ From KnowledgeCon 2025 - Rayssa Küllian (Principal Scientist, Buyer Abuse Fixed
 ### Technologies
 - **[RDF](term_rdf.md)** - Resource Description Framework
 - **[OWL](term_owl.md)** - Web Ontology Language
-- **[Neptune](term_neptune.md)** - Amazon graph database
 - **[SPARQL](term_sparql.md)** - Graph query language
-
-### BAP Systems
-- **[Nexus](term_nexus.md)** - BAP knowledge graph using ontology for abuse detection
-- **[OTF](term_otf.md)** - On-the-Fly features using structured variable schema
-- **[MO](term_mo.md)** - Modus Operandi - abuse pattern taxonomy
 
 ## References
 
-### Amazon Resources
-- **KnowledgeCon 2025**: https://internal-wiki
-- **KnowledgeCon 2024**: https://internal-wiki
-- **PK Ontology Tenets**: https://internal-wiki
-- **UMP Ontology Data Model**: https://internal-wiki
-- **D2AS Knowledge Management**: https://internal-wiki
-- **Ontologies and KG Technical Guide**: https://internal-wiki
-- **AWS Security Ontology**: https://internal-wiki
-
 ### External Resources
-- **W3C OWL**: https://www.w3.org/TR/owl2-overview/
+- **W3C OWL 2 Overview**: https://www.w3.org/TR/owl2-overview/
+- **W3C RDF Primer**: https://www.w3.org/TR/rdf-primer/
+- **W3C SPARQL 1.1 Query Language**: https://www.w3.org/TR/sparql11-query/
 - **Protégé**: https://protege.stanford.edu/ (Ontology editor)
-- **RDF Primer**: https://www.w3.org/TR/rdf-primer/
+- **Gruber, T. (1993). "A Translation Approach to Portable Ontology Specifications."**: https://tomgruber.org/writing/ontolingua-kaj-1993.htm — classic definition of an ontology as a specification of a conceptualization
+- **Wikipedia: Ontology (information science)**: https://en.wikipedia.org/wiki/Ontology_(information_science)
 
 ## Summary
 
@@ -283,11 +207,11 @@ From KnowledgeCon 2025 - Rayssa Küllian (Principal Scientist, Buyer Abuse Fixed
 | **vs Taxonomy** | Richer relationships, reasoning, inference (not just hierarchy) |
 | **vs Schema** | Semantic meaning, flexible evolution, logic-based validation |
 | **Technologies** | RDF, RDFS, OWL, SPARQL |
-| **Amazon Tools** | Protégé, Neptune, KnowledgeCon community |
-| **BAP Application** | Nexus KG ontology, abuse type hierarchy, OTF variable schema |
+| **Tools** | Protégé, reasoners (HermiT, Pellet), graph databases |
+| **Applications** | Knowledge graph schemas, product catalogs, biomedical standards, data integration |
 | **Key Benefit** | Machine reasoning + shared understanding across teams |
 
-**Key Insight**: An ontology is the conceptual backbone of a knowledge graph - it defines "what can exist" while the knowledge graph contains "what actually exists." In BAP, ontology thinking helps standardize abuse type definitions, risk signal naming, and entity relationships. The Nexus knowledge graph uses an ontology with 21 entity types and 23 relationship types to represent the complex web of customers, orders, payments, and abuse patterns. Good ontology design enables both machine reasoning (automated inference) and human understanding (shared vocabulary), making it essential for cross-team collaboration and scalable abuse detection systems.
+**Key Insight**: An ontology is the conceptual backbone of a knowledge graph - it defines "what can exist" while the knowledge graph contains "what actually exists." Ontology thinking helps standardize entity definitions, attribute naming, and relationships so that a schema can represent a complex web of entities (for example customers, orders, and products) with typed relationships. Good ontology design enables both machine reasoning (automated inference) and human understanding (shared vocabulary), making it essential for cross-team collaboration and scalable knowledge systems.
 
 ---
 

@@ -94,9 +94,9 @@ The Cloze procedure (Taylor, 1953) is a reading comprehension test where words a
 3. **Independence assumption**: Masked tokens are predicted independently of each other, ignoring their joint distribution. For example, masking "New" and "York" independently may produce valid individual predictions but incoherent joint predictions.
 4. **Not generative**: Encoder-only MLM models cannot generate text autoregressively, limiting their applicability to understanding tasks.
 
-## Applications to Our Work
+## Applications
 
-- **BSM-BERT models** ([RnR BSM BERT](../../areas/models/model_rnr_bsm_bert.md), [AtoZ BSM BERT](../../areas/models/model_atoz_bsm_bert.md)) use the MLM-pre-trained BERT encoder as their backbone, fine-tuning the `[CLS]` representation for buyer-seller message abuse classification.
+- Message-abuse classification models can use an MLM-pre-trained BERT encoder as their backbone, fine-tuning the `[CLS]` representation to classify abusive buyer-seller messages.
 - Domain-specific continued pre-training with MLM on abuse-related text (customer contacts, seller messages) could improve representations for abuse detection.
 
 ## Related Terms
@@ -114,7 +114,6 @@ The Cloze procedure (Taylor, 1953) is a reading comprehension test where words a
 
 ### Production Models
 - [SBERT](term_sbert.md) — Extends MLM-pre-trained BERT for sentence embeddings
-- [CrossBERT](term_crossbert.md) — Cross-marketplace BERT model built on MLM pre-training
 
 ## References
 

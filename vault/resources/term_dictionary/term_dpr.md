@@ -101,12 +101,12 @@ DPR consistently outperforms BM25 sparse retrieval across all open-domain QA ben
 
 ## Context
 
-Within Buyer Risk Prevention (BRP) and Amazon more broadly, DPR-style dense retrieval underlies several key systems:
+DPR-style dense retrieval underlies a wide range of modern retrieval systems:
 
-- **RAG systems**: GreenTEA, AskNexus, DeepCARE all use dense vector retrieval over internal knowledge bases
-- **Amazon Bedrock Knowledge Bases**: Use dense embedding models (Titan, Cohere) for retrieval — the same architectural pattern as DPR
-- **Abuse Slipbox**: The vault's graph-based retrieval is complementary to DPR-style similarity search; both are used for the answer-query pipeline
-- **Similarity search**: DeepCARE's k-NN investigation retrieval follows DPR's encode-then-search paradigm
+- **RAG systems**: Retrieval-augmented generation pipelines use dense vector retrieval over knowledge bases to ground LLM responses
+- **Managed vector search services**: Services such as Amazon Bedrock Knowledge Bases use dense embedding models (e.g., Titan, Cohere) for retrieval — the same architectural pattern as DPR
+- **Graph-based retrieval**: Graph-aware retrieval is complementary to DPR-style similarity search; the two are often combined in answer-generation pipelines
+- **Similarity search**: k-NN investigation and recommendation systems follow DPR's encode-then-search paradigm
 
 ## Related Terms
 

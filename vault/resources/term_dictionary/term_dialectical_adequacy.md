@@ -99,7 +99,7 @@ where $G_j^{\text{survived}}$ = gap reports addressed by rule updates, $G_j^{\te
 **DKS and Knowledge Systems**:
 - **[Dialectic Knowledge System](term_dialectic_knowledge_system.md)**: The architecture where dialectical adequacy is the convergence target — the closed loop drives warrants toward this property
 - **[Knowledge Building Blocks](term_knowledge_building_blocks.md)**: The 8-type taxonomy that enables measuring adequacy per building block type
-- **[an LLM rule optimizer](term_spot_x.md)**: The optimization engine that repairs warrants toward dialectical adequacy via A/B-tested condition/exception updates
+- **an LLM rule optimizer**: The optimization engine that repairs warrants toward dialectical adequacy via A/B-tested condition/exception updates
 
 **Epistemological Foundations**:
 - **[Bayesian Reasoning](term_bayesian_reasoning.md)**: Bayesian updating is the probabilistic analog — dialectical adequacy is the logical/argumentative analog of posterior convergence after evidence accumulation

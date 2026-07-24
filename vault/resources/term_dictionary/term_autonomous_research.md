@@ -69,7 +69,6 @@ AgentRxiv demonstrated that shared knowledge infrastructure dramatically improve
 - [Self-Evolving Agent](term_self_evolving_agent.md) -- Autonomous research agents are a specialized class of self-evolving agents that improve through accumulated publications
 - [Reward Hacking](term_reward_hacking.md) -- Key failure mode where agents optimize for reported metrics rather than genuine scientific contribution
 - [Hallucination](term_hallucination.md) -- Result fabrication is the primary reliability bottleneck for autonomous research
-- [AgentSpace](term_agentspace.md) -- Related multi-agent coordination paradigm for agent collaboration
 - [Chain-of-Thought](term_chain_of_thought.md) -- Reasoning technique that autonomous research agents build upon and extend
 - [Agentic Memory](term_agentic_memory.md) -- Preprint servers function as shared persistent memory for agent laboratories
 

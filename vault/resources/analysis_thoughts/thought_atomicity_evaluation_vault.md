@@ -9,7 +9,7 @@ tags:
   - agentic_ai
 keywords:
   - atomicity evaluation
-  - Abuse Slipbox
+  - the vault
   - knowledge building blocks
   - Sascha
   - zettelkasten.de
@@ -37,11 +37,11 @@ folgezettel_parent: "7"
 author: lukexie
 ---
 
-# Atomicity Evaluation of the Abuse Slipbox
+# Atomicity Evaluation of the Vault
 
 ## Purpose
 
-This document evaluates the Abuse Slipbox's design and implementation through the lens of the **Principle of Atomicity** as articulated by Sascha (zettelkasten.de). It draws on three authoritative sources:
+This document evaluates the vault's design and implementation through the lens of the **Principle of Atomicity** as articulated by Sascha (zettelkasten.de). It draws on three authoritative sources:
 
 1. **[The Principle of Atomicity — Principle vs. Implementation](../digest/digest_atomicity_principle_implementation_sascha.md)** — the theoretical framework (Input Quality vs. Desired Outcome, Six Knowledge Building Blocks, [Shuhari](../term_dictionary/term_shuhari.md) mastery model)
 2. **[The Complete Guide to Atomic Note-Taking](../digest/digest_atomicity_guide_sascha.md)** — the operational reference (revised Six Knowledge Building Blocks, four-step process, Tiered Idea Development, contextualizing principles)
@@ -202,7 +202,7 @@ The vault faces a genuine dilemma that Sascha's framework acknowledges but does 
 
 - **As a knowledge hub / AI context system**: Pragmatic atomicity produces better retrieval — keeping related ideas together (Sound Communication) means users and agents find complete answers faster, but at the cost of larger, less composable notes.
 
-The Abuse Slipbox resolves this by **stratifying atomicity by note type**: high atomicity for knowledge-building types (terms, papers, digests), low atomicity for operational types (areas, SOPs). This applies Sascha's "Purpose" principle at the architectural level — different note types serve different functions and have different atomicity needs.
+The vault resolves this by **stratifying atomicity by note type**: high atomicity for knowledge-building types (terms, papers, digests), low atomicity for operational types (areas, SOPs). This applies Sascha's "Purpose" principle at the architectural level — different note types serve different functions and have different atomicity needs.
 
 ### Building for the Future Self vs. Solving Present Problems
 
@@ -254,7 +254,7 @@ The vault's operational notes (SOPs, area notes) solve present problems — onbo
 
 2. **Add an atomicity drift check** to `/slipbox-run-incremental-update` — flag term notes exceeding 200 lines or containing more than 3 `##` sections as candidates for decomposition. Report in the update summary.
 
-3. **Document the bimodal design** — Add a section to the [project note](../../projects/project_source_vault.md) explicitly stating that the vault operates at two atomicity levels (research layer = Level 3–4, operational layer = Level 2) and that this is a deliberate design choice.
+3. **Document the bimodal design** — Add a section to the project note explicitly stating that the vault operates at two atomicity levels (research layer = Level 3–4, operational layer = Level 2) and that this is a deliberate design choice.
 
 ### Medium-Term (Moderate Effort)
 
@@ -270,13 +270,13 @@ The vault's operational notes (SOPs, area notes) solve present problems — onbo
 
 ## Conclusion
 
-The Abuse Slipbox implements atomicity as a **tiered principle** rather than a uniform rule. This is consistent with Sascha's own guidance — atomicity serves thinking development, not methodological orthodoxy — and with his contextualizing principles (Sound Communication, Focus, Purpose).
+The vault implements atomicity as a **tiered principle** rather than a uniform rule. This is consistent with Sascha's own guidance — atomicity serves thinking development, not methodological orthodoxy — and with his contextualizing principles (Sound Communication, Focus, Purpose).
 
 The vault's strongest atomicity is in its research pipeline (papers, digests → term notes → questions), which operates at Level 3–4 of the Zettelkasten Iceberg. Its weakest atomicity is in operational notes (areas, SOPs), which prioritize Sound Communication over atomic decomposition — a defensible trade-off for a system that must onboard real teams.
 
 The most actionable improvement is addressing the **dual-use tension**: atomicity optimizes for AI context assembly, while comprehensiveness optimizes for human navigation. The vault currently resolves this by note type (atomic terms vs. comprehensive areas), but could improve by making area notes section-addressable and decomposing overloaded term notes. The fundamental insight is that **the same note property (comprehensiveness) that makes area notes excellent for human onboarding makes them expensive for AI context assembly** — and the vault must serve both masters.
 
-Sascha would likely classify the Abuse Slipbox as operating at **HA-level** on the [Shuhari](../term_dictionary/term_shuhari.md) mastery scale: it understands the atomicity principle and adapts its implementation to context (different atomicity for different note types), rather than following a rigid rule (SHU) or creating novel approaches (RI). The vault has moved past "one idea per note" orthodoxy without abandoning the principle — which is precisely what Sascha advocates.
+Sascha would likely classify the vault as operating at **HA-level** on the [Shuhari](../term_dictionary/term_shuhari.md) mastery scale: it understands the atomicity principle and adapts its implementation to context (different atomicity for different note types), rather than following a rigid rule (SHU) or creating novel approaches (RI). The vault has moved past "one idea per note" orthodoxy without abandoning the principle — which is precisely what Sascha advocates.
 
 ---
 
@@ -295,7 +295,6 @@ Sascha would likely classify the Abuse Slipbox as operating at **HA-level** on t
 - **[Digest: BASB and Zettelkasten](../digest/digest_basb_vs_zettelkasten_sascha.md)** — Two-layer knowledge value chain: BASB manages resources upstream, ZKM processes ideas downstream
 
 ### Vault Architecture and Existing Analysis
-- **[Project: Abuse Slipbox](../../projects/project_source_vault.md)** — Project note describing the vault's architecture, research directions, and skill taxonomy
 - **[Thought: Zettelkasten Knowledge Management Principles](thought_zettelkasten_knowledge_management_principles.md)** — Core principles analysis where atomicity is Principle 1
 - **[Thought: Slipbox Thinking Protocol](thought_slipbox_thinking_protocol.md)** — Graph-aware reasoning protocol; demonstrates how atomicity enables step-by-step graph traversal
 - **[Thought: P.A.R.A. Integration and Comparison](thought_para_integration_and_comparison.md)** — PARA + Zettelkasten hybrid analysis; the two-layer organization that creates the vault's bimodal atomicity

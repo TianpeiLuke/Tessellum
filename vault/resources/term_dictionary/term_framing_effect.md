@@ -121,7 +121,7 @@ Richard Thaler and Cass Sunstein built on framing research to develop the concep
 
 ### Abuse Prevention and Customer Experience
 
-Framing effects are directly relevant to buyer abuse prevention:
+Framing effects are directly relevant to abuse prevention:
 - **Policy communication**: How return and refund policies are communicated (gain vs. loss framing) affects both legitimate customer satisfaction and potential abuse. "You may return within 30 days" (gain frame) vs. "Returns after 30 days are not accepted" (loss frame) activate different psychological responses
 - **Abuse deterrence messaging**: Loss-framed messages ("Abusing our return policy may result in account restrictions") tend to be more effective than gain-framed messages ("Following our return policy ensures uninterrupted service") because loss aversion makes the negative consequence more psychologically impactful
 - **Decision presentation for investigators**: How abuse signals are presented to human reviewers can frame their judgment. Presenting the same data as "this customer has had 15 returns in 6 months" vs. "this customer has kept 85% of orders" activates different investigative mindsets

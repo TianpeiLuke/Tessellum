@@ -105,8 +105,7 @@ The single-head result confirms that multi-head decomposition is critical — a 
 ## Applications to Our Work
 
 - **BERT-based abuse classifiers** ([RnR BSM BERT](../../areas/models/model_rnr_bsm_bert.md), [AtoZ BSM BERT](../../areas/models/model_atoz_bsm_bert.md)): Bidirectional self-attention enables each token in a buyer-seller message to attend to all other tokens for context-dependent abuse classification
-- **[TSA](term_tsa.md)** (Temporal Self-Attention): Self-attention applied over buyer transaction sequences to detect temporal abuse patterns — each transaction attends to all prior transactions
-- **[CrossBERT](term_crossbert.md)**: Self-attention within buyer and seller representations, combined with cross-attention between them
+- **[TSA](term_tsa.md)** (Temporal Self-Attention): Self-attention applied over transaction sequences to detect temporal abuse patterns — each transaction attends to all prior transactions
 - **Graph Transformers** (HGT, TGN): Self-attention adapted for graph neighborhoods — node-level attention over typed edges
 
 ## Related Terms
@@ -121,7 +120,6 @@ The single-head result confirms that multi-head decomposition is critical — a 
 - [BERT](term_bert.md) — Bidirectional self-attention encoder
 - [LLM](term_llm.md) — Causal self-attention decoder
 - [TSA](term_tsa.md) — Temporal self-attention for abuse patterns
-- [CrossBERT](term_crossbert.md) — Self-attention + cross-attention for buyer-seller interactions
 
 ## References
 

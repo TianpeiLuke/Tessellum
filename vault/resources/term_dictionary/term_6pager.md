@@ -24,8 +24,6 @@ language: markdown
 date of note: 2026-03-14
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
-related_wiki_2: https://internal-wiki
 ---
 
 # 6-Pager (Six-Page Narrative)
@@ -73,11 +71,11 @@ The 6-pager embodies Amazon's belief that "writing is thinking" - forcing author
 
 **Meeting Ritual and Application Scope**: The silent reading ritual (20-30 minutes of complete silence at meeting start, followed by discussion where the document speaks for itself) ensures equal footing, thoughtful questions, and focused debate. 6-pagers are used across strategic planning (OP1/OP2, QBR, MBR), technical decision-making (architecture proposals, tool evaluations), operational excellence (process changes, COEs), and product strategy -- but not for PR/FAQs, one-pagers, or status updates.
 
-**Cultural Impact and Format Differentiation**: The 6-pager differentiates Amazon from PowerPoint-driven companies by forcing critical thinking, leveling the playing field for junior writers, creating durable institutional knowledge, and scaling decision-making asynchronously. Compared to one-pagers (quick alignment) and PR/FAQs (customer validation), the 6-pager serves deep decision-making. Writing typically takes 3-4 weeks with 5-10+ drafts, supported by tools like Doc Bar Raiser Reviewer, WeaselWords Macro, and training courses (Narratives 101/201).
+**Cultural Impact and Format Differentiation**: The 6-pager differentiates Amazon from PowerPoint-driven companies by forcing critical thinking, leveling the playing field for junior writers, creating durable institutional knowledge, and scaling decision-making asynchronously. Compared to one-pagers (quick alignment) and PR/FAQs (customer validation), the 6-pager serves deep decision-making. Writing typically takes 3-4 weeks with 5-10+ drafts, supported by bar-raiser review and internal narrative-writing training.
 
 ## See Also
 
-- **[6-Pager Document Structure and Writing Best Practices](../policy_sops/sop_6pager_structure_and_writing.md)** — Typical 6-pager structure (Purpose, Background, Problem, Recommendation, Implementation, Appendices), alternative structures for technical designs / operational reviews / strategic proposals, narrative style requirements (must-haves and avoids), document quality signals (high-quality vs low-quality), writing process and timeline (3-4 weeks, 5-10+ drafts), common writing patterns (top-down, bottom-up, hybrid), Amazon writing tools and resources (Writing Hub, Doc Bar Raiser Reviewer, WeaselWords Macro, Quip/WorkDocs), training courses (Narratives 101/201, Writing Workshop), external references (Strunk & White, Zinsser, Klinkenborg)
+- **[6-Pager Document Structure and Writing Best Practices](../policy_sops/sop_6pager_structure_and_writing.md)** — Typical 6-pager structure (Purpose, Background, Problem, Recommendation, Implementation, Appendices), alternative structures for technical designs / operational reviews / strategic proposals, narrative style requirements (must-haves and avoids), document quality signals (high-quality vs low-quality), writing process and timeline (3-4 weeks, 5-10+ drafts), common writing patterns (top-down, bottom-up, hybrid), writing tools and resources, narrative-writing training, external references (Strunk & White, Zinsser, Klinkenborg)
 - **[6-Pager Silent Reading Ritual and Use Cases](../policy_sops/sop_6pager_meeting_ritual_and_use_cases.md)** — Meeting process (distribution, silent reading, discussion), why silent reading works (equal footing, thoughtful questions, focus), common mistakes, strategic planning use cases (OP1/OP2, QBR/MBR), technical decision-making (design documents, project proposals), operational excellence (process changes, incident reviews/COEs), product development applicability
 - **[6-Pager Cultural Impact and Format Comparison](../analysis_thoughts/thought_6pager_cultural_impact_and_comparison.md)** — 6-Pager vs One-Pager / PR/FAQ / PowerPoint comparison tables, writer's and reader's common challenges with solutions, cultural significance and Leadership Principle alignment (Are Right A Lot, Dive Deep, Have Backbone, Earn Trust, Deliver Results), onboarding challenges for new Amazonians, success stories and career/business impact
 
@@ -102,11 +100,11 @@ The 6-pager embodies Amazon's belief that "writing is thinking" - forcing author
 
 ## References
 
-- **[Writing Hub](https://internal-wiki)** - Central resource for narrative writing
-- **[6-Pager Checklist](https://internal-wiki)** - Quality checklist for technical designs
+- Bezos, J. (2018). Amazon Shareholder Letter — describes the six-page narrative meeting format and rationale
+- Strunk, W. & White, E.B. *The Elements of Style* — narrative writing craft
+- Zinsser, W. *On Writing Well* — clear nonfiction prose
 
 ---
 
 **Document Version**: 2.0
 **Last Updated**: March 14, 2026
-**Primary References**: Amazon Writing Hub, AWS Technical Writing Tools, Multiple Team Writing Guidelines

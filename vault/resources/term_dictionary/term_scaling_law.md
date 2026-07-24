@@ -186,9 +186,9 @@ A two-stage pipeline: C → [Scaling Law] → Pretrain Loss L → [Task Scaling 
 ## Applications to Our Work
 
 Scaling laws inform model sizing decisions for abuse detection:
-- **Data requirements**: Given a [BSM-BERT](../../areas/models/model_rnr_bsm_bert.md) model with N parameters, minimum data to avoid overfitting is D ≳ 5×10³ · N^0.74
-- **Architecture selection**: The architecture independence finding validates choosing depth/width based on serving constraints (latency, memory) for [CrossBERT](term_crossbert.md)
-- **Transfer expectations**: In-distribution scaling laws predict out-of-distribution performance with constant offset, supporting cross-marketplace transfer in [CrossBERT](term_crossbert.md)
+- **Data requirements**: Given a domain-specific BERT model with N parameters, minimum data to avoid overfitting is D ≳ 5×10³ · N^0.74
+- **Architecture selection**: The architecture independence finding validates choosing depth/width based on serving constraints (latency, memory) for multi-entity abuse-detection models
+- **Transfer expectations**: In-distribution scaling laws predict out-of-distribution performance with constant offset, supporting cross-marketplace transfer
 - **Compute budgeting**: For fixed training budgets, scaling curves from pilot experiments can predict performance at larger model sizes before committing resources
 
 ## Questions
@@ -223,7 +223,6 @@ Scaling laws inform model sizing decisions for abuse detection:
 ### Architecture
 - [BERT](term_bert.md) — Encoder-only Transformer; scaling behavior may differ from decoder-only
 - [Attention Mechanism](term_attention_mechanism.md) — Paper shows attention heads have minimal independent effect on scaling
-- [CrossBERT](term_crossbert.md) — Multi-entity model where scaling considerations inform architecture choices
 
 ### Related Phenomena
 - [Transfer Learning](term_transfer_learning.md) — Scaling laws predict transfer performance with constant offset

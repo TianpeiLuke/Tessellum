@@ -88,7 +88,6 @@ Progress in scientific discovery is rarely the result of a single "Eureka" momen
 ## Relevance to Our Work
 
 - **[Self-Evolving Agent](../term_dictionary/term_self_evolving_agent.md)**: AgentRxiv demonstrates agents that iteratively improve through access to their own prior research — a form of self-evolution through accumulated knowledge rather than weight updates
-- **[AgentSpace](../term_dictionary/term_agentspace.md)**: Related multi-agent coordination paradigm; AgentRxiv addresses the collaboration aspect through a shared preprint server rather than direct agent communication
 - **[Chain-of-Thought](../term_dictionary/term_chain_of_thought.md)**: SDA technique builds on chain-of-thought by employing multiple reasoning paths and aggregating confidence signals — extending self-consistency prompting
 - **[Hallucination](../term_dictionary/term_hallucination.md)**: Paper documents significant hallucination failure modes in autonomous research — agents fabricate experimental results and print false runtime outputs
 - **[Agentic Memory](../term_dictionary/term_agentic_memory.md)**: The preprint server functions as a form of persistent agentic memory — shared across labs, enabling cumulative knowledge building over time
@@ -104,7 +103,6 @@ Progress in scientific discovery is rarely the result of a single "Eureka" momen
 
 ### Related Vault Notes
 - [Self-Evolving Agent](../term_dictionary/term_self_evolving_agent.md) — AgentRxiv enables self-improving agents through iterative research accumulation
-- [AgentSpace](../term_dictionary/term_agentspace.md) — Related multi-agent coordination paradigm
 - [Chain-of-Thought](../term_dictionary/term_chain_of_thought.md) — SDA extends chain-of-thought with divergent path aggregation
 - [Hallucination](../term_dictionary/term_hallucination.md) — Key failure mode documented in autonomous research agents
 - [Agentic Memory](../term_dictionary/term_agentic_memory.md) — Preprint server as shared persistent memory

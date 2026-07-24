@@ -45,15 +45,15 @@ building_block: concept
 
 ## Definition
 
-Question type classification is a taxonomy of 10 question categories used to evaluate retrieval performance in the Abuse SlipBox. Each question type corresponds to a distinct information need, maps to specific note subcategories as gold retrieval targets, and requires different retrieval strategies to answer effectively. The taxonomy is a **bespoke blend** of established NLP question taxonomies (Li & Roth TREC, Bolotova NF-CATS, KGQA) adapted for a structured knowledge graph where each note has typed metadata (category, subcategory, building block) and explicit links.
+Question type classification is a taxonomy of 10 question categories used to evaluate retrieval performance in the vault. Each question type corresponds to a distinct information need, maps to specific note subcategories as gold retrieval targets, and requires different retrieval strategies to answer effectively. The taxonomy is a **bespoke blend** of established NLP question taxonomies (Li & Roth TREC, Bolotova NF-CATS, KGQA) adapted for a structured knowledge graph where each note has typed metadata (category, subcategory, building block) and explicit links.
 
-The classification serves two purposes: (1) **benchmark generation** — deterministic, template-based question creation from the database for each type, and (2) **diagnostic evaluation** — per-type Hit@K breakdown that reveals which retrieval strategies succeed or fail for each information need. The 10 types were originally proposed in the [Q/A Evaluation Framework](../analysis_thoughts/thought_source_vault_qa_evaluation.md) and implemented in `scripts/qa_generator.py`.
+The classification serves two purposes: (1) **benchmark generation** — deterministic, template-based question creation from the database for each type, and (2) **diagnostic evaluation** — per-type Hit@K breakdown that reveals which retrieval strategies succeed or fail for each information need. The 10 types were originally proposed in a Q/A evaluation framework and implemented in `scripts/qa_generator.py`.
 
 **Important distinctions**: "Factual" in this taxonomy means schema/metadata lookups (table columns, repo contents), *not* the standard NLP sense of factoid questions. "Architectural" means system explanation, *not* software architecture. "Gold FAQ" is a benchmark methodology tier, not a question type. See provenance audit below.
 
 ## Context
 
-The question type classification is central to the Abuse SlipBox's retrieval evaluation pipeline. The `qa_generator.py` script generates benchmark questions for each type using SQL queries against the `notes` and `note_links` tables, template-based question phrasing (e.g., "What is X?" for definition, "How does X work?" for architectural), and deterministic gold label assignment from database structure. The classification interacts with the [knowledge building blocks](term_knowledge_building_blocks.md) taxonomy — each question type has natural alignment with specific building blocks, forming a question type × building block matrix that predicts optimal retrieval strategies.
+The question type classification is central to the vault's retrieval evaluation pipeline. The `qa_generator.py` script generates benchmark questions for each type using SQL queries against the `notes` and `note_links` tables, template-based question phrasing (e.g., "What is X?" for definition, "How does X work?" for architectural), and deterministic gold label assignment from database structure. The classification interacts with the [knowledge building blocks](term_knowledge_building_blocks.md) taxonomy — each question type has natural alignment with specific building blocks, forming a question type × building block matrix that predicts optimal retrieval strategies.
 
 The initial [Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md) (FZ 5e1) tested 11 strategies across 194 core questions (15 per type + 59 gold FAQ), revealing large performance variance by type: definition (Hit@5=0.867) vs. temporal (0.000), factual (0.067), and enumeration (0.133).
 
@@ -93,7 +93,7 @@ The initial [Retrieval Strategy Benchmark](../../archives/experiments/experiment
 
 Three types have benchmark quality problems (not just retrieval problems):
 
-- **Factual**: 10/15 core questions are "What does X code repository contain?" — mechanical templates with generic terms that share no distinctive keywords with the gold note. The `_clean_note_name()` function strips prefixes and title-cases, producing cleaned names (e.g., "Buyer Abuse MODS Template RNR Regional Xgboost") that don't LIKE-match back to the note.
+- **Factual**: 10/15 core questions are "What does X code repository contain?" — mechanical templates with generic terms that share no distinctive keywords with the gold note. The `_clean_note_name()` function strips prefixes and title-cases, producing cleaned names (e.g., "MODS Template RNR Regional Xgboost") that don't LIKE-match back to the note.
 
 - **Architectural**: All 15 use "How does X work?" where X is an ETL job, staging table, or datastream name. Single gold note, no neighbor expansion. These technical entities have opaque names and sparse metadata.
 
@@ -147,14 +147,14 @@ The 10-type taxonomy is a **bespoke blend** of standard NLP question taxonomies,
 
 ### Design Rationale
 
-The bespoke approach follows Yang & Alonso (2024): when the knowledge base has strong structural metadata (categories, subcategories, building blocks, explicit links), domain-specific question types aligned to that structure outperform generic taxonomies. The SlipBox types are defined by their **gold label extraction method** (SQL query against note metadata), making them naturally aligned to the retrieval system's capabilities.
+The bespoke approach follows Yang & Alonso (2024): when the knowledge base has strong structural metadata (categories, subcategories, building blocks, explicit links), domain-specific question types aligned to that structure outperform generic taxonomies. The vault's types are defined by their **gold label extraction method** (SQL query against note metadata), making them naturally aligned to the retrieval system's capabilities.
 
 ## Related Terms
 
 - **[Knowledge Building Blocks](term_knowledge_building_blocks.md)**: The 8-type epistemic taxonomy that aligns with question types — each question type targets specific building block types
 - **[Information Retrieval](term_information_retrieval.md)**: The broader field; question type classification is a domain-specific evaluation taxonomy within IR
 - **[RAG](term_rag.md)**: Retrieval-augmented generation; the question types evaluate the retrieval component of a RAG pipeline
-- **[GraphRAG](term_graphrag.md)**: Graph-based retrieval that leverages the SlipBox's link structure — outperforms flat RAG for relational/multi-hop types
+- **[GraphRAG](term_graphrag.md)**: Graph-based retrieval that leverages the vault's link structure — outperforms flat RAG for relational/multi-hop types
 - **[Precision](term_precision.md)**: Retrieval precision metric used alongside question type classification for per-type evaluation
 - **[Recall](term_recall.md)**: Retrieval recall metric; context recall measures gold note coverage per question type
 - **[Socratic Questioning](term_socratic_questioning.md)**: A complementary question taxonomy from pedagogy — Socratic types (clarification, probing, etc.) are orthogonal to the retrieval-focused types here
@@ -173,7 +173,6 @@ The bespoke approach follows Yang & Alonso (2024): when the knowledge base has s
 
 ### Internal
 
-- [Q/A Evaluation Framework](../analysis_thoughts/thought_source_vault_qa_evaluation.md) — Original design document proposing the 8 question types (later expanded to 10)
 - [Question Type × Building Block Retrieval Alignment](../analysis_thoughts/thought_question_type_building_block_retrieval_alignment.md) — Analysis of how building blocks predict optimal retrieval strategy per question type (FZ 5e)
 - [Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md) — Experiment testing 11 strategies across 194 questions with per-type breakdown (FZ 5e1)
 - [Retrieval Failure Analysis](../../archives/experiments/experiment_retrieval_failure_analysis.md) — Root cause analysis tracing 89.5% of failures to `_resolve_terms() LIMIT 10` (FZ 5e1b)

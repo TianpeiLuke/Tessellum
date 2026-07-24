@@ -124,7 +124,7 @@ This creates a productive **red team ↔ constitution co-evolution** cycle that 
 
 - **Abuse detection adversarial testing**: Sophisticated abusers don't use simple fraud patterns — they reason about detection rules and find gaps. CoT red teaming mirrors this adversarial reasoning process, testing abuse detection models against strategically crafted evasion attempts.
 - **Policy gap discovery**: CoT red teaming against abuse policy-as-constitution would reveal gaps between policy intent and policy implementation — where the letter of the rule diverges from its spirit.
-- **[GreenTEA](term_greentea.md) robustness**: Testing GreenTEA's SOP-following against strategically crafted edge cases that exploit gaps between SOP steps.
+- **Investigation-automation robustness**: Testing an investigation-automation system's SOP-following against strategically crafted edge cases that exploit gaps between SOP steps.
 - **Investigator training**: CoT red team reasoning traces could serve as training material, showing investigators how sophisticated abusers think about detection evasion.
 
 ## Related Terms

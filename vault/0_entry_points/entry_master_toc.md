@@ -100,7 +100,6 @@ Tessellum's design history is encoded as three Folgezettel research trails. Each
 
 | Entry point | Indexes |
 |---|---|
-| [`entry_acronym_glossary`](entry_acronym_glossary.md) | Master index of all acronym glossaries (1 Tessellum-foundations + 5 universal) |
 | [`entry_building_block_index`](entry_building_block_index.md) | The 8-row BB picker matrix + the 10 epistemic edges |
 | [`entry_folgezettel_trails`](entry_folgezettel_trails.md) | Master FZ trail map — every research trail in the vault |
 | [`entry_architecture_trail`](entry_architecture_trail.md) | Trail 1 — Architecture / CQRS |

@@ -17,7 +17,6 @@ keywords:
   - triplet network
   - cosine similarity
 topics:
-  - buyer risk prevention
   - machine learning
   - natural language processing
   - text analysis
@@ -27,14 +26,13 @@ language: markdown
 date of note: 2026-03-15
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # SBERT - Sentence BERT (Sentence Transformers)
 
 ## Definition
 
-**SBERT** stands for **Sentence-BERT (Sentence Transformers)**. It is a modification of the pre-trained BERT network that uses **siamese and triplet network structures** to derive **semantically meaningful sentence embeddings** that can be efficiently compared using cosine similarity. Published at EMNLP 2019 by Reimers and Gurevych, SBERT addresses BERT's computational inefficiency for sentence similarity tasks---reducing search time for the most similar pair in 10,000 sentences from **~65 hours (BERT) to ~5 seconds (SBERT)** while maintaining comparable accuracy. At Amazon/BRP, SBERT is used in **GoldMiner** for annotation classification (Sentence-BERT + K-means clustering), semantic similarity matching in Alexa Shopping (G2G/G2KIC), and as the foundation for contrastive learning approaches like **SEC** (Sentence Embedding via Contrastive Learning).
+**SBERT** stands for **Sentence-BERT (Sentence Transformers)**. It is a modification of the pre-trained BERT network that uses **siamese and triplet network structures** to derive **semantically meaningful sentence embeddings** that can be efficiently compared using cosine similarity. Published at EMNLP 2019 by Reimers and Gurevych, SBERT addresses BERT's computational inefficiency for sentence similarity tasks---reducing search time for the most similar pair in 10,000 sentences from **~65 hours (BERT) to ~5 seconds (SBERT)** while maintaining comparable accuracy. SBERT is widely used for semantic similarity search, clustering, and as a foundation for contrastive learning approaches to sentence representation.
 
 **Key Function**: Generate fixed-size dense vector representations for sentences/paragraphs optimized for semantic similarity search, clustering, and classification tasks at scale.
 
@@ -52,9 +50,9 @@ related_wiki: https://internal-wiki
 
 **Architecture and Design Rationale**: SBERT uses a siamese/triplet network built on top of BERT encoders with a pooling layer (mean, CLS, or max) to produce fixed-size sentence embeddings. This eliminates BERT's O(n^2) pair-wise inference bottleneck, enabling independent sentence encoding followed by fast cosine similarity or k-NN search. Training objectives include classification (softmax cross-entropy on NLI), regression (MSE on STS), and triplet margin loss for contrastive learning. See [SBERT Architecture and Design Rationale](../analysis_thoughts/thought_sbert_architecture.md) for full diagrams and details.
 
-**Amazon/BRP Production Applications**: SBERT powers four key production systems: GoldMiner (annotation clustering, automation 22% to 32%), SEC (contrastive learning on return annotations, outperforms DeepCARE), Alexa Shopping G2KIC (semantic utterance matching, 80% precision vs 20% Jaccard), and DPS name matching (compliance screening). Available internally via Brazil package and deployable on SageMaker. See [SBERT at Amazon/BRP](../analysis_thoughts/thought_sbert_brp_applications.md) for application details.
+**Common Applications**: SBERT is a standard choice for semantic similarity search, clustering of short texts, deduplication, retrieval-augmented pipelines, and similarity-based classification. It is frequently paired with k-means clustering for unsupervised grouping and with contrastive learning objectives to specialize embeddings for a domain.
 
-**Comparison and Evolution**: SBERT occupies a sweet spot between static word embeddings (Word2Vec/GloVe) and heavyweight LLM embeddings (ada-002, Titan). It offers 10ms latency, easy fine-tuning, and self-hosted deployment at 110M-340M parameters. Modern successors include SimCSE, E5, and Instructor, but SBERT remains the go-to for low-latency, domain-specific sentence similarity at BRP. See [SBERT Comparison and Evolution](../analysis_thoughts/thought_sbert_comparison_and_evolution.md) and [SBERT Technical Implementation](../policy_sops/sop_sbert_implementation.md) for code examples and model recommendations.
+**Comparison and Evolution**: SBERT occupies a sweet spot between static word embeddings (Word2Vec/GloVe) and heavyweight LLM embeddings (ada-002). It offers ~10ms latency, easy fine-tuning, and self-hosted deployment at 110M-340M parameters. Modern successors include SimCSE, E5, and Instructor, but SBERT remains a go-to for low-latency, domain-specific sentence similarity. See [SBERT Comparison and Evolution](../analysis_thoughts/thought_sbert_comparison_and_evolution.md) and [SBERT Technical Implementation](../policy_sops/sop_sbert_implementation.md) for code examples and model recommendations.
 
 ## Related Terms
 
@@ -69,30 +67,15 @@ related_wiki: https://internal-wiki
 
 ### Siamese/Similarity Learning
 - **[Siamese Network](term_siamese_network.md)**: Twin network architecture for similarity
-- **[eSNN](term_esnn.md)**: Extended Siamese Neural Network for fraud detection
-- **[DeepCARE](term_deepcare.md)**: k-NN automation using embeddings
-
-### BRP Applications
-- **[GoldMiner](term_goldminer.md)**: Annotation processing (uses SBERT)
-- **[GreenTEA](term_greentea.md)**: Topic modeling for prompt optimization
-- **[k-NN](term_knn.md)**: Similarity search for automation
+- **[k-NN](term_knn.md)**: Similarity search over embeddings
 
 ## See Also
 
 - [SBERT Architecture and Design Rationale](../analysis_thoughts/thought_sbert_architecture.md) -- siamese network structure, training objectives, pooling strategies, and the BERT scalability problem
-- [SBERT at Amazon/BRP: Production Applications](../analysis_thoughts/thought_sbert_brp_applications.md) -- GoldMiner, SEC, Alexa G2KIC, DPS name matching, and internal availability
-- [SBERT Technical Implementation](../policy_sops/sop_sbert_implementation.md) -- Python code examples, GoldMiner-style pipeline, and recommended pre-trained models
+- [SBERT Technical Implementation](../policy_sops/sop_sbert_implementation.md) -- Python code examples, clustering pipeline, and recommended pre-trained models
 - [SBERT vs Other Approaches and Embedding Evolution](../analysis_thoughts/thought_sbert_comparison_and_evolution.md) -- comparisons with BERT, Word2Vec/GloVe, LLM embeddings, and modern alternatives
 
 ## References
-
-### Amazon Internal
-- **GoldMiner Wiki**: https://internal-wiki
-- **AMLC 2022 GoldMiner Paper**: https://amlc.corp.amazon.com/paper/07b63190-dc83-11ec-9aa8-b96a67d7bb89/content
-- **SEC AMLC 2023**: https://internal-wiki
-- **G2KIC Tech Design**: https://internal-wiki
-- **DPS Technical Papers**: https://internal-wiki
-- **Brazil Package**: https://internal-repo
 
 ### External Resources
 - **Original Paper**: [Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks](https://arxiv.org/abs/1908.10084) (EMNLP 2019)

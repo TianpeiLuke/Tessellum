@@ -25,30 +25,27 @@ building_block: concept
 
 ## Definition
 
-FPR (False Positive Rate) is the proportion of legitimate (non-abusive) cases incorrectly classified as abusive by a model or rule. FPR = FP / (FP + TN), where FP is false positives and TN is true negatives. In abuse prevention, FPR directly measures the rate at which genuine customers are wrongly impacted by enforcement actions — a critical metric because false positives erode customer trust and generate costly appeals.
+FPR (False Positive Rate) is the proportion of negative (non-target) cases incorrectly classified as positive by a model or rule. FPR = FP / (FP + TN), where FP is false positives and TN is true negatives. In abuse and fraud detection, FPR measures the rate at which legitimate cases are wrongly flagged — a critical metric because false positives erode user trust and generate costly appeals and manual review.
 
 ## Context
 
-- **BAP guardrail**: Models operate at defined FPR thresholds (typically 1% FPR for PFW models)
-- **Customer impact**: Each false positive = genuine customer wrongly denied, cancelled, or investigated
-- **Tradeoff**: Lower FPR means fewer genuine customers impacted but also lower recall (more abuse missed)
+- **Threshold selection**: Models are often operated at a defined FPR threshold (e.g., 1% FPR) to bound the impact on legitimate cases
+- **User impact**: Each false positive represents a genuine user wrongly denied, cancelled, or investigated
+- **Tradeoff**: Lower FPR means fewer legitimate cases impacted but also lower recall (more true positives missed)
 - **Measurement**: Offline evaluation on holdout sets; online via control groups and appeal/reversal rates
 
 ## Key Characteristics
 
 - **Complement of specificity**: FPR = 1 - Specificity
-- **ROC curve**: FPR is the x-axis of ROC curves; AUC measures overall FPR-TPR tradeoff
-- **Operating point**: BAP models select operating points balancing FPR vs recall ($recall)
-- **Cost asymmetry**: In abuse prevention, false positives (impacting genuine customers) are typically more costly than false negatives (missing abuse)
-- **Related to precision**: At low base rates (rare abuse), even low FPR can yield many false positives
+- **ROC curve**: FPR is the x-axis of ROC curves; AUC measures the overall FPR-TPR tradeoff
+- **Operating point**: Classifiers select operating points balancing FPR against recall
+- **Cost asymmetry**: In abuse prevention, false positives (impacting genuine users) are typically more costly than false negatives (missing abuse)
+- **Related to precision**: At low base rates (rare positives), even a low FPR can yield many false positives
 
 ## Related Terms
 
-- **[Precision](term_precision.md)**: Complementary metric — proportion of flagged cases that are truly abusive
-- **[Sugar Index](term_sugar_index.md)**: Risk score calibrated against FPR targets
-- **[PFOC](term_pfoc.md)**: Pre-fulfilment cancellation — operates at strict FPR to avoid wrongly cancelling orders
-- **[DeepCare](term_deepcare.md)**: Auto-pass model — FPR measures wrongly passed abusive cases
-- **[Holdout Analysis](term_holdout_analysis.md)**: Measurement methodology that directly quantifies FPR for account closures by holding out 10% of closures and observing behavior over 90 days
+- **[Precision](term_precision.md)**: Complementary metric — proportion of flagged cases that are truly positive
+- **[Holdout Analysis](term_holdout_analysis.md)**: Measurement methodology that quantifies FPR by holding out a fraction of enforced cases and observing subsequent behavior
 
 ## References
 

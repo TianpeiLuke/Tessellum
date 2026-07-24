@@ -97,14 +97,12 @@ The v2 benchmark evaluates retrieval-stage performance (finding the right note).
 
 ### Cross-Trail Use as Evidence (Architecture Trail)
 - **[FZ 7g1a1a1a: FZ 5 Evidence Confirms Three-Layer + Sharpens Within-BB Recipe](thought_fz5_evidence_confirms_three_layer_and_sharpens_within_bb_recipe.md)** — cites this note as **Confirmation 1** that Layer 2 (Retrieval) must be schema-free not by stylistic choice but by empirical necessity; the Pareto dominance documented here refutes ontology-driven candidate generation.
-- **[FZ 7g1a1a1a1: ★ Synthesis — One Vault, Three Invariance Regimes](thought_synthesis_three_invariance_regimes_one_vault.md)** — uses this note's Pareto evidence to ground design rule R4 ("candidate generation is dense; everything else is hybrid") and R6 (which layer owns a behavior depends on which invariant it defends).
 
 ### Within Retrieval Trail (FZ 5)
 - **[FZ 5e: Question Type × Building Block Alignment](thought_question_type_building_block_retrieval_alignment.md)** — target of this counter-argument
 - **[FZ 5e2a: BB Value Redirected to Evaluation](thought_bb_structural_value_redirected_to_evaluation.md)** — sharpened position: BB value survives for evaluation, not routing
 - **[FZ 5e1: Retrieval Strategy Benchmark](../../archives/experiments/experiment_retrieval_strategy_benchmark.md)** — v2 benchmark (4,823 Q × 14 strategies) providing the evidence
 - **[FZ 5g1d: BB vs Question Type Comparison](../../archives/experiments/experiment_bb_demand_vs_question_type.md)** — AUC comparison showing no significant difference
-- **[FZ 5g3a: Epistemic Congruence Metric](thought_epistemic_congruence_metric.md)** — the post-retrieval application where BB typing may retain value
 - **[FZ 5: Meta-Question — Value of Typed Knowledge](thought_meta_question_value_of_typed_knowledge.md)** — parent question this narrows
 - **[Knowledge Building Blocks](../term_dictionary/term_knowledge_building_blocks.md)** — the 8-type taxonomy
 - **[Term: Information Retrieval](../term_dictionary/term_information_retrieval.md)** — foundational IR concepts

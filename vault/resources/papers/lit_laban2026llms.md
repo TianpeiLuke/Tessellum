@@ -89,14 +89,14 @@ Large Language Models (LLMs) are poised to disrupt knowledge work, with the emer
 
 - **[Hallucination](../term_dictionary/term_hallucination.md)**: DELEGATE-52 reframes hallucination — delegation degradation is not classical hallucination but silent content corruption that compounds across iterations
 - **[Agentic AI](../term_dictionary/term_agentic_ai.md)**: Direct evidence that current agentic tool use does not improve, and may worsen, performance on long-horizon document editing tasks
-- **[Agentic Evaluation](../term_dictionary/term_agentic_evaluation.md)**: Validates that short-interaction (≤2 step) evaluation is not predictive of long-horizon performance — buyer-abuse agentic systems need long-horizon benchmarks
-- **[Greentea LLM Pipeline](../../areas/models/model_greentea_llm_pipeline.md)**: BRP's LLM-based investigation pipeline operates over multi-document evidence; DELEGATE-52 findings on distractor and long-horizon degradation are directly relevant
+- **[Agentic Evaluation](../term_dictionary/term_agentic_evaluation.md)**: Validates that short-interaction (≤2 step) evaluation is not predictive of long-horizon performance — abuse-prevention agentic systems need long-horizon benchmarks
+- **[Greentea LLM Pipeline](../../areas/models/model_greentea_llm_pipeline.md)**: An LLM-based investigation pipeline operates over multi-document evidence; DELEGATE-52 findings on distractor and long-horizon degradation are directly relevant
 - **[SOPA LLM Pipeline](../../areas/models/model_sopa_llm_pipeline.md)**: SOPA's LLM-driven seller-page assessment touches similar trust-in-delegation concerns when summarizing long evidence
 
 ## Questions
 
 - Do the document corruption patterns observed here generalize to read-and-decide LLM tasks (e.g., abuse classification on long evidence) or are they specific to edit tasks?
-- How would BRP's typical LLM use cases (summarization over investigator evidence, policy citation) score on a DELEGATE-52-style round-trip eval?
+- How would typical abuse-prevention LLM use cases (summarization over investigator evidence, policy citation) score on a DELEGATE-52-style round-trip eval?
 - The paper finds Python as the only "ready" domain. What domains relevant to abuse prevention (legal text, policy citation, structured ledger data) would benchmark similarly?
 - Could the round-trip relay methodology be adapted to evaluate agentic abuse-investigator harnesses for silent-corruption failure modes?
 

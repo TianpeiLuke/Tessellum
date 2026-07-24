@@ -22,7 +22,6 @@ language: markdown
 date of note: 2026-02-03
 status: active
 building_block: concept
-related_wiki: https://internal-wiki
 ---
 
 # F1 Score - Harmonic Mean of Precision and Recall
@@ -71,42 +70,36 @@ The harmonic mean gives a more **conservative, realistic** evaluation when preci
 
 **Key Property**: F1 = 0 if either precision OR recall is 0, regardless of the other value. Both must be non-zero for F1 > 0.
 
-## F1 Score in Buyer Abuse Prevention
+## When to Use F1 Score
 
-### When to Use F1 Score
+F1 Score is most useful when:
 
-F1 Score is most useful in BAP when:
-
-1. **Both FP and FN are costly**: Need to balance catching abuse (recall) with protecting good customers (precision)
+1. **Both FP and FN are costly**: Need to balance catching positives (recall) with avoiding false alarms (precision)
 2. **No clear priority**: Can't decide whether precision or recall matters more
 3. **Model comparison**: Comparing models with different precision-recall trade-offs
 4. **Threshold selection**: Finding the optimal threshold that balances both metrics
 
-### BAP F1 Score Standards
+### Typical F1 Score Bands
 
-**Typical Ranges**:
-- **Excellent**: F1 ≥ 0.85
-- **Good**: F1 0.70 - 0.85
-- **Acceptable**: F1 0.60 - 0.70
-- **Needs Improvement**: F1 < 0.60
-
-**Example Model Performance** (from internal documentation):
-- CSMO HGT-GRAHIES MO Detection: F1 = 0.84
-- Spam classification example: F1 = 0.71 (Precision 67%, Recall 75%)
+| Band | Range | Interpretation |
+|------|-------|----------------|
+| **Excellent** | F1 ≥ 0.85 | Strong balance of precision and recall |
+| **Good** | 0.70 - 0.85 | Solid, deployable performance |
+| **Acceptable** | 0.60 - 0.70 | Usable but with clear room to improve |
+| **Needs Improvement** | < 0.60 | Precision and/or recall too low |
 
 ### F1 vs Precision/Recall Priority
 
+Whether to optimize F1 or a single component depends on the relative cost of the two error types:
+
 | Scenario | Primary Metric | Why |
 |----------|---------------|-----|
-| **Auto-enforcement** | Precision | FP cost (wrongly accusing customers) is high |
-| **MO Detection** | Recall | FN cost (missing abuse patterns) is high |
-| **Investigation Queue** | F1 Score | Balance between queue quality and coverage |
-| **Research/Discovery** | Recall | Maximize pattern discovery |
+| **High false-positive cost** | Precision | Wrongly flagging legitimate cases is expensive |
+| **High false-negative cost** | Recall | Missing true positives is expensive |
+| **Balanced review queue** | F1 Score | Balance between queue quality and coverage |
+| **Discovery / recall-first** | Recall | Maximize pattern discovery |
 
-**BAP Guidance**: 
-> "F1 Score is a useful metric when both Precision and Recall are critical factors."
-
-In most BAP workflows, **precision is prioritized** over F1 because customer experience impact (FP) is typically more costly than missed abuse (FN). However, F1 is valuable for:
+When false-positive impact outweighs false-negative impact, **precision is often prioritized** over F1. However, F1 remains valuable for:
 - Model development comparisons
 - Threshold optimization
 - Balanced queue sizing
@@ -181,13 +174,13 @@ F_β = (1 + β²) × (Precision × Recall) / (β² × Precision + Recall)
 - **β > 1**: Recall is more important (e.g., β = 2 weights recall 2× more)
 - **β < 1**: Precision is more important (e.g., β = 0.5 weights precision 2× more)
 
-**BAP Use Cases**:
+**Use Cases**:
 
 | Beta | Use Case | Rationale |
 |------|----------|-----------|
-| **β = 0.5** | Auto-enforcement | Precision twice as important |
-| **β = 1** | Investigation queue | Balance both metrics |
-| **β = 2** | MO discovery | Recall twice as important |
+| **β = 0.5** | Precision-critical decisions | Precision twice as important |
+| **β = 1** | Balanced review queue | Balance both metrics |
+| **β = 2** | Recall-first discovery | Recall twice as important |
 
 ```python
 from sklearn.metrics import fbeta_score
@@ -257,21 +250,19 @@ Weighted F1 = Σ(support_class × F1_class) / Total support
 F1 can be misleading for highly imbalanced data:
 
 ```
-Example: 99% negative, 1% positive (abuse is rare)
+Example: 99% negative, 1% positive (positives are rare)
 
 Model predicts all positive → Recall = 100%, Precision = 1%
 F1 = 2 × (0.01 × 1.0) / (0.01 + 1.0) = 0.02
 
-This seems low, but the model caught ALL abuse (100% recall)
+This seems low, but the model caught ALL positives (100% recall)
 ```
 
-**Solution**: Use **PR AUC** or **precision at specific recall** for imbalanced abuse detection.
+**Solution**: Use **PR AUC** or **precision at specific recall** for imbalanced detection.
 
 ### Different Error Costs
 
-F1 treats FP and FN equally, but in BAP:
-- FP (blocking good customer) might cost $10 in CX damage + $100 in lost revenue
-- FN (missing abuse) might cost $50 in concession loss
+F1 treats FP and FN equally, but error types often have asymmetric cost. For example, a false positive (blocking a legitimate case) may carry a very different business cost than a false negative (missing a true positive).
 
 **Solution**: Use **cost-sensitive metrics** or **F-beta** with appropriate beta.
 
@@ -292,20 +283,11 @@ Which F1 represents the model?
 
 ## Documentation Links
 
-### Primary Documentation
-
-**BAP Model Review**:
-- **Model Reports**: https://internal-wiki - F1 metrics
-- **CSMO HGT**: https://internal-wiki - F1 0.84 for MO detection
-
-**Technical References**:
-- **ML Metrics Wiki**: https://internal-wiki - F1 calculation examples
-- **KYT-AI**: https://internal-wiki - F1 and harmonic mean explanation
-
 ### External Resources
 
 - **sklearn f1_score**: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html
 - **sklearn fbeta_score**: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.fbeta_score.html
+- **Wikipedia: F-score**: https://en.wikipedia.org/wiki/F-score
 
 ## Related Terms
 
@@ -316,10 +298,9 @@ Which F1 represents the model?
 - **[Binomial Distribution](term_binomial_distribution.md)** — Precision and recall are proportions; confidence intervals use binomial/beta models
 - **[Beta Distribution](term_beta_distribution.md)** — Bayesian estimation of F1 components uses Beta posteriors
 
-### BAP Concepts
+### Threshold and Curve Metrics
 - **[PR AUC](term_pr_auc.md)** - Precision-Recall Area Under Curve
 - **[Operational Point](term_operational_point.md)** - Threshold selection
-- **[QPD](term_qpd.md)** - Queue Per Day (capacity planning)
 
 ### Model Evaluation
 - **[Confusion Matrix](term_confusion_matrix.md)** - TP/FP/TN/FN breakdown
@@ -337,14 +318,14 @@ Which F1 represents the model?
 | **Type** | Harmonic mean of Precision and Recall |
 | **Measures** | Balance between catching abuse and avoiding false alarms |
 | **Best For** | When both FP and FN costs matter equally |
-| **BAP Usage** | Model comparison, threshold optimization, balanced queuing |
+| **Common Usage** | Model comparison, threshold optimization, balanced queuing |
 | **Limitation** | Requires threshold; treats FP=FN cost equally |
 | **Generalization** | F-beta (β>1 favors recall, β<1 favors precision) |
 | **Tools** | sklearn.metrics.f1_score, fbeta_score |
 
-**Key Insight for BAP**: F1 Score is valuable for model development and comparison when you need a single number to summarize precision-recall balance. However, in production BAP workflows, **precision or recall individually** is typically more actionable because they map directly to business outcomes:
-- **Precision** → Customer experience / false alarm rate
-- **Recall** → Abuse coverage / detection rate
+**Key Insight**: F1 Score is valuable for model development and comparison when you need a single number to summarize precision-recall balance. However, in production workflows, **precision or recall individually** is often more actionable because they map directly to business outcomes:
+- **Precision** → False alarm rate / cost of acting on a wrong prediction
+- **Recall** → Coverage / detection rate
 
 Use F1 for:
 - Comparing models during development
@@ -360,4 +341,4 @@ Use Precision/Recall directly for:
 
 **Last Updated**: February 3, 2026
 **Status**: Active - Fundamental ML evaluation metric
-**Domain**: Machine Learning, Model Evaluation, Buyer Abuse Prevention
+**Domain**: Machine Learning, Model Evaluation, Classification Metrics
