@@ -115,6 +115,11 @@ class Job:
     last_error: str | None = None
     result_path: str | None = None
     supersedes_job_id: str | None = None
+    # P1 A1.3: durable links to the accepted plan revision + active commit
+    # capsule. Both default None so every existing keyword construction
+    # (only store._row_to_job builds Job) is unaffected.
+    accepted_revision_id: str | None = None
+    active_capsule_id: str | None = None
 
     @property
     def payload_path(self) -> Path:
@@ -131,3 +136,65 @@ class JobEvent:
     event_type: str
     at: float
     detail: dict
+
+
+# ── P1 A1.1/A1.2: durable revision + capsule records ────────────────────────
+# Dataclass-style parity with WorkRequest / Job / JobEvent. Returned by the
+# new RuntimeStore getters (record_plan_revision / get_plan_revision /
+# create_commit_capsule / get_commit_capsule / list_capsule_artifacts).
+
+
+@dataclass(frozen=True)
+class PlanRevision:
+    """A durable accepted-intent record (P1 A1.1).
+
+    ``revision_id`` is the accepted-effect set hash the caller supplies (i.e.
+    :func:`tessellum.composer.proposals.plan_revision_hash`); the store never
+    recomputes it. ``canonical_bytes`` is the accepted canonical serialization
+    (a BLOB — bytes in, bytes out, byte-identical). ``decision`` is
+    ``"accept"`` | ``"reject"`` (free TEXT). ``evidence`` is provenance
+    (round-trips via JSON). ``created_at`` is a row clock only — never a hash
+    input.
+    """
+
+    revision_id: str
+    parent_revision_id: str | None
+    canonical_bytes: bytes
+    decision: str
+    evidence: dict
+    created_at: float
+
+
+@dataclass(frozen=True)
+class CommitCapsule:
+    """A content-addressed artifact bundle for one accepted revision (P1 A1.1).
+
+    ``capsule_id`` is deterministic: ``sha256(revision_id \\0 base_generation
+    \\0 policy_version)`` — the plan's "accepted intent + base generation +
+    policy/version", with no clock in the hash. ``artifact_root`` is the
+    per-capsule filesystem CAS root; ``state`` is the open→sealed lifecycle
+    marker.
+    """
+
+    capsule_id: str
+    revision_id: str
+    base_generation: int
+    state: str
+    artifact_root: str
+    created_at: float
+
+
+@dataclass(frozen=True)
+class CapsuleArtifact:
+    """One manifest row of the A1.2 content-addressed artifact store.
+
+    ``address`` is ``sha256(blob).hexdigest()`` (the 64-hex CAS convention);
+    ``artifact_class`` is one of the five A1.2 payload kinds (free TEXT open
+    set); ``size`` is ``len(blob)``.
+    """
+
+    capsule_id: str
+    artifact_class: str
+    address: str
+    size: int
+    created_at: float

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS runtime_schema (
 );
 
 INSERT INTO runtime_schema(version)
-SELECT 4 WHERE NOT EXISTS (SELECT 1 FROM runtime_schema);
+SELECT 5 WHERE NOT EXISTS (SELECT 1 FROM runtime_schema);
 
 CREATE TABLE IF NOT EXISTS jobs (
     job_id TEXT PRIMARY KEY,
@@ -39,6 +39,12 @@ CREATE TABLE IF NOT EXISTS jobs (
     last_error TEXT,
     result_path TEXT,
     supersedes_job_id TEXT REFERENCES jobs(job_id),
+    -- P1 A1.3: durable links from a job to its accepted plan revision +
+    -- active commit capsule (nullable — a job may have no revision yet).
+    -- SQLite permits forward FK references at CREATE time; the target-table
+    -- existence is only checked at row-operation time.
+    accepted_revision_id TEXT REFERENCES plan_revisions(revision_id),
+    active_capsule_id TEXT REFERENCES commit_capsules(capsule_id),
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL
 );
@@ -66,3 +72,54 @@ CREATE TABLE IF NOT EXISTS tool_calls (
     error TEXT,
     created_at REAL NOT NULL
 );
+
+-- ── P1 A1.1/A1.2: durable revision + capsule tables ─────────────────────────
+-- These are the snapshot-pinned knowledge-transaction records. A PlanRevision
+-- is the accepted-intent content record (revision_id = the accepted-effect
+-- set hash from composer.proposals.plan_revision_hash); a CommitCapsule is a
+-- content-addressed artifact bundle for one accepted revision at one base
+-- generation. capsule_artifacts is the A1.2-mandated CAS manifest (the plan's
+-- "+ a manifest row is fine"). NOT a reuse of supersedes_job_id (that is the
+-- RETRY-lineage self-FK for dead-lettered/cancelled jobs — a distinct concern).
+
+CREATE TABLE IF NOT EXISTS plan_revisions (
+    revision_id TEXT PRIMARY KEY,
+    -- parent_revision_id is a content-identity POINTER to the revision this
+    -- one was computed against (the merge parent). It is deliberately NOT a
+    -- self-FK: a genesis revision's parent is an empty/baseline hash that is
+    -- never itself a recorded row (see the accepted plan's deliverable-2 test,
+    -- which records rev against an unrecorded genesis parent). Enforcing a
+    -- self-FK would break that first-revision case; the pointer only needs to
+    -- round-trip byte-identically. Nullable for a rootless revision.
+    parent_revision_id TEXT,
+    canonical_bytes BLOB NOT NULL,
+    decision TEXT NOT NULL,
+    evidence TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS commit_capsules (
+    capsule_id TEXT PRIMARY KEY,
+    revision_id TEXT NOT NULL REFERENCES plan_revisions(revision_id),
+    base_generation INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    artifact_root TEXT NOT NULL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS commit_capsules_by_revision
+ON commit_capsules(revision_id);
+
+CREATE TABLE IF NOT EXISTS capsule_artifacts (
+    capsule_id TEXT NOT NULL REFERENCES commit_capsules(capsule_id) ON DELETE CASCADE,
+    artifact_class TEXT NOT NULL,
+    address TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    created_at REAL NOT NULL,
+    -- (capsule_id, artifact_class, address): two DISTINCT classes that happen
+    -- to share byte-identical content each keep their own manifest row (the
+    -- blob CAS still dedups by address on disk). PK on (capsule_id, address)
+    -- alone would silently collapse the class->content association.
+    PRIMARY KEY (capsule_id, artifact_class, address)
+);
+CREATE INDEX IF NOT EXISTS capsule_artifacts_by_capsule
+ON capsule_artifacts(capsule_id);

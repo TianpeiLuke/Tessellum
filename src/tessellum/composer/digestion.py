@@ -162,6 +162,7 @@ def run_digestion_pipeline(
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
+    revision_recorder: Callable[[SignOffResult], None] | None = None,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -181,6 +182,11 @@ def run_digestion_pipeline(
             ``use_agent``/``use_human`` to add those rungs.
         agent_judge / human_prompt: Injected sign-off rungs (used per the
             policy).
+        revision_recorder: **P1 A1.5** — optional pass-through to
+            :func:`~tessellum.composer.signoff.run_sign_off` that records a
+            durable :class:`PlanRevision` decision for the review sign-off.
+            Defaults to ``None`` → the shipped digestion path + its tests are
+            byte-identical (the recording is strictly opt-in).
         execute_max_workers: Worker pool for the execute wave.
         **execute_kwargs: Forwarded to :func:`run_pipeline_dynamic` for the
             execute phase (e.g. ``close_gate``, ``manifest``, ``budget``,
@@ -259,6 +265,7 @@ def run_digestion_pipeline(
         blast_radius=blast_radius,
         agent_judge=agent_judge,
         human_prompt=human_prompt,
+        revision_recorder=revision_recorder,
     )
     if sign_off.decision != "approved":
         # Rejected / needs_human → do NOT spend the execution wave.

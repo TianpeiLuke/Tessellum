@@ -108,6 +108,7 @@ def run_sign_off(
     blast_radius: int = 0,
     agent_judge: AgentJudge | None = None,
     human_prompt: HumanPrompt | None = None,
+    revision_recorder: Callable[["SignOffResult"], None] | None = None,
 ) -> SignOffResult:
     """Run the graduated approver ladder cheapest-first.
 
@@ -135,24 +136,39 @@ def run_sign_off(
             ``policy.use_agent``).
         human_prompt: The human suspend/approve/resume callable (used only
             when escalating and ``policy.use_human``).
+        revision_recorder: **P1 A1.5** — an optional, additive callback
+            invoked with the terminal :class:`SignOffResult` just before it
+            is returned (at every terminal rung). Owns the accept/reject
+            mapping + the durable :class:`PlanRevision` write (see
+            :func:`tessellum.runtime.store.plan_revision_recorder`). This
+            module stays composer-pure: it never imports ``runtime`` — it
+            only invokes the injected callback. When ``None`` (the default,
+            and what every shipped caller passes) behaviour + the returned
+            ``SignOffResult`` are byte-identical.
 
     Returns:
         A :class:`SignOffResult`.
     """
     passed, reason = program_gate()
     if not passed:
-        return SignOffResult(
+        result = SignOffResult(
             decision="rejected",
             deciding_rung="program",
             reason=reason or "program gate failed",
         )
+        if revision_recorder is not None:
+            revision_recorder(result)
+        return result
 
     if not policy.use_agent or agent_judge is None:
-        return SignOffResult(
+        result = SignOffResult(
             decision="approved",
             deciding_rung="program",
             reason="program gate passed; agent rung disabled",
         )
+        if revision_recorder is not None:
+            revision_recorder(result)
+        return result
 
     verdict = agent_judge()
     escalated: tuple[SignOffRung, ...] = ("agent",)
@@ -162,21 +178,27 @@ def run_sign_off(
 
     # A confident rejection is terminal at the agent rung.
     if not verdict.approved and not low_confidence:
-        return SignOffResult(
+        result = SignOffResult(
             decision="rejected",
             deciding_rung="agent",
             escalated=escalated,
             reason=verdict.reason or "agent rejected the plan",
         )
+        if revision_recorder is not None:
+            revision_recorder(result)
+        return result
 
     # A confident approval on a low-blast plan is terminal at the agent rung.
     if verdict.approved and not low_confidence and not high_blast:
-        return SignOffResult(
+        result = SignOffResult(
             decision="approved",
             deciding_rung="agent",
             escalated=escalated,
             reason=verdict.reason or "agent approved with confidence",
         )
+        if revision_recorder is not None:
+            revision_recorder(result)
+        return result
 
     # Otherwise escalate to the human rung.
     why = (
@@ -186,19 +208,25 @@ def run_sign_off(
     )
     if policy.use_human and human_prompt is not None:
         approved_by_human = human_prompt()
-        return SignOffResult(
+        result = SignOffResult(
             decision="approved" if approved_by_human else "rejected",
             deciding_rung="human",
             escalated=escalated + ("human",),
             reason=f"escalated to human ({why})",
         )
+        if revision_recorder is not None:
+            revision_recorder(result)
+        return result
 
-    return SignOffResult(
+    result = SignOffResult(
         decision="needs_human",
         deciding_rung="agent",
         escalated=escalated,
         reason=f"needs human review ({why}); human rung unavailable",
     )
+    if revision_recorder is not None:
+        revision_recorder(result)
+    return result
 
 
 __all__ = [
