@@ -53,6 +53,8 @@ from tessellum.dks.core import (
     WarrantChange,
     # Allocator
     allocate_cycle_fz,
+    # Provenance (P1)
+    temporal_holdout_valid,
     # Runtime
     DKSCycle,
     DKSRunner,
@@ -142,6 +144,8 @@ __all__ = [
     "DKSRunResult",
     # Allocator
     "allocate_cycle_fz",
+    # Provenance (P1)
+    "temporal_holdout_valid",
     # Runtime
     "DKSCycle",
     "DKSRunner",

@@ -4,6 +4,14 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P1 provenance floor (source spans + tri-temporal time) — 2026-07-25
+
+Gives every empirical claim a citation the P4 validators and the P7 reward can check. Additive; the DKS + retrieval + indexer + composer suites stay green (+9 new).
+
+- **A1.1 — claim-level source spans.** The BM25 snippet (the quoted source span) was generated then DROPPED at the fusion layer (`hybrid_search` called `bm25_search(..., snippet_length=None)`) and never modelled downstream. It now flows through: `HybridHit` and the DKS `RetrievalHit` carry an optional `snippet`; `hybrid_search`/`RetrievalClient.search` take a `snippet_length` (default off for `HybridHit` — backward-compatible — and 30 tokens for the DKS client); and the argument retrieval-context formatter injects the quoted span (`[span: …]`) so an argument's `evidence` cites a real span rather than free-form model text.
+- **A1.2 — tri-temporal stamping.** `DKSObservation` and `DKSWarrant` carry `t_claim` / `t_evidence` / `t_outcome` (ISO-8601, default `None`). New `temporal_holdout_valid(t_claim, t_evidence, t_outcome)` enforces the leakage-free rule the P4 prequential validator needs: a predictive warrant is scorable only when its outcome is strictly after its full information set (fail-closed on leakage or missing times).
+- New `tests/smoke/test_dks_p1.py` (9). All changes additive — `HybridHit.snippet` defaults `None`, so `native_digestion`'s use of `hybrid_search` is unaffected.
+
 ### DKS refactor — supplied-cycle kernel → self-driving thinking machine — P0 — 2026-07-24
 
 Begins the DKS refactor (plan_dks_refactor_implementation.md, FZ 8c5b11a10e1b8): moving the shipped DKS from a CLI-only, supplied-cycle dialectic kernel toward the designed autonomous, warrant-precision-improving thinking machine, reusing the (now-complete) dynamic-digestion substrate. **P0 fixes the four release-blocker kernel defects** — making one DKS cycle correct in isolation before it is ever routed automatically. All in `dks/core.py`; additive; the 222-test DKS baseline stays green (+13 new = 235).

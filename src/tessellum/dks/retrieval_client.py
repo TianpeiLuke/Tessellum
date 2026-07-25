@@ -45,6 +45,10 @@ class RetrievalHit:
     score: float
     bm25_rank: int | None
     dense_rank: int | None
+    snippet: str | None = None
+    """The quoted source SPAN (BM25 excerpt) an argument's evidence cites (P1
+    A1.1). ``None`` when the hit surfaced only via dense retrieval or snippets
+    were disabled."""
 
 
 class RetrievalClient:
@@ -80,6 +84,7 @@ class RetrievalClient:
         query: str,
         *,
         k: int = 20,
+        snippet_length: int | None = 30,
     ) -> list[RetrievalHit]:
         """Hybrid (BM25 + dense) retrieval, ranked by RRF.
 
@@ -91,6 +96,9 @@ class RetrievalClient:
         Args:
             query: Free-form text. Passed verbatim to both rankers.
             k: Maximum number of fused results. Default 20.
+            snippet_length: Max tokens in each hit's BM25 snippet (the
+                quoted source span, P1 A1.1). Default 30; ``None`` disables
+                snippet generation.
 
         Returns:
             List of :class:`RetrievalHit`, descending by RRF score.
@@ -102,7 +110,7 @@ class RetrievalClient:
         # cycle works without it.
         from tessellum.retrieval import hybrid_search
 
-        raw_hits = hybrid_search(self.db_path, query, k=k)
+        raw_hits = hybrid_search(self.db_path, query, k=k, snippet_length=snippet_length)
         return [
             RetrievalHit(
                 note_id=h.note_id,
@@ -110,6 +118,7 @@ class RetrievalClient:
                 score=h.score,
                 bm25_rank=h.bm25_rank,
                 dense_rank=h.dense_rank,
+                snippet=getattr(h, "snippet", None),
             )
             for h in raw_hits
         ]
