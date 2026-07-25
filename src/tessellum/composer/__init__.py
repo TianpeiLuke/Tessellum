@@ -194,6 +194,19 @@ from tessellum.composer.proposals import (
     merge_proposals,
     plan_revision_hash,
 )
+from tessellum.composer.knowledge_plan import (
+    ClaimProvenance,
+    NoteDisposition,
+    NoteIntent,
+    NoteIntentGraph,
+    note_intent_content_id,
+    project_note_intent_graph,
+)
+from tessellum.composer.overlay import (
+    OverlayError,
+    OverlayWriteResult,
+    OverlayWriter,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -358,6 +371,17 @@ __all__ = [
     "merge_proposals",
     "merge_or_raise",
     "collect_proposals",
+    # Typed knowledge-plan intent graph + writer-leaf projection (P2, A2.3/A2.4)
+    "ClaimProvenance",
+    "NoteDisposition",
+    "NoteIntent",
+    "NoteIntentGraph",
+    "note_intent_content_id",
+    "project_note_intent_graph",
+    # Create-only staging overlay writer (P2, A2.5)
+    "OverlayWriter",
+    "OverlayError",
+    "OverlayWriteResult",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",
