@@ -4,6 +4,15 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P3 deterministic promotion: DKSNoteCompiler (reuse the substrate) — 2026-07-25
+
+Turns a completed DKS cycle into an atomic, replayable vault transaction — building ONLY the compiler and reusing the dynamic-digestion substrate wholesale (P5). New `dks/compiler.py`; pure; +9 tests.
+
+- **A3.1 — pure `DKSNoteCompiler`.** `compile(cycle: DKSCycleResult) -> NoteIntentGraph` with NO LLM call (the prose is already in the cycle result). Mechanical mapping: observation → `empirical_observation`; each surviving argument → `argument`; the defeated attack → `counter_argument` edged to the attacked argument; the candidate regularity → a `model` (never an empirical fact by default — a discovered pattern is provisional); each warrant proposal → a versioned `procedure` intent. Byte-stable: the same cycle result always yields an identical `NoteIntentGraph` (deterministic role-keyed target paths + ordering), which is what makes the downstream promotion replayable. Every intent carries provenance citing the cycle observation (P1 floor).
+- **The cycle is ONE atomic transaction.** The compiler wires the epistemic back-edges (`counter → pattern`, `pattern → revision`, and a cross-cycle `supersedes` edge) as `depends_on` so `write_closure`/`partition_capsules` couples all of a cycle's nodes into a single invariant-closed capsule rather than splitting them into disjoint promotions (caught + fixed in adversarial review).
+- **A3.2 — reuse the transaction substrate.** The compiled `NoteIntentGraph` flows through the shipped `project_note_intent_graph` → `write_closure` → `KnowledgeCapsule.well_formed` → `VersionedVault` PREPARED→PUBLISHED→ACKNOWLEDGED + `VaultSnapshot` path. None of that is re-derived (verified end-to-end in the tests). A3.3 optimistic-concurrency read-set + the FZ-allocation serializer layer on this reused base in a later step.
+- New `tests/smoke/test_dks_p3.py` (9): byte-stability, no-LLM, the full five-role mapping, gated/short-circuit shapes, provenance on every intent, single-capsule atomicity, and the end-to-end substrate publish. Adversarially reviewed: 0 correctness bugs (the atomicity nit fixed pre-push).
+
 ### DKS refactor — P2 the seam: CapabilityResult port + DKSExecutor + dks_inquiry — 2026-07-25
 
 The highest-leverage DKS-specific work (decision b1a): make the kernel invokable by the runtime through a port DKS OWNS, without the kernel importing the runtime's shapes (the Dependency Rule / P1). Additive; a new `dks/capability.py`; the DKS + runtime suites stay green (+9 new).

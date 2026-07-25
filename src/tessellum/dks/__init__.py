@@ -71,6 +71,10 @@ from tessellum.dks.capability import (
     adapt_cycle_result,
     adapt_run_result,
 )
+from tessellum.dks.compiler import (
+    # P3 — deterministic DKSCycleResult → NoteIntentGraph (reuse substrate)
+    DKSNoteCompiler,
+)
 from tessellum.dks.retrieval_client import (
     # P-side retrieval client (warrant-grounding evidence fetch)
     RetrievalClient,
@@ -164,6 +168,8 @@ __all__ = [
     "DKSExecutor",
     "adapt_cycle_result",
     "adapt_run_result",
+    # Compiler (P3)
+    "DKSNoteCompiler",
     # Runtime
     "DKSCycle",
     "DKSRunner",
