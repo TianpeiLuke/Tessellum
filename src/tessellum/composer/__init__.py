@@ -250,6 +250,13 @@ from tessellum.composer.semantic_certificate import (
     certify,
     measure_false_accept_rate,
 )
+from tessellum.composer.planner_loop import (
+    Deficit,
+    LoopPolicy,
+    LoopResult,
+    Revision,
+    run_planner_loop,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -463,6 +470,12 @@ __all__ = [
     "calibrate",
     "certify",
     "measure_false_accept_rate",
+    # Bounded planner search (P8, A8.1-A8.3)
+    "Deficit",
+    "Revision",
+    "LoopPolicy",
+    "LoopResult",
+    "run_planner_loop",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",
