@@ -75,6 +75,14 @@ from tessellum.dks.compiler import (
     # P3 — deterministic DKSCycleResult → NoteIntentGraph (reuse substrate)
     DKSNoteCompiler,
 )
+from tessellum.dks.validation import (
+    # P4 (b3a) — claim-type router feeding the shipped conformal gate
+    ClaimType,
+    ClaimTypeRouter,
+    classify_claim,
+    temporal_holdout_scorer,
+    validate_claims,
+)
 from tessellum.dks.retrieval_client import (
     # P-side retrieval client (warrant-grounding evidence fetch)
     RetrievalClient,
@@ -170,6 +178,12 @@ __all__ = [
     "adapt_run_result",
     # Compiler (P3)
     "DKSNoteCompiler",
+    # Validation (P4)
+    "ClaimType",
+    "ClaimTypeRouter",
+    "classify_claim",
+    "temporal_holdout_scorer",
+    "validate_claims",
     # Runtime
     "DKSCycle",
     "DKSRunner",

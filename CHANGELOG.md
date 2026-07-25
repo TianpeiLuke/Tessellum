@@ -4,6 +4,15 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P4 independent validation: claim-type router + conformal gate — 2026-07-25
+
+Makes Dung-`IN` stop self-certifying (decision b3a): promotion is authorized by an EXOGENOUS signal keyed to claim type, not by the reasoning model asserting its own conclusion. The conformal machinery is REUSED from the substrate's P7 (`semantic_certificate.certify`); DKS builds only the router + scorers. New `dks/validation.py`; +11 tests.
+
+- **A4.1 — claim-type router.** `classify_claim` tags each warrant's claim as `definitional` / `support` / `predictive` / `deployed` (predictive when it carries a P1 outcome time; `deployed`/`support` opt-in via a qualifier marker so the router never silently mis-routes). `ClaimTypeRouter` dispatches to a per-type `TypeScorer` and adapts to the `ClaimScorer` the shipped `certify(...)` expects. The model-backed scorers (NLI / FEVER / A-B) are INJECTED; DKS ships the DETERMINISTIC predictive `temporal_holdout_scorer` (fail-closed on leakage via P1's `temporal_holdout_valid`, and on an un-recorded outcome).
+- **A4.2 — wiring.** `validate_claims(...)` runs the router through `certify(...)` and returns a `CertificateResult` whose `.verdict` is exactly the `GroundingVerdict` the runtime's `grounding_verifier` seam consumes — the conformal thresholds stay exogenous (reuse `ConformalThresholds`; do not re-implement the controller).
+- **A4.3 — Dung as a pre-filter, not the terminal verdict.** A claim whose type has no registered independent check ABSTAINS (fail-closed) — it is `dialectically-adequate-only`, not `true`. So a warrant that passed the Dung admissibility screen but has no exogenous validator does not get promoted on Dung-`IN` alone.
+- New `tests/smoke/test_dks_p4.py` (11): classification, deterministic temporal-holdout (leakage/un-recorded abstain, confirmed grounds), abstain-when-unchecked, injected-scorer path, and the end-to-end accept/abstain → grounding-gate verdict.
+
 ### DKS refactor — P3 deterministic promotion: DKSNoteCompiler (reuse the substrate) — 2026-07-25
 
 Turns a completed DKS cycle into an atomic, replayable vault transaction — building ONLY the compiler and reusing the dynamic-digestion substrate wholesale (P5). New `dks/compiler.py`; pure; +9 tests.
