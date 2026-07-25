@@ -174,7 +174,7 @@ tessellum format check <path> [--strict] [--quiet|-q] [--format human|json]
 | 1 | ≥1 ERROR, or any WARNING under `--strict` |
 | 2 | invocation error (path missing, or not a `.md` file/directory) |
 
-The `format` subparser is registered in `cli/main.py` alongside `bb`, `capture`, `composer`, `dks`, `mcp`, `filter`, `fz`, `index`, `init`, `search`.
+The `format` subparser is registered in `cli/main.py` alongside `init`, `capture`, `index`, `search`, `filter`, `fz`, `bb`, `composer`, `dks`, `mcp`, `runtime`.
 
 ## Extension Points
 

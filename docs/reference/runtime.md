@@ -8,7 +8,7 @@ For the design and recovery model, see [../runtime.md](../runtime.md).
 | File | Role |
 |---|---|
 | `models.py` | Job states, transition graph, immutable request/job/lease/event records. |
-| `schema.sql` | WAL-mode runtime schema: `jobs`, `job_events`, and reserved `tool_calls`. |
+| `schema.sql` | WAL-mode runtime schema: `jobs`, `job_events`, reserved `tool_calls`, and the P1 `plan_revisions`, `commit_capsules`, `capsule_artifacts` tables. |
 | `paths.py` | Cwd-independent path discovery and content-addressed path helpers. |
 | `store.py` | Transactional SQLite queue, events, state transitions, claims, lease fencing, retry, cancellation. |
 | `admission.py` | Inbox confinement, stable-file checks, spool-before-admit, source archival. |
@@ -124,6 +124,8 @@ Job(
     last_error: str | None = None,
     result_path: str | None = None,
     supersedes_job_id: str | None = None,
+    accepted_revision_id: str | None = None,
+    active_capsule_id: str | None = None,
 )
 
 JobEvent(
@@ -133,7 +135,40 @@ JobEvent(
     at: float,
     detail: dict,
 )
+
+PlanRevision(
+    revision_id: str,
+    parent_revision_id: str | None,
+    canonical_bytes: bytes,
+    decision: str,
+    evidence: dict,
+    created_at: float,
+)
+
+CommitCapsule(
+    capsule_id: str,
+    revision_id: str,
+    base_generation: int,
+    state: str,
+    artifact_root: str,
+    created_at: float,
+)
+
+CapsuleArtifact(
+    capsule_id: str,
+    artifact_class: str,
+    address: str,
+    size: int,
+    created_at: float,
+)
 ```
+
+`PlanRevision`, `CommitCapsule`, and `CapsuleArtifact` (P1 schema v5) are the
+durable substrate for snapshot-pinned knowledge transactions and are returned by
+the revision/capsule store methods below. `revision_id` and `capsule_id` are
+caller-supplied content hashes the store never recomputes; `canonical_bytes` is
+a BLOB that round-trips byte-identically. These records are not yet wired to
+promotion (A1.4 deferred), so no code path consults them during a live job.
 
 `Job.payload_path` is not a resolver and always raises; use
 `RuntimePaths.spool_path(job.request.payload_ref)`.
@@ -143,21 +178,36 @@ are not populated or consulted by the current inbox supervisor.
 
 ## SQLite schema
 
-Schema version is `4`. Connections enable foreign keys and a 2-second busy
+Schema version is `5`. Connections enable foreign keys and a 2-second busy
 timeout; schema initialization enables WAL.
 
 - `runtime_schema`: one schema-version row.
 - `jobs`: one row per idempotency key. The claim index is
-  `(state, not_before, priority DESC, created_at)`.
+  `(state, not_before, priority DESC, created_at)`. Two nullable P1 columns,
+  `accepted_revision_id` and `active_capsule_id`, forward-reference
+  `plan_revisions(revision_id)` and `commit_capsules(capsule_id)`.
 - `job_events`: `(job_id, sequence)` primary key, cascade-deleted with its job.
   Event details are sorted JSON.
 - `tool_calls`: call identity, job, tool, arguments, result hash, policy
   decision, duration, error, and creation time. No current runtime path inserts
   rows into this table.
+- `plan_revisions` (P1 A1.1): `revision_id` primary key, nullable
+  `parent_revision_id` content pointer (deliberately not a self-FK),
+  `canonical_bytes` BLOB, `decision` TEXT, `evidence` JSON TEXT, `created_at`.
+- `commit_capsules` (P1 A1.1): `capsule_id` primary key, `revision_id`
+  referencing `plan_revisions`, `base_generation`, `state`, `artifact_root`,
+  `created_at`. Indexed by `revision_id` (`commit_capsules_by_revision`).
+- `capsule_artifacts` (P1 A1.2): CAS manifest with primary key
+  `(capsule_id, artifact_class, address)`, `capsule_id` referencing
+  `commit_capsules` with `ON DELETE CASCADE`, plus `size` and `created_at`.
+  Indexed by `capsule_id` (`capsule_artifacts_by_capsule`).
 
 `RuntimeStore.open()` migrates older `jobs` tables by adding
-`execution_generation`, the four source-identity columns, and
-`commit_attempts` when absent, then records schema version 4.
+`execution_generation`, the four source-identity columns, `commit_attempts`,
+and the P1 `accepted_revision_id` / `active_capsule_id` link columns when
+absent, then records schema version 5. The `executescript(schema)` step creates
+`plan_revisions` and `commit_capsules` first, so the two `ALTER TABLE ... ADD
+COLUMN ... REFERENCES` migrations have their FK targets in place.
 
 ## Store API
 
@@ -297,6 +347,115 @@ the lease; if cancellation was requested it terminalizes the job instead.
 `schedule_commit_retry()` releases a failed commit lease but preserves
 `committing`, ensuring digestion is not rerun. `promote_due_retries()` moves
 due, uncancelled execution rows to `ready`.
+
+Revisions and capsules (schema v5):
+
+```python
+store.record_plan_revision(
+    revision_id: str,
+    *,
+    parent_revision_id: str | None,
+    canonical_bytes: bytes,
+    decision: str,
+    evidence: dict | None = None,
+    now: float | None = None,
+) -> PlanRevision
+
+store.get_plan_revision(revision_id: str) -> PlanRevision | None
+
+RuntimeStore.capsule_identity(
+    revision_id: str,
+    base_generation: int,
+    policy_version: str,
+) -> str
+
+store.create_commit_capsule(
+    *,
+    revision_id: str,
+    base_generation: int,
+    policy_version: str,
+    state: str = "open",
+    now: float | None = None,
+) -> CommitCapsule
+
+store.get_commit_capsule(capsule_id: str) -> CommitCapsule | None
+
+store.set_capsule_state(
+    capsule_id: str,
+    state: str,
+    *,
+    now: float | None = None,
+) -> CommitCapsule
+
+store.put_capsule_artifact(
+    capsule_id: str,
+    artifact_class: str,
+    blob: bytes,
+    *,
+    now: float | None = None,
+) -> str
+
+store.get_capsule_artifact(capsule_id: str, address: str) -> bytes | None
+store.list_capsule_artifacts(capsule_id: str) -> list[CapsuleArtifact]
+
+store.link_job_revision(
+    job_id: str,
+    *,
+    accepted_revision_id: str | None = None,
+    active_capsule_id: str | None = None,
+    plan_hash: str | None = None,
+    lease: Lease | None = None,
+    now: float | None = None,
+) -> Job
+```
+
+These ten methods are the durable substrate for snapshot-pinned knowledge
+transactions — the persistence for the composer P0–P9 transaction track — not an
+active promotion path (A1.4 is deferred, so none of them mutate `state`,
+`execution_generation`, or any lease field).
+
+- `record_plan_revision()` persists a caller-supplied accepted-intent record,
+  idempotent by `revision_id` (a re-record updates only `decision` /
+  `evidence`); the store never recomputes the hash or `canonical_bytes`.
+- `get_plan_revision()` reloads one revision, returning `canonical_bytes` as
+  `bytes` for a byte-identical round-trip.
+- `capsule_identity()` is a staticmethod returning the deterministic
+  `sha256(revision_id \0 base_generation \0 policy_version)` capsule id with no
+  clock in the hash.
+- `create_commit_capsule()` inserts-or-ignores a capsule keyed by
+  `capsule_identity()`; the `revision_id` FK is enforced. `artifact_root` is
+  `<db_dir>/capsules/<capsule_id>`, created lazily.
+- `get_commit_capsule()` reloads one capsule.
+- `set_capsule_state()` advances the open→sealed lifecycle marker.
+- `put_capsule_artifact()` content-addresses a blob
+  (`address = sha256(blob).hexdigest()`), writes it atomically under the
+  capsule CAS, records the manifest row, and returns the address.
+- `get_capsule_artifact()` reads a manifested blob back byte-for-byte, or
+  `None` when no `(capsule_id, address)` manifest row exists.
+- `list_capsule_artifacts()` returns manifest rows ordered by
+  `(artifact_class, address)`.
+- `link_job_revision()` `COALESCE`-sets the job's `accepted_revision_id` /
+  `active_capsule_id` / `plan_hash` columns; `plan_hash` stays CAPABILITY
+  identity supplied by the caller, never derived from a revision. It is pure
+  bookkeeping (no state or lease mutation).
+
+`plan_revision_recorder()` is a module-level factory:
+
+```python
+plan_revision_recorder(
+    store: RuntimeStore,
+    *,
+    revision_id: str,
+    parent_revision_id: str | None,
+    canonical_bytes: bytes,
+    evidence: dict | None = None,
+) -> Callable[[SignOffResult], None]
+```
+
+It returns a closure for `composer.signoff.run_sign_off`'s `revision_recorder`
+seam that maps a terminal sign-off decision (`approved`→`accept`,
+`needs_human`→`needs_human`, else→`reject`) onto `record_plan_revision()`. It
+lives in `runtime` so `composer.signoff` never imports `runtime`.
 
 ## Admission API
 
@@ -518,10 +677,24 @@ InboxScanner(
 
 scanner.scan_once() -> ScanResult
 
+scanner.admit_bundle(
+    members: list[Path | str],
+    *,
+    objective: str,
+    settle_seconds: float | None = None,
+) -> BundleAdmission
+
 ScanResult(
     admitted: tuple[Job, ...],
     deduplicated: tuple[Job, ...],
     rejected: tuple[tuple[Path, str], ...],
+)
+
+BundleAdmission(
+    bundle: SourceBundle,
+    jobs: tuple[Job, ...],
+    manifest_path: Path,
+    created: bool,
 )
 
 RuntimeService(
@@ -536,6 +709,16 @@ service.run() -> None
 The scanner recursively visits each existing lane in `LANE_HINTS` order and
 sorts paths within a lane. The service scans, performs one supervisor iteration,
 and waits only after an `idle` outcome.
+
+`admit_bundle()` is a separate, opt-in entry point that admits an
+explicitly-supplied ordered list of member paths as one coordinated objective
+(P2b/A2.1). Each member is admitted via `admit_path()`, inheriting per-member
+`sha256` payload-ref idempotency; the members plus objective become a typed
+`SourceBundle` (from `composer.knowledge_plan`) whose content-addressed
+`bundle_id` keys a durable JSON manifest written atomically under
+`runs/runtime/bundles/<bundle_id>.json`. Re-admitting the same members and
+objective is idempotent (same `bundle_id`, no duplicate jobs, `created=False`).
+`scan_once()` is untouched — per-file admission remains the default.
 
 ## Commit API
 
@@ -618,9 +801,10 @@ safely killed. The broker is not passed to Composer, does not consult
 
 `from tessellum.runtime import ...` exports:
 
-`AdmissionError`, `Job`, `JobEvent`, `JobState`, `Lease`, `LeaseLostError`,
-`RuntimePaths`, `RuntimeStore`, `TransitionError`, `WorkRequest`, and
-`admit_path`.
+`AdmissionError`, `CapsuleArtifact`, `CommitCapsule`, `Job`, `JobEvent`,
+`JobState`, `Lease`, `LeaseLostError`, `PlanRevision`, `RuntimePaths`,
+`RuntimeStore`, `TransitionError`, `WorkRequest`, `admit_path`, and
+`plan_revision_recorder`.
 
 The executor, supervisor, scanner, service, routing, policy, commit, and broker
 APIs are imported from their respective submodules.

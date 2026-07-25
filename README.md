@@ -8,9 +8,10 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 
 ## Status
 
-**Current `main` — every engine subsystem shipped, including the Composer v4 dynamic-workflow engine and the v5 automatic runtime.** Suite: **1241 passing, 1 skipped**.
+**Current `main` — every engine subsystem shipped, including the Composer v4 dynamic-workflow engine, the P0–P9 knowledge-transaction track, and the v5 automatic runtime.** Suite: **1389 passing, 1 skipped**.
 
 - **Composer** — a typed-contract pipeline runtime. Skill canonical (one self-contained markdown note — a typed contract block per step section) → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
+- **Knowledge transaction (P0–P9)** — an additive, opt-in layer that turns a multi-document digestion into one snapshot-pinned transaction: typed change proposals + intent graph, a read-through staging overlay, an exact write closure with a boundary proof, a structural gate suite + capsule-bound human approval, a calibrated (fail-closed) semantic certificate, a bounded planner loop with a proven halt, and versioned publication with a snapshot compare-and-swap. Byte-identical when its paths are off.
 - **DKS** — a shipped closed-loop **Dialectic Knowledge System runtime engine** (`tessellum dks`): a 7-component cycle (observation → N arguments → contradicts edges → counter → pattern → revised warrant) over the Building-Block graph, multi-perspective Dung argumentation, confidence gating, warrant persistence, and a second-order **meta-DKS** that mutates the BB schema itself.
 - **Retrieval** — BM25 (FTS5) + dense (sqlite-vec) + hybrid RRF + best-first BFS + metadata filter, over the indexed vault.
 - **Indexer** — vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec, `all-MiniLM-L6-v2` 384-d).

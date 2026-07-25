@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-07-24
+
 ### Dynamic digestion as a snapshot-pinned knowledge transaction — phases P0–P3 — 2026-07-24
 
 Foundations for turning the digestion pipeline into an automatic, multi-document slipbox constructor under the settled principle *"dynamic discovery, immutable accepted intent, gated deterministic promotion of a snapshot-pinned, invariant-closed knowledge transaction."* Every change in this track is **additive and byte-identical when its opt-in paths are not engaged** — the shipped serial/epoch digestion path is unchanged. Implemented phase-by-phase, each with an adversarial verification pass. New tests: `+16 proposals`, `+12 runtime capsules`, `+9 P2b live-wiring`, `+2 digestion e2e`, `+16 overlay index`.

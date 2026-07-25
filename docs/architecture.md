@@ -1,4 +1,4 @@
-# Tessellum 1.2.0 — System Architecture
+# Tessellum 1.3.0 — System Architecture
 
 ## 1. What Tessellum is
 
@@ -40,6 +40,7 @@ flowchart TB
 
     subgraph ENG["Engines"]
         composer["composer : compile, schedule, gate, fix"]
+        ktx["knowledge transaction : plan / stage / prove / publish atomically"]
         dks["dks : dialectic cycles + meta-DKS"]
     end
 
@@ -62,6 +63,9 @@ flowchart TB
 
     composer -->|writes new notes| vault
     composer -.->|reuses validator| format
+    composer -->|multi-note digestion| ktx
+    ktx -.->|snapshot-pinned read| db
+    ktx -->|versioned atomic publish| vault
     dks -.->|reads, one-way R-Cross| retrieval
     dks -->|writes warrants + notes| vault
     dks -.->|meta mutates schema| bb
@@ -123,6 +127,14 @@ Compilation produces the DAG and dispatches nothing. Scheduling runs it — eith
 
 Two lines are load-bearing here. The gates are pure programs and never call a model — when a gate needs a semantic judgment, it consumes a verdict a verifier already produced, rather than judging for itself. And the LLM lives only where it must: inside the fixer callable and inside the backends, injected by the caller, never buried in the control logic. The engine orchestrates; the model only produces content the engine then checks.
 
+## 5.1 The knowledge-transaction track
+
+The composer can also write many notes at once, and when it does it treats the whole digestion as a single transaction rather than a stream of independent writes. This is the knowledge-transaction track — an additive, opt-in layer, built in phases P0 through P9, that plans typed edits, stages them beside the live index, proves them safe, and makes them visible to readers atomically. Like every fast-path feature in Tessellum, it is byte-identical when its paths are off, so the single-note authoring above is unchanged until a caller asks for a transaction.
+
+A transaction begins as typed proposals that compose into a plan — a graph of note intents, each carrying its one building block, its cited spans, the entry points it joins, and the backlinks it owes. The plan is staged into an overlay that layers the pending changes over System D without mutating it, so every gate reads exactly the view promotion will publish. From the intents alone the system derives the exact set of rows that must commit, and a boundary proof rejects any edge that would carry a write outside that set. Two gates then stand between plan and publish: a structural suite of pure-program checks that must pass, and a calibrated semantic certificate that either clears a capsule inside a measured domain or defers to a human sign-off. Publication writes an immutable generation and swaps one pointer under a lock, so a reader sees a whole generation or nothing, and a transaction planned against a base that has since moved is refused rather than allowed to lose an update.
+
+The track sharpens the one feedback arrow rather than bending it. It reads System D through a pinned snapshot and writes only new markdown into System P — exactly the R-Cross discipline the rest of the system obeys — with the atomic pointer swap standing in as the authoring seam made transactional. It also mirrors, one layer up, what the automatic runtime already does at commit time: the runtime's atomic index replacement and effect journal and the transaction's versioned publication are the same fail-closed, crash-recoverable publication idea, applied to the projection and to the vault respectively. See [composer.md](composer.md#the-knowledge-transaction) for the phase-by-phase design and [reference/composer.md](reference/composer.md#knowledge-transaction-track-p0p9) for the exact APIs.
+
 ## 6. The DKS engine
 
 DKS is the Dialectic Knowledge System — the part of Tessellum that thinks. Where the composer executes a written procedure, DKS runs a reasoning cycle and deposits its conclusions back into the vault as a Folgezettel subtree. One cycle is a closed seven-component loop: an observation, then several sibling arguments, then the disagreements between them as edges, then a counter, then a pattern, then one or more revised warrants. A runner threads many such cycles together, carrying warrant changes forward from one to the next. Each cycle leaves a small, typed argument-tree behind in System P.
@@ -177,6 +189,12 @@ And underneath the reasoning ontology, one more invariant makes growth possible 
 | `composer/llm.py` | `LLMBackend` protocol + 4 backends: `MockBackend`, `AnthropicBackend`, `BedrockBackend`, `PooledBackend`. |
 | `composer/credential_pool.py` | Same-provider key pool (leasing, error-class rotation, cooldowns) + `RunBudget` (invocation/cost caps). |
 | `composer/{planning,signoff,eval}.py` | Selective planning depth + $0 change-detection pre-gate; plan→execute approval ladder; scenario assertions + LLMJudge rubric. |
+| `composer/{proposals,knowledge_plan,overlay,overlay_index}.py` | **Transaction P0–P3:** typed change proposals + content-addressed merge; the `NoteIntentGraph` plan + writer-leaf projection; the create-only staging overlay; the read-through `OverlayIndex` over base ⊕ delta. |
+| `composer/write_closure.py` | **Transaction P4:** exact write closure from typed invariants + boundary witness + bounded validation heuristic + capsule partition. |
+| `composer/publication.py` | **Transaction P5:** `VersionedVault` — three-phase atomic commit with snapshot CAS, crash recovery, and generation GC. |
+| `composer/structural_gates.py` | **Transaction P6:** capsule-level structural gate suite (no LLM) + `supervised_admit` (structural pass + a capsule-bound human approval). |
+| `composer/semantic_certificate.py` | **Transaction P7:** calibrated semantic certificate — pluggable scorer, per-class empirical thresholds, fail-closed abstain. |
+| `composer/planner_loop.py` | **Transaction P8:** bounded planner loop with a proven halt (ℕ-valued deficit + three hard stops). |
 | `runtime/{models,store}.py` / `runtime/schema.sql` | Durable job state machine, event journal, transactional claims, lease-generation fencing, retry, and cancellation. |
 | `runtime/{admission,inbox,routing,policy}.py` | Stable-file spool-before-admit, deterministic eight-lane scanning/routing, and unattended policy profiles. |
 | `runtime/{executor,supervisor,service,commit_tail}.py` | Native Composer digestion adapter, heartbeat supervision, polling service, atomic index replacement, and source acknowledgement. |

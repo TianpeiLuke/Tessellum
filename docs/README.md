@@ -1,6 +1,6 @@
 # Tessellum — Engineering Documentation
 
-How the **Tessellum 1.0** code is built, and why.
+How the **Tessellum** code is built, and why.
 
 > **Two surfaces, by audience.** This `docs/` tree is the *engineering* reference. The [`vault/`](../vault/)
 > is the *knowledge* documentation — Tessellum dogfoods itself, so its concepts, how-tos, and design

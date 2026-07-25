@@ -73,7 +73,7 @@ DKSCycle(
 )
 ```
 
-`run() -> DKSCycleResult`. `perspectives` must have ≥2 unique entries (`ValueError` otherwise). N>2 auto-activates `_run_n_perspective` (pairwise contradicts + Dung grounded labelling + multi-revision authoring). Per-step methods: `_step_argument`, `_step_disagreement`, `_step_counter`, `_step_pattern`, `_step_rule_revision`. Silent-failure sites: `_llm_check_disagreement`, `_format_retrieval_context`, `_step_argument` JSON parse.
+`run() -> DKSCycleResult`. `perspectives` must have ≥2 unique entries (`ValueError` otherwise). N>2 auto-activates `_run_n_perspective` (pairwise contradicts + Dung grounded labelling + multi-revision authoring). Per-step methods: `_step_argument`, `_step_disagreement`, `_step_counter`, `_step_pattern`, `_step_rule_revision`. Silent-failure sites: `_llm_check_disagreement`, `_format_retrieval_context`, and the JSON-parse swallow on every step (`_step_argument`, `_step_counter`, `_step_pattern`, `_step_rule_revision`).
 
 ### `DKSRunner` (`core.py:1211-1320`)
 
@@ -159,7 +159,7 @@ Fields: `cycles`, `warrant_changes`, `final_warrants`, `elapsed_ms`, `backend_id
 - `Attacker` (Protocol): `attack(proposals, observation) -> list[MetaCounterArgument]` (`runtime.py:314-334`).
 - `NoOpAttacker` — returns `[]` (default). `LLMAttacker(backend, max_tokens=2000)` — dialectical attack; dedups by `(index, kind)` (`runtime.py:336-506`).
 - `MetaCycleResult` (frozen): `observation`, `proposals`, `surviving`, `events_landed`, `elapsed_ms`, `dry_run`, `attacks`, `survive_threshold` (`runtime.py:533-556`).
-- `MetaCycle(observation, min_cycles=20, target_failure=None, dry_run=True, proposer=HeuristicProposer(), attacker=NoOpAttacker(), survive_threshold="majority")` — `run() -> MetaCycleResult`. Below `min_cycles` → empty result. Filter drops duplicates, already-existing `BB_SCHEMA` edges, non-`USER_EXTENSIONS` retractions. Events emitted only when `dry_run=False` (`runtime.py:562-713`).
+- `MetaCycle(observation, min_cycles=20, target_failure=None, dry_run=True, proposer=HeuristicProposer(), attacker=NoOpAttacker(), survive_threshold="majority")` — `run() -> MetaCycleResult`. Below `min_cycles` → empty result. Filter drops duplicates, already-existing `BB_SCHEMA` edges, and retractions of edges absent from `BB_SCHEMA` (retracting a core/DKS-extension edge that IS in `BB_SCHEMA` is allowed). Events emitted only when `dry_run=False` (`runtime.py:562-713`).
 - `load_event_log(path) -> tuple[SchemaEditEvent, ...]`; `write_event_log(path, events, *, append=True)` (`runtime.py:775-810`).
 
 ## Import surface (`tessellum.dks`)

@@ -50,7 +50,7 @@ When grounded labelling leaves more than one survivor, the cycle writes one revi
 
 ### Telemetry the cycle cannot hide
 
-Three points in the cycle call a model in a way that can fail — the optional semantic-disagreement check, the retrieval-context lookup, and the JSON parse of an argument response. All three fall back gracefully rather than crash, which is correct for robustness but dangerous for honesty: a backend that silently fails every other call would quietly skew the whole Toulmin distribution. So each fallback records a one-line note of what it swallowed *before* falling back. The semantics are unchanged; the silence is now countable. Meta-DKS reads that count and discounts degraded runs.
+Several points in the cycle call a model in a way that can fail — the optional semantic-disagreement check, the retrieval-context lookup, and the JSON parse of any step's response (argument, counter, pattern, and rule-revision all parse and can swallow). Each falls back gracefully rather than crash, which is correct for robustness but dangerous for honesty: a backend that silently fails every other call would quietly skew the whole Toulmin distribution. So each fallback records a one-line note of what it swallowed *before* falling back. The semantics are unchanged; the silence is now countable. Meta-DKS reads that count and discounts degraded runs.
 
 ## The procedure: how meta-DKS mutates the schema
 

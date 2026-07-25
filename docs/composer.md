@@ -257,6 +257,118 @@ registry itself never calls a model. Around the edges, a batch runner fans many
 skill-and-leaves jobs across the *serial* path with coarse per-job resume, and an
 eval framework scores runs with structural assertions plus an LLM-judged rubric.
 
+## The knowledge transaction
+
+The pipeline so far writes one note at a time. A multi-document digestion asks for
+more: many notes, cross-linked, that must appear together or not at all, planned
+against a base that may move under them. The knowledge-transaction track answers
+that. It turns a whole digestion into a single snapshot-pinned transaction — plan
+the edits as typed data, stage them off to the side, prove them safe, then make them
+visible to readers in one atomic step. It is built in additive phases, each byte-
+identical when its opt-in path is off, so nothing above changes until you ask for it.
+
+**Typed intent, staged off to the side.** A transaction begins as typed proposals,
+never free text — add, update, merge, drop, reroute — each naming the notes it
+touches and carrying content-addressed hashes so two plans can be compared and merged
+by value. Those proposals compose into a plan: a graph of note intents, each tagged
+with its one building block, its cited source spans, the entry points it joins, and
+the backlinks it owes. The plan is staged into an overlay that layers the pending
+changes over the live index without mutating it — an update shadows the base row, a
+delete tombstones it, a re-authored note declares its own edges — so every gate and
+dedup query reads exactly the view the promotion will publish, before anything is
+committed.
+
+**The exact write set.** A transaction commits an exact set of rows, and the system
+refuses to guess at it. From the typed invariants alone — the note, its index
+projection, its navigation row under each entry point, the backlinks other notes must
+gain, the reciprocal rows its Folgezettel dependencies must gain — it derives the
+precise closure of what must land. The derivation reads the intents and nothing about
+graph shape, so it cannot look at how central a target is and cannot prune a mandatory
+row under a busy hub. A separate boundary proof then checks that no edge carrying a
+write escapes that set, and an edge whose class cannot be determined fails the proof
+rather than being waved through. A second, clearly separated question — which existing
+notes might now be stale and want re-checking — is answered by a short bounded walk
+that may only *widen* what gets re-verified, never change what commits; when its fan-
+out exceeds a calibrated bound it says so and hands back the whole set rather than
+quietly trimming it.
+
+**Reader-visible publication.** Publication is the one point where in-flight work
+becomes visible, and it is built so a reader sees a whole generation or nothing.
+Each generation is an immutable directory of notes plus index; a reader pins one
+pointer file once and reads only from the generation it names. The commit runs in
+three phases — write the generation into a private staging area and flush it, still
+invisible; then under an exclusive lock re-check that the pinned base is still live,
+promote the directory, record a durable commit marker, and swap the pointer; then
+acknowledge, idempotently. The compare and the swap happen under the same held lock,
+so the check is a real atomic test-and-set: two publishers that planned against the
+same base cannot both win, and a snapshot's recorded read-set is re-validated at the
+last moment so a file that changed underneath aborts the publish instead of losing an
+update. Recovery treats the pointer swap as the sole authority on what committed — it
+completes an unacknowledged live generation, reclaims staged or promoted directories
+that never reached the marker, and never touches a committed or current one.
+
+**Structural admission, human-supervised.** Before a capsule may publish, a battery
+of pure-program checks proves it is safe to *write*: every note cites a source span,
+every claim names its provenance, each note carries exactly one building block, each
+declared entry point is actually a write in the capsule so the note is reachable, each
+owed backlink is real, and the merged index gains no dangling reference. These are
+decidable without a model, which is exactly why they can fail closed — a check that
+cannot prove pass is a fail. But structural safety is a ceiling, not a warrant: a
+program can confirm a claim *has* provenance, never that the claim is *entailed* by
+it. So admission stays supervised. A capsule publishes only when the structural suite
+passes and a signed approval bound to that exact capsule is present; a structural
+failure blocks outright and never reaches the human step, and a clean-but-unapproved
+capsule is held. Because the approval binds to a content-derived identity, changing
+the plan voids the old sign-off — it cannot be lifted onto a mutated capsule.
+
+**The calibrated semantic certificate.** The certificate is the measured path that
+lets a capsule promote without the human artifact, and it keeps Composer's boundary
+intact: an injected model produces evidence, a frozen program decides. Each claim is
+scored against its cited span by a pluggable entailment scorer — the real model is a
+dependency, never bundled here — and the note is only as grounded as its weakest
+claim, since the scores are aggregated by minimum, not averaged. A mean would let a
+pile of easy claims mask one fabrication, which is the failure the gate exists to
+catch. Thresholds are set per failure class from labelled examples: the widest accept
+region whose observed false-accept rate sits at or under the target, class by class,
+with an unreachable cutoff for any class that cannot meet the bound so it always
+abstains. The gate fails closed everywhere uncertainty enters — an empty claim set, a
+note outside the calibrated domain, a claim the scorer could not judge — routing those
+to a human. One honest limit bounds the promise: this is an empirical, in-sample
+calibration, not yet a distribution-free guarantee, so the machinery stays a framework
+until its false-accept rate is shown below target on a real held-out corpus of wrong-
+but-well-formed notes. Until that measurement lands, it does not license skipping
+human review.
+
+**Bounded planning that always halts.** When a planner re-plans from review evidence,
+the loop makes a deliberately modest promise: it always halts, in bounded time, at one
+of two terminal states — the obligations are discharged, or the loop is blocked. It
+does not promise the planner will succeed. The distinction is principled, since
+digesting one note can surface new terms to digest, so a general planner is not a
+shrinking process over a fixed set and a blanket convergence claim would be false. Within
+a frozen episode, progress is measured by a plain non-negative integer count of open
+ghosts, broken links, undigested terms, and coverage gaps — never a model's opinion —
+and a revision is accepted only if that count strictly drops. A count that cannot
+descend forever is what makes the frozen loop provably finite, and zero is recognized
+as success before any blocking rule is even considered. Three hard stops cover the
+open-universe case where no such monotonicity holds: a ceiling on accepted revisions,
+a budget on planner calls, and oscillation detection that trips when the planner keeps
+returning to the same shape without progress. Every exit writes a terminal result, so
+the loop cannot livelock.
+
+**One transaction, end to end.** The effect classes are now complete — create,
+update, merge, drop, skip — each governed by a preimage rule: a create forbids a prior
+image because its target must not exist, while update, merge, and drop require the
+pinned pre-image the promotion re-checks. What ties the phases together is an
+acceptance matrix that wires them for real rather than mocking the seam between them:
+a source bundle becomes an intent graph, projects to a deterministic write closure
+with its boundary proof, stages into the overlay, clears the structural suite and
+human approval, earns a semantic certificate inside the calibrated domain, and
+publishes through the snapshot CAS — with crash recovery and byte-identical replay
+proven on the same path, and a stale-base capsule refused at the commit point. After
+the structural phase the system is a safe, human-supervised, frozen-epoch constructor;
+after the certificate it can run unattended inside a measured domain, once that domain
+is actually measured.
+
 ## Invariants worth remembering
 
 The invariants below are the ones that give Composer its character; the reference
@@ -282,5 +394,10 @@ records the rest.
   entries whose computation identity and artifact hashes still verify.
 - **Composer writes; it does not rank.** Ranking notes is retrieval's job in a
   separate subsystem. Composer's output is always a note on disk.
+- **A knowledge transaction is atomic and fail-closed.** Its write set is derived
+  from typed invariants, never guessed from graph shape; it becomes visible in one
+  pointer swap or not at all; and every gate between plan and publish — structural
+  checks, the boundary proof, the semantic certificate — treats an unprovable pass
+  as a failure. Unattended promotion is earned by measurement, not assumed.
 
 **Reference:** [reference/composer.md](reference/composer.md) — API, symbols, and signatures.

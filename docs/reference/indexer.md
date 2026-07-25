@@ -129,7 +129,7 @@ Indexes: `note_int_id`, `note_category`, `note_second_category`, `note_status`, 
 
 ## CLI — `tessellum index build`
 
-Registered in `cli/main.py` alongside `bb`, `capture`, `composer`, `dks`, `mcp`, `filter`, `format`, `fz`, `init`, `search`.
+Registered in `cli/main.py` alongside `init`, `format`, `capture`, `search`, `filter`, `fz`, `bb`, `composer`, `dks`, `mcp`, `runtime`.
 
 ```
 tessellum index build [--vault PATH] [--db PATH] [--force|-f] [--no-dense]

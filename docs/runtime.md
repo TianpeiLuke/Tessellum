@@ -87,17 +87,31 @@ device/inode/size/mtime tuple. A rescan of the same directory entry returns the
 existing job. Replacing that entry creates a new job even when the bytes are
 identical; equal payloads still share the same spool object.
 
+Per-file admission remains the default, but a coordinated multi-source
+bundle-admission entry point also exists. It admits an explicitly-supplied,
+ordered list of member paths as one objective, inherits each member's payload
+idempotency, and records the group as a content-addressed `SourceBundle` under a
+durable manifest in `runs/runtime/bundles`. It is opt-in and leaves the ordinary
+per-file scan untouched.
+
 ## Durable state machine
 
-`runtime.db` is a WAL-mode SQLite database with schema metadata and three
-operational tables:
+`runtime.db` is a WAL-mode SQLite database (schema version 5) with schema
+metadata and six tables:
 
 - `jobs` holds requests, state, routing identity, separate execution/commit
-  attempt counts, cancellation, lease fencing, results, and linked-retry
-  ancestry.
+  attempt counts, cancellation, lease fencing, results, linked-retry ancestry,
+  and nullable links to a job's accepted plan revision and active commit
+  capsule.
 - `job_events` is an ordered per-job event journal.
 - `tool_calls` reserves durable audit fields for policy-bound tool calls.
   The current standalone broker does not yet write this table.
+- `plan_revisions`, `commit_capsules`, and `capsule_artifacts` are the P1
+  durable substrate for snapshot-pinned knowledge transactions: an
+  accepted-intent record, a content-addressed artifact bundle per accepted
+  revision, and that bundle's content-addressed artifact manifest. They are the
+  persistence for the Composer transaction track and are not yet wired to
+  promotion, so no live job path reads or writes them today.
 
 The modeled lifecycle is:
 

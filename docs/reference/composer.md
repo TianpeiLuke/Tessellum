@@ -27,6 +27,15 @@ API, symbols, and signatures for the typed-contract pipeline runtime. For the me
 | `eval.py` | Scenario framework: structural `Assertion`s + `LLMJudge` 6-dim rubric. |
 | `session_mcp.py` | Read-only tools over the active Claude Code transcript (`SESSION_MCP_TOOLS` + accessors). |
 | `schemas/pipeline.schema.json` | JSON Schema for a step's contract block (loader stage 1). |
+| `proposals.py` | **(P0)** Typed change `Effect`s (`AddNote`/`UpdateNote`/`MergeNotes`/`DropNote`/`Reroute`/`AddReference`/`AddNavigation`) + `ChangeProposal`; content-addressed hashing (`content_hash`, `canonical_json_bytes`, `plan_revision_hash`); `Footprint`/`effect_footprint`/`effect_key`; snapshot-pinned merge (`merge_proposals`/`merge_or_raise`, `MergeResult`/`MergeConflict`); `collect_proposals`. |
+| `knowledge_plan.py` | **(P2)** Typed knowledge-plan intent graph: `NoteIntent` (one BB, cited spans, declared entry points + required inlinks, disposition under the preimage rule), `NoteIntentGraph`, `ClaimProvenance`, `note_intent_content_id`, `project_note_intent_graph` (writer-leaf projection). `NoteDisposition` = `create`/`update`/`merge`/`drop`/`skip`. |
+| `overlay.py` | **(P2)** `OverlayWriter` — stages note writes into a delta off to the side, never mutating the base vault. `OverlayWriteResult`, `OverlayError`. |
+| `overlay_index.py` | **(P3)** `OverlayIndex(base, DeltaState)` — read-through view over base ⊕ delta answering gate/dedup/backlink/ghost queries without mutating the base index (shadow/tombstone/re-author semantics; `ghost_links`/`resolves_ghost`). |
+| `write_closure.py` | **(P4)** `write_closure` (exact transactional write set from typed invariants — no graph/hub param), `boundary_witness` (no write-propagating edge escapes; unknown class fails closed), `validation_set` (bounded reverse-reachability re-check; spills, never truncates), `partition_capsules` (union-find over shared closures). |
+| `publication.py` | **(P5)** `VersionedVault` — three-phase atomic commit (prepare → publish → acknowledge) with an atomic `CURRENT` pointer swap under an exclusive lock; `VaultSnapshot`/`read_set_matches` (lost-update CAS), `publish_with_cas` (bounded retry), `KnowledgeCapsule`, crash `recover()` + GC. |
+| `structural_gates.py` | **(P6)** Capsule-level structural gate suite (no LLM) over the plan + overlay + write closure (`build_structural_gate_suite`); `supervised_admit` — publish iff the suite passes AND a bound `HumanApproval` is present. |
+| `semantic_certificate.py` | **(P7)** `certify` (per-claim min-aggregate against a pluggable `ClaimScorer`, fail-closed abstain, emits `GroundingVerdict`); `calibrate` (per-class empirical thresholds); `measure_false_accept_rate` (the held-out gating measurement). Bundles no model, no corpus. |
+| `planner_loop.py` | **(P8)** `run_planner_loop` — drives an injected planner to a terminal `complete`/`blocked`; ℕ-valued `Deficit` variant + three hard stops (depth, fuel, oscillation) prove termination. |
 
 ## Loader (`loader.py`)
 
@@ -215,9 +224,102 @@ Gate-then-commit: the manifest row flips `done` and the `StepResult` is treated 
 
 Read-only tools over the active Claude Code transcript: `SESSION_MCP_TOOLS`, `get_session_metadata`, `get_tool_uses`, `read_recent_messages`, `resolve_transcript_path`, `search_transcript`.
 
+## Knowledge-transaction track (P0–P9)
+
+The additive layer that turns a multi-document digestion into one snapshot-pinned transaction: plan typed edits, stage them, prove them safe, publish atomically. Every phase is byte-identical when its opt-in path is off. Design narrative: [../composer.md](../composer.md#the-knowledge-transaction).
+
+### Typed proposals + intent graph + overlay (P0–P3)
+
+| Symbol | Kind | Role |
+|---|---|---|
+| `Effect` (`AddNote`/`UpdateNote`/`MergeNotes`/`DropNote`/`Reroute`/`AddReference`/`AddNavigation`) | frozen models | The seven typed change effects; each names the notes it touches. |
+| `ChangeProposal` | frozen model | A named bundle of effects with a content-addressed identity. |
+| `Footprint`, `effect_footprint`, `effect_key` | dataclass + fns | The set of notes/edges an effect touches; the conflict key merge uses. |
+| `content_hash`, `canonical_json_bytes`, `plan_revision_hash` | functions | Deterministic content-addressing (float-in-payload rejected via `FloatInCanonicalPayloadError`). |
+| `merge_proposals`, `merge_or_raise`, `MergeResult`, `MergeConflict`, `ProposalConflictError` | fns + types | Snapshot-pinned merge of two proposals; conflicts on overlapping footprints. |
+| `collect_proposals` | function | Gather proposals from a source. |
+| `NoteIntent` | frozen model | One planned note: `note_id`, `building_block`, `provenance: tuple[ClaimProvenance,…]`, `navigation` (entry points), `required_inlinks`, `depends_on`, `disposition`, `expected_preimage`. Validator enforces the **preimage rule** (create forbids preimage; update/merge/drop require it; skip is a no-op) + self-dep guard. |
+| `NoteIntentGraph` | frozen model | The typed plan (a set of `NoteIntent`s); the transaction's unit of planning. |
+| `ClaimProvenance` | frozen model | `span_id` + `source_ref` — a claim's citation. |
+| `NoteDisposition` | Literal | `"create" | "update" | "merge" | "drop" | "skip"`. |
+| `note_intent_content_id`, `project_note_intent_graph` | functions | Content id of an intent; projection of the graph into writer leaves. |
+| `OverlayWriter`, `OverlayWriteResult`, `OverlayError` | class + types | Stages note writes into a delta off to the side; never mutates the base vault. |
+| `OverlayIndex`, `DeltaState` | class + dataclass | Read-through view over base ⊕ delta: `note_by_id`/`all_notes`/`links_from`/`links_to`/counts + `ghost_links`/`resolves_ghost`. Update shadows, delete tombstones, re-author declares its own edges, `(source,target)` dupes collapse, `stage_add` un-tombstones. |
+
+### Exact write closure (P4, `write_closure.py`)
+
+| Symbol | Kind | Role | Signature / fields |
+|---|---|---|---|
+| `WriteEffect` | frozen dataclass | One mandatory write from a materialization invariant. | `note_id`, `kind: Literal["note","navigation","reverse_inlink","fz_inlink","index"]`, `origin`. |
+| `WriteClosure` | frozen dataclass | The exact transactional write set. | `writes: tuple[WriteEffect,…]`; `touched_note_ids -> frozenset[str]`. |
+| `BoundaryWitness` | frozen dataclass | Proof no write-propagating edge exits the set. | `ok: bool`, `escaping`, `unknown`. `ok` iff no escaping AND no unknown class. |
+| `ClosurePolicy` | dataclass | Tunable bounds for the validation heuristic ONLY (never the write set). | `hub_threshold=50`, `validation_depth=2`, `spill_fraction=0.10`, `spill_abs=None`. |
+| `ValidationResult` | frozen dataclass | Bounded set to RE-CHECK + spill flag. | `to_revalidate`, `spilled`, `size`, `bound`. `spilled = size > bound`; full set always returned. |
+| `write_closure` | function | Exact write set; mandatory writes always included. | `write_closure(intents, *, entry_point_of=None) -> WriteClosure`. No hub/graph param. |
+| `classify_edge` | function | Edge class from structural signals, not stored `link_type`. | source cat absent → `"unknown"`. Propagating = `{navigation, fz_parent, backlink}`. |
+| `boundary_witness` | function | Prove no propagating edge escapes; fails closed on unknown. | `(closure, *, edges, note_category_of, fz_parent_of, reciprocal_pairs=None)`. |
+| `validation_set` | function | Bounded reverse-reachability re-check; drops entry points, cuts at hubs, spills. | `bound = spill_abs or max(1, int(corpus_size*spill_fraction))`. |
+| `partition_capsules` | function | Split intents into invariant-closed capsules (union-find over shared closures). | Same capsule iff closures overlap; deterministic, order-independent. |
+
+### Versioned publication + snapshot CAS (P5, `publication.py`)
+
+On-disk layout: `root/CURRENT` (pointer, swapped by one atomic `os.replace`), `root/generations/<gen>/` (immutable published), `root/staging/<gen>/` (prepared, invisible), a `COMMITTED` marker (written before the swap; the recovery keep/GC signal), an `ACKNOWLEDGED` marker, `capsule.json`, `.publish.lock`.
+
+| Symbol | Kind | Role | Signature / fields |
+|---|---|---|---|
+| `ABSENT` | `str` sentinel | Read-set marker: a path's *absence* was relied on (phantom protection). | Used as a `read_set` value. |
+| `VaultSnapshot` | frozen dataclass | Pinned base view at planning time; source of the CAS predicate. | `base_generation`, `index_hash`, `read_set: dict[str,str|ABSENT]`, `candidate_query_hashes`; `snapshot_id` (order-independent SHA-256). |
+| `KnowledgeCapsule` | frozen dataclass | Binds a transaction's provenance to its exact write set. | `capsule_id`, `source_bundle_hash`, `vault_snapshot_id`, `knowledge_plan_hash`, `write_closure`, `preimage_hashes`, `postimage_hashes`; `well_formed(expected_closure) -> bool`. |
+| `PublicationError` | exception | Protocol violation (unprepared/unpublished gen, path escape, reserved control filename). NOT raised for a CAS conflict. |
+| `PublishResult` | frozen dataclass | Publish outcome. | `outcome: Literal["published","cas_conflict","blocked"]`, `generation`, `detail`. |
+| `RetryPolicy` | dataclass | Bounds the CAS re-plan loop. | `max_attempts=3`. |
+| `VersionedVault` | class | Generation-versioned root; the three-phase commit lives here. | `prepare(capsule, files)` (idempotent, fsync'd) → `publish(gen, *, expected_current, cas_check=None)` (compare+promote+swap under one lock) → `acknowledge(gen)`; `current_generation()` (read ONCE per reader); `recover(*, genesis_keep=None)` (under the publish lock); `collect_staging`/`collect_orphan_generations` (never touch CURRENT or a COMMITTED gen). |
+| `publish_with_cas` | function | Bounded CAS-retry driver; terminates as `blocked`, never livelocks. | `(vault, generation, *, expected_current, snapshot, read_current, replan, policy=None)`. |
+| `read_set_matches` | function | The CAS predicate closing the lost-update hazard. | True iff every read-set path still hashes the same AND every `ABSENT`-pinned path is still absent. |
+
+### Structural supervised constructor (P6, `structural_gates.py`)
+
+`build_structural_gate_suite()` runs, in order (all block on ERROR except the advisory relevance cap): `STRUCT-COVERAGE` (≥1 cited span), `STRUCT-PROVENANCE` (span + source per claim), `STRUCT-BB-ATOMIC` (exactly one BB), `STRUCT-DISPOSITION` (known effect class; unknown fails closed), `STRUCT-NAV-CLOSURE` (each declared entry point is a mandatory write), `STRUCT-INLINK-CLOSURE` (each required backlink is a write), `STRUCT-REF-INTEGRITY` (no dangling reference in base ⊕ delta; *skipped when no overlay supplied*), `STRUCT-LINK-RELEVANCE` (≤ cap, WARNING only).
+
+| Symbol | Kind | Role | Fields / signature |
+|---|---|---|---|
+| `HumanApproval` | frozen dataclass | Sign-off artifact bound to one capsule id (no replay onto a mutated capsule). | `capsule_id`, `approver`, `signature`, `reason=""`. Signature is **presence-checked only** — crypto verification is the caller's job. |
+| `StructuralGateContext` | frozen dataclass | The no-LLM read surface every predicate consumes. | `graph: NoteIntentGraph`, `overlay: OverlayIndex|None=None`, `write_closure: WriteClosure|None=None`, `relevance_link_cap=12`. |
+| `SupervisedResult` | frozen dataclass | The admission decision. | `decision`, `structural_passed`, `first_failure_cause`, `detail`, `blocking_rules`. |
+| `build_structural_gate_suite` | function | Build the ordered capsule-level suite. | `() -> GateSuite`. |
+| `supervised_admit` | function | Publish iff suite passes AND a bound valid approval is present; else block (fail closed). | `(context, *, capsule_id, approval=None, suite=None) -> SupervisedResult`. |
+
+`SupervisedResult.decision` states: `approved` (suite passed + bound valid approval — the only publish-eligible state), `blocked_structural` (suite failed; returned before the approval check), `blocked_needs_human` (structurally clean but no/mismatched/unsigned approval). Constant `DEFAULT_RELEVANCE_LINK_CAP = 12`.
+
+### Calibrated semantic certificate (P7, `semantic_certificate.py`)
+
+Injection contract `ClaimScorer = Callable[[list[Claim]], list[ClaimScore]]` — the real NLI/SummaC model is injected here; the module bundles no model, no corpus. Failure classes: `grounding`, `coverage`, `duplicate`, `edge_relevance`.
+
+| Symbol | Kind | Role | Signature / fields |
+|---|---|---|---|
+| `Claim` | frozen dataclass | A checkable claim + its cited span, tagged with a failure class. | `claim_id`, `text`, `source_ref`, `failure_class="grounding"`. |
+| `ClaimScore` | frozen dataclass | Per-claim score in [0,1]; `abstained` is fail-closed. | `claim_id`, `score`, `abstained=False`. |
+| `ConformalThresholds` | frozen dataclass | Per-class cutoffs from calibration + audit metadata. | `thresholds`, `alpha`, `n_calibration`, `domains`; `threshold_for(cls)`. |
+| `LabeledExample` | frozen dataclass | A calibration/eval example (`correct=True` ⇒ faithful). | `failure_class`, `score`, `correct`. |
+| `calibrate` | function | LOWEST cutoff whose accepted-region empirical false-accept rate ≤ α, per class; infeasible → `1.01` (always abstain). Empirical **in-sample** bound (conformal-style), validated out-of-sample by `measure_false_accept_rate`. | `(examples, *, alpha, domains=()) -> ConformalThresholds`. |
+| `certify` | function | Score claims, MIN-aggregate, accept/abstain fail-closed, emit `GroundingVerdict`. | `(claims, *, scorer, thresholds, note_domain=None) -> CertificateResult`. Abstains on empty set / out-of-domain / scorer abstain / below-threshold. |
+| `measure_false_accept_rate` | function | The A7.5 gating measurement: per-class empirical FAR under the thresholds; must be below α on a real wrong-but-well-formed corpus before unattended gating. | `(examples, thresholds) -> dict[FailureClass, float]`. |
+
+### Bounded planner loop (P8, `planner_loop.py`)
+
+| Symbol | Kind | Role | Fields / signature |
+|---|---|---|---|
+| `Deficit` | frozen dataclass | Deterministic ℕ progress variant; `total`=0 ⇒ discharged. Rejects negative components. | `ghosts`, `broken_links`, `undigested_terms`, `coverage_gaps` (all `int`); `total`, `as_tuple()`. |
+| `Revision` | frozen dataclass | One planner revision + its route/contract signature. | `revision_id`, `route_signature`, `deficit`. |
+| `LoopPolicy` | dataclass | The three hard stops + frozen-universe flag. | `depth_ceiling=8`, `fuel=16`, `oscillation_window=4`, `frozen_universe=True`. |
+| `LoopResult` | frozen dataclass | Terminal outcome + trace. | `outcome: Literal["complete","blocked"]`, `revisions`, `reason`, `fuel_spent`; `deficit_trace`. |
+| `run_planner_loop` | function | Drive the injected planner to a terminal state; never livelocks. | `(initial, *, propose, policy=None) -> LoopResult`. Completion (deficit 0) checked BEFORE any blocking rule. |
+
+Blocking bounds (all → `blocked`): frozen-universe non-decrease, revision-depth ceiling, fuel budget, oscillation (consecutive non-progressing route reuse), planner returns `None`.
+
 ## Package exports (`from tessellum.composer import …`)
 
-`compile_skill`, `to_dag_json`, `CompiledPipeline`, `CompiledStep`, `CompilerError`; `load_pipeline`, `Pipeline`, `PipelineStep`, `PipelineValidationError`; `iter_step_sections`, `split_contract_and_prompt`, `load_skill_section`, `list_section_ids`, `StepSection`, `SkillExtractionError`; the contract families + registries + `ContractViolation`; `materialize`, `MaterializedOutput`, `MaterializerError`; the four backends + `LLMBackend`/`LLMRequest`/`LLMResponse`; `execute_step`, `execute_step_with_retry`, `classify_error`, `full_jitter_backoff`, `ErrorClass`, `StepResult`, `ExecutorError`, `MAX_LOGIC_RETRIES`, `MAX_CRASH_RECOVERIES`; `run_pipeline`, `run_pipeline_dynamic`, `RunResult`, `compute_ready_set`, `ReadySetState`, `SkipReason`, `StepOutcome`, `classify_outcome`; `Gate`, `GateResult`, `GateSuite`, `CompositeGateResult`, `GroundingVerdict`, `build_plan_gate`, `build_close_gate`, `build_wave_gate`, `DIGEST_GATES`; `run_digestion_pipeline`, `DigestionResult`, `PhaseOutcome`, `PHASE_SKILLS`; `run_fix_loop`, `make_llm_fixer`, `score_issues`, `FixContext`, `FixLoopResult`, `AttemptOutcome`; `partition_unchanged_leaves`, `should_skip_unchanged`, `content_fingerprint`, `leaf_fingerprint`, `classify_planning_depth`, `LeafComplexity`; `CredentialPool`, `RunBudget`, `classify_rotation_cause`, `effort_for_stage`, `DEFAULT_STAGE_EFFORT`, `CredentialPoolError`, `BudgetExhausted`; `ContextAssembler`, `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`, `get_assembler`, `is_safe_read_path`; `run_sign_off`, `SignOffPolicy`, `SignOffResult`, `AgentVerdict`; `build_skill_tool`, `SkillTool`, `CapabilityRegistry`, `RoutingKey`, `RouteDecision`, `McpDep`; `run_batch`, `BatchJob`, `BatchJobResult`, `BatchResult`; `Manifest`, `ManifestEntry`, `ArtifactRecord`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`; `run_eval`, `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS`, and the rest of the eval framework; the session-MCP surface.
+`compile_skill`, `to_dag_json`, `CompiledPipeline`, `CompiledStep`, `CompilerError`; `load_pipeline`, `Pipeline`, `PipelineStep`, `PipelineValidationError`; `iter_step_sections`, `split_contract_and_prompt`, `load_skill_section`, `list_section_ids`, `StepSection`, `SkillExtractionError`; the contract families + registries + `ContractViolation`; `materialize`, `MaterializedOutput`, `MaterializerError`; the four backends + `LLMBackend`/`LLMRequest`/`LLMResponse`; `execute_step`, `execute_step_with_retry`, `classify_error`, `full_jitter_backoff`, `ErrorClass`, `StepResult`, `ExecutorError`, `MAX_LOGIC_RETRIES`, `MAX_CRASH_RECOVERIES`; `run_pipeline`, `run_pipeline_dynamic`, `RunResult`, `compute_ready_set`, `ReadySetState`, `SkipReason`, `StepOutcome`, `classify_outcome`; `Gate`, `GateResult`, `GateSuite`, `CompositeGateResult`, `GroundingVerdict`, `build_plan_gate`, `build_close_gate`, `build_wave_gate`, `DIGEST_GATES`; `run_digestion_pipeline`, `DigestionResult`, `PhaseOutcome`, `PHASE_SKILLS`; `run_fix_loop`, `make_llm_fixer`, `score_issues`, `FixContext`, `FixLoopResult`, `AttemptOutcome`; `partition_unchanged_leaves`, `should_skip_unchanged`, `content_fingerprint`, `leaf_fingerprint`, `classify_planning_depth`, `LeafComplexity`; `CredentialPool`, `RunBudget`, `classify_rotation_cause`, `effort_for_stage`, `DEFAULT_STAGE_EFFORT`, `CredentialPoolError`, `BudgetExhausted`; `ContextAssembler`, `FullSourceAssembler`, `WindowedAssembler`, `AssembledContext`, `get_assembler`, `is_safe_read_path`; `run_sign_off`, `SignOffPolicy`, `SignOffResult`, `AgentVerdict`; `build_skill_tool`, `SkillTool`, `CapabilityRegistry`, `RoutingKey`, `RouteDecision`, `McpDep`; `run_batch`, `BatchJob`, `BatchJobResult`, `BatchResult`; `Manifest`, `ManifestEntry`, `ArtifactRecord`, `AttemptRecord`, `ManifestError`, `MANIFEST_VERSION`, `VALID_STATUSES`; `run_eval`, `LLMJudge`, `JudgeScore`, `DEFAULT_RUBRIC_DIMENSIONS`, and the rest of the eval framework; the session-MCP surface. **Knowledge-transaction track (P0–P9):** the typed `Effect`s + `ChangeProposal` + merge/hash surface; `NoteIntent`, `NoteIntentGraph`, `NoteDisposition`, `ClaimProvenance`, `project_note_intent_graph`; `OverlayWriter`, `OverlayIndex`, `DeltaState`; `write_closure`, `boundary_witness`, `validation_set`, `partition_capsules` + their result types; `VersionedVault`, `VaultSnapshot`, `KnowledgeCapsule`, `publish_with_cas`, `read_set_matches`, `ABSENT`; `build_structural_gate_suite`, `supervised_admit`, `HumanApproval`, `StructuralGateContext`, `SupervisedResult`; `calibrate`, `certify`, `measure_false_accept_rate`, `Claim`, `ClaimScore`, `ConformalThresholds`, `LabeledExample`; `run_planner_loop`, `Deficit`, `Revision`, `LoopPolicy`, `LoopResult`.
 
 The DKS runtime is a **peer** module (`tessellum.dks`), not part of Composer, though it reuses Composer's `LLMBackend` abstractions.
 
