@@ -16,6 +16,13 @@ API, symbols, and signatures for the Dialectic Knowledge System runtime. See [..
 | `dks/meta/types.py` | Meta-meta-schema (`META_SCHEMA`, `META_STATES`, `MetaEdgeType`) + `MetaObservation`, `SchemaEditProposal`, `MetaCounterArgument`, the attack/threshold vocabularies. |
 | `dks/meta/runtime.py` | `MetaCycle` (build→filter→survive→emit) + `HeuristicProposer`/`LLMProposer`, `NoOpAttacker`/`LLMAttacker`, `MetaCycleResult`, `DEFAULT_MIN_CYCLES`, event-log I/O. |
 | `cli/dks.py` | `tessellum dks` — the 4-mode entrypoint (run / `--report` / `--calibrate` / `--meta`) + trace serialization. |
+| `dks/core.py` +`retrieval_client.py`, `retrieval/hybrid.py` **(P1)** | Provenance floor: optional `t_claim`/`t_evidence`/`t_outcome` stamps on `DKSObservation`/`DKSWarrant`, the fail-closed `temporal_holdout_valid` gate, and an opt-in BM25 `snippet` span threaded into the argument context. Default cycle byte-identical. |
+| `dks/capability.py` **(P2)** | The DKS↔runtime seam: the `Capability` port + warrant-bearing `CapabilityResult` envelope, cycle/run adapters, and a non-writing `DKSExecutor` returning a `DKSCandidate`. Opt-in `dks_inquiry` capability; default lane path unchanged. |
+| `dks/compiler.py` **(P3)** | `DKSNoteCompiler` — pure, zero-LLM `DKSCycleResult` → `NoteIntentGraph`; rides the shipped project→write-closure→capsule→publish substrate as one invariant-closed capsule. |
+| `dks/validation.py` **(P4)** | Independent validation: `classify_claim` routes a warrant to a per-type scorer; `ClaimTypeRouter`/`validate_claims` feed the reused composer `certify(...)` so a surviving argument no longer self-certifies. Ships only the deterministic `temporal_holdout_scorer`; others injected. |
+| `dks/autonomy.py` **(P5)** | Outer control plane: VOI-ranked `InquiryFrontier`, `voi_stop_decision` (understood vs truncated), `run_bounded_inquiry` (reuses `composer.run_planner_loop`), and the `AuthorityLadder` (certifying stages capped below full auto). |
+| `dks/ontology.py` **(P6)** | ECS four-axis separation: `BBContract` (role as data contract, no successor), `acceptance_from_labelling`/`AcceptanceVerdict` (acceptance off the Dung label + an independent check), `InquiryMove`/`DKS_MOVE_ALGEBRA`/`plan_move` (moves as policy, not a BB-type walk). Alongside `BBType`, not replacing it. |
+| `dks/elevation.py` **(P7)** | Self-driving elevation: `MaturityProfile`, the validator-issued revocable `DeepUnderstandingCertificate` (rejects backend self-certify), VOI `QuestionValue`/`rank_questions`, and the anti-hack `MoveRanker`/`move_reward` (orders only — `commit`/`certify` raise). |
 
 ## Core (`dks/core.py`)
 
@@ -162,6 +169,81 @@ Fields: `cycles`, `warrant_changes`, `final_warrants`, `elapsed_ms`, `backend_id
 - `MetaCycle(observation, min_cycles=20, target_failure=None, dry_run=True, proposer=HeuristicProposer(), attacker=NoOpAttacker(), survive_threshold="majority")` — `run() -> MetaCycleResult`. Below `min_cycles` → empty result. Filter drops duplicates, already-existing `BB_SCHEMA` edges, and retractions of edges absent from `BB_SCHEMA` (retracting a core/DKS-extension edge that IS in `BB_SCHEMA` is allowed). Events emitted only when `dry_run=False` (`runtime.py:562-713`).
 - `load_event_log(path) -> tuple[SchemaEditEvent, ...]`; `write_event_log(path, events, *, append=True)` (`runtime.py:775-810`).
 
+## The P1–P7 arc
+
+An additive, opt-in outer engine over the base cycle (design: [../dks.md](../dks.md#the-outer-engine-provenance-validation-and-self-driving-autonomy)). Every module below is unused by the default cycle. Reuses the Composer substrate: `NoteIntentGraph`, `certify`, `run_planner_loop`.
+
+### Provenance floor — P1 (`dks/core.py`, `dks/retrieval_client.py`, `retrieval/hybrid.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `DKSObservation` / `DKSWarrant` `t_claim`/`t_evidence`/`t_outcome` | New optional stamps (each `str \| None = None`): when claimed / evidence known / outcome observable. |
+| `temporal_holdout_valid(t_claim, t_evidence, t_outcome) -> bool` | Fail-closed: true only if the outcome is strictly after every info time; false on leakage / missing outcome / no anchor. |
+| `RetrievalHit.snippet` / `HybridHit.snippet` (`str \| None = None`) | The BM25 quoted span an argument cites; appended last so positional construction is unaffected. |
+| `RetrievalClient.search(..., snippet_length=30)` / `hybrid_search(..., snippet_length=None)` | DKS turns spans on by default; the shared search stays off by default (non-DKS callers byte-identical). |
+
+### Capability seam — P2 (`dks/capability.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `Capability` (Protocol) | The port DKS owns: `invoke(request) -> CapabilityResult`. The runtime depends on it. |
+| `CapabilityResult` (frozen) | Warrant-bearing envelope: `status`, `effects`, `diagnostics`, `promotion_eligibility`, `warrant`, `qualifier`, `replay_token`, `payload`. |
+| `CapabilityEffect` (frozen) | One runtime-neutral proposed vault effect: `kind`, `folgezettel`, `bb_role`, `payload`. |
+| `CapabilityStatus` / `PromotionEligibility` | `"ok"\|"empty"\|"error"` / `"eligible"\|"needs_validation"\|"ineligible"`. |
+| `adapt_cycle_result(cycle)` / `adapt_run_result(run)` | Wrap a cycle/run into a `CapabilityResult` (no kernel change). |
+| `DKSExecutor(capability).execute(request, *, base_snapshot_id=None, parent_fz=None) -> DKSCandidate` | Workflow-side driver; never writes / commits / promotes. |
+| `DKSCandidate` (frozen) | A candidate transaction: `result`, `base_snapshot_id`, `parent_fz`. |
+
+### Note compiler — P3 (`dks/compiler.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `DKSNoteCompiler().compile(cycle: DKSCycleResult) -> NoteIntentGraph` | Pure, zero-LLM, stateless. obs→`empirical_observation`, arg→`argument`, defeated attack→`counter_argument`, regularity→`model`, revision→versioned `procedure`; role-keyed FZ paths; epistemic `depends_on` back-edges → one invariant-closed capsule. |
+
+### Independent validation — P4 (`dks/validation.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `ClaimType` | `Literal["definitional","support","predictive","deployed"]`. |
+| `classify_claim(warrant) -> ClaimType` | Deterministic: `deployed`/`support` qualifier prefix wins; else `t_outcome` present ⇒ predictive; else definitional. |
+| `temporal_holdout_scorer(claim, warrant) -> ClaimScore` | The one shipped scorer: deterministic; abstains on leakage / unrecorded outcome; grounds (1.0) only on a confirmed held outcome. |
+| `ClaimTypeRouter(scorers=None)` | Per-type scorer table (default predictive only; others injected); `.score_one(claim, warrant)`, `.as_claim_scorer(warrants_by_claim_id)`. Unknown type / no warrant → abstain. |
+| `validate_claims(claims, warrants_by_claim_id, *, thresholds, router=None, note_domain=None) -> CertificateResult` | Route each warrant → reused composer `certify(...)`; `.verdict` is the `GroundingVerdict` the grounding seam consumes. |
+
+### Autonomy loop — P5 (`dks/autonomy.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `EpistemicObligation` (frozen) | `obligation_id`, `question`, `expected_information_gain=0.0`, `priority=0`, `resolved=False`. |
+| `InquiryFrontier(obligations=[])` | Ledger; `add`, `open()` sorted by (−EIG, −priority, id), `resolve`, `deficit() -> Deficit`. |
+| `voi_stop_decision(frontier, *, lambda_cost) -> StopDecision` | Stop *understood* on fixpoint / all open EIG < λ; else continue. |
+| `StopDecision` / `TerminationReason` | `should_stop`, `reason`, `understood` / `"fixpoint"\|"retired_below_lambda"\|"budget_exhausted"`. |
+| `run_bounded_inquiry(frontier, *, propose, policy=None) -> LoopResult` | Delegates to the shipped `composer.run_planner_loop` (inherits its proven halting). |
+| `AuthorityLadder(rungs={}, kill_switched=False)` | Per-stage rungs; `rung_for`, `set_rung`, `can_act_autonomously`, `odd_exit()`, `kill()`. ACCEPT/RECONCILE permanently capped below `auto`. |
+| `AuthorityRung` / `Stage` / `AuthorityLadderError` | 4 rungs `suggest→auto_with_veto→auto_in_odd→auto` / 6 stages `DETECT…RECONCILE` / raised on a capped-stage escalation. |
+
+### ECS ontology — P6 (`dks/ontology.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `BBContract` (frozen) | Axis 1 — role as a data contract: `role`, `key_question`, `required_content=()`, `materializer`. **No `next_bb`** (a role types output, never routes). |
+| `InquiryMove` (frozen) / `InquiryMoveKind` / `DKS_MOVE_ALGEBRA` | Axis 2 — a move as a policy over role × relation; the 6 moves (observe/argue/challenge/generalize/revise/connect); the canonical algebra dict. |
+| `DialecticRelation` | Axis 3 edge label — `Literal["supports","attacks","rebuts","undercuts"]`. |
+| `acceptance_from_labelling(argument_fz, grounded_labelling, *, independently_validated=False) -> AcceptanceVerdict` | Dung-in ⇒ `accepted` only if independently validated, else `dialectically_adequate`; out⇒`defeated`; undec/absent⇒`undecided`. |
+| `AcceptanceVerdict` / `AcceptanceStatus` | `status`, `label`. |
+| `plan_move(open_obligation_kinds) -> InquiryMove \| None` | Picks the next move in canonical dialectic order; never dispatches on a `(BBType, BBType)` pair. |
+
+### Elevation — P7 (`dks/elevation.py`)
+
+| Symbol | Role / signature |
+|---|---|
+| `MaturityProfile` / `MaturityLevel` / `CAPABILITIES` | Per-capability map; `ABSENT<CLAIMED<SUPPORTED<CHALLENGED<VALIDATED`; the 9 profiled capabilities. `.is_mature_enough(*, min_level="VALIDATED", required=None)`. |
+| `issue_certificate(inquiry_id, profile, *, issuer, reasoning_backend_id, …) -> DeepUnderstandingCertificate` | Issues only if `issuer` ≠ reasoning backend (normalized compare) AND profile mature; else `CertificateError`. |
+| `DeepUnderstandingCertificate` (frozen) / `revoke(cert)` | Revocable attestation: `inquiry_id`, `issuer`, `profile`, `ranked_future_questions`, `invalidation_triggers`, `revoked`. |
+| `QuestionValue` / `rank_questions(values) -> list[str]` | Auditable VOI: `value = gain + 0.5·novelty − cost`; ranked desc, ties by id. |
+| `move_reward(inputs, *, reciprocal_cap=2) -> float` / `RewardInputs` | Un-inflatable: 0 until validated; self-links derived from data; reciprocals capped; hubs discounted; counts clamped ≥0. |
+| `MoveRanker(reciprocal_cap=2).order(candidates) -> list[str]` / `RankerAuthorityError` | Orders moves only over a frozen snapshot; `.commit`/`.certify` raise. |
+
 ## Import surface (`tessellum.dks`)
 
 Re-exported from `__init__.py:36-201`:
@@ -173,6 +255,13 @@ Re-exported from `__init__.py:36-201`:
 - **P-side retrieval:** `RetrievalClient`, `RetrievalHit`.
 - **FSM:** `BBPath`, `BBPathStep`, `DKSStateMachine`, `TransitionHandler`.
 - **Meta-DKS:** `DEFAULT_MIN_CYCLES`, `META_SCHEMA`, `MetaEdgeType`, `MetaObservation`, `SchemaEditProposal`, `SCHEMA_EDIT_PROPOSAL_KIND`, `MetaCounterArgument`, `META_ATTACK_KIND`, `SURVIVE_THRESHOLD`, `MetaCycle`, `MetaCycleResult`, `Proposer`, `HeuristicProposer`, `LLMProposer`, `Attacker`, `NoOpAttacker`, `LLMAttacker`, `load_event_log`, `write_event_log`.
+- **Provenance (P1):** `temporal_holdout_valid`.
+- **Capability seam (P2):** `Capability`, `CapabilityResult`, `CapabilityEffect`, `CapabilityStatus`, `PromotionEligibility`, `DKSCandidate`, `DKSExecutor`, `adapt_cycle_result`, `adapt_run_result`.
+- **Note compiler (P3):** `DKSNoteCompiler`.
+- **Validation (P4):** `ClaimType`, `ClaimTypeRouter`, `classify_claim`, `temporal_holdout_scorer`, `validate_claims`.
+- **Autonomy (P5):** `EpistemicObligation`, `InquiryFrontier`, `StopDecision`, `AuthorityLadder`, `AuthorityLadderError`, `run_bounded_inquiry`, `voi_stop_decision`.
+- **ECS ontology (P6):** `BBContract`, `InquiryMove`, `DKS_MOVE_ALGEBRA`, `AcceptanceVerdict`, `acceptance_from_labelling`, `plan_move`.
+- **Elevation (P7):** `MaturityProfile`, `DeepUnderstandingCertificate`, `CertificateError`, `issue_certificate`, `revoke`, `QuestionValue`, `rank_questions`, `RewardInputs`, `move_reward`, `MoveRanker`, `RankerAuthorityError`.
 
 ## CLI (`cli/dks.py`)
 
