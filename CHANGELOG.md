@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-07-25
+
 ### DKS refactor — P7 self-driving elevation (research-grade) — 2026-07-25
 
 The maturity / certificate / ranker apparatus (decision b4a + the elevation contract) — built LAST, because this is where reward hacking and self-certification bite hardest. New `dks/elevation.py`; pure; +15 tests.
