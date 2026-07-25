@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P2 the seam: CapabilityResult port + DKSExecutor + dks_inquiry — 2026-07-25
+
+The highest-leverage DKS-specific work (decision b1a): make the kernel invokable by the runtime through a port DKS OWNS, without the kernel importing the runtime's shapes (the Dependency Rule / P1). Additive; a new `dks/capability.py`; the DKS + runtime suites stay green (+9 new).
+
+- **A2.1 — the port + a warrant-bearing envelope, declared inside `dks/`.** `Capability` is a `runtime_checkable` `Protocol` (`invoke(request) -> CapabilityResult`); `CapabilityResult` carries `status`, proposed `effects[]`, `diagnostics`, `promotion_eligibility`, the Toulmin `warrant` + calibrated `qualifier`, a deterministic `replay_token`, and the un-changed kernel result as `payload`. The runtime depends on this type; DKS never depends on the runtime.
+- **A2.2 — adapt, do not merge.** `adapt_cycle_result` / `adapt_run_result` wrap a `DKSCycleResult` / `DKSRunResult` as a typed payload *inside* a `CapabilityResult` (deriving proposed effects per FZ node + surfacing the licensing warrant); neither internal shape changes. A gated cycle → `empty`; a warrant-revising loop → `needs_validation` (the P4 hook).
+- **A2.3 — `DKSExecutor` (workflow-side, never writes).** Invokes the kernel through the port and returns a `DKSCandidate` (result + pinned base snapshot + parent FZ) — it cannot commit, and exposes no write/promote/commit surface (P2 replay-below-freeze: emit an intent, let deterministic P3 render + promote).
+- **A2.4 — register `dks_inquiry` at runtime.** `runtime/routing.py` gains an additive capability registry keyed on the port (`register_capability`/`get_capability_factory`/`is_capability_registered` + `NATIVE_DIGESTION`/`DKS_INQUIRY` names). The shipped lane→`native_digestion` routing is byte-identical; nothing selects `dks_inquiry` automatically. `routing.py` does NOT import `dks` (the port is duck-typed), so there is no cycle.
+- New `tests/smoke/test_dks_p2.py` (9): port conformance, CLI↔port equivalence on a fixed request, warrant/qualifier/replay-token surfacing, executor-returns-candidate (no write surface), registry drives `dks_inquiry`, native lane routing unchanged.
+
 ### DKS refactor — P1 provenance floor (source spans + tri-temporal time) — 2026-07-25
 
 Gives every empirical claim a citation the P4 validators and the P7 reward can check. Additive; the DKS + retrieval + indexer + composer suites stay green (+9 new).

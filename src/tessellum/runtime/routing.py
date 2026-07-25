@@ -52,3 +52,42 @@ def route_lane(lane: str, *, skills_dir: Path | str) -> DigestionRoute:
         building_block_hint=bb_hint,
         source_kind=source_kind,
     )
+
+
+# ── P2 (b1a): capability registry keyed on the port ──────────────────────────
+#
+# The runtime routes ``native_digestion`` today (route_lane above, unchanged).
+# P2 adds ``dks_inquiry`` as a SECOND capability so the supervisor can drive the
+# DKS kernel through the SAME commit tail. The registry is keyed by capability
+# name; a value is a zero-arg factory returning a
+# :class:`tessellum.dks.capability.Capability` (the port). This stays additive:
+# nothing selects ``dks_inquiry`` automatically — a caller opts in by name, and
+# the shipped lane→native_digestion path is byte-identical.
+
+NATIVE_DIGESTION = "native_digestion"
+DKS_INQUIRY = "dks_inquiry"
+
+_CAPABILITY_REGISTRY: dict[str, object] = {}
+
+
+class CapabilityNotRegistered(RoutingError):
+    pass
+
+
+def register_capability(name: str, factory: object) -> None:
+    """Register a capability factory under ``name`` (idempotent overwrite)."""
+    _CAPABILITY_REGISTRY[name] = factory
+
+
+def get_capability_factory(name: str) -> object:
+    """Look up a registered capability factory, or raise if absent."""
+    if name not in _CAPABILITY_REGISTRY:
+        raise CapabilityNotRegistered(
+            f"capability {name!r} is not registered; known: "
+            f"{sorted(_CAPABILITY_REGISTRY)}"
+        )
+    return _CAPABILITY_REGISTRY[name]
+
+
+def is_capability_registered(name: str) -> bool:
+    return name in _CAPABILITY_REGISTRY

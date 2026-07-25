@@ -61,6 +61,16 @@ from tessellum.dks.core import (
     # Helpers
     aggregate_warrant_changes,
 )
+from tessellum.dks.capability import (
+    # P2 (b1a) — the DKS↔runtime seam (Ports & Adapters)
+    Capability,
+    CapabilityEffect,
+    CapabilityResult,
+    DKSCandidate,
+    DKSExecutor,
+    adapt_cycle_result,
+    adapt_run_result,
+)
 from tessellum.dks.retrieval_client import (
     # P-side retrieval client (warrant-grounding evidence fetch)
     RetrievalClient,
@@ -146,6 +156,14 @@ __all__ = [
     "allocate_cycle_fz",
     # Provenance (P1)
     "temporal_holdout_valid",
+    # Seam (P2)
+    "Capability",
+    "CapabilityEffect",
+    "CapabilityResult",
+    "DKSCandidate",
+    "DKSExecutor",
+    "adapt_cycle_result",
+    "adapt_run_result",
     # Runtime
     "DKSCycle",
     "DKSRunner",
