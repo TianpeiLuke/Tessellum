@@ -4,6 +4,19 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P7 self-driving elevation (research-grade) — 2026-07-25
+
+The maturity / certificate / ranker apparatus (decision b4a + the elevation contract) — built LAST, because this is where reward hacking and self-certification bite hardest. New `dks/elevation.py`; pure; +15 tests.
+
+- **A7.1 — knowledge-maturity profile + `DeepUnderstandingCertificate`.** A 9-capability `MaturityProfile` (ABSENT → VALIDATED). `issue_certificate` is issued ONLY by an independent validator — never the reasoning backend (the mover-is-never-the-judge rule, P3; the issuer/backend ids are normalized before comparison so a near-identical id cannot self-certify) — and only for a mature profile (independent_validation / warrant / provenance at VALIDATED). The certificate carries ranked future questions + invalidation triggers and is `revoke`-able.
+- **A7.2 — hand-designed `V(q)` first.** `QuestionValue` + `rank_questions` rank candidate questions by a transparent value-of-information score, to be run + audited in production before any learning.
+- **A7.3 — the anti-hacking reward CONSTRUCTION (b4a).** `move_reward` is computed over a FROZEN published snapshot the policy cannot write to: **zero** before independent validation; self-cites are discounted BY CONSTRUCTION (derived from `node_id ∈ inbound_from`, not a trusted caller count — the FATAL self-citation attack cannot inflate it even with an understated count); reciprocal links capped and hub inbound discounted (seed-anchored-TrustRank-shaped, not raw in-degree/PPR, which correlate only at ρ = 0.554 yet remain forgeable); all counts clamped ≥ 0 so out-of-domain negatives can't inflate. `MoveRanker.order` orders moves by this reward and has NO `commit`/`certify`/`promote` — those raise `RankerAuthorityError` (the ranker never becomes the commit authority or the certificate). The offline-RL policy fit (BC → CQL-pessimistic) is the standing research prerequisite and is not bundled; what ships is the un-inflatable reward + the authority invariant.
+- New `tests/smoke/test_dks_p7.py` (15). Adversarially reviewed: 0 correctness bugs; the 3 hardening nits (self-cite-by-construction, negative-count clamp, id normalization) fixed pre-push.
+
+### DKS refactor P0–P7 complete
+
+All eight phases of `plan_dks_refactor_implementation.md` (FZ 8c5b11a10e1b8) are implemented as additive, phase-flagged modules under `tessellum.dks`, each reusing the shipped dynamic-digestion substrate where the plan directs (P3 → `publication.py`/`write_closure.py`, P4 → `semantic_certificate.py`, P5 → `planner_loop.py`). After P0+P1 a *correct* CLI cycle with real provenance; after P2+P3 a runtime capability that promotes atomically; after P4 independently-validated promotion (Dung-`IN` no longer self-certifies); after P5 a bounded, staged-autonomous thinking machine; after P6 a clean four-axis ontology; after P7 validator-issued elevation with a hack-resistant move-ranker. Six of eight phases adversarially reviewed; the reviews caught and fixed real bugs before merge (P3 atomicity, P5 authority-cap invariant, P7 reward un-inflatability). The offline-RL move-ranker *training* and the calibration corpora for the semantic/predictive validators remain the standing research prerequisites the plan always named; the frameworks they plug into are shipped.
+
 ### DKS refactor — P6 ontology reform: ECS four-axis separation — 2026-07-25
 
 Stops BB type from impersonating three axes it never was (decision b7a) — mostly SUBTRACTION plus a small additive model. New `dks/ontology.py`; +7 tests, +1 reformed fsm test.

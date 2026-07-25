@@ -102,6 +102,21 @@ from tessellum.dks.ontology import (
     acceptance_from_labelling,
     plan_move,
 )
+from tessellum.dks.elevation import (
+    # P7 (b4a + contract) — maturity profile, validator-issued certificate,
+    # V(q), and the anti-hacking move-ranker (orders only, never commits)
+    CertificateError,
+    DeepUnderstandingCertificate,
+    MaturityProfile,
+    MoveRanker,
+    QuestionValue,
+    RankerAuthorityError,
+    RewardInputs,
+    issue_certificate,
+    move_reward,
+    rank_questions,
+    revoke,
+)
 from tessellum.dks.retrieval_client import (
     # P-side retrieval client (warrant-grounding evidence fetch)
     RetrievalClient,
@@ -218,6 +233,18 @@ __all__ = [
     "InquiryMove",
     "DKS_MOVE_ALGEBRA",
     "plan_move",
+    # Self-driving elevation (P7)
+    "MaturityProfile",
+    "DeepUnderstandingCertificate",
+    "CertificateError",
+    "issue_certificate",
+    "revoke",
+    "QuestionValue",
+    "rank_questions",
+    "RewardInputs",
+    "move_reward",
+    "MoveRanker",
+    "RankerAuthorityError",
     # Runtime
     "DKSCycle",
     "DKSRunner",
