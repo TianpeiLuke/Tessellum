@@ -169,6 +169,7 @@ from tessellum.composer.digestion import (
     DigestionResult,
     PhaseOutcome,
     run_digestion_pipeline,
+    run_execute_wave,
 )
 from tessellum.composer.proposals import (
     AddNavigation,
@@ -195,8 +196,11 @@ from tessellum.composer.proposals import (
     plan_revision_hash,
 )
 from tessellum.composer.corpus_digestion import (
+    CorpusDigestionResult,
     CorpusPlanningResult,
+    SubPlanExecution,
     SubPlanOutcome,
+    run_corpus_digestion,
     run_corpus_planning_wave,
 )
 from tessellum.composer.corpus_plan import (
@@ -418,6 +422,7 @@ __all__ = [
     "run_sign_off",
     # Digestion phase driver (plan → augment → review → execute)
     "run_digestion_pipeline",
+    "run_execute_wave",
     "DigestionResult",
     "PhaseOutcome",
     "PHASE_SKILLS",
@@ -468,10 +473,13 @@ __all__ = [
     "DEFAULT_CORPUS_LEAF_MAX_CHARS",
     "MemberExcerpt",
     "build_corpus_leaf",
-    # corpus_digestion (M3)
+    # corpus_digestion (M3 + M4)
     "SubPlanOutcome",
     "CorpusPlanningResult",
     "run_corpus_planning_wave",
+    "SubPlanExecution",
+    "CorpusDigestionResult",
+    "run_corpus_digestion",
     # Create-only staging overlay writer (P2, A2.5)
     "OverlayWriter",
     "OverlayError",

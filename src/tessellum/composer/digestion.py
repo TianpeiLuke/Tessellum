@@ -156,6 +156,78 @@ def _collect_structured(run: RunResult) -> dict[str, Any]:
     return merged
 
 
+def run_execute_wave(
+    plan_doc: dict,
+    *,
+    skills_dir: Path | str,
+    backend: LLMBackend,
+    vault_root: Path,
+    dry_run: bool = False,
+    execute_max_workers: int = 4,
+    budget: RunBudget | None = None,
+    context_assembler: ContextAssembler | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
+    **execute_kwargs: Any,
+) -> RunResult:
+    """Run ONLY the execute fan-out wave over an accepted ``plan_doc`` (M4 seam).
+
+    Factored out of :func:`run_digestion_pipeline` so the corpus execute wave
+    (:func:`~tessellum.composer.corpus_digestion.run_corpus_digestion`) can
+    promote an ALREADY-ACCEPTED sub-plan (from an M3 ``stop_after="review"``
+    run) as its own transaction WITHOUT re-planning it. Byte-identical to the
+    execute half of ``run_digestion_pipeline``:
+
+    - **P2b projection (OPT-IN):** if ``plan_doc["note_intent_graph"]`` is
+      present, derive execute leaves from its deterministic projection (one
+      BB-atomic leaf per note intent). A present-but-invalid graph fails loud.
+    - Else fall back to ``plan_doc["execute_leaves"]`` or, absent that, a single
+      leaf carrying the whole ``plan_doc`` (the execute skill fans out from the
+      plan it reads).
+
+    ``**execute_kwargs`` are forwarded to :func:`run_pipeline_dynamic` (e.g.
+    ``close_gate``, ``manifest``, ``wave_gate``, ``informed_fixer``,
+    ``max_fix_rounds``, ``run_id``, ``generation``).
+
+    Fail-soft: when no ``context_assembler`` is passed, defaults a head+tail
+    ``WindowedAssembler`` sized just under ``HARD_PROMPT_CAP_CHARS`` (the same
+    default ``run_digestion_pipeline`` gives its linear phases) so an oversized
+    execute prompt truncates + warns instead of tripping the hard cap and
+    erroring the wave. The corpus execute path (which calls this directly) thus
+    gets the same protection as the single-doc pipeline.
+    """
+    if context_assembler is None:
+        context_assembler = WindowedAssembler(max_chars=HARD_PROMPT_CAP_CHARS - 4_096)
+    compiled = compile_skill(Path(skills_dir) / f"{PHASE_SKILLS['execute']}.md")
+    graph_spec = plan_doc.get("note_intent_graph")
+    if graph_spec is not None:
+        graph = (
+            graph_spec
+            if isinstance(graph_spec, NoteIntentGraph)
+            else NoteIntentGraph.model_validate(graph_spec)
+        )
+        execute_leaves = project_note_intent_graph(graph)
+    else:
+        execute_leaves = plan_doc.get("execute_leaves")
+        if not isinstance(execute_leaves, list) or not execute_leaves:
+            execute_leaves = [dict(plan_doc)]
+    return run_pipeline_dynamic(
+        compiled,
+        leaves=execute_leaves,
+        backend=backend,
+        vault_root=vault_root,
+        dry_run=dry_run,
+        max_workers=execute_max_workers,
+        budget=budget,
+        context_assembler=context_assembler,
+        cancellation_check=cancellation_check,
+        effect_guard=effect_guard,
+        effect_recorder=effect_recorder,
+        **execute_kwargs,
+    )
+
+
 def run_digestion_pipeline(
     *,
     skills_dir: Path | str,
@@ -334,32 +406,13 @@ def run_digestion_pipeline(
     # ── execute: the fan-out wave (one leaf per planned note) ───────────────
     if cancellation_check is not None and cancellation_check():
         raise InterruptedError("digestion cancelled before execute")
-    execute_compiled = compile_skill(skills_dir / f"{PHASE_SKILLS['execute']}.md")
-    # P2b wiring (OPT-IN): if the plan produced a typed NoteIntentGraph, derive
-    # the execute leaves from its deterministic projection (one BB-atomic leaf
-    # per note intent). If the key is ABSENT, fall through to the shipped path
-    # BYTE-IDENTICALLY. A present-but-invalid graph is a bug → fail loud.
-    graph_spec = plan_doc.get("note_intent_graph")
-    if graph_spec is not None:
-        graph = (
-            graph_spec
-            if isinstance(graph_spec, NoteIntentGraph)
-            else NoteIntentGraph.model_validate(graph_spec)
-        )
-        execute_leaves = project_note_intent_graph(graph)
-    else:
-        execute_leaves = plan_doc.get("execute_leaves")
-        if not isinstance(execute_leaves, list) or not execute_leaves:
-            # Default: one leaf carrying the whole plan_doc (the execute skill's
-            # per-leaf step fans out from the plan it reads).
-            execute_leaves = [dict(plan_doc)]
-    execute_run = run_pipeline_dynamic(
-        execute_compiled,
-        leaves=execute_leaves,
+    execute_run = run_execute_wave(
+        plan_doc,
+        skills_dir=skills_dir,
         backend=backend,
         vault_root=vault_root,
         dry_run=dry_run,
-        max_workers=execute_max_workers,
+        execute_max_workers=execute_max_workers,
         budget=budget,
         context_assembler=context_assembler,
         cancellation_check=cancellation_check,
@@ -389,5 +442,6 @@ __all__ = [
     "PHASE_SKILLS",
     "PhaseOutcome",
     "DigestionResult",
+    "run_execute_wave",
     "run_digestion_pipeline",
 ]

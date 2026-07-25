@@ -37,9 +37,19 @@ from tessellum.composer.corpus_plan import (
     build_corpus_leaf,
 )
 from tessellum.composer.credential_pool import RunBudget
-from tessellum.composer.digestion import DigestionResult, run_digestion_pipeline
+from tessellum.composer.digestion import (
+    DigestionResult,
+    run_digestion_pipeline,
+    run_execute_wave,
+)
 from tessellum.composer.knowledge_plan import BundleMember, SourceBundle
 from tessellum.composer.llm import LLMBackend
+from tessellum.composer.scheduler import RunResult
+from tessellum.composer.signoff import (
+    HumanPrompt,
+    SignOffPolicy,
+    SignOffResult,
+)
 
 
 @dataclass(frozen=True)
@@ -281,8 +291,230 @@ def _blocked_reason(result: DigestionResult) -> str:
     return "not accepted"
 
 
+# ── M4 — corpus execute wave (per-sub-plan transactions) ────────────────────
+
+
+@dataclass(frozen=True)
+class SubPlanExecution:
+    """One accepted sub-plan's EXECUTE outcome within the corpus wave (M4).
+
+    Attributes:
+        sub_id: The sub-objective's id.
+        priority: Its wave rung.
+        promoted: ``True`` iff the sub-plan's execute wave completed clean
+            (``error_count == 0``); ``False`` marks it ``blocked``.
+        status: ``"promoted"`` | ``"blocked"``.
+        run: The execute :class:`RunResult` (``None`` if execution raised
+            before producing one).
+        reason: A short cause when ``blocked``.
+    """
+
+    sub_id: str
+    priority: str
+    promoted: bool
+    status: str
+    run: RunResult | None = None
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class CorpusDigestionResult:
+    """The end-to-end outcome of :func:`run_corpus_digestion` (M4).
+
+    Attributes:
+        bundle_id / objective: Corpus identity.
+        planning: The M3 :class:`CorpusPlanningResult` (which sub-objectives
+            produced an accepted plan).
+        corpus_sign_off: The whole-corpus-plan sign-off (``None`` when the
+            corpus gate was not run — e.g. every sub-plan blocked at planning,
+            or the default headless policy approved without a human rung).
+        executions: Per-accepted-sub-plan EXECUTE outcomes (in wave order).
+        bundle_status: ``"complete"`` (every sub-objective promoted) |
+            ``"partially_promoted"`` (some promoted, some blocked) |
+            ``"blocked"`` (none promoted) — the a3a bundle-completion rollup.
+    """
+
+    bundle_id: str
+    objective: str
+    planning: "CorpusPlanningResult"
+    corpus_sign_off: SignOffResult | None
+    executions: tuple[SubPlanExecution, ...]
+    bundle_status: str
+
+
+def run_corpus_digestion(
+    corpus_plan: CorpusPlan,
+    bundle: SourceBundle,
+    member_contents: dict[int, str],
+    *,
+    skills_dir: Path | str,
+    backend: LLMBackend,
+    vault_root: Path,
+    dry_run: bool = False,
+    budget: RunBudget | None = None,
+    context_assembler: ContextAssembler | None = None,
+    cancellation_check: Callable[[], bool] | None = None,
+    effect_guard: Callable[[], ContextManager[None]] | None = None,
+    effect_recorder: Callable[[Path], None] | None = None,
+    corpus_sign_off_policy: SignOffPolicy | None = None,
+    human_prompt: HumanPrompt | None = None,
+    execute_max_workers: int = 4,
+    **execute_kwargs: Any,
+) -> CorpusDigestionResult:
+    """Digest a whole corpus: plan every sub-objective (M3), then EXECUTE each
+    accepted sub-plan as its OWN transaction (M4) — the human-supervised
+    milestone.
+
+    Sequence:
+
+    1. **Plan** — :func:`run_corpus_planning_wave` produces one accepted (or
+       blocked) plan per sub-objective (each already passed its own review→ready
+       sign-off inside the sub-plan pipeline).
+    2. **Corpus gate** — a WHOLE-CORPUS-PLAN sign-off over the total blast radius
+       (sum of accepted sub-plans' note counts). With the default headless
+       policy it approves; pass ``corpus_sign_off_policy`` with ``use_human`` +
+       ``human_prompt`` to require human approval before promoting a high-blast
+       corpus. A ``rejected`` / ``needs_human`` corpus gate promotes NOTHING.
+    3. **Execute** — each ACCEPTED sub-plan is executed in the corpus plan's
+       :meth:`~tessellum.composer.corpus_plan.CorpusPlan.wave_order` (priority +
+       dependency; M5 refines scheduling) via
+       :func:`~tessellum.composer.digestion.run_execute_wave` — its OWN
+       snapshot-pinned transaction. A sub-plan whose execute wave errors is
+       ``blocked``; the others still promote (a weak sub-plan blocks only
+       itself). Blocked-at-planning sub-objectives are never executed.
+
+    Returns a :class:`CorpusDigestionResult` with the planning result, the
+    corpus sign-off, per-sub-plan execute outcomes, and the bundle-completion
+    rollup (``complete`` | ``partially_promoted`` | ``blocked``).
+    """
+    planning = run_corpus_planning_wave(
+        corpus_plan, bundle, member_contents,
+        skills_dir=skills_dir, backend=backend, vault_root=vault_root,
+        dry_run=dry_run, budget=budget, context_assembler=context_assembler,
+        cancellation_check=cancellation_check, effect_guard=effect_guard,
+    )
+    accepted = [o for o in planning.sub_plans if o.accepted]
+
+    # ── corpus gate: sign off the WHOLE corpus plan before any promotion ────
+    # Each sub-plan already passed its own review→ready sign-off INSIDE the
+    # sub-plan pipeline (M3). The corpus gate adds a whole-corpus human rung on
+    # HIGH TOTAL BLAST: when the policy enables the human rung and the summed
+    # note count of the accepted sub-plans exceeds the threshold, a human must
+    # approve before ANY sub-plan is promoted. This is a corpus-scope escalation
+    # that does not need an agent rung (the sub-plans are already program-gated),
+    # so it is computed directly rather than via the agent-first sign-off ladder.
+    policy = corpus_sign_off_policy or SignOffPolicy(use_agent=False, use_human=False)
+    corpus_sign_off: SignOffResult | None = None
+    if accepted:
+        per_sub_notes = [int(o.plan_doc.get("total_notes") or 0) for o in accepted]
+        total_blast = sum(per_sub_notes)
+        # Fail CLOSED: if any accepted sub-plan reports no positive note count,
+        # the true blast is UNKNOWN — treat the corpus as high-blast so the
+        # human gate is never silently skipped on an unmeasurable corpus.
+        blast_unknown = any(n <= 0 for n in per_sub_notes)
+        high_blast = total_blast > policy.blast_radius_threshold or blast_unknown
+        if policy.use_human and human_prompt is not None and high_blast:
+            approved = bool(human_prompt())
+            corpus_sign_off = SignOffResult(
+                decision="approved" if approved else "rejected",
+                deciding_rung="human",
+                escalated=("human",),
+                reason=(
+                    f"corpus human gate ({total_blast} notes > "
+                    f"{policy.blast_radius_threshold} threshold)"
+                ),
+            )
+        elif policy.use_human and human_prompt is None and high_blast:
+            # Human rung requested for a high-blast corpus but no prompt wired →
+            # do NOT auto-promote; surface for an out-of-band decision.
+            corpus_sign_off = SignOffResult(
+                decision="needs_human",
+                deciding_rung="program",
+                reason=(
+                    f"corpus high blast ({total_blast} notes) needs human "
+                    "approval but no human_prompt was provided"
+                ),
+            )
+        else:
+            corpus_sign_off = SignOffResult(
+                decision="approved",
+                deciding_rung="program",
+                reason=(
+                    f"corpus program gate ({total_blast} notes ≤ "
+                    f"{policy.blast_radius_threshold} threshold or human rung off)"
+                ),
+            )
+        if corpus_sign_off.decision != "approved":
+            # Corpus gate did not approve → promote NOTHING (a3a: don't spend the
+            # execution wave on an unapproved corpus).
+            return CorpusDigestionResult(
+                bundle_id=bundle.bundle_id, objective=corpus_plan.objective,
+                planning=planning, corpus_sign_off=corpus_sign_off,
+                executions=(), bundle_status="blocked",
+            )
+
+    # ── execute each accepted sub-plan in wave order, as its own transaction ─
+    accepted_by_id = {o.sub_id: o for o in accepted}
+    executions: list[SubPlanExecution] = []
+    for sub_id in corpus_plan.wave_order():
+        outcome = accepted_by_id.get(sub_id)
+        if outcome is None:
+            continue  # blocked at planning → never executed
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError(
+                f"corpus digestion cancelled before executing {sub_id!r}"
+            )
+        try:
+            run = run_execute_wave(
+                outcome.plan_doc,
+                skills_dir=skills_dir, backend=backend, vault_root=vault_root,
+                dry_run=dry_run, execute_max_workers=execute_max_workers,
+                budget=budget, context_assembler=context_assembler,
+                cancellation_check=cancellation_check, effect_guard=effect_guard,
+                effect_recorder=effect_recorder, **execute_kwargs,
+            )
+        except InterruptedError:
+            raise
+        except Exception as exc:  # one sub-plan's execute failure isolates
+            executions.append(
+                SubPlanExecution(
+                    sub_id=sub_id, priority=outcome.priority, promoted=False,
+                    status="blocked", run=None,
+                    reason=f"execute raised: {type(exc).__name__}: {exc}"[:200],
+                )
+            )
+            continue
+        promoted = run.error_count == 0
+        executions.append(
+            SubPlanExecution(
+                sub_id=sub_id, priority=outcome.priority, promoted=promoted,
+                status="promoted" if promoted else "blocked", run=run,
+                reason=None if promoted else f"{run.error_count} execute error(s)",
+            )
+        )
+
+    promoted_count = sum(1 for e in executions if e.promoted)
+    # bundle rollup over ALL sub-objectives (planning-blocked count against the
+    # corpus): complete only if every sub-objective promoted.
+    if promoted_count == len(corpus_plan.sub_objectives):
+        bundle_status = "complete"
+    elif promoted_count == 0:
+        bundle_status = "blocked"
+    else:
+        bundle_status = "partially_promoted"
+
+    return CorpusDigestionResult(
+        bundle_id=bundle.bundle_id, objective=corpus_plan.objective,
+        planning=planning, corpus_sign_off=corpus_sign_off,
+        executions=tuple(executions), bundle_status=bundle_status,
+    )
+
+
 __all__ = [
     "SubPlanOutcome",
     "CorpusPlanningResult",
     "run_corpus_planning_wave",
+    "SubPlanExecution",
+    "CorpusDigestionResult",
+    "run_corpus_digestion",
 ]

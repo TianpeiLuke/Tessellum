@@ -22,7 +22,9 @@ from pathlib import Path
 from tessellum.composer import (
     CorpusPlan,
     MockBackend,
+    SignOffPolicy,
     SubObjective,
+    run_corpus_digestion,
     run_corpus_planning_wave,
     run_digestion_pipeline,
 )
@@ -60,7 +62,8 @@ def _write_phase_skills(skills_dir: Path) -> None:
            required=["ready"], prompt="Review sub {{leaf.sub_id}}")
     _skill("skill_tessellum_execute_digestion_plan", output_key="exec_out",
            required=["output_path", "body_markdown"],
-           materializer="body_markdown_to_file", aggregation="per_leaf")
+           materializer="body_markdown_to_file", aggregation="per_leaf",
+           prompt="Execute sub {{leaf.sub_id}}")
 
 
 def _mock(ready: bool = True) -> MockBackend:
@@ -185,9 +188,15 @@ def test_planning_wave_writes_no_note_files(tmp_path: Path) -> None:
     b = _bundle(4)
     plan = _corpus_plan(4)
     contents = {i: f"doc {i}" for i in range(4)}
-    run_corpus_planning_wave(plan, b, contents, skills_dir=sd, backend=_mock(),
-                             vault_root=vault)
-    # stop_after="review" → planning only; no note files materialized.
+    res = run_corpus_planning_wave(plan, b, contents, skills_dir=sd,
+                                   backend=_mock(), vault_root=vault)
+    # (a) execute-SKIPPED contract (not just file-absence): every accepted
+    # sub-plan stopped at review_accepted and NO execute phase ran.
+    for o in res.sub_plans:
+        assert o.result is not None
+        assert o.result.stopped_at == "review_accepted"
+        assert not any(p.phase == "execute" for p in o.result.phases if p.ran)
+    # (b) and, consequently, no note files materialized.
     written = list(vault.rglob("*.md")) if vault.exists() else []
     assert written == [], f"planning wave should write no notes, found {written}"
 
@@ -285,3 +294,194 @@ def test_stop_after_review_returns_accepted(tmp_path: Path) -> None:
     assert result.completed
     assert result.stopped_at == "review_accepted"
     assert not any(p.phase == "execute" for p in result.phases if p.ran)
+
+
+# ── M4: corpus execute wave (per-sub-plan transactions) ─────────────────────
+
+
+def test_corpus_digestion_all_promoted(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    vault = tmp_path / "vault"
+    b = _bundle(4)
+    plan = _corpus_plan(4)
+    contents = {i: f"doc {i}" for i in range(4)}
+    res = run_corpus_digestion(plan, b, contents, skills_dir=sd, backend=_mock(),
+                               vault_root=vault)
+    assert res.bundle_status == "complete"
+    assert res.planning.all_accepted
+    assert len(res.executions) == 2
+    assert all(e.promoted and e.status == "promoted" for e in res.executions)
+    # execute actually ran now (unlike the planning-only wave) → notes written.
+    assert list(vault.rglob("*.md")), "execute wave should materialize notes"
+
+
+def test_corpus_digestion_partial_when_one_sub_blocked_at_planning(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    plan = _corpus_plan(4)
+    # reject s2 at planning (review not-ready) → only s1 promotes.
+    backend = MockBackend(
+        default=json.dumps({
+            "plan_path": "plans/p.md", "plan_text": "# Plan", "ready": True,
+            "failures": [], "output_path": "notes/n.md", "body_markdown": "# N",
+            "total_notes": 2,
+        }),
+        responses={
+            "Review sub s2": json.dumps({
+                "plan_path": "plans/p.md", "plan_text": "# Plan", "ready": False,
+                "failures": ["s2 rejected"], "output_path": "notes/n.md",
+                "body_markdown": "# N", "total_notes": 2,
+            }),
+        },
+    )
+    res = run_corpus_digestion(plan, b, {i: f"doc {i}" for i in range(4)},
+                               skills_dir=sd, backend=backend, vault_root=tmp_path / "vault")
+    assert res.bundle_status == "partially_promoted"
+    # only the accepted sub-plan (s1) is executed; s2 (blocked at planning) is not.
+    assert [e.sub_id for e in res.executions] == ["s1"]
+    assert res.executions[0].promoted
+
+
+def test_corpus_digestion_executes_in_wave_order(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    # s2 is P1, s1 is P2 → wave order must put s2 (foundational) FIRST despite id.
+    plan = CorpusPlan(
+        bundle_id="corpus-bundle", objective="digest the corpus",
+        sub_objectives=(
+            SubObjective(sub_id="s1", topic="ops", priority="P2",
+                         member_ordinals=(0, 1), est_note_count=2),
+            SubObjective(sub_id="s2", topic="foundations", priority="P1",
+                         member_ordinals=(2, 3), est_note_count=2),
+        ),
+        bundle_member_count=4,
+    )
+    res = run_corpus_digestion(plan, b, {i: f"doc {i}" for i in range(4)},
+                               skills_dir=sd, backend=_mock(), vault_root=tmp_path / "vault")
+    assert res.bundle_status == "complete"
+    assert [e.sub_id for e in res.executions] == ["s2", "s1"]  # P1 before P2
+
+
+def test_corpus_gate_human_rejection_promotes_nothing(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    vault = tmp_path / "vault"
+    b = _bundle(4)
+    plan = _corpus_plan(4)  # 2 sub-plans × total_notes 2 = 4 blast
+    # threshold below total blast + human rejects → nothing promoted.
+    policy = SignOffPolicy(use_human=True, blast_radius_threshold=1)
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=_mock(), vault_root=vault,
+        corpus_sign_off_policy=policy, human_prompt=lambda: False,
+    )
+    assert res.bundle_status == "blocked"
+    assert res.corpus_sign_off is not None
+    assert res.corpus_sign_off.decision == "rejected"
+    assert res.executions == ()
+    assert not list(vault.rglob("*.md")), "rejected corpus must promote nothing"
+
+
+def test_corpus_gate_human_approval_promotes(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    vault = tmp_path / "vault"
+    b = _bundle(4)
+    plan = _corpus_plan(4)
+    policy = SignOffPolicy(use_human=True, blast_radius_threshold=1)
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=_mock(), vault_root=vault,
+        corpus_sign_off_policy=policy, human_prompt=lambda: True,
+    )
+    assert res.corpus_sign_off is not None
+    assert res.corpus_sign_off.decision == "approved"
+    assert res.corpus_sign_off.deciding_rung == "human"
+    assert res.bundle_status == "complete"
+    assert list(vault.rglob("*.md")), "approved corpus must promote (write notes)"
+
+
+def test_corpus_high_blast_needs_human_without_prompt_blocks(tmp_path: Path) -> None:
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    vault = tmp_path / "vault"
+    b = _bundle(4)
+    plan = _corpus_plan(4)
+    # human rung requested for high blast but NO prompt wired → needs_human, blocked.
+    policy = SignOffPolicy(use_human=True, blast_radius_threshold=1)
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=_mock(), vault_root=vault,
+        corpus_sign_off_policy=policy, human_prompt=None,
+    )
+    assert res.corpus_sign_off is not None
+    assert res.corpus_sign_off.decision == "needs_human"
+    assert res.bundle_status == "blocked"
+    assert res.executions == ()
+    assert not list(vault.rglob("*.md")), "needs_human corpus must promote nothing"
+
+
+def test_corpus_gate_low_blast_use_human_auto_approves(tmp_path: Path) -> None:
+    # Low total blast + use_human → the else-branch auto-approves at the program
+    # rung WITHOUT prompting the human (no needless escalation).
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    plan = _corpus_plan(4)  # total blast = 4
+    prompted = {"called": False}
+
+    def _human() -> bool:
+        prompted["called"] = True
+        return True
+
+    policy = SignOffPolicy(use_human=True, blast_radius_threshold=100)  # above 4
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=_mock(), vault_root=tmp_path / "vault",
+        corpus_sign_off_policy=policy, human_prompt=_human,
+    )
+    assert res.corpus_sign_off is not None
+    assert res.corpus_sign_off.decision == "approved"
+    assert res.corpus_sign_off.deciding_rung == "program"
+    assert not prompted["called"], "low-blast corpus must NOT prompt the human"
+    assert res.bundle_status == "complete"
+
+
+def test_corpus_execute_error_blocks_only_that_sub_plan(tmp_path: Path) -> None:
+    # M4 headline invariant: an accepted sub-plan whose EXECUTE wave errors is
+    # blocked while the others still promote. Drive s1's execute step to emit
+    # invalid output (missing required body_markdown) via a prompt-pattern mock.
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    plan = _corpus_plan(4)
+    backend = MockBackend(
+        default=json.dumps({
+            "plan_path": "plans/p.md", "plan_text": "# Plan", "ready": True,
+            "failures": [], "output_path": "notes/n.md", "body_markdown": "# N",
+            "total_notes": 2,
+        }),
+        responses={
+            # s1's execute step: missing required body_markdown → materializer/schema error.
+            "Execute sub s1": json.dumps({"output_path": "notes/n.md"}),
+        },
+    )
+    res = run_corpus_digestion(plan, b, {i: f"doc {i}" for i in range(4)},
+                               skills_dir=sd, backend=backend,
+                               vault_root=tmp_path / "vault")
+    by_id = {e.sub_id: e for e in res.executions}
+    assert set(by_id) == {"s1", "s2"}  # both accepted at planning, both attempted
+    assert not by_id["s1"].promoted and by_id["s1"].status == "blocked"
+    assert by_id["s2"].promoted and by_id["s2"].status == "promoted"
+    assert res.bundle_status == "partially_promoted"
