@@ -72,7 +72,8 @@ class PhaseOutcome:
     Attributes:
         phase: ``"plan"`` | ``"augment"`` | ``"review"`` | ``"execute"``.
         ran: ``True`` iff the phase was dispatched (``execute`` is skipped
-            when sign-off rejects).
+            when sign-off rejects, and also when ``stop_after="review"`` —
+            the M3 accepted-but-not-executed path).
         error_count: The phase's ``RunResult.error_count`` (0 when clean).
         run: The phase's :class:`RunResult`, or ``None`` if it didn't run.
     """
@@ -88,11 +89,16 @@ class DigestionResult:
     """The end-to-end outcome of :func:`run_digestion_pipeline`.
 
     Attributes:
-        completed: ``True`` iff every dispatched phase was clean AND
-            sign-off approved AND execute ran clean.
-        stopped_at: The phase where the pipeline halted (``"review"`` on a
-            sign-off rejection; a phase name on a phase error), or ``None``
-            when it ran to completion.
+        completed: ``True`` iff the pipeline reached a clean terminal state —
+            either every dispatched phase was clean AND sign-off approved AND
+            execute ran clean (the full path), OR ``stop_after="review"`` and
+            sign-off approved (M3: the plan is ACCEPTED but deliberately NOT
+            executed). Check ``stopped_at`` to distinguish: ``None`` = fully
+            executed, ``"review_accepted"`` = accepted-not-executed.
+        stopped_at: Where the pipeline halted: ``"review"`` on a sign-off
+            rejection; a phase name on a phase error; ``"review_accepted"`` when
+            ``stop_after="review"`` approved (M3); ``None`` when it fully
+            executed to completion.
         sign_off: The :class:`SignOffResult` from the review → ready gate
             (``None`` if the pipeline stopped before review completed).
         phases: Ordered per-phase outcomes.
@@ -167,6 +173,7 @@ def run_digestion_pipeline(
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
     revision_recorder: Callable[[SignOffResult], None] | None = None,
+    stop_after: str | None = None,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -192,14 +199,27 @@ def run_digestion_pipeline(
             Defaults to ``None`` → the shipped digestion path + its tests are
             byte-identical (the recording is strictly opt-in).
         execute_max_workers: Worker pool for the execute wave.
+        stop_after: **M3** — if ``"review"``, return the APPROVED plan after
+            the review→ready sign-off WITHOUT running the execute wave (a plan
+            is *accepted* but not yet promoted). Used by the corpus sub-plan
+            planning wave (:func:`run_corpus_planning_wave`), which plans each
+            sub-objective to an accepted plan_doc here, then M4 executes them as
+            separate transactions. ``None`` (default) → the shipped
+            plan→augment→review→execute behavior is byte-identical.
         **execute_kwargs: Forwarded to :func:`run_pipeline_dynamic` for the
             execute phase (e.g. ``close_gate``, ``manifest``, ``budget``,
             ``wave_gate``, ``informed_fixer``).
 
     Returns:
         A :class:`DigestionResult`. The pipeline stops early (``execute``
-        not run) on any linear-phase error or a sign-off rejection.
+        not run) on any linear-phase error or a sign-off rejection, or when
+        ``stop_after="review"`` and sign-off approved (``completed=True``,
+        ``stopped_at="review_accepted"``).
     """
+    if stop_after not in (None, "review"):
+        raise ValueError(
+            f"stop_after must be None or 'review', got {stop_after!r}"
+        )
     skills_dir = Path(skills_dir)
     policy = sign_off_policy or SignOffPolicy(use_agent=False, use_human=False)
     phases: list[PhaseOutcome] = []
@@ -293,6 +313,19 @@ def run_digestion_pipeline(
         return DigestionResult(
             completed=False,
             stopped_at="review",
+            sign_off=sign_off,
+            phases=tuple(phases),
+            plan_doc=plan_doc,
+        )
+
+    if stop_after == "review":
+        # M3: the plan is ACCEPTED but not executed — the corpus planning wave
+        # captures this accepted plan_doc and M4 executes it as its own
+        # transaction. completed=True marks a clean accepted plan (distinct from
+        # a sign-off rejection above, which is completed=False).
+        return DigestionResult(
+            completed=True,
+            stopped_at="review_accepted",
             sign_off=sign_off,
             phases=tuple(phases),
             plan_doc=plan_doc,

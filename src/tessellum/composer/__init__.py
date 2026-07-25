@@ -194,6 +194,11 @@ from tessellum.composer.proposals import (
     merge_proposals,
     plan_revision_hash,
 )
+from tessellum.composer.corpus_digestion import (
+    CorpusPlanningResult,
+    SubPlanOutcome,
+    run_corpus_planning_wave,
+)
 from tessellum.composer.corpus_plan import (
     DEFAULT_CORPUS_LEAF_MAX_CHARS,
     PHASED_MAX_NOTES,
@@ -463,6 +468,10 @@ __all__ = [
     "DEFAULT_CORPUS_LEAF_MAX_CHARS",
     "MemberExcerpt",
     "build_corpus_leaf",
+    # corpus_digestion (M3)
+    "SubPlanOutcome",
+    "CorpusPlanningResult",
+    "run_corpus_planning_wave",
     # Create-only staging overlay writer (P2, A2.5)
     "OverlayWriter",
     "OverlayError",

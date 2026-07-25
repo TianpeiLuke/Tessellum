@@ -4,6 +4,14 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Multi-document corpus digestion — M3: sub-plan planning wave — 2026-07-25
+
+The corpus-level orchestrator that turns a decided `CorpusPlan` (M1/M2) into one ACCEPTED plan per sub-objective — running the shipped plan→augment→review→sign-off path over each sub-objective's slice of the bundle, WITHOUT executing (M4 executes; M5 orders by priority). New `composer/corpus_digestion.py`; additive; +8 tests; full suite 1252 passed. Adversarially reviewed (8 findings — all fixed pre-commit, incl. a mutation-exposed test-coverage gap).
+
+- **`run_digestion_pipeline(stop_after="review")`** — additive: returns the APPROVED plan after the review→ready sign-off WITHOUT running the execute wave (`completed=True`, `stopped_at="review_accepted"`). `stop_after=None` (default) keeps the shipped plan→augment→review→execute behavior byte-identical. Docstrings for `completed` / `stopped_at` / `PhaseOutcome.ran` updated to cover the accepted-not-executed state (review-fix, low).
+- **`run_corpus_planning_wave(corpus_plan, bundle, member_contents, ...)`** — for each `SubObjective`, slices the parent bundle to its `member_ordinals` (re-based to `0..k-1`, provenance preserved), builds a joint planning leaf via `build_corpus_leaf`, threads the corpus's shared cross-references, and plans it to an accepted `plan_doc`. Returns a `CorpusPlanningResult` with one `SubPlanOutcome` (accepted | blocked) per sub-objective. A rejected sign-off OR any slice/planning-time exception marks that sub-objective **blocked** and the wave continues — a weak sub-plan blocks only itself (the a3a partition policy). **Slice/leaf construction is inside the per-sub try** so a single bad sub-objective can't sink the whole wave (review-fix, **medium**); `_slice_bundle` fails loud on an out-of-bundle ordinal (review-fix, low); `InterruptedError` still propagates (cancellation).
+- New `tests/smoke/test_composer_corpus_digestion.py` (8): all-accepted, slice correctness (each sub-plan sees only its members), rejected-sub-objective-blocks-only-itself, slice-time-failure isolation, shared-cross-refs threaded with correct shape (closes the mutation-exposed gap), no-note-files-written (planning only), bundle_id mismatch fails loud, and the `stop_after="review"` accepted contract.
+
 ### Multi-document corpus digestion — M0: bundle → joint-planner fan-in — 2026-07-25
 
 The fan-in the single-document path lacked: a multi-member `SourceBundle` becomes ONE planning leaf whose members reach the planner prompt, instead of N independent per-file jobs the supervisor runs one at a time. Also fixes the live root of the "planner is under-fed" finding. Additive; +13 tests; full suite 1244 passed. Adversarially reviewed (7 findings across 2 review passes — 1 critical, all fixed pre-commit).
