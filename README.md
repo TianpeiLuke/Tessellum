@@ -4,7 +4,7 @@
 >
 > Knowledge construction for humans and agents, built on six architectural pillars: Zettelkasten, PARA, **Building Blocks**, **Epistemic Functions**, **Dialectic Knowledge System (DKS)**, and **CQRS**.
 
-Tessellum is a knowledge-construction system, not an agent-memory store. The unit of work is a **typed atomic note** — a *tessellum*, a small mosaic tile — that carries one epistemic claim. You write tessellae — or hand Tessellum a source document and let it **digest** that source into typed, connected notes. Either way, it indexes them, retrieves them with hybrid BM25 + vector search, lets you grow Folgezettel trails that record *how thinking developed*, and runs a closed-loop Dialectic Knowledge System that updates warrants from observed disagreement. The architecture is CQRS: a typed prescriptive substrate (what you author) and a computational descriptive retrieval layer (what queries return) — read-side and write-side cleanly separated.
+Tessellum is a knowledge-construction system, not an agent-memory store. Its unit of work is a **typed atomic note** — a *tessellum*, a small mosaic tile — small enough to make a single point, and tagged with what *kind* of point it makes. You author these notes yourself, or hand Tessellum a source document and let it **digest** the source into them. Either way, Tessellum indexes the notes and retrieves them with hybrid search (keyword and vector, combined). It lets you grow *Folgezettel trails* — chains of notes that record how one idea led to the next — and it runs a closed-loop reasoning engine, the **Dialectic Knowledge System**, that revises its conclusions as arguments and counter-arguments pile up. Underneath is a clean read/write split (the **CQRS** pattern): the notes you author are the source of truth, the searchable index is a projection rebuilt from them, and changes only ever flow one way — from the notes to the index, never back.
 
 ## Status
 
@@ -148,7 +148,7 @@ tessellum mcp serve                                                          # s
                     └──────────────────────────────────────┘
 ```
 
-The loop closes through the substrate. The Composer and DKS engines read System D and author new, connected notes back into System P; the next build re-projects them. Knowledge flows P → D → new notes → P — never around the vault — and the automatic runtime drives that loop continuously (`tessellum runtime serve`). See [docs/digestion.md](docs/digestion.md) for the source-to-notes flow and [docs/architecture.md](docs/architecture.md) for the full system deep dive.
+The loop closes through the vault. The Composer and DKS engines read the index (System D) and author new, connected notes back into the vault (System P); the next build re-projects them into the index. So knowledge flows from the vault, into the index, into new notes, and back to the vault — never around it. The automatic runtime drives this loop continuously (`tessellum runtime serve`). See [docs/digestion.md](docs/digestion.md) for the source-to-notes flow and [docs/architecture.md](docs/architecture.md) for the full deep dive.
 
 ## The Building Block Ontology
 
@@ -160,7 +160,11 @@ Wikilinks tell you what's *related*. Folgezettel trails tell you *how thinking d
 
 ## Digestion — sources into connected notes
 
-Tessellum doesn't only store notes you write; it **digests** source documents into them. A digestion runs one pipeline of four phases — `plan → augment → review → execute` — that decomposes a source into building-block-atomic notes and wires each into the graph: bound to its source (provenance), registered under the entry points that make it findable (navigation), linked to its neighbours (see-also links + reverse backlinks), and placed on a Folgezettel trail. The plan is reviewed and gated before the authoring wave spends anything, so an unsound decomposition never reaches the vault. The optional **P0–P9 knowledge-transaction track** hardens a whole digestion into one snapshot-pinned transaction — staged, proven, and published atomically. See **[docs/digestion.md](docs/digestion.md)** for the end-to-end flow.
+Tessellum doesn't only store the notes you write; it **digests** source documents into them. A digestion runs one pipeline of four phases — `plan → augment → review → execute` — and it does two things at once.
+
+It *decomposes* the source into notes small enough that each makes a single point, one per building-block type. And it *connects* each note into the graph: back to the source it came from, up to the index pages that make it findable, across to its neighbouring notes, and into its place on a Folgezettel trail. A digested note is never dropped in as an island.
+
+The plan is reviewed and gated before the authoring step runs, so an unsound decomposition never reaches the vault. The optional **P0–P9 knowledge-transaction track** goes one step further: it stages a whole digestion off to the side, proves it is sound, and publishes every note at once — all-or-nothing. See **[docs/digestion.md](docs/digestion.md)** for the full flow.
 
 ## Project Structure
 
