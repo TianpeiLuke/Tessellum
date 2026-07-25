@@ -4,6 +4,35 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Dynamic digestion as a snapshot-pinned knowledge transaction — phases P0–P3 — 2026-07-24
+
+Foundations for turning the digestion pipeline into an automatic, multi-document slipbox constructor under the settled principle *"dynamic discovery, immutable accepted intent, gated deterministic promotion of a snapshot-pinned, invariant-closed knowledge transaction."* Every change in this track is **additive and byte-identical when its opt-in paths are not engaged** — the shipped serial/epoch digestion path is unchanged. Implemented phase-by-phase, each with an adversarial verification pass. New tests: `+16 proposals`, `+12 runtime capsules`, `+9 P2b live-wiring`, `+2 digestion e2e`, `+16 overlay index`.
+
+**Added — P0: typed change proposals + canonical plan revision (`composer/proposals.py`).**
+- Frozen-pydantic `ChangeProposal` + a 7-kind discriminated `Effect` union (`add_note | update_note | merge_notes | drop_note | reroute | add_reference | add_navigation`).
+- `merge_proposals` — the typed, order-independent replacement for the last-writer-wins `_collect_structured` fold: grow-only CvRDT union / identical-dedup; same-key-divergent → declared conflict; cross-key footprint write-overlap → declared conflict; **reject-on-overlap mints no revision** (never a silent drop); a stale-parent fence drops proposals whose `target_revision_hash` mismatches.
+- `canonical_json_bytes` — sorted/compact/NFC-normalized/UTF-8 canonical serialization with a **hard float ban** (fail-closed), honestly scoped as JCS-compatible for float-free payloads (not full RFC 8785).
+- `plan_revision_hash` — a content hash over the accepted-effect set, a **separate identity domain** from `scheduler.plan_hash` (program identity), which is untouched. Gate: exhaustive-permutation property tests prove order-independent hash + merge-or-declared-conflict across all 7 effect kinds.
+
+**Added — P1: durable accepted intent + content-addressed capsule store (`runtime/store.py`, schema v4 → v5).**
+- New `plan_revisions` + `commit_capsules` tables; `jobs` gains nullable `accepted_revision_id` / `active_capsule_id` FK columns (NOT a reuse of `supersedes_job_id`, which stays retry-lineage for dead-lettered/cancelled jobs). Migration follows the shipped `executescript` + additive `ALTER` + version-bump pattern; an existing v4 DB migrates cleanly and idempotently on reopen.
+- Content-addressed capsule artifact store (`put`/`get_capsule_artifact` + a `capsule_artifacts` manifest keyed `(capsule_id, artifact_class, address)` so two classes sharing bytes each keep a row); blobs are sha256-addressed, written atomically (temp+fsync+`os.replace`), deduped by address, and round-trip byte-identically.
+- `run_sign_off` gains one optional additive `revision_recorder` callback; `plan_revision_recorder` durably records the sign-off decision (`approved→accept`, `needs_human→needs_human`, `rejected→reject`). `SignOffResult` is byte-identical for existing callers; `signoff.py` stays composer-pure (no `runtime` import); default is a no-op. *(A1.4 — the epoch generation-bump accept-point + admission stale-revision fence — is deferred to a later phase; the supervisor is untouched.)*
+
+**Added — P2: typed note-intent graph + create-only staging overlay (`composer/knowledge_plan.py`, `composer/overlay.py`).**
+- `NoteIntent` / `NoteIntentGraph` frozen models — each intent carries a thesis, one building block, **required** claim provenance (`span_id`/`source_ref`), disposition, target path, coverage, dependency/relevance/navigation/required-inlink edges. **Create-only is enforced**: a non-create disposition, a create with an `expected_preimage`, a provenance-free intent, or a duplicate `note_id` all fail closed (update/merge/skip are defined for a later phase).
+- `project_note_intent_graph` — pure, deterministic, order-preserving projection to one typed writer leaf `{note, target_path, source_ref}` per intent; `note_intent_content_id` reuses the P0 canonical serializer.
+- `OverlayWriter` — materializes a create-disposition intent into a **private overlay directory, never the live vault**; reuses the shipped atomic-write primitive retargeted at the overlay root, mirrors materializer path-confinement (relative-only, reject `..` escapes), and fails closed if the create target already exists in the overlay or (read-only check) in the base vault.
+
+**Added — P2b: source→planner delivery + `SourceBundle` admission + opt-in projection wiring.**
+- The digestion `source_leaf` now carries `source_url` (a `file://` URI for absolute paths, else the raw path) so the plan skill's `{{leaf.source_url}}` placeholder resolves instead of rendering a `<missing>` sentinel; `source_content` stays on the leaf for a context-assembler to window and is never force-injected past the prompt cap.
+- `BundleMember` / `SourceBundle` + `bundle_content_hash` (ordinal-normalized so the hash is admission-order-independent); a new **opt-in** `InboxScanner.admit_bundle` admits an explicit ordered member list as **one coordinated objective** (each member via `admit_path`, inheriting idempotency), writing a durable atomic JSON manifest under `runs/runtime/bundles` keyed by a content-addressed `bundle_id`; re-admission is idempotent. `scan_once` is untouched (still per-file; never infers a bundle).
+- `run_digestion_pipeline` gains an **opt-in** branch: a `note_intent_graph` in `plan_doc` derives the execute leaves via `project_note_intent_graph`; absent → the shipped whole-plan fallback byte-identically; present-but-invalid → fail loud.
+
+**Added — P3: read-through overlay index over `base ⊕ delta` (`composer/overlay_index.py`).**
+- `OverlayIndex(base Database, DeltaState)` answers gate/dedup/backlink/ghost queries over a staged knowledge transaction WITHOUT mutating the base index — the read-your-writes view the promotion will publish. Mirrors the base read surface (`note_by_id` / `all_notes` / `links_from` / `links_to` / counts) plus `ghost_links` / `resolves_ghost`.
+- **Not a naive `base UNION delta`**: an update SHADOWS the base row (delta wins, no double-count); a delete TOMBSTONES it (gone from every query) and turns a surviving link to it into a fresh ghost; a re-authored note declares its own edges via staged links and does NOT inherit stale base outbound edges; base+staged copies of the same `(source, target)` collapse to one; `stage_add` un-tombstones and `stage_link` un-retracts (read-your-writes); staged inbound backlinks from unwritten notes (absent from the base) are visible. Three adversarial review passes found and fixed six link-semantics bugs before the logic was accepted.
+
 ## [1.2.0] — 2026-07-23
 
 ### Agentic runtime v5 — durable automatic inbox execution — 2026-07-23
