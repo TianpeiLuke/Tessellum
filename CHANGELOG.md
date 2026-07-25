@@ -4,6 +4,14 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Multi-document corpus digestion — M1 + M2: typed plan-shape + hierarchical corpus plan — 2026-07-25
+
+The typed layer that sits ABOVE the flat `NoteIntentGraph` so a *corpus* of documents (not just one doc) can be planned jointly and, above a volume threshold, decomposed into a master plan + N self-contained sub-plans — the capability reviewed as missing in FZ 20k9c1a1a1b7b and specified in the FZ 20k9c1a1a1b7b1 plan. New `composer/corpus_plan.py`; pure (no clock/random/IO); additive — the single-document `run_digestion_pipeline` path is untouched and byte-identical. +28 tests.
+
+- **M1 — typed `PlanShape` decision, measured and consumed.** `PlanShape` (`single_plan` / `single_plan_phased` / `master_plus_subplans`, matching the plan skill's `source_assessment` enum verbatim) + `classify_plan_shape(total_words, est_note_count)`. Thresholds ported verbatim from skill §1d (≤10k words / ≤15 notes → single; ≤30k / ≤30 → phased; over → master+subplans); the STRONGER of the two axes wins, so both a word-dense-few-notes and a many-small-notes corpus decompose. This gives the previously dead `master_plus_subplans` skill decision a typed home a driver can branch on. Negative volume is rejected.
+- **M2 — the hierarchical `CorpusPlan` / `SubObjective` model.** Frozen pydantic-v2, `extra="forbid"`, immutable tuples — mirroring `NoteIntent`/`NoteIntentGraph` one level up. A `SubObjective` owns a bundle slice (`member_ordinals`, unique + ascending-normalized), a wave-ordering `priority` (P1→P3), and acyclic `depends_on` edges; a `CorpusPlan` validates the shape gate, unique `sub_id`s, dependency resolution + acyclicity, term-owner resolution, and (when the member count is known) the bundle partition (no orphaned source docs, no out-of-range ordinal). The master index is DERIVED purely (`master_index()`) — never stored — so the "master plan is a pure index, never duplicates note tables" invariant holds by construction. `wave_order()` gives a deterministic priority-major, dependency-respecting order (M5 preview). `corpus_plan_content_id` reuses the P0 `canonical_json_bytes` (float-ban + NFC + sorted keys) for an order-stable id. The per-`SubObjective` `NoteIntentGraph` is populated later (M3, the sub-plan wave).
+- New `tests/smoke/test_composer_corpus_plan.py` (28): classifier thresholds + both-axes rule, every SubObjective/CorpusPlan validator (partition, acyclicity, self-dep, unknown-owner, out-of-range), pure master-index derivation, deterministic wave order (incl. dependency-beats-priority), and content-id stability.
+
 ## [1.4.0] — 2026-07-25
 
 ### DKS refactor — P7 self-driving elevation (research-grade) — 2026-07-25

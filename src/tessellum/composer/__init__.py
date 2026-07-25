@@ -194,6 +194,21 @@ from tessellum.composer.proposals import (
     merge_proposals,
     plan_revision_hash,
 )
+from tessellum.composer.corpus_plan import (
+    PHASED_MAX_NOTES,
+    PHASED_MAX_WORDS,
+    SINGLE_PLAN_MAX_NOTES,
+    SINGLE_PLAN_MAX_WORDS,
+    CorpusPlan,
+    PlanShape,
+    SharedCrossRef,
+    SubObjective,
+    SubObjectivePriority,
+    SubObjectiveRow,
+    TermOwnerRow,
+    classify_plan_shape,
+    corpus_plan_content_id,
+)
 from tessellum.composer.knowledge_plan import (
     ClaimProvenance,
     NoteDisposition,
@@ -428,6 +443,20 @@ __all__ = [
     "NoteIntentGraph",
     "note_intent_content_id",
     "project_note_intent_graph",
+    # corpus_plan (M1 + M2)
+    "PlanShape",
+    "SINGLE_PLAN_MAX_WORDS",
+    "PHASED_MAX_WORDS",
+    "SINGLE_PLAN_MAX_NOTES",
+    "PHASED_MAX_NOTES",
+    "classify_plan_shape",
+    "SubObjectivePriority",
+    "SubObjective",
+    "TermOwnerRow",
+    "SharedCrossRef",
+    "CorpusPlan",
+    "SubObjectiveRow",
+    "corpus_plan_content_id",
     # Create-only staging overlay writer (P2, A2.5)
     "OverlayWriter",
     "OverlayError",
