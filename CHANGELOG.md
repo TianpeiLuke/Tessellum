@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P6 ontology reform: ECS four-axis separation — 2026-07-25
+
+Stops BB type from impersonating three axes it never was (decision b7a) — mostly SUBTRACTION plus a small additive model. New `dks/ontology.py`; +7 tests, +1 reformed fsm test.
+
+- **A6.1 — `BB_SCHEMA` descriptive-only.** Removed `DKSStateMachine`'s `handlers: dict[(BBType, BBType), TransitionHandler]` registry — it was declared but never dispatched (the exact four-axes conflation / P4 violation), so retiring it is zero-live-behavior risk. The walker now only LABELS produced nodes with their schema edges; it never treats a BB→BB pair as the transition function. `TransitionHandler` stays as a typing alias.
+- **A6.2 — acceptance on the relation axis, not the type axis.** `acceptance_from_labelling(fz, grounded_labelling, independently_validated=…)` derives an argument's status from the Dung grounded labelling (computed in P0 A0.4), NOT from "rule_revision present → PROCEDURE". A Dung-`in` argument is `dialectically_adequate` (surviving the dialectic ≠ true); it becomes `accepted` only with an independent P4 check. `out` → defeated, `undec`/absent → undecided.
+- **A6.3 — four independent axes.** `BBContract` models the BB role as a data contract (key_question / required_content / materializer) with NO `next_bb` — a role types an output, it never routes. The other three axes are the inquiry move (`InquiryMove`), the dialectic relation + Dung label, and the runtime state (which lives on the substrate manifest, reused).
+- **A6.4 — the `InquiryMove` algebra on top.** `DKS_MOVE_ALGEBRA` + `plan_move(open_obligation_kinds)` is a POLICY over `(role × relation)` selected from open obligations (feeding P5's frontier) — never a `(BBType, BBType)` type walk.
+- New `tests/smoke/test_dks_p6.py` (7) + the fsm handler test reformed to assert the registry is gone. Runnable in parallel with the spine; gates P5's move algebra.
+
 ### DKS refactor — P5 autonomy loop: inquiry frontier + VOI stop + authority ladder — 2026-07-25
 
 The thinking-machine milestone (decisions b2a + b6a): the outer control plane that makes DKS self-driving, staged behind explicit gates so a wrong autonomous decision cannot compound. New `dks/autonomy.py`; reuses the shipped `planner_loop`; +15 tests.

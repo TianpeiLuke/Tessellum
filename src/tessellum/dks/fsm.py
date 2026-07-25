@@ -111,13 +111,19 @@ class TransitionHandler(Protocol):
 
 @dataclass
 class DKSStateMachine:
-    """Drives one DKS cycle as a walk over BB_SCHEMA.
+    """Drives one DKS cycle as a walk over BB_SCHEMA, lifting the result into a
+    typed :class:`BBPath`.
 
-    The walker delegates to :class:`DKSCycle` for step logic and
-    lifts the result into a typed :class:`BBPath`. The
-    transition-handler registry (``handlers``) lets callers
-    (meta-DKS, multi-perspective debate) override specific BB-edge
-    handlers without touching cycle-level code.
+    P6 (A6.1) — ``BB_SCHEMA`` is DESCRIPTIVE-only here: the walker delegates all
+    step logic to :class:`DKSCycle` and merely LABELS the produced nodes with
+    their schema edges for the path record. It does NOT treat a ``(BBType,
+    BBType)`` edge as the transition function — the transition function is the
+    cycle's own dialectic, and acceptance is computed on the DUNG RELATION axis
+    (:func:`tessellum.dks.ontology.acceptance_from_labelling`), not the type
+    axis. The former ``handlers: dict[(BBType, BBType), TransitionHandler]``
+    registry was declared-but-never-dispatched (a four-axes conflation, the P4
+    violation); it is removed. ``TransitionHandler`` remains exported as a
+    typing alias for callers that annotate their own dispatch.
 
     Construction mirrors :class:`DKSCycle`:
 
@@ -126,7 +132,6 @@ class DKSStateMachine:
         - ``confidence_threshold``: optional override
         - ``retrieval_client``: optional retrieval-grounded warrants
         - ``semantic_disagreement``: optional step-4 mode
-        - ``handlers``: optional registry for handler overrides
 
     ``walk(observation, warrants)`` returns the typed :class:`BBPath`.
     The corresponding :class:`DKSCycleResult` is also accessible via
@@ -138,7 +143,6 @@ class DKSStateMachine:
     confidence_threshold: float | None = None
     retrieval_client: object | None = None
     semantic_disagreement: bool = False
-    handlers: dict[tuple[BBType, BBType], TransitionHandler] = field(default_factory=dict)
     _last_result: DKSCycleResult | None = field(default=None, init=False, repr=False)
 
     def walk(

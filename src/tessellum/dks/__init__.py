@@ -93,6 +93,15 @@ from tessellum.dks.autonomy import (
     run_bounded_inquiry,
     voi_stop_decision,
 )
+from tessellum.dks.ontology import (
+    # P6 (b7a) — ECS four-axis separation (role / move / relation / state)
+    AcceptanceVerdict,
+    BBContract,
+    DKS_MOVE_ALGEBRA,
+    InquiryMove,
+    acceptance_from_labelling,
+    plan_move,
+)
 from tessellum.dks.retrieval_client import (
     # P-side retrieval client (warrant-grounding evidence fetch)
     RetrievalClient,
@@ -202,6 +211,13 @@ __all__ = [
     "run_bounded_inquiry",
     "AuthorityLadder",
     "AuthorityLadderError",
+    # Ontology reform (P6)
+    "BBContract",
+    "AcceptanceVerdict",
+    "acceptance_from_labelling",
+    "InquiryMove",
+    "DKS_MOVE_ALGEBRA",
+    "plan_move",
     # Runtime
     "DKSCycle",
     "DKSRunner",

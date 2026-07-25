@@ -239,12 +239,15 @@ def test_walk_records_last_result():
 # ── Transition handler registry (surface only; behaviour stays in DKSCycle) ─
 
 
-def test_handlers_registry_accepts_callable():
-    """The registry interface accepts custom handlers without using them."""
-    sm = DKSStateMachine(
-        backend=MockBackend(responses=_FULL_LOOP_RESPONSES),
-        handlers={(BBType.ARGUMENT, BBType.COUNTER_ARGUMENT): lambda ctx, edge: None},
-    )
-    # walk still works (v0.0.51 doesn't dispatch through handlers yet)
+def test_handlers_registry_retired_p6():
+    """P6 A6.1 — the dead ``(BBType, BBType)`` handler registry is removed (it
+    was declared but never dispatched — the four-axes conflation). Constructing
+    with a ``handlers=`` kwarg now fails; ``walk`` still works without it."""
+    with pytest.raises(TypeError):
+        DKSStateMachine(
+            backend=MockBackend(responses=_FULL_LOOP_RESPONSES),
+            handlers={(BBType.ARGUMENT, BBType.COUNTER_ARGUMENT): lambda ctx, edge: None},
+        )
+    sm = DKSStateMachine(backend=MockBackend(responses=_FULL_LOOP_RESPONSES))
     path = sm.walk(DKSObservation(folgezettel="1", summary="o1"))
-    assert path.terminal_state is BBType.PROCEDURE
+    assert path.terminal_state is BBType.PROCEDURE  # BB type is an output lens
