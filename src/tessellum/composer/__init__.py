@@ -241,6 +241,15 @@ from tessellum.composer.structural_gates import (
     build_structural_gate_suite,
     supervised_admit,
 )
+from tessellum.composer.semantic_certificate import (
+    Claim,
+    ClaimScore,
+    ConformalThresholds,
+    LabeledExample,
+    calibrate,
+    certify,
+    measure_false_accept_rate,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -446,6 +455,14 @@ __all__ = [
     "HumanApproval",
     "SupervisedResult",
     "supervised_admit",
+    # Calibrated semantic certificate (P7, A7.2-A7.5)
+    "Claim",
+    "ClaimScore",
+    "ConformalThresholds",
+    "LabeledExample",
+    "calibrate",
+    "certify",
+    "measure_false_accept_rate",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",
