@@ -302,13 +302,19 @@ class VersionedVault:
           promote that crashed before its pointer swap; it never committed, so
           it is collected (closing the crash-between-promote-and-swap leak).
         ``genesis_keep`` protects generations that legitimately precede CURRENT
-        (e.g. the genesis) from orphan GC. Returns the live generation."""
-        live = self.current_generation()
-        if live is not None and (self._generations / live).is_dir():
-            self.acknowledge(live)
-        self.collect_staging()
-        self.collect_orphan_generations(keep=genesis_keep)
-        return live
+        (e.g. the genesis) from orphan GC. Returns the live generation.
+
+        Runs under the publish lock so recovery cannot race a concurrent
+        publisher's promote-before-marker window (where orphan GC would otherwise
+        reclaim a generation mid-commit). Recovery is still a restart-time
+        single-actor operation by design; the lock is defence in depth."""
+        with self._publish_lock():
+            live = self.current_generation()
+            if live is not None and (self._generations / live).is_dir():
+                self.acknowledge(live)
+            self.collect_staging()
+            self.collect_orphan_generations(keep=genesis_keep)
+            return live
 
     def collect_orphan_generations(self, keep: set[str] | None = None) -> list[str]:
         """Delete uncommitted orphan generations in ``generations/`` — a

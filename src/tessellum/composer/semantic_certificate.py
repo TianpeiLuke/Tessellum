@@ -10,7 +10,7 @@ program decides accept / abstain.
 
 Scope of THIS module (what a code phase can honestly deliver):
 
-- the **calibration + conformal-risk-control** machinery and the **fail-closed
+- the **conformal-STYLE calibration** machinery and the **fail-closed
   abstain** decision, over a PLUGGABLE per-claim scorer. The actual NLI/SummaC
   entailment model is an injected dependency (``ClaimScorer``) — this module
   never bundles a model or a labeled corpus (that is the gating experiment,
@@ -18,10 +18,14 @@ Scope of THIS module (what a code phase can honestly deliver):
 - **per-claim min-aggregation** (A7.2), NOT a holistic LLM-judge score;
 - **separate calibration per failure class** (A7.3): claim grounding, omitted
   coverage, duplicate/merge disposition, and edge relevance;
-- **conformal thresholds** (A7.4): a calibration set of labelled examples fixes,
-  distribution-free, the score threshold that bounds the expected false-accept
-  rate at a target risk α; below the calibrated confidence → **abstain**
-  (route to the human artifact / a coarser epoch), never a plausibility pass.
+- **per-class thresholds** (A7.4): a calibration set of labelled examples fixes
+  the score threshold whose EMPIRICAL, IN-SAMPLE false-accept rate is at or under
+  a target risk α; below the calibrated confidence → **abstain** (route to the
+  human artifact / a coarser epoch), never a plausibility pass. This is a
+  conformal-STYLE bound, not yet the finite-sample distribution-free guarantee
+  the name "conformal risk control" formally denotes — the out-of-sample check is
+  :func:`measure_false_accept_rate` on a held-out corpus, required below α before
+  the certificate gates anything unattended (A7.5).
 
 Determinism: given the same scorer outputs, the certificate decision is a pure
 function (thresholds are frozen after calibration). No clock/randomness here.
@@ -71,7 +75,7 @@ ClaimScorer = Callable[[list[Claim]], list[ClaimScore]]
 
 @dataclass(frozen=True)
 class ConformalThresholds:
-    """Per-failure-class score thresholds fixed by conformal calibration.
+    """Per-failure-class score thresholds fixed by conformal-style calibration.
 
     A claim of class ``c`` is accepted iff its score >= ``thresholds[c]``. The
     threshold is chosen so the empirical false-accept rate on the calibration
@@ -108,10 +112,15 @@ def calibrate(
 
     For each failure class, choose the LOWEST threshold ``t`` such that among
     calibration claims with score >= t, the fraction that are actually INCORRECT
-    (false accepts) is <= ``alpha``. This is a conformal-style, distribution-free
-    bound: we only accept in a score region whose empirical error is under the
-    target. A class with no example that can meet the bound gets threshold 1.01
-    (unreachable → always abstain for that class, fail-closed).
+    (false accepts) is <= ``alpha``. This is the EMPIRICAL, IN-SAMPLE bound: we
+    only accept in a score region whose observed error on THIS calibration set is
+    under the target. It applies no finite-sample correction, so it is a
+    conformal-STYLE bound, not yet the distribution-free coverage the name
+    "conformal risk control" formally denotes — the out-of-sample validation is
+    :func:`measure_false_accept_rate` on a held-out corpus, which must pass below
+    ``alpha`` before this gates anything unattended (A7.5). A class with no example
+    that can meet the bound gets threshold 1.01 (unreachable → always abstain for
+    that class, fail-closed).
 
     Deterministic (sorts by score; no randomness)."""
     thresholds: dict[FailureClass, float] = {}

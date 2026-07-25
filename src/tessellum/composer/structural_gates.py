@@ -245,7 +245,14 @@ def supervised_admit(
     - structural ok + valid approval → ``approved``.
 
     This is NOT "automatic/unattended" — unattended admission requires the P7
-    calibrated semantic certificate."""
+    calibrated semantic certificate.
+
+    Two trust-boundary notes for the caller. The ``signature`` is checked for
+    PRESENCE only; cryptographic verification against the approver is the caller's
+    responsibility, not this function's. And ``capsule_id`` is treated as opaque
+    here — the caller must derive it from the SAME accepted plan it gated (via the
+    runtime's content-addressed capsule identity) for the binding to mean
+    anything; this function does not recompute it from ``context``."""
     suite = suite or build_structural_gate_suite()
     composite = suite.evaluate(context, short_circuit=False)
     blocking = tuple(
