@@ -63,10 +63,10 @@ tessellum mcp serve                                                          # s
 
 ## Status
 
-**Current `main` — every engine subsystem shipped.** Test suite: **1389 passing, 1 skipped**. Newest: the Composer v4 engine, the P0–P9 knowledge-transaction track, and the v5 automatic runtime.
+**Current `main` — every engine subsystem shipped.** Test suite: **1389 passing, 1 skipped**. Newest: the Composer v4 engine, the knowledge-transaction track, and the v5 automatic runtime.
 
 - **Composer** — *typed-contract pipeline runtime.* A skill compiles to a typed DAG with **zero LLM calls**. It then runs serially or in parallel. Backends: Mock / Anthropic / Bedrock / Pooled.
-- **Knowledge transaction (P0–P9)** — *a multi-note digestion as one atomic transaction.* Staged, gated, then **published all-or-nothing**. Additive and opt-in.
+- **Knowledge transaction** — *a multi-note digestion as one atomic transaction.* Staged, gated, then **published all-or-nothing**. Additive and opt-in.
 - **DKS** — *the Dialectic Knowledge System.* It reasons, not just stores. Arguments meet counters; **conclusions update from disagreement**. A meta-layer even evolves the type schema.
 - **Retrieval** — *hybrid search over the graph.* **BM25 + vector (RRF fusion)**, plus graph traversal and metadata filters.
 - **Indexer** — *the vault as one SQLite database.* **Full-text + vector + link graph**, rebuilt in a single pass.
@@ -165,7 +165,7 @@ Tessellum doesn't only store the notes you write; it **digests** source document
 
 It *decomposes* the source into notes small enough that each makes a single point, one per building-block type. And it *connects* each note into the graph: back to the source it came from, up to the index pages that make it findable, across to its neighbouring notes, and into its place on a Folgezettel trail. A digested note is never dropped in as an island.
 
-The plan is reviewed and gated before the authoring step runs, so an unsound decomposition never reaches the vault. The optional **P0–P9 knowledge-transaction track** goes one step further: it stages a whole digestion off to the side, proves it is sound, and publishes every note at once — all-or-nothing. See **[docs/digestion.md](docs/digestion.md)** for the full flow.
+The plan is reviewed and gated before the authoring step runs, so an unsound decomposition never reaches the vault. The optional **knowledge-transaction track** goes one step further: it stages a whole digestion off to the side, proves it is sound, and publishes every note at once — all-or-nothing. See **[docs/digestion.md](docs/digestion.md)** for the full flow.
 
 ## Documentation
 
