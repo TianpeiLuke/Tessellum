@@ -110,7 +110,7 @@ def main() -> int:
     print(f"corpus notes         : {corpus}")
     print(f"sample seeds         : {len(sample_ids)}")
     print(f"depth / hub_threshold: {args.depth} / {args.hub_threshold}")
-    print(f"reverse-closure size (nodes | %% corpus):")
+    print("reverse-closure size (nodes | % corpus):")
     print(f"  mean   : {mean:8.2f} | {pct_of(mean):6.3f}%")
     print(f"  median : {median:8.2f} | {pct_of(median):6.3f}%")
     print(f"  p90    : {p90:8.2f} | {pct_of(p90):6.3f}%")
