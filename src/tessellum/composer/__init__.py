@@ -195,17 +195,20 @@ from tessellum.composer.proposals import (
     plan_revision_hash,
 )
 from tessellum.composer.corpus_plan import (
+    DEFAULT_CORPUS_LEAF_MAX_CHARS,
     PHASED_MAX_NOTES,
     PHASED_MAX_WORDS,
     SINGLE_PLAN_MAX_NOTES,
     SINGLE_PLAN_MAX_WORDS,
     CorpusPlan,
+    MemberExcerpt,
     PlanShape,
     SharedCrossRef,
     SubObjective,
     SubObjectivePriority,
     SubObjectiveRow,
     TermOwnerRow,
+    build_corpus_leaf,
     classify_plan_shape,
     corpus_plan_content_id,
 )
@@ -457,6 +460,9 @@ __all__ = [
     "CorpusPlan",
     "SubObjectiveRow",
     "corpus_plan_content_id",
+    "DEFAULT_CORPUS_LEAF_MAX_CHARS",
+    "MemberExcerpt",
+    "build_corpus_leaf",
     # Create-only staging overlay writer (P2, A2.5)
     "OverlayWriter",
     "OverlayError",

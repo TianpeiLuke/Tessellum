@@ -56,6 +56,40 @@ from tessellum.composer.manifest import ArtifactRecord, AttemptRecord, Manifest
 from tessellum.composer.materializer import MaterializedOutput
 
 
+def _corpus_leaf(leaves: list[dict]) -> dict:
+    """Build the synthetic leaf a ``corpus_wide`` step resolves ``{{leaf.X}}``
+    against.
+
+    A ``corpus_wide`` step runs ONCE, not per input leaf, so it needs a single
+    leaf dict for placeholder resolution. Previously that was a bare
+    ``{"_id": "corpus"}``, which meant a ``corpus_wide`` step's
+    ``{{leaf.source_url}}`` / ``{{leaf.members}}`` always rendered a
+    ``<missing leaf.X>`` sentinel — the live reason the digestion planner (a
+    ``corpus_wide`` step) was under-fed even though the runtime put those keys
+    on the leaf.
+
+    Fix: expose the keys that are SHARED across all input leaves (identical
+    value in every leaf), so a single-leaf linear phase sees its whole leaf and
+    a multi-leaf corpus_wide step sees only the fields common to all leaves
+    (per-leaf-varying fields stay out — a corpus_wide step must not depend on
+    one arbitrary leaf's value). ``_id`` is always ``"corpus"`` (never a
+    per-leaf id), preserving the shipped corpus-scope contract. Purely
+    additive: strictly MORE placeholders resolve than before; nothing that
+    resolved previously changes.
+    """
+    if not leaves:
+        return {"_id": "corpus"}
+    shared: dict[str, Any] = {}
+    first = leaves[0]
+    for key, value in first.items():
+        if key == "_id":
+            continue
+        if all(key in other and other[key] == value for other in leaves[1:]):
+            shared[key] = value
+    shared["_id"] = "corpus"
+    return shared
+
+
 @dataclass(frozen=True)
 class RunResult:
     """One end-to-end pipeline run.
@@ -146,7 +180,7 @@ def run_pipeline(
 
         runnable_index += 1
         per_leaf = step.aggregation == "per_leaf"
-        scope_leaves = leaves if per_leaf else [{"_id": "corpus"}]
+        scope_leaves = leaves if per_leaf else [_corpus_leaf(leaves)]
         step_started = time.monotonic()
         if progress:
             scope_n = len(scope_leaves)
@@ -664,7 +698,13 @@ def run_pipeline_dynamic(
         )
 
     def _scope_leaves(step: CompiledStep) -> list[dict]:
-        return leaves if step.aggregation == "per_leaf" else [{"_id": "corpus"}]
+        # A corpus_wide step resolves {{leaf.X}} against the shared-key synthetic
+        # corpus leaf (same helper the serial run_pipeline uses at scheduler
+        # line 183) — NOT a bare {"_id":"corpus"} — so a corpus_wide step in the
+        # dynamic (execute-wave) path sees the fields common to all leaves too.
+        # Without this the two schedulers diverge: serial resolves the leaf,
+        # dynamic starves it with <missing leaf.X> sentinels.
+        return leaves if step.aggregation == "per_leaf" else [_corpus_leaf(leaves)]
 
     def _commit_result(
         key: str,

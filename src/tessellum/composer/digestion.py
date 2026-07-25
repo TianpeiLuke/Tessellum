@@ -34,8 +34,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, ContextManager
 
-from tessellum.composer.compiler import compile_skill
-from tessellum.composer.context_assembler import ContextAssembler
+from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS, compile_skill
+from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
 from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.gates import build_plan_gate
 from tessellum.composer.knowledge_plan import (
@@ -204,6 +204,23 @@ def run_digestion_pipeline(
     policy = sign_off_policy or SignOffPolicy(use_agent=False, use_human=False)
     phases: list[PhaseOutcome] = []
     plan_doc: dict[str, Any] = dict(source_leaf)
+    # M0: the plan skill references {{leaf.member_count}} / {{leaf.members}}
+    # unconditionally; a leaf lacking them is a corpus of one. Default here at
+    # the pipeline chokepoint so EVERY caller is sentinel-free, not just the
+    # current producers (runtime executor / CLI / build_corpus_leaf). No-op when
+    # the keys are already present → byte-identical prompts for those callers.
+    plan_doc.setdefault("member_count", 1)
+    plan_doc.setdefault("members", [])
+    # M0 review (medium): a corpus_wide {{leaf.X}} that now resolves (the
+    # _corpus_leaf fix) can render a large value — e.g. {{leaf.members}} /
+    # {{leaf.source_refs}} — that, with NO assembler, trips the executor's
+    # HARD_PROMPT_CAP_CHARS and HALTS the linear plan/augment/review phase
+    # instead of degrading. Default a head+tail WindowedAssembler sized just
+    # under the hard cap so an oversized rendered prompt truncates + warns
+    # (the executor's documented fail-soft) rather than erroring. A caller that
+    # passes its own assembler (the runtime executor does) is untouched.
+    if context_assembler is None:
+        context_assembler = WindowedAssembler(max_chars=HARD_PROMPT_CAP_CHARS - 4_096)
 
     # ── Linear phases: plan → augment → review ──────────────────────────────
     for phase in ("plan", "augment", "review"):

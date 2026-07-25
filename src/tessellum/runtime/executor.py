@@ -565,6 +565,15 @@ class DigestionExecutor:
             "source_hash": source_hash,
             "inbox_lane": job.request.lane,
             "building_block_hint": route.building_block_hint,
+            # M0: a single source is a corpus of one — expose the same
+            # member_count / members keys the multi-doc fan-in leaf carries, so
+            # the plan skill's {{leaf.member_count}} / {{leaf.members}} resolve
+            # (never a <missing> sentinel) whether the source is one doc or a
+            # bundle. member_count == 1 tells the planner this is the single-doc
+            # path; the members list is empty (the single source is already
+            # described by source_url / source_name, not re-windowed here).
+            "member_count": 1,
+            "members": [],
         }
         artifact_dir = self.paths.job_artifacts(job.job_id)
         artifact_dir.mkdir(parents=True, exist_ok=True)

@@ -89,7 +89,13 @@ LEAF METADATA
 - source_url: {{leaf.source_url}}
 - source_name: {{leaf.source_name}}
 
+CORPUS MEMBERS (a non-empty `members` list means a multi-document bundle; `member_count: 1` with an empty `members` list is the single-source path)
+- member_count: {{leaf.member_count}}
+- members: {{leaf.members}}
+
 Follow this procedure:
+
+- **If `members` is a non-empty list** (a multi-document bundle), you are planning a *corpus*, not a single page: treat each member's excerpt as one source document, measure them together, and assess the aggregate volume across ALL members to decide the plan shape. A truncated excerpt means the member is larger than shown — weight it by its `full_char_count`, not the excerpt length. Otherwise (`member_count: 1`, empty `members`), plan the single source at `source_url` as before.
 
 Read the source end to end, then measure it — do NOT estimate from memory.
 

@@ -1342,6 +1342,12 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
     if not isinstance(source_leaf, dict):
         print("tessellum composer digest: --source must be a JSON object", file=sys.stderr)
         return 2
+    # M0: the plan skill references {{leaf.member_count}} / {{leaf.members}}; a
+    # single-source CLI leaf is a corpus of one, so default those keys (never
+    # emit a <missing leaf.members> sentinel into the plan prompt). A leaf that
+    # already carries them (a multi-doc bundle leaf) is left untouched.
+    source_leaf.setdefault("member_count", 1)
+    source_leaf.setdefault("members", [])
 
     backend = _build_backend_for(args)
     if isinstance(backend, int):

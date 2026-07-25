@@ -49,10 +49,12 @@ acyclic (composer never imports runtime).
 from __future__ import annotations
 
 import hashlib
+import json
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from tessellum.composer.knowledge_plan import SourceBundle
 from tessellum.composer.proposals import canonical_json_bytes
 
 # ── M1 — the plan-shape decision ────────────────────────────────────────────
@@ -379,6 +381,198 @@ def corpus_plan_content_id(plan: CorpusPlan) -> str:
     ).hexdigest()
 
 
+# ── M0 — bundle → joint-planner leaf (the fan-in) ───────────────────────────
+
+# Aggregate ceiling for the RENDERED corpus ``members`` block (the JSON the
+# executor substitutes for ``{{leaf.members}}``). Well under the composer's
+# HARD_PROMPT_CAP_CHARS (150_000) so the members block plus the rest of the
+# prompt (skill prose + upstream) fits with headroom. A ContextAssembler still
+# bounds the final rendered prompt; this is the pre-budget the builder targets.
+DEFAULT_CORPUS_LEAF_MAX_CHARS = 60_000
+
+
+def _render_members(members: list[dict]) -> str:
+    """Render the ``members`` list exactly as the executor's ``_stringify``
+    does when substituting ``{{leaf.members}}`` — ``json.dumps(indent=2,
+    ensure_ascii=False)`` — so the builder can BUDGET the rendered size, not
+    just the excerpt bodies. Kept in lockstep with
+    ``tessellum.composer.executor._stringify``."""
+    return json.dumps(members, indent=2, ensure_ascii=False)
+
+
+def _fit_excerpt(
+    skeleton: "MemberExcerpt", content: str, rendered_target: int
+) -> tuple[str, bool]:
+    """Window ``content`` so the member's RENDERED JSON size stays within
+    ``rendered_target`` chars — accounting for JSON string escaping (a newline
+    renders as ``\\n`` = 2 chars, so a raw-char budget under-counts) and the
+    member's own scaffolding (keys / quoting / indentation / the 64-char hash).
+
+    Binary-searches the RAW excerpt budget passed to :func:`_window_excerpt`
+    for the largest window whose single-element-array render fits the target.
+    ``_window_excerpt`` is monotonic non-decreasing in its budget, so the
+    render size is too — the search is well-defined. Pure. Measuring each
+    member against ``rendered_target`` (which already includes that member's
+    2-char array brackets) means the aggregate stays under ``max_chars`` with
+    headroom, since the outer brackets are counted once but reserved per-member.
+    """
+
+    def rendered(raw_budget: int) -> tuple[int, str, bool]:
+        exc, trunc = _window_excerpt(content, raw_budget)
+        member = skeleton.model_copy(
+            update={"excerpt": exc, "truncated": trunc}
+        ).model_dump(mode="json")
+        return len(_render_members([member])), exc, trunc
+
+    # Fast path: the full content already fits.
+    full_size, exc, trunc = rendered(len(content))
+    if full_size <= rendered_target:
+        return exc, trunc
+    # Binary-search the largest raw budget whose rendered member fits.
+    lo, hi = 0, len(content)
+    best: tuple[str, bool] = ("", bool(content))
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        size, exc, trunc = rendered(mid)
+        if size <= rendered_target:
+            best = (exc, trunc)
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return best
+
+
+class MemberExcerpt(BaseModel):
+    """One bundle member's bounded excerpt for the joint planning prompt (M0).
+
+    Carries the member's identity + a HEAD/TAIL windowed excerpt of its parsed
+    content (not the whole document — bounded, per the counter's "bounded
+    excerpts, not whole-content injection"). ``truncated`` records whether the
+    excerpt dropped a middle span."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    ordinal: int = Field(ge=0)
+    source_id: str = Field(min_length=1)
+    ref: str = Field(min_length=1)
+    extracted_text_hash: str = Field(min_length=1)
+    excerpt: str = ""
+    full_char_count: int = Field(ge=0)
+    truncated: bool = False
+
+
+def _window_excerpt(content: str, budget: int) -> tuple[str, bool]:
+    """Bound ``content`` to ``budget`` chars, HEAD + TAIL with an elision
+    marker in the middle (a doc's intro + conclusion carry the most planning
+    signal). Returns ``(excerpt, truncated)``. Pure."""
+    if budget <= 0:
+        return "", bool(content)
+    if len(content) <= budget:
+        return content, False
+    marker = "\n\n[… excerpt elided …]\n\n"
+    if budget <= len(marker):
+        return content[:budget], True
+    room = budget - len(marker)
+    head = room - room // 2
+    tail = room // 2
+    return content[:head] + marker + (content[-tail:] if tail else ""), True
+
+
+def build_corpus_leaf(
+    bundle: SourceBundle,
+    member_contents: dict[int, str],
+    *,
+    max_chars: int = DEFAULT_CORPUS_LEAF_MAX_CHARS,
+) -> dict:
+    """Build ONE joint-planning leaf from a multi-member bundle (M0) — pure.
+
+    This is the fan-in the shipped single-doc path lacks: instead of admitting
+    each member as an independent per-file job the supervisor runs one at a
+    time, the whole ordered bundle is delivered to ONE planning episode so
+    decomposition, cross-document dedup, and cross-document links are coherent.
+
+    ``member_contents`` maps a member ``ordinal`` to its parsed text (the
+    runtime reads the spools; this function does NO IO). ``max_chars`` budgets
+    the RENDERED ``members`` JSON block (what the executor substitutes for
+    ``{{leaf.members}}``), NOT just the excerpt bodies: the budget is split
+    evenly across members and each member's own JSON scaffolding (keys,
+    quoting, indentation, ``ref``/``extracted_text_hash``) is subtracted before
+    its excerpt is windowed, so the aggregate rendered block stays ≤
+    ``max_chars`` for any member count and any ref length. Each member's content
+    is HEAD/TAIL windowed via :func:`_window_excerpt`.
+
+    Degenerate case: when there are more members than ``max_chars``, the
+    per-member budget floors at the scaffolding-only size (empty excerpts) —
+    the rendered block is then bounded by the scaffolding, not the content, and
+    a final assertion still guarantees ≤ ``max_chars`` is not silently
+    exceeded (it raises rather than emitting an over-cap leaf). The downstream
+    ``ContextAssembler`` remains a second bound on the FULL prompt; this keeps
+    the leaf itself bounded so it never relies on that fail-soft.
+
+    The leaf carries the multi-doc payload the plan skill's prompt references as
+    ``{{leaf.members}}`` (rendered as indented JSON by the executor's
+    ``_stringify``), plus corpus identity keys. Every member ordinal in the
+    bundle MUST have content (a missing ordinal is a caller bug — fail loud);
+    extra ordinals in ``member_contents`` are ignored.
+
+    Returns a plain dict (not a pydantic model) so it drops straight into the
+    ``source_leaf`` slot of ``run_digestion_pipeline`` / a corpus executor.
+    """
+    ordinals = [m.ordinal for m in bundle.members]
+    missing = [o for o in ordinals if o not in member_contents]
+    if missing:
+        raise ValueError(
+            f"bundle {bundle.bundle_id!r} missing content for member ordinals "
+            f"{missing}"
+        )
+    # Split the RENDERED budget evenly across members, then size each member's
+    # excerpt so its OWN rendered JSON (scaffolding + escaped excerpt) fits its
+    # share — so the aggregate rendered block stays ≤ max_chars regardless of
+    # member count, ref length, or newline density (the high-severity review
+    # finding: body-only budgeting overflowed because JSON escaping + scaffolding
+    # are uncounted). Each member's share already reserves its 2-char array
+    # brackets, so summing shares over-reserves the single outer pair — headroom.
+    per_member_rendered = max(1, max_chars // max(1, len(bundle.members)))
+    excerpts: list[dict] = []
+    for member in bundle.members:  # bundle.members is ascending-ordinal canonical
+        content = member_contents[member.ordinal]
+        skeleton = MemberExcerpt(
+            ordinal=member.ordinal,
+            source_id=member.source_id,
+            ref=member.ref,
+            extracted_text_hash=member.extracted_text_hash,
+            excerpt="",
+            full_char_count=len(content),
+            truncated=False,
+        )
+        excerpt, truncated = _fit_excerpt(skeleton, content, per_member_rendered)
+        excerpts.append(
+            skeleton.model_copy(
+                update={"excerpt": excerpt, "truncated": truncated}
+            ).model_dump(mode="json")
+        )
+    # Defensive: fail loud if the rendered block still exceeds the budget rather
+    # than emitting an over-cap leaf that trips the hard prompt cap downstream.
+    # This fires only in the degenerate regime where even empty-excerpt member
+    # scaffolding cannot fit max_chars (member_count too high for the budget).
+    rendered = _render_members(excerpts)
+    if len(rendered) > max_chars:
+        raise ValueError(
+            f"bundle {bundle.bundle_id!r} rendered members block "
+            f"({len(rendered)} chars) exceeds max_chars ({max_chars}); "
+            f"member scaffolding for {len(bundle.members)} members alone "
+            f"exceeds the budget — raise max_chars or reduce the bundle"
+        )
+    return {
+        "_id": bundle.bundle_id,
+        "bundle_id": bundle.bundle_id,
+        "objective": bundle.objective,
+        "source_name": bundle.objective,
+        "member_count": len(bundle.members),
+        "members": excerpts,
+    }
+
+
 # ── internal: acyclicity check ──────────────────────────────────────────────
 
 
@@ -416,4 +610,8 @@ __all__ = [
     "CorpusPlan",
     "SubObjectiveRow",
     "corpus_plan_content_id",
+    # M0 — fan-in leaf
+    "DEFAULT_CORPUS_LEAF_MAX_CHARS",
+    "MemberExcerpt",
+    "build_corpus_leaf",
 ]
