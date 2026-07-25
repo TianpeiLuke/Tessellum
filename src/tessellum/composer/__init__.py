@@ -207,6 +207,10 @@ from tessellum.composer.overlay import (
     OverlayWriteResult,
     OverlayWriter,
 )
+from tessellum.composer.overlay_index import (
+    DeltaState,
+    OverlayIndex,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -382,6 +386,9 @@ __all__ = [
     "OverlayWriter",
     "OverlayError",
     "OverlayWriteResult",
+    # Read-through overlay index over base ⊕ delta (P3, A3.1/A3.2)
+    "OverlayIndex",
+    "DeltaState",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",
