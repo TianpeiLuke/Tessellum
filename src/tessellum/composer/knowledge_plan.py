@@ -82,11 +82,16 @@ class ClaimProvenance(BaseModel):
     source_ref: str = Field(min_length=1)
 
 
-NoteDisposition = Literal["create", "update", "merge", "skip"]
-"""Every note-intent disposition. ALL FOUR are defined so P9 needs no schema
-change, but only ``"create"`` is ACCEPTED in P2 — the others fail closed with
-a clear error (see :class:`NoteIntent`'s validator). ``update``/``merge``/
-``skip`` are deferred to **P9**."""
+NoteDisposition = Literal["create", "update", "merge", "drop", "skip"]
+"""Every note-intent disposition. As of **P9** all effect classes are enabled
+(A9.2). Preimage rules (enforced by :class:`NoteIntent`'s validator):
+
+- ``create``: target must NOT exist → ``expected_preimage`` MUST be absent.
+- ``update`` / ``merge`` / ``drop``: target MUST exist → ``expected_preimage``
+  (the pinned pre-image hash) is REQUIRED (the promotion CAS checks it).
+- ``skip``: an explicit no-op (nothing is written).
+
+(Edge-level ``reroute`` is a P0 ``Effect``, not a note disposition.)"""
 
 
 # ── A2.3 — the typed note intent ───────────────────────────────────────────
@@ -120,8 +125,9 @@ class NoteIntent(BaseModel):
             back to this note.
 
     Validators (``model_validator(mode="after")``):
-        - create-only: any non-``"create"`` disposition raises (deferred P9).
-        - create-preimage: ``"create"`` forbids a non-None ``expected_preimage``.
+        - preimage rule (P9, A9.2): ``create`` forbids ``expected_preimage``
+          (target must not exist); ``update``/``merge``/``drop`` REQUIRE it
+          (target must exist; the promotion CAS checks the pinned pre-image).
         - self-dep guard: ``note_id`` may not appear in ``depends_on``.
     """
 
@@ -141,17 +147,21 @@ class NoteIntent(BaseModel):
     required_inlinks: tuple[str, ...] = ()
 
     @model_validator(mode="after")
-    def _check_p2_rules(self) -> "NoteIntent":
-        if self.disposition != "create":
-            raise ValueError(
-                f"NoteIntent disposition {self.disposition!r} is deferred to "
-                f"P9; only 'create' is allowed in P2"
-            )
-        if self.disposition == "create" and self.expected_preimage is not None:
-            raise ValueError(
-                "create disposition forbids expected_preimage; the target "
-                "must not exist"
-            )
+    def _check_disposition_rules(self) -> "NoteIntent":
+        # P9 (A9.2): all effect classes enabled, gated by the preimage rule.
+        if self.disposition == "create":
+            if self.expected_preimage is not None:
+                raise ValueError(
+                    "create disposition forbids expected_preimage; the target "
+                    "must not exist"
+                )
+        elif self.disposition in ("update", "merge", "drop"):
+            if self.expected_preimage is None:
+                raise ValueError(
+                    f"{self.disposition} disposition requires expected_preimage "
+                    "(the target must exist; the promotion CAS checks it)"
+                )
+        # "skip" is an explicit no-op; expected_preimage is optional there.
         if self.note_id in self.depends_on:
             raise ValueError("NoteIntent cannot depend on itself")
         return self

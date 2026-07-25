@@ -51,12 +51,20 @@ def _intent(**overrides) -> NoteIntent:
 # ── A2.3 — model cases (GATE-1) ────────────────────────────────────────────
 
 
-@pytest.mark.parametrize("bad", ["update", "merge", "skip"])
-def test_note_intent_rejects_non_create_disposition(bad: str) -> None:
-    with pytest.raises(ValidationError) as exc:
-        _intent(disposition=bad)
-    # message names the P9 deferral / create-only rule.
-    assert "P9" in str(exc.value) or "create" in str(exc.value)
+@pytest.mark.parametrize("disp", ["update", "merge", "drop"])
+def test_note_intent_mutation_requires_preimage(disp: str) -> None:
+    # P9 (A9.2): update/merge/drop are enabled but REQUIRE expected_preimage
+    # (the target must exist; the promotion CAS checks the pinned pre-image).
+    with pytest.raises(ValidationError):
+        _intent(disposition=disp)  # no preimage → invalid
+    # with a preimage it is valid.
+    ok = _intent(disposition=disp, expected_preimage="deadbeef")
+    assert ok.disposition == disp
+
+
+def test_note_intent_skip_is_allowed_noop() -> None:
+    # P9: skip is an explicit no-op; a preimage is optional.
+    assert _intent(disposition="skip").disposition == "skip"
 
 
 def test_note_intent_rejects_provenance_free() -> None:

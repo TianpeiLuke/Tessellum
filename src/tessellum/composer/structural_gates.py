@@ -102,14 +102,20 @@ def bb_atomicity_predicate(target: StructuralGateContext, /, **_) -> Sequence[Is
     return issues
 
 
+_VALID_DISPOSITIONS = frozenset({"create", "update", "merge", "drop", "skip"})
+
+
 def disposition_predicate(target: StructuralGateContext, /, **_) -> Sequence[Issue]:
+    # P9 (A9.2): all effect classes are enabled. The preimage rule is enforced
+    # by the NoteIntent model; here we only reject an unknown disposition (fail
+    # closed on an unclassifiable effect class).
     issues: list[Issue] = []
     for intent in _intents(target):
-        if intent.disposition != "create":
+        if intent.disposition not in _VALID_DISPOSITIONS:
             issues.append(Issue(
                 severity=Severity.ERROR, rule_id="STRUCT-DISPOSITION",
                 field=intent.note_id,
-                message=f"disposition {intent.disposition!r} not allowed this phase (create-only)",
+                message=f"unknown disposition {intent.disposition!r}",
             ))
     return issues
 
