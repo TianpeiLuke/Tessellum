@@ -20,6 +20,12 @@ open the reference when you need an exact name.
 runtime that feeds Composer without becoming a knowledge authority, and the invariants that keep each layer
 honest.
 
+**[digestion.md](digestion.md)** — how a source becomes connected notes. The `plan → augment → review →
+execute` pipeline that decomposes a document into building-block-atomic notes, the typed edges (provenance,
+navigation, relevance links, backlinks, Folgezettel trail) that wire each note into the graph rather than
+leaving it an island, and how that flow hardens into the P0–P9 snapshot-pinned knowledge transaction. Read
+this for *how knowledge gets in and connected*; read the module docs below for *how each part works*.
+
 ## Modules
 
 | Module | Design | Reference |

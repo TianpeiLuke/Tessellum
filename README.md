@@ -19,7 +19,7 @@ Tessellum is a knowledge-construction system, not an agent-memory store. The uni
 - **Automatic runtime** — durable inbox admission, content-addressed spooling, leased supervision, verified Composer resume, conflict-safe vault rollback, cancellation/retry/dead-letter handling, commit-only crash recovery, atomic index publication, and replayable source acknowledgement (`tessellum runtime serve`).
 - **Interfaces** — a 12-command CLI (`init / format / capture / index / search / filter / fz / bb / composer / dks / mcp / runtime`) and a **shipped MCP stdio server** (`tessellum mcp serve`, 12 tools).
 
-See [CHANGELOG](CHANGELOG.md) for the per-release ship list, and **[`docs/`](docs/)** for the architecture + per-module design reference.
+See [CHANGELOG](CHANGELOG.md) for the per-release ship list, **[`docs/digestion.md`](docs/digestion.md)** for how a source becomes connected notes, and **[`docs/`](docs/)** for the architecture + per-module design reference.
 
 ## The Six Pillars
 

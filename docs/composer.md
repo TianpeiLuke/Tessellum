@@ -267,6 +267,14 @@ the edits as typed data, stage them off to the side, prove them safe, then make 
 visible to readers in one atomic step. It is built in additive phases, each byte-
 identical when its opt-in path is off, so nothing above changes until you ask for it.
 
+The seam to the digestion pipeline is the plan itself. The `plan → augment → review →
+execute` driver's plan phase can emit a typed intent graph — its notes and all their
+connective edges as machine-checked data rather than prose — and when it does, the
+execute wave is derived straight from that graph, one building-block-atomic leaf per
+planned note. So the transaction is not a separate mechanism bolted on beside
+digestion; it is what a digestion *is* once its plan is typed. See
+[digestion.md](digestion.md) for that end-to-end flow.
+
 **Typed intent, staged off to the side.** A transaction begins as typed proposals,
 never free text — add, update, merge, drop, reroute — each naming the notes it
 touches and carrying content-addressed hashes so two plans can be compared and merged
@@ -368,6 +376,13 @@ proven on the same path, and a stale-base capsule refused at the commit point. A
 the structural phase the system is a safe, human-supervised, frozen-epoch constructor;
 after the certificate it can run unattended inside a measured domain, once that domain
 is actually measured.
+
+One scope note keeps the picture honest. This track is built, verified, and additive,
+but it is not yet the live commit path the automatic runtime uses. Today a runtime-driven
+digestion still publishes note by note and rebuilds the index atomically in the commit
+tail; the versioned publication here is the same fail-closed, atomic idea one layer up,
+waiting to be wired in as the accept point. That final wiring is the one deferred step,
+so for now the whole track runs opt-in and stays byte-identical when its flags are off.
 
 ## Invariants worth remembering
 
