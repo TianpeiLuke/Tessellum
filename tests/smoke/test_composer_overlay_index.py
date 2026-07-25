@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from tessellum.composer.overlay_index import DeltaState, OverlayIndex
+from tessellum.composer.overlay_index import OverlayIndex
 from tessellum.indexer import Database, build
 from tessellum.indexer.db import LinkRow, NoteRow
 
@@ -155,10 +155,10 @@ def test_links_merge_and_backlink_from_unwritten(base_db: Database) -> None:
     ix.stage_add(_note_row(_GAMMA, "Term: Gamma"))
     ix.stage_link(_link(_GAMMA, _ALPHA))
     assert ix.link_count() == base_link_count + 1
-    incoming_alpha = {l.source_note_id for l in ix.links_to(_ALPHA)}
+    incoming_alpha = {lk.source_note_id for lk in ix.links_to(_ALPHA)}
     assert _GAMMA in incoming_alpha
     # 5. deterministic ordering: all_links is sorted by (source, target).
-    keys = [(l.source_note_id, l.target_note_id) for l in ix.all_links()]
+    keys = [(lk.source_note_id, lk.target_note_id) for lk in ix.all_links()]
     assert keys == sorted(keys)
 
 
@@ -215,9 +215,9 @@ def test_rename_does_not_double_count_outbound_link(base_db: Database) -> None:
     # exactly one outbound edge (alpha2 -> beta); the tombstoned alpha's base
     # edge is gone (no phantom), no double-count.
     assert ix.link_count() == 1
-    keys = {(l.source_note_id, l.target_note_id) for l in ix.all_links()}
+    keys = {(lk.source_note_id, lk.target_note_id) for lk in ix.all_links()}
     assert keys == {(alpha2, _BETA)}
-    assert {l.source_note_id for l in ix.links_to(_BETA)} == {alpha2}
+    assert {lk.source_note_id for lk in ix.links_to(_BETA)} == {alpha2}
 
 
 def test_identical_base_and_staged_edge_dedups(base_db: Database) -> None:
@@ -246,7 +246,7 @@ def test_restage_after_unlink_is_read_your_writes(base_db: Database) -> None:
     assert ix.link_count() == 0
     ix.stage_link(_link(_ALPHA, _BETA))
     assert ix.link_count() == 1
-    assert {(l.source_note_id, l.target_note_id) for l in ix.all_links()} == {
+    assert {(lk.source_note_id, lk.target_note_id) for lk in ix.all_links()} == {
         (_ALPHA, _BETA)
     }
 
@@ -261,7 +261,7 @@ def test_clear_then_restage_update_pattern(base_db: Database) -> None:
     ix.stage_unlink(_ALPHA, _BETA)            # clear old
     ix.stage_link(_link(_ALPHA, _BETA))       # restage unchanged
     ix.stage_link(_link(_ALPHA, gamma))       # add new
-    keys = {(l.source_note_id, l.target_note_id) for l in ix.all_links()}
+    keys = {(lk.source_note_id, lk.target_note_id) for lk in ix.all_links()}
     assert keys == {(_ALPHA, _BETA), (_ALPHA, gamma)}
 
 
@@ -285,5 +285,5 @@ def test_reauthored_note_uses_only_staged_edges(base_db: Database) -> None:
     ix.stage_add(_note_row(gamma, "Term: Gamma"))
     ix.stage_update(_ALPHA, _note_row(_ALPHA, "Alpha v2"))  # re-authored, same path
     ix.stage_link(_link(_ALPHA, gamma))
-    keys = {(l.source_note_id, l.target_note_id) for l in ix.links_from(_ALPHA)}
+    keys = {(lk.source_note_id, lk.target_note_id) for lk in ix.links_from(_ALPHA)}
     assert keys == {(_ALPHA, gamma)}  # base alpha->beta NOT inherited

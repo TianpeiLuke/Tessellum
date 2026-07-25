@@ -34,7 +34,6 @@ from tessellum.composer.proposals import (
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
-    SignOffResult,
     run_sign_off,
 )
 from tessellum.runtime.models import JobState, WorkRequest

@@ -177,10 +177,10 @@ class OverlayIndex:
         return len(self.all_links())
 
     def links_from(self, note_id: str) -> list[LinkRow]:
-        return [l for l in self.all_links() if l.source_note_id == note_id]
+        return [link for link in self.all_links() if link.source_note_id == note_id]
 
     def links_to(self, note_id: str) -> list[LinkRow]:
-        return [l for l in self.all_links() if l.target_note_id == note_id]
+        return [link for link in self.all_links() if link.target_note_id == note_id]
 
     # ── ghost / broken-link resolution over the merged state ─────────────────
 
@@ -195,7 +195,7 @@ class OverlayIndex:
         ghosts = [
             link for link in self.all_links() if not self.exists(link.target_note_id)
         ]
-        return sorted(ghosts, key=lambda l: (l.source_note_id, l.target_note_id))
+        return sorted(ghosts, key=lambda lk: (lk.source_note_id, lk.target_note_id))
 
     def resolves_ghost(self, target_note_id: str) -> bool:
         """True if this transaction CREATES ``target_note_id`` and some link in
@@ -212,7 +212,7 @@ class OverlayIndex:
             return False
         if self._base.note_by_id(target_note_id) is not None:
             return False  # already existed in the base — nothing to resolve
-        return any(l.target_note_id == target_note_id for l in self.all_links())
+        return any(link.target_note_id == target_note_id for link in self.all_links())
 
     @property
     def delta(self) -> DeltaState:

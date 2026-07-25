@@ -968,7 +968,6 @@ class RuntimeStore:
 
         A small lease-free UPDATE that keeps :meth:`create_commit_capsule`
         idempotent while allowing state progression. Additive."""
-        timestamp = time.time() if now is None else now
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute(

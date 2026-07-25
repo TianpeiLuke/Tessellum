@@ -25,7 +25,6 @@ from tessellum.composer import (
     AddReference,
     ChangeProposal,
     DropNote,
-    Effect,
     FloatInCanonicalPayloadError,
     MergeConflict,
     MergeNotes,
