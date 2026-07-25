@@ -2,7 +2,7 @@
 
 > **Typed atomic notes in a graph — a Zettelkasten that scales.**
 >
-> Knowledge construction for humans and agents, built on six architectural pillars: Zettelkasten, PARA, **Building Blocks**, **Epistemic Functions**, **Dialectic Knowledge System (DKS)**, and **CQRS**.
+> Knowledge construction for humans and agents — **typed atomic notes**, a **Building-Block** type system, a one-way **CQRS** split, and a graph of **Folgezettel** trails, with a **dialectic reasoning engine** on top.
 
 Tessellum is a knowledge-construction system, not an agent-memory store. Its unit of work is a **typed atomic note** — a *tessellum*, a small mosaic tile — small enough to make a single point, and tagged with what *kind* of point it makes. You author these notes yourself, or hand Tessellum a source document and let it **digest** the source into them. Either way, Tessellum indexes the notes and retrieves them with hybrid search (keyword and vector, combined). It lets you grow *Folgezettel trails* — chains of notes that record how one idea led to the next — and it runs a closed-loop reasoning engine, the **Dialectic Knowledge System**, that revises its conclusions as arguments and counter-arguments pile up. Underneath is a clean read/write split (the **CQRS** pattern): the notes you author are the source of truth, the searchable index is a projection rebuilt from them, and changes only ever flow one way — from the notes to the index, never back.
 
@@ -77,23 +77,28 @@ tessellum mcp serve                                                          # s
 
 See the [CHANGELOG](CHANGELOG.md) for the full per-release ship list.
 
-## The Six Pillars
+## Foundations & Capabilities
 
-| # | Pillar | What it gives you | Term note |
-|---|---|---|---|
-| 1 | **Z** — Zettelkasten | Atomic notes, bidirectional links — Luhmann's method that scaled to ~90k connected ideas | [term_zettelkasten](vault/resources/term_dictionary/term_zettelkasten.md) |
-| 2 | **PARA** — Projects/Areas/Resources/Archives | Tiago Forte's organizational scheme; four-fold structure that survives growth | [term_para_method](vault/resources/term_dictionary/term_para_method.md) |
-| 3 | **BB** — Building Block | 8 typed atomic units with defining epistemic functions; a versioned, event-sourced schema graph (~16 typed edges) drives the dialectic cycle | [term_building_block](vault/resources/term_dictionary/term_building_block.md) |
-| 4 | **EF** — Epistemic Function | Each BB has a *function* — name / structure / predict / claim / refute / observe / act / index | [term_epistemic_function](vault/resources/term_dictionary/term_epistemic_function.md) |
-| 5 | **DKS** — Dialectic Knowledge System | Closed-loop protocol — arguments attract counters, counters absorbed by syntheses, warrants update from observed disagreement | [term_dialectic_knowledge_system](vault/resources/term_dictionary/term_dialectic_knowledge_system.md) |
-| 6 | **CQRS** — Read/Write Split | System P (typed substrate, prescriptive — what you author) ⊥ System D (retrieval, descriptive — what queries return) | [term_cqrs](vault/resources/term_dictionary/term_cqrs.md) |
+Tessellum rests on four foundations — remove any one and the system stops working. Its flagship features are built on top of them.
 
-**Two supporting concepts** that bridge the pillars (also shipped as term notes):
+**Foundations** — what the whole implementation stands on:
 
-| Concept | What it does | Term note |
+| Foundation | What it is | In the code |
 |---|---|---|
-| **Slipbox** | The system class — a typed atomic-note vault with a graph layer; Tessellum is one Slipbox implementation | [term_slipbox](vault/resources/term_dictionary/term_slipbox.md) |
-| **Folgezettel** | The trail mechanism — alphanumeric IDs encode argument descent (1 → 1a → 1a1) so the graph remembers *how thinking developed*, not just *what relates* | [term_folgezettel](vault/resources/term_dictionary/term_folgezettel.md) |
+| **Typed atomic note** | The unit: one note, one claim, tagged with its type — a closed-enum YAML contract every note must satisfy. | `format/` — parser + validator + `REQUIRED_FIELDS` |
+| **[Building Blocks](vault/resources/term_dictionary/term_building_block.md)** | The type system: **8 note roles**, each defined by its epistemic function, wired by a versioned, event-sourced edge schema. | `bb/types.py` — `BBType`, `BB_SCHEMA` |
+| **[CQRS split](vault/resources/term_dictionary/term_cqrs.md)** | The architecture: the vault is the source of truth; the index is a projection rebuilt from it; changes flow **one way only**. | `indexer/` drop-and-rebuild · read-only `retrieval/` |
+| **The typed graph** | The structure: notes joined by links and by **[Folgezettel](vault/resources/term_dictionary/term_folgezettel.md) trails** — IDs like `7 → 7a → 7a1` that record how one idea led to the next. | `note_links` + `folgezettel_parent` edges |
+
+**Capabilities** — built on those foundations:
+
+| Capability | What it does |
+|---|---|
+| **Dialectic engine ([DKS](docs/dks.md))** | A closed reasoning loop over the typed graph — arguments, counters, syntheses — that updates conclusions from disagreement. |
+| **[Composer](docs/composer.md)** | Compiles a skill into a typed pipeline and authors notes through one sanctioned write channel (swappable LLM backends). |
+| **[Hybrid retrieval](docs/retrieval.md)** | Finds notes by keyword, vector, and graph traversal — fused into one ranking. |
+
+**Lineage.** Tessellum descends from the **[Zettelkasten](vault/resources/term_dictionary/term_zettelkasten.md)** tradition (a *slipbox* of atomic, linked notes) and borrows **[PARA](vault/resources/term_dictionary/term_para_method.md)** (Projects / Areas / Resources / Archives) as a filing convention. That is the ancestry; the foundations above are what this implementation actually stands on.
 
 ## What Tessellum Is *Not*
 
@@ -169,7 +174,7 @@ The plan is reviewed and gated before the authoring step runs, so an unsound dec
 
 ## Documentation
 
-New here? The fastest path is to run the **Quick Start** above, skim **The Six Pillars** for the mental model, then read the two docs that explain the system end to end.
+New here? The fastest path is to run the **Quick Start** above, skim **Foundations & Capabilities** for the mental model, then read the two docs that explain the system end to end.
 
 - **[docs/digestion.md](docs/digestion.md)** — how a source becomes connected notes: the `plan → augment → review → execute` flow, and how each note is wired into the graph.
 - **[docs/architecture.md](docs/architecture.md)** — the whole system in one picture: the CQRS wall between authoring and computation, the subsystems, and the invariants that keep each honest.
