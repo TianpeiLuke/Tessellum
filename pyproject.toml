@@ -90,7 +90,7 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio",
     "pytest-cov",
-    "ruff",
+    "ruff==0.15.12",              # Pin lockstep with .github/workflows/ci.yml so local == CI
     "mypy",
     "build",
     "twine",

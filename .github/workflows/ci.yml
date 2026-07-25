@@ -35,7 +35,11 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - name: Install ruff
-        run: pip install ruff
+        # Pinned: unpinned `pip install ruff` grabs the latest release, whose
+        # default rule set drifts (e.g. I001 import-sorting became default),
+        # so CI fails on unrelated PRs while `ruff check` passes locally on an
+        # older pin. Bump this deliberately, in lockstep with the dev extra.
+        run: pip install ruff==0.15.12
       - name: Run ruff
         run: ruff check src/ tests/
 
