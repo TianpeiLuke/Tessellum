@@ -234,6 +234,13 @@ from tessellum.composer.publication import (
     publish_with_cas,
     read_set_matches,
 )
+from tessellum.composer.structural_gates import (
+    HumanApproval,
+    StructuralGateContext,
+    SupervisedResult,
+    build_structural_gate_suite,
+    supervised_admit,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -433,6 +440,12 @@ __all__ = [
     "read_set_matches",
     "publish_with_cas",
     "ABSENT",
+    # Structural supervised constructor (P6, A6.1/A6.2)
+    "StructuralGateContext",
+    "build_structural_gate_suite",
+    "HumanApproval",
+    "SupervisedResult",
+    "supervised_admit",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",

@@ -49,6 +49,10 @@ Foundations for turning the digestion pipeline into an automatic, multi-document
 - `recover()` treats the pointer swap as the authoritative commit: it completes a `PUBLISHED`-but-unacknowledged generation idempotently, collects unreferenced `staging/` generations, and GCs crash-orphaned `generations/` dirs (a promote that crashed before its `COMMITTED` marker + pointer swap), while never touching a committed or `CURRENT` generation.
 - Adversarially reviewed twice: the first pass caught 3 real bugs (non-atomic check-then-swap CAS, a crash-between-promote-and-swap generation leak, and a path-confinement `IsADirectoryError`), all fixed with regression tests; the second confirmed the crash-safe ordering at every interleaving (0 correctness bugs) and a reserved-control-filename defensive fix.
 
+**Added — P6: structural supervised constructor (`composer/structural_gates.py`).**
+- A capsule-level **structural** gate suite (no LLM) over the typed NoteIntentGraph + P3 OverlayIndex + P4 write closure: source-span coverage, claim provenance, BB-atomicity, create-only disposition, navigation closure (every declared entry point is a mandatory write), reverse-inlink closure, referential integrity (no fresh dangling reference in the overlay), and an advisory relevance-link cap (prefer a few justified edges over a count-floor spray).
+- `supervised_admit` — the honest near-term ceiling (counter blocking-correction 6): a capsule may publish iff the structural suite passes AND a signed `HumanApproval` artifact **bound to that capsule id** is present. A structural failure → `blocked_structural` (fail closed); structurally-clean but unapproved → `blocked_needs_human`. This is explicitly *not* unattended — structural checks cannot establish semantic correctness, so a human signs off until the P7 calibrated certificate exists. The approval binds to `capsule_id` so it cannot be replayed onto a mutated capsule.
+
 ## [1.2.0] — 2026-07-23
 
 ### Agentic runtime v5 — durable automatic inbox execution — 2026-07-23
