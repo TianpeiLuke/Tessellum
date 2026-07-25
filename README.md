@@ -63,18 +63,19 @@ tessellum mcp serve                                                          # s
 
 ## Status
 
-**Current `main` — every engine subsystem shipped, including the Composer v4 dynamic-workflow engine, the P0–P9 knowledge-transaction track, and the v5 automatic runtime.** Suite: **1389 passing, 1 skipped**.
+**Current `main` — every engine subsystem shipped.** Test suite: **1389 passing, 1 skipped**. Newest: the Composer v4 engine, the P0–P9 knowledge-transaction track, and the v5 automatic runtime.
 
-- **Composer** — a typed-contract pipeline runtime. Skill canonical (one self-contained markdown note — a typed contract block per step section) → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
-- **Knowledge transaction (P0–P9)** — an additive, opt-in layer that turns a multi-document digestion into one snapshot-pinned transaction: typed change proposals + intent graph, a read-through staging overlay, an exact write closure with a boundary proof, a structural gate suite + capsule-bound human approval, a calibrated (fail-closed) semantic certificate, a bounded planner loop with a proven halt, and versioned publication with a snapshot compare-and-swap. Byte-identical when its paths are off.
-- **DKS** — a shipped closed-loop **Dialectic Knowledge System runtime engine** (`tessellum dks`): a 7-component cycle (observation → N arguments → contradicts edges → counter → pattern → revised warrant) over the Building-Block graph, multi-perspective Dung argumentation, confidence gating, warrant persistence, and a second-order **meta-DKS** that mutates the BB schema itself.
-- **Retrieval** — BM25 (FTS5) + dense (sqlite-vec) + hybrid RRF + best-first BFS + metadata filter, over the indexed vault.
-- **Indexer** — vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec, `all-MiniLM-L6-v2` 384-d).
-- **Format** — closed-enum YAML validator + parser + BB-graph-aware link checker. **BB** — the 8-type, versioned, event-sourced ontology (source of truth).
-- **Automatic runtime** — durable inbox admission, content-addressed spooling, leased supervision, verified Composer resume, conflict-safe vault rollback, cancellation/retry/dead-letter handling, commit-only crash recovery, atomic index publication, and replayable source acknowledgement (`tessellum runtime serve`).
-- **Interfaces** — a 12-command CLI (`init / format / capture / index / search / filter / fz / bb / composer / dks / mcp / runtime`) and a **shipped MCP stdio server** (`tessellum mcp serve`, 12 tools).
+- **Composer** — *typed-contract pipeline runtime.* A skill compiles to a typed DAG with **zero LLM calls**. It then runs serially or in parallel. Backends: Mock / Anthropic / Bedrock / Pooled.
+- **Knowledge transaction (P0–P9)** — *a multi-note digestion as one atomic transaction.* Staged, gated, then **published all-or-nothing**. Additive and opt-in.
+- **DKS** — *the Dialectic Knowledge System.* It reasons, not just stores. Arguments meet counters; **conclusions update from disagreement**. A meta-layer even evolves the type schema.
+- **Retrieval** — *hybrid search over the graph.* **BM25 + vector (RRF fusion)**, plus graph traversal and metadata filters.
+- **Indexer** — *the vault as one SQLite database.* **Full-text + vector + link graph**, rebuilt in a single pass.
+- **Format** — *the note validator.* A **closed-enum** check of frontmatter, links, and building-block edges.
+- **BB** — *the Building Block ontology.* **8 typed note roles**, versioned and event-sourced. The source of truth for types.
+- **Automatic runtime** — *unattended, crash-safe digestion.* A durable inbox queue with leased workers. **Atomic index publication**.
+- **Interfaces** — *for humans and agents.* A **12-command CLI** and a **12-tool MCP server**.
 
-See [CHANGELOG](CHANGELOG.md) for the per-release ship list, **[`docs/digestion.md`](docs/digestion.md)** for how a source becomes connected notes, and **[`docs/`](docs/)** for the architecture + per-module design reference.
+See the [CHANGELOG](CHANGELOG.md) for the full per-release ship list.
 
 ## The Six Pillars
 
