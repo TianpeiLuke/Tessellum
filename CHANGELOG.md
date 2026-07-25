@@ -41,6 +41,14 @@ Foundations for turning the digestion pipeline into an automatic, multi-document
 - `scripts/measure_closure_blastradius.py` — measure-first harness: reports the reverse-closure size distribution (mean/median/p90/p99/max as %corpus) over a real index sample and suggests the spill bound to calibrate `ClosurePolicy`. Read-only; never mutates the vault or index.
 - Reviewed adversarially (0 correctness bugs; the structural write-set-exactness guarantee AST-verified).
 
+**Added — P5: versioned publication + snapshot CAS (`composer/publication.py`).**
+- `VersionedVault` implements the atomic reader-visible commit point the whole transaction rests on: `PREPARED` (write the whole generation into `staging/<gen>/`, fsynced, invisible to readers) → `PUBLISHED` (CAS-check the pinned base, promote `staging → generations/`, write a `COMMITTED` marker, atomically swap the `CURRENT` pointer) → `ACKNOWLEDGED` (idempotent completion). A reader pins `CURRENT` once and reads notes+index from that immutable generation, so it never observes a partial write — replacing the shipped non-atomic per-file `os.replace` + separately-swapped index.
+- The compare + promote + pointer-swap run under an exclusive `fcntl` lock, so the CAS is a real atomic test-and-set: two concurrent publishers cannot both pass the compare and both swap (which would silently lose a committed generation).
+- `VaultSnapshot` (A5.1) pins the base generation + a read-set (`path → hash | ABSENT`); `read_set_matches` is the CAS predicate that closes the **lost-update** hazard — it aborts the publish on a mutated pinned path or a phantom at an `ABSENT`-pinned path, without touching `CURRENT`. `publish_with_cas` bounds the CAS retry and terminates as `blocked` (never a livelock).
+- `KnowledgeCapsule` (A5.2) carries the transaction's provenance hashes + its exact write closure and enforces `staged_write_set == exact_write_closure(accepted_effects)`.
+- `recover()` treats the pointer swap as the authoritative commit: it completes a `PUBLISHED`-but-unacknowledged generation idempotently, collects unreferenced `staging/` generations, and GCs crash-orphaned `generations/` dirs (a promote that crashed before its `COMMITTED` marker + pointer swap), while never touching a committed or `CURRENT` generation.
+- Adversarially reviewed twice: the first pass caught 3 real bugs (non-atomic check-then-swap CAS, a crash-between-promote-and-swap generation leak, and a path-confinement `IsADirectoryError`), all fixed with regression tests; the second confirmed the crash-safe ordering at every interleaving (0 correctness bugs) and a reserved-control-filename defensive fix.
+
 ## [1.2.0] — 2026-07-23
 
 ### Agentic runtime v5 — durable automatic inbox execution — 2026-07-23

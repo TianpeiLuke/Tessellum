@@ -223,6 +223,17 @@ from tessellum.composer.write_closure import (
     validation_set,
     write_closure,
 )
+from tessellum.composer.publication import (
+    ABSENT,
+    KnowledgeCapsule,
+    PublicationError,
+    PublishResult,
+    RetryPolicy,
+    VaultSnapshot,
+    VersionedVault,
+    publish_with_cas,
+    read_set_matches,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -412,6 +423,16 @@ __all__ = [
     "boundary_witness",
     "validation_set",
     "partition_capsules",
+    # Versioned publication + snapshot CAS (P5, A5.1-A5.4)
+    "VaultSnapshot",
+    "KnowledgeCapsule",
+    "VersionedVault",
+    "PublicationError",
+    "PublishResult",
+    "RetryPolicy",
+    "read_set_matches",
+    "publish_with_cas",
+    "ABSENT",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",
