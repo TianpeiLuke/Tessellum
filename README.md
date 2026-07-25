@@ -4,7 +4,7 @@
 >
 > Knowledge construction for humans and agents, built on six architectural pillars: Zettelkasten, PARA, **Building Blocks**, **Epistemic Functions**, **Dialectic Knowledge System (DKS)**, and **CQRS**.
 
-Tessellum is a knowledge-construction system, not an agent-memory store. The unit of work is a **typed atomic note** — a *tessellum*, a small mosaic tile — that carries one epistemic claim. You write tessellae; Tessellum indexes them, retrieves them with hybrid BM25 + vector search, lets you grow Folgezettel trails that record *how thinking developed*, and runs a closed-loop Dialectic Knowledge System that updates warrants from observed disagreement. The architecture is CQRS: a typed prescriptive substrate (what you author) and a computational descriptive retrieval layer (what queries return) — read-side and write-side cleanly separated.
+Tessellum is a knowledge-construction system, not an agent-memory store. The unit of work is a **typed atomic note** — a *tessellum*, a small mosaic tile — that carries one epistemic claim. You write tessellae — or hand Tessellum a source document and let it **digest** that source into typed, connected notes. Either way, it indexes them, retrieves them with hybrid BM25 + vector search, lets you grow Folgezettel trails that record *how thinking developed*, and runs a closed-loop Dialectic Knowledge System that updates warrants from observed disagreement. The architecture is CQRS: a typed prescriptive substrate (what you author) and a computational descriptive retrieval layer (what queries return) — read-side and write-side cleanly separated.
 
 ## Status
 
@@ -86,6 +86,7 @@ tessellum composer run resources/skills/skill_my_skill.md --vault . --dynamic --
     --manifest run.json --close-gate --wave-gate --max-invocations 200
 tessellum composer batch    jobs.json --parallelism 8                        # parallel multi-skill
 tessellum composer eval     scenarios/  --judge-backend anthropic            # structural assertions + LLMJudge rubric
+tessellum composer digest   --source source.json --vault .                   # digest one source: plan → augment → review → execute
 
 # 7. DKS — run the Dialectic Knowledge System engine over observations
 tessellum dks observations.jsonl --perspectives a,b,c                        # multi-cycle dialectic (N>2 → Dung)
@@ -105,6 +106,9 @@ tessellum mcp serve                                                          # s
 ## Architecture
 
 ```
+                    inbox sources (papers, drafts, PDFs, docs)
+                                       │  digest: plan → augment → review → execute
+                                       ▼
                     ┌──────────────────────────────────────┐
                     │  vault/  (markdown + YAML)           │
                     │  System P — typed substrate          │
@@ -144,7 +148,7 @@ tessellum mcp serve                                                          # s
                     └──────────────────────────────────────┘
 ```
 
-See [vault/resources/analysis_thoughts/thought_six_pillars_architecture.md](vault/resources/analysis_thoughts/thought_six_pillars_architecture.md) for the full pillar-by-pillar deep dive.
+The loop closes through the substrate. The Composer and DKS engines read System D and author new, connected notes back into System P; the next build re-projects them. Knowledge flows P → D → new notes → P — never around the vault — and the automatic runtime drives that loop continuously (`tessellum runtime serve`). See [docs/digestion.md](docs/digestion.md) for the source-to-notes flow and [docs/architecture.md](docs/architecture.md) for the full system deep dive.
 
 ## The Building Block Ontology
 
@@ -153,6 +157,10 @@ Every tessellum has a `building_block` field in YAML frontmatter — one of 8 ty
 ## Folgezettel Trails
 
 Wikilinks tell you what's *related*. Folgezettel trails tell you *how thinking developed* — argument → counter → response → reframe → synthesis, encoded in trail IDs (`7 → 7a → 7a1 → 7a1a`). See [vault/resources/term_dictionary/term_folgezettel.md](vault/resources/term_dictionary/term_folgezettel.md).
+
+## Digestion — sources into connected notes
+
+Tessellum doesn't only store notes you write; it **digests** source documents into them. A digestion runs one pipeline of four phases — `plan → augment → review → execute` — that decomposes a source into building-block-atomic notes and wires each into the graph: bound to its source (provenance), registered under the entry points that make it findable (navigation), linked to its neighbours (see-also links + reverse backlinks), and placed on a Folgezettel trail. The plan is reviewed and gated before the authoring wave spends anything, so an unsound decomposition never reaches the vault. The optional **P0–P9 knowledge-transaction track** hardens a whole digestion into one snapshot-pinned transaction — staged, proven, and published atomically. See **[docs/digestion.md](docs/digestion.md)** for the end-to-end flow.
 
 ## Project Structure
 
@@ -203,10 +211,10 @@ Tessellum/
 │   └── runtime/           Durable jobs, content-addressed spool, artifacts, and source archive
 ├── experiments/           Experiment outputs
 ├── scripts/               Operational utilities (one-off migrations; not in wheel)
-└── tests/                 Test suite (1241 passing, 1 skipped)
+└── tests/                 Test suite (1389 passing, 1 skipped)
 ```
 
-**Two documentation surfaces, by audience.** [`docs/`](docs/) is the **engineering reference** — the system architecture and a per-module design doc (runtime, composer, dks, retrieval, indexer, bb, format, cli, mcp) for contributors reading the code. [`vault/`](vault/) is the **knowledge documentation** — Tessellum dogfoods itself, so its concepts, how-tos, and design arguments live as typed atomic notes; start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.
+**Two documentation surfaces, by audience.** [`docs/`](docs/) is the **engineering reference** — the system architecture, the end-to-end [digestion](docs/digestion.md) flow, and a per-module design doc (runtime, composer, dks, retrieval, indexer, bb, format, cli, mcp) for contributors reading the code. [`vault/`](vault/) is the **knowledge documentation** — Tessellum dogfoods itself, so its concepts, how-tos, and design arguments live as typed atomic notes; start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.
 
 ## Compared to Adjacent Tools
 
