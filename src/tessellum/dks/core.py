@@ -425,33 +425,59 @@ def _next_fresh_root(existing_trails: tuple[str, ...]) -> str:
 
 
 def _next_child_of(parent_fz: str, existing_trails: tuple[str, ...]) -> str:
-    """Return the next letter-suffix child of ``parent_fz``.
+    """Return the next child of ``parent_fz``, ALTERNATING digit/letter by depth.
 
-    First child is ``<parent>a``; second is ``<parent>b``; etc. We use
-    the alphanumeric form (parent ``"1"`` → child ``"1a"`` → grandchild
-    ``"1a1"``) consistent with Tessellum's existing trail conventions —
-    same shape as ``thought_cqrs_design_evolution`` (FZ 1a) descending
-    from ``thought_building_block_ontology_relationships`` (FZ 1).
+    Tessellum's FZ convention alternates the component class at each level: a
+    parent ending in a DIGIT gets a LETTER child (``1`` → ``1a``), and a parent
+    ending in a LETTER gets a DIGIT child (``1a`` → ``1a1`` → ``1a1a`` …). The
+    prior implementation always appended a letter (``1a`` → ``1aa``), which
+    broke alternation and collided with sibling trails (release-blocker #1).
+
+    A digit child counts from ``1`` (``…a`` → ``…a1``, ``…a2`` …); a letter
+    child counts ``a``, ``b`` …, with a two-letter fallback after ``z``.
+    Direct children are the existing trails whose next component (the maximal
+    run of same-class chars immediately after ``parent_fz``) is of the expected
+    class; we return the smallest unused value of that class.
     """
-    # Children of `parent_fz` have prefix `parent_fz` + single letter (and
-    # possibly more after that). We're looking for direct children whose
-    # next character is a letter.
-    direct_letters: set[str] = set()
     parent_len = len(parent_fz)
+    last_char = parent_fz[-1]
+    want_digit = last_char.isalpha()  # letter parent → digit child; else letter
+
+    if want_digit:
+        used_digits: set[int] = set()
+        for fz in existing_trails:
+            if not fz or not fz.startswith(parent_fz) or len(fz) <= parent_len:
+                continue
+            # the child's leading digit run immediately after the parent
+            rest = fz[parent_len:]
+            if not rest[0].isdigit():
+                continue
+            run = ""
+            for ch in rest:
+                if ch.isdigit():
+                    run += ch
+                else:
+                    break
+            used_digits.add(int(run))
+        n = 1
+        while n in used_digits:
+            n += 1
+        return parent_fz + str(n)
+
+    # want a letter child: collect the leading single-letter component of each
+    # direct child (letters are single-char components in this convention).
+    direct_letters: set[str] = set()
     for fz in existing_trails:
-        if not fz or not fz.startswith(parent_fz):
-            continue
-        if len(fz) <= parent_len:
+        if not fz or not fz.startswith(parent_fz) or len(fz) <= parent_len:
             continue
         next_char = fz[parent_len]
         if next_char.isalpha() and next_char.islower():
             direct_letters.add(next_char)
-    # Find the next available lowercase letter
     for letter_code in range(ord("a"), ord("z") + 1):
         letter = chr(letter_code)
         if letter not in direct_letters:
             return parent_fz + letter
-    # Exhausted a-z; fall back to two-letter suffix
+    # Exhausted a-z; fall back to a two-letter suffix.
     for letter_code1 in range(ord("a"), ord("z") + 1):
         for letter_code2 in range(ord("a"), ord("z") + 1):
             suffix = chr(letter_code1) + chr(letter_code2)
@@ -502,10 +528,16 @@ class DKSCycle:
         retrieval_client: object | None = None,
         semantic_disagreement: bool = False,
         perspectives: tuple[str, ...] = ("conservative", "exploratory"),
+        mode: CycleMode = "fresh",
     ) -> None:
         self.observation = observation
         self.warrants = warrants
         self.backend = backend
+        # A0.1 — the requested allocation mode (fresh/extend/branch) must
+        # round-trip into DKSCycleResult.mode + the trace. Previously every
+        # return site hard-coded "fresh", so extend/branch were lost
+        # (release-blocker #2).
+        self.mode: CycleMode = mode
         self.confidence_model = confidence_model
         # The default threshold lives in tessellum.dks.confidence; we
         # import lazily here to avoid a circular import at module load
@@ -590,7 +622,7 @@ class DKSCycle:
             # Skip steps 3-7. Cycle deposits 2 FZ nodes (observation + A).
             return DKSCycleResult(
                 cycle_id=cycle_id,
-                mode="fresh",
+                mode=self.mode,
                 observation=self.observation,
                 argument_a=arg_a,
                 argument_b=None,
@@ -634,7 +666,7 @@ class DKSCycle:
         if contradicts is None:
             return DKSCycleResult(
                 cycle_id=cycle_id,
-                mode="fresh",
+                mode=self.mode,
                 observation=self.observation,
                 argument_a=arg_a,
                 argument_b=arg_b,
@@ -652,6 +684,20 @@ class DKSCycle:
                 silent_failures=tuple(self._silent_failures),
             )
 
+        # A0.4 — Dung-IN must be COMPUTED by the solver, not asserted. Build a
+        # DungAF over the two arguments with the attack edge derived from the
+        # contradicts relation (attacker_fz attacks attacked_fz) and let the
+        # grounded labelling decide which argument is `in`/`out`/`undec`. This
+        # is the same solver the N>2 path uses; the hard-coded {A:out, B:in}
+        # made P4's validation meaningless (release-blocker #5, mechanics half).
+        from tessellum.dks.dung import DungAF, grounded_labelling
+
+        n2_af = DungAF(
+            arguments=(arg_a.folgezettel, arg_b.folgezettel),
+            attacks=((contradicts.attacker_fz, contradicts.attacked_fz),),
+        )
+        n2_labels = grounded_labelling(n2_af)
+
         # Step 5: counter-argument naming the broken Toulmin component
         counter = self._step_counter(contradicts, arg_a, arg_b)
         # Step 6: pattern discovery aggregating the contradiction
@@ -661,7 +707,7 @@ class DKSCycle:
 
         return DKSCycleResult(
             cycle_id=cycle_id,
-            mode="fresh",
+            mode=self.mode,
             observation=self.observation,
             argument_a=arg_a,
             argument_b=arg_b,
@@ -675,10 +721,7 @@ class DKSCycle:
             confidence_score=confidence_score,
             arguments=(arg_a, arg_b),
             contradicts_edges=(contradicts,),
-            grounded_labelling={
-                arg_a.folgezettel: "out",
-                arg_b.folgezettel: "in",
-            },
+            grounded_labelling=dict(n2_labels),
             rule_revisions=(revision,),
             silent_failures=tuple(self._silent_failures),
         )
@@ -752,7 +795,7 @@ class DKSCycle:
         if not out_fzs:
             return DKSCycleResult(
                 cycle_id=cycle_id,
-                mode="fresh",
+                mode=self.mode,
                 observation=self.observation,
                 argument_a=arg_a,
                 argument_b=arg_b,
@@ -817,7 +860,7 @@ class DKSCycle:
 
         return DKSCycleResult(
             cycle_id=cycle_id,
-            mode="fresh",
+            mode=self.mode,
             observation=self.observation,
             argument_a=arg_a,
             argument_b=arg_b,
@@ -1245,6 +1288,7 @@ class DKSRunner:
         retrieval_client: object | None = None,
         semantic_disagreement: bool = False,
         perspectives: tuple[str, ...] = ("conservative", "exploratory"),
+        modes: tuple[CycleMode, ...] = (),
     ) -> None:
         self.observations = observations
         self.backend = backend
@@ -1256,23 +1300,45 @@ class DKSRunner:
         self.semantic_disagreement = semantic_disagreement
         # Multi-perspective debate forwarded to each cycle.
         self.perspectives = perspectives
+        # A0.1 — per-observation allocation mode, aligned positionally to
+        # ``observations``. Empty (the default) means every cycle is "fresh",
+        # preserving prior behavior; a NON-empty tuple must match the
+        # observation count exactly (a partial tuple is a caller error).
+        if modes and len(modes) != len(observations):
+            raise ValueError(
+                f"modes must align to observations: got {len(modes)} modes "
+                f"for {len(observations)} observations"
+            )
+        self.modes: tuple[CycleMode, ...] = modes
 
     def run(self) -> DKSRunResult:
+        from tessellum.dks.persistence import WarrantRegistry
+
         start = time.monotonic()
-        warrants: list[DKSWarrant] = list(self.initial_warrants)
+        # A0.3 — active-warrant supersession (release-blocker #3). Previously a
+        # flat list appended every revision, so a superseded warrant stayed in
+        # the active set AND leaked into the next cycle + final_warrants. Use a
+        # WarrantRegistry keyed by FZ so supersede() REMOVES the old warrant
+        # from the active set (WarrantHistory / the change log keep the audit
+        # trail). Initial warrants carry no FZ, so key them synthetically.
+        registry = WarrantRegistry()
+        for j, w in enumerate(self.initial_warrants):
+            registry.add(f"init:{j}", w)
         cycles: list[DKSCycleResult] = []
         changes: list[WarrantChange] = []
 
-        for obs in self.observations:
+        for i, obs in enumerate(self.observations):
+            obs_mode: CycleMode = self.modes[i] if self.modes else "fresh"
             cycle = DKSCycle(
                 obs,
-                tuple(warrants),
+                registry.snapshot(),
                 self.backend,
                 confidence_model=self.confidence_model,
                 confidence_threshold=self.confidence_threshold,
                 retrieval_client=self.retrieval_client,
                 semantic_disagreement=self.semantic_disagreement,
                 perspectives=self.perspectives,
+                mode=obs_mode,
             ).run()
             cycles.append(cycle)
             # Iterate every emitted revision. For N=2 cycles + N>2
@@ -1309,12 +1375,25 @@ class DKSRunner:
                             superseded_fz=None,
                         )
                     )
-                warrants.append(rev.revised_warrant)
+                # Update the ACTIVE set: a supersede removes the old warrant;
+                # a plain add registers the new one. Guarded so
+                # WarrantRegistry.add() never raises mid-run on a revision FZ
+                # that is already active (only reachable on pathological
+                # duplicate-root input, where the new revision FZ collides with
+                # one already in the set — we then leave the active set as-is
+                # rather than raising).
+                new_fz = rev.folgezettel
+                if new_fz in registry:
+                    continue  # replacement key already active; skip (no raise)
+                if rev.supersedes and rev.supersedes in registry:
+                    registry.supersede(rev.supersedes, new_fz, rev.revised_warrant)
+                else:
+                    registry.add(new_fz, rev.revised_warrant)
 
         return DKSRunResult(
             cycles=tuple(cycles),
             warrant_changes=tuple(changes),
-            final_warrants=tuple(warrants),
+            final_warrants=registry.snapshot(),
             elapsed_ms=(time.monotonic() - start) * 1000.0,
             backend_id=getattr(self.backend, "backend_id", ""),
         )

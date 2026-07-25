@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — supplied-cycle kernel → self-driving thinking machine — P0 — 2026-07-24
+
+Begins the DKS refactor (plan_dks_refactor_implementation.md, FZ 8c5b11a10e1b8): moving the shipped DKS from a CLI-only, supplied-cycle dialectic kernel toward the designed autonomous, warrant-precision-improving thinking machine, reusing the (now-complete) dynamic-digestion substrate. **P0 fixes the four release-blocker kernel defects** — making one DKS cycle correct in isolation before it is ever routed automatically. All in `dks/core.py`; additive; the 222-test DKS baseline stays green (+13 new = 235).
+
+- **A0.1 — cycle-mode preservation (release-blocker #2):** `DKSCycleResult.mode` was hard-coded `"fresh"` at all five `DKSCycle.run` / `_run_n_perspective` return sites, losing the requested `extend`/`branch`. `DKSCycle` now takes a `mode` and threads `self.mode` into every result shape; `DKSRunner` accepts a per-observation `modes` tuple (empty → all `fresh`, preserving prior behavior) so the mode round-trips into the result + trace.
+- **A0.2 — vault-aware FZ allocation + digit/letter alternation (release-blocker #1):** `_next_child_of` alternated wrongly (`1a → 1aa`); it now alternates by the parent's last-character class — a digit parent gets the next unused letter child (`1 → 1a`), a letter parent gets the next unused digit child (`1a → 1a1 → 1a1a`), with gap-filling and the a–z/two-letter fallback preserved. `_next_fresh_root` is unchanged.
+- **A0.3 — active-warrant supersession (release-blocker #3):** `DKSRunner.run` appended every revision to a flat list, so a superseded warrant leaked into `final_warrants` and the next cycle. It now threads a `WarrantRegistry` keyed by FZ (initial warrants seeded with synthetic keys); a `supersedes` revision calls `registry.supersede()` (removing the old warrant from the active set) while the `WarrantChange` log keeps the full audit trail. Each cycle sees only the active set.
+- **A0.4 — N=2 computed Dung labelling (release-blocker #5, mechanics half):** the two-argument full-loop path hard-coded `grounded_labelling={arg_a:"out", arg_b:"in"}` — asserting an attack instead of computing it. It now builds a `DungAF` from the `contradicts` edge and calls `dung.grounded_labelling`, so Dung-`IN` is the solver's output (the precondition for P4's validation to mean anything).
+- New `tests/smoke/test_dks_p0.py` (13) covers all four defects; adversarially reviewed (0 correctness bugs; 2 low nits fixed — a stale docstring and a supersede guard against pathological duplicate-root input).
+
 ## [1.3.0] — 2026-07-24
 
 ### Dynamic digestion as a snapshot-pinned knowledge transaction — phases P0–P3 — 2026-07-24
