@@ -211,6 +211,18 @@ from tessellum.composer.overlay_index import (
     DeltaState,
     OverlayIndex,
 )
+from tessellum.composer.write_closure import (
+    BoundaryWitness,
+    ClosurePolicy,
+    ValidationResult,
+    WriteClosure,
+    WriteEffect,
+    boundary_witness,
+    classify_edge,
+    partition_capsules,
+    validation_set,
+    write_closure,
+)
 from tessellum.composer.signoff import (
     AgentVerdict,
     SignOffPolicy,
@@ -389,6 +401,17 @@ __all__ = [
     # Read-through overlay index over base ⊕ delta (P3, A3.1/A3.2)
     "OverlayIndex",
     "DeltaState",
+    # Exact write closure + validation heuristic + partition (P4, A4.2-A4.5)
+    "WriteEffect",
+    "WriteClosure",
+    "BoundaryWitness",
+    "ClosurePolicy",
+    "ValidationResult",
+    "write_closure",
+    "classify_edge",
+    "boundary_witness",
+    "validation_set",
+    "partition_capsules",
     # Skills-as-tools + capability registry
     "SkillTool",
     "build_skill_tool",
