@@ -6,48 +6,6 @@
 
 Tessellum is a knowledge-construction system, not an agent-memory store. Its unit of work is a **typed atomic note** — a *tessellum*, a small mosaic tile — small enough to make a single point, and tagged with what *kind* of point it makes. You author these notes yourself, or hand Tessellum a source document and let it **digest** the source into them. Either way, Tessellum indexes the notes and retrieves them with hybrid search (keyword and vector, combined). It lets you grow *Folgezettel trails* — chains of notes that record how one idea led to the next — and it runs a closed-loop reasoning engine, the **Dialectic Knowledge System**, that revises its conclusions as arguments and counter-arguments pile up. Underneath is a clean read/write split (the **CQRS** pattern): the notes you author are the source of truth, the searchable index is a projection rebuilt from them, and changes only ever flow one way — from the notes to the index, never back.
 
-## Status
-
-**Current `main` — every engine subsystem shipped, including the Composer v4 dynamic-workflow engine, the P0–P9 knowledge-transaction track, and the v5 automatic runtime.** Suite: **1389 passing, 1 skipped**.
-
-- **Composer** — a typed-contract pipeline runtime. Skill canonical (one self-contained markdown note — a typed contract block per step section) → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
-- **Knowledge transaction (P0–P9)** — an additive, opt-in layer that turns a multi-document digestion into one snapshot-pinned transaction: typed change proposals + intent graph, a read-through staging overlay, an exact write closure with a boundary proof, a structural gate suite + capsule-bound human approval, a calibrated (fail-closed) semantic certificate, a bounded planner loop with a proven halt, and versioned publication with a snapshot compare-and-swap. Byte-identical when its paths are off.
-- **DKS** — a shipped closed-loop **Dialectic Knowledge System runtime engine** (`tessellum dks`): a 7-component cycle (observation → N arguments → contradicts edges → counter → pattern → revised warrant) over the Building-Block graph, multi-perspective Dung argumentation, confidence gating, warrant persistence, and a second-order **meta-DKS** that mutates the BB schema itself.
-- **Retrieval** — BM25 (FTS5) + dense (sqlite-vec) + hybrid RRF + best-first BFS + metadata filter, over the indexed vault.
-- **Indexer** — vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec, `all-MiniLM-L6-v2` 384-d).
-- **Format** — closed-enum YAML validator + parser + BB-graph-aware link checker. **BB** — the 8-type, versioned, event-sourced ontology (source of truth).
-- **Automatic runtime** — durable inbox admission, content-addressed spooling, leased supervision, verified Composer resume, conflict-safe vault rollback, cancellation/retry/dead-letter handling, commit-only crash recovery, atomic index publication, and replayable source acknowledgement (`tessellum runtime serve`).
-- **Interfaces** — a 12-command CLI (`init / format / capture / index / search / filter / fz / bb / composer / dks / mcp / runtime`) and a **shipped MCP stdio server** (`tessellum mcp serve`, 12 tools).
-
-See [CHANGELOG](CHANGELOG.md) for the per-release ship list, **[`docs/digestion.md`](docs/digestion.md)** for how a source becomes connected notes, and **[`docs/`](docs/)** for the architecture + per-module design reference.
-
-## The Six Pillars
-
-| # | Pillar | What it gives you | Term note |
-|---|---|---|---|
-| 1 | **Z** — Zettelkasten | Atomic notes, bidirectional links — Luhmann's method that scaled to ~90k connected ideas | [term_zettelkasten](vault/resources/term_dictionary/term_zettelkasten.md) |
-| 2 | **PARA** — Projects/Areas/Resources/Archives | Tiago Forte's organizational scheme; four-fold structure that survives growth | [term_para_method](vault/resources/term_dictionary/term_para_method.md) |
-| 3 | **BB** — Building Block | 8 typed atomic units with defining epistemic functions; a versioned, event-sourced schema graph (~16 typed edges) drives the dialectic cycle | [term_building_block](vault/resources/term_dictionary/term_building_block.md) |
-| 4 | **EF** — Epistemic Function | Each BB has a *function* — name / structure / predict / claim / refute / observe / act / index | [term_epistemic_function](vault/resources/term_dictionary/term_epistemic_function.md) |
-| 5 | **DKS** — Dialectic Knowledge System | Closed-loop protocol — arguments attract counters, counters absorbed by syntheses, warrants update from observed disagreement | [term_dialectic_knowledge_system](vault/resources/term_dictionary/term_dialectic_knowledge_system.md) |
-| 6 | **CQRS** — Read/Write Split | System P (typed substrate, prescriptive — what you author) ⊥ System D (retrieval, descriptive — what queries return) | [term_cqrs](vault/resources/term_dictionary/term_cqrs.md) |
-
-**Two supporting concepts** that bridge the pillars (also shipped as term notes):
-
-| Concept | What it does | Term note |
-|---|---|---|
-| **Slipbox** | The system class — a typed atomic-note vault with a graph layer; Tessellum is one Slipbox implementation | [term_slipbox](vault/resources/term_dictionary/term_slipbox.md) |
-| **Folgezettel** | The trail mechanism — alphanumeric IDs encode argument descent (1 → 1a → 1a1) so the graph remembers *how thinking developed*, not just *what relates* | [term_folgezettel](vault/resources/term_dictionary/term_folgezettel.md) |
-
-## What Tessellum Is *Not*
-
-| | Tessellum |
-|---|---|
-| **Note app** (Obsidian / Notion / Roam) | Tessellum *constructs* knowledge — typed atomicity, dialectic, CQRS — not just stores it |
-| **Agent memory** (Mem0 / Letta / palinode) | Tessellum is a typed knowledge system. Memory tools focus on per-session recall; Tessellum focuses on **epistemic structure** |
-| **Knowledge graph** (Neo4j / Stardog) | The graph emerges from typed wikilinks and Folgezettel trails. You write atomic markdown, not Cypher |
-| **RAG framework** (LangChain / LlamaIndex) | Retrieval is hybrid BM25 + vector (RRF) + best-first BFS + metadata filter over a *typed* graph. Notes are typed atoms, not opaque chunks |
-
 ## Quick Start
 
 ```bash
@@ -102,6 +60,48 @@ tessellum mcp serve                                                          # s
 ```
 
 `tessellum --version` prints the version; bare `tessellum` prints the capability banner.
+
+## Status
+
+**Current `main` — every engine subsystem shipped, including the Composer v4 dynamic-workflow engine, the P0–P9 knowledge-transaction track, and the v5 automatic runtime.** Suite: **1389 passing, 1 skipped**.
+
+- **Composer** — a typed-contract pipeline runtime. Skill canonical (one self-contained markdown note — a typed contract block per step section) → zero-LLM compile → typed DAG → execute either **serially** (`run_pipeline`, the byte-identical reference path) or through the **v4 self-claiming, wave-parallel dynamic scheduler** (`run_pipeline_dynamic`, opt-in via `--dynamic`) with a resume manifest, a plan/session/wave gate engine, an error-class + full-jitter retry ladder, run-level budgets, a key-rotating credential pool, a fail-soft context assembler, and a pluggable sign-off approver. Four LLM backends: **Mock / Anthropic / Bedrock / Pooled**.
+- **Knowledge transaction (P0–P9)** — an additive, opt-in layer that turns a multi-document digestion into one snapshot-pinned transaction: typed change proposals + intent graph, a read-through staging overlay, an exact write closure with a boundary proof, a structural gate suite + capsule-bound human approval, a calibrated (fail-closed) semantic certificate, a bounded planner loop with a proven halt, and versioned publication with a snapshot compare-and-swap. Byte-identical when its paths are off.
+- **DKS** — a shipped closed-loop **Dialectic Knowledge System runtime engine** (`tessellum dks`): a 7-component cycle (observation → N arguments → contradicts edges → counter → pattern → revised warrant) over the Building-Block graph, multi-perspective Dung argumentation, confidence gating, warrant persistence, and a second-order **meta-DKS** that mutates the BB schema itself.
+- **Retrieval** — BM25 (FTS5) + dense (sqlite-vec) + hybrid RRF + best-first BFS + metadata filter, over the indexed vault.
+- **Indexer** — vault → one SQLite DB (notes + note_links + FTS5 + sqlite-vec, `all-MiniLM-L6-v2` 384-d).
+- **Format** — closed-enum YAML validator + parser + BB-graph-aware link checker. **BB** — the 8-type, versioned, event-sourced ontology (source of truth).
+- **Automatic runtime** — durable inbox admission, content-addressed spooling, leased supervision, verified Composer resume, conflict-safe vault rollback, cancellation/retry/dead-letter handling, commit-only crash recovery, atomic index publication, and replayable source acknowledgement (`tessellum runtime serve`).
+- **Interfaces** — a 12-command CLI (`init / format / capture / index / search / filter / fz / bb / composer / dks / mcp / runtime`) and a **shipped MCP stdio server** (`tessellum mcp serve`, 12 tools).
+
+See [CHANGELOG](CHANGELOG.md) for the per-release ship list, **[`docs/digestion.md`](docs/digestion.md)** for how a source becomes connected notes, and **[`docs/`](docs/)** for the architecture + per-module design reference.
+
+## The Six Pillars
+
+| # | Pillar | What it gives you | Term note |
+|---|---|---|---|
+| 1 | **Z** — Zettelkasten | Atomic notes, bidirectional links — Luhmann's method that scaled to ~90k connected ideas | [term_zettelkasten](vault/resources/term_dictionary/term_zettelkasten.md) |
+| 2 | **PARA** — Projects/Areas/Resources/Archives | Tiago Forte's organizational scheme; four-fold structure that survives growth | [term_para_method](vault/resources/term_dictionary/term_para_method.md) |
+| 3 | **BB** — Building Block | 8 typed atomic units with defining epistemic functions; a versioned, event-sourced schema graph (~16 typed edges) drives the dialectic cycle | [term_building_block](vault/resources/term_dictionary/term_building_block.md) |
+| 4 | **EF** — Epistemic Function | Each BB has a *function* — name / structure / predict / claim / refute / observe / act / index | [term_epistemic_function](vault/resources/term_dictionary/term_epistemic_function.md) |
+| 5 | **DKS** — Dialectic Knowledge System | Closed-loop protocol — arguments attract counters, counters absorbed by syntheses, warrants update from observed disagreement | [term_dialectic_knowledge_system](vault/resources/term_dictionary/term_dialectic_knowledge_system.md) |
+| 6 | **CQRS** — Read/Write Split | System P (typed substrate, prescriptive — what you author) ⊥ System D (retrieval, descriptive — what queries return) | [term_cqrs](vault/resources/term_dictionary/term_cqrs.md) |
+
+**Two supporting concepts** that bridge the pillars (also shipped as term notes):
+
+| Concept | What it does | Term note |
+|---|---|---|
+| **Slipbox** | The system class — a typed atomic-note vault with a graph layer; Tessellum is one Slipbox implementation | [term_slipbox](vault/resources/term_dictionary/term_slipbox.md) |
+| **Folgezettel** | The trail mechanism — alphanumeric IDs encode argument descent (1 → 1a → 1a1) so the graph remembers *how thinking developed*, not just *what relates* | [term_folgezettel](vault/resources/term_dictionary/term_folgezettel.md) |
+
+## What Tessellum Is *Not*
+
+| | Tessellum |
+|---|---|
+| **Note app** (Obsidian / Notion / Roam) | Tessellum *constructs* knowledge — typed atomicity, dialectic, CQRS — not just stores it |
+| **Agent memory** (Mem0 / Letta / palinode) | Tessellum is a typed knowledge system. Memory tools focus on per-session recall; Tessellum focuses on **epistemic structure** |
+| **Knowledge graph** (Neo4j / Stardog) | The graph emerges from typed wikilinks and Folgezettel trails. You write atomic markdown, not Cypher |
+| **RAG framework** (LangChain / LlamaIndex) | Retrieval is hybrid BM25 + vector (RRF) + best-first BFS + metadata filter over a *typed* graph. Notes are typed atoms, not opaque chunks |
 
 ## Architecture
 
@@ -165,6 +165,16 @@ Tessellum doesn't only store the notes you write; it **digests** source document
 It *decomposes* the source into notes small enough that each makes a single point, one per building-block type. And it *connects* each note into the graph: back to the source it came from, up to the index pages that make it findable, across to its neighbouring notes, and into its place on a Folgezettel trail. A digested note is never dropped in as an island.
 
 The plan is reviewed and gated before the authoring step runs, so an unsound decomposition never reaches the vault. The optional **P0–P9 knowledge-transaction track** goes one step further: it stages a whole digestion off to the side, proves it is sound, and publishes every note at once — all-or-nothing. See **[docs/digestion.md](docs/digestion.md)** for the full flow.
+
+## Documentation
+
+New here? The fastest path is to run the **Quick Start** above, skim **The Six Pillars** for the mental model, then read the two docs that explain the system end to end.
+
+- **[docs/digestion.md](docs/digestion.md)** — how a source becomes connected notes: the `plan → augment → review → execute` flow, and how each note is wired into the graph.
+- **[docs/architecture.md](docs/architecture.md)** — the whole system in one picture: the CQRS wall between authoring and computation, the subsystems, and the invariants that keep each honest.
+- **[docs/](docs/)** — per-module design + reference docs (composer, dks, retrieval, indexer, bb, format, runtime, cli, mcp).
+- **[vault/0_entry_points/entry_master_toc.md](vault/0_entry_points/entry_master_toc.md)** — the concept documentation itself, written as typed notes (Tessellum dogfoods its own format).
+- **[CHANGELOG.md](CHANGELOG.md)** — per-release ship list. **[DEVELOPING.md](DEVELOPING.md)** — contributor guide and the two-surfaces rationale.
 
 ## Project Structure
 
