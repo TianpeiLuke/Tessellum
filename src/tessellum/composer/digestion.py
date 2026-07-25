@@ -38,6 +38,10 @@ from tessellum.composer.compiler import compile_skill
 from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.gates import build_plan_gate
+from tessellum.composer.knowledge_plan import (
+    NoteIntentGraph,
+    project_note_intent_graph,
+)
 from tessellum.composer.llm import LLMBackend
 from tessellum.composer.scheduler import (
     RunResult,
@@ -281,11 +285,24 @@ def run_digestion_pipeline(
     if cancellation_check is not None and cancellation_check():
         raise InterruptedError("digestion cancelled before execute")
     execute_compiled = compile_skill(skills_dir / f"{PHASE_SKILLS['execute']}.md")
-    execute_leaves = plan_doc.get("execute_leaves")
-    if not isinstance(execute_leaves, list) or not execute_leaves:
-        # Default: one leaf carrying the whole plan_doc (the execute skill's
-        # per-leaf step fans out from the plan it reads).
-        execute_leaves = [dict(plan_doc)]
+    # P2b wiring (OPT-IN): if the plan produced a typed NoteIntentGraph, derive
+    # the execute leaves from its deterministic projection (one BB-atomic leaf
+    # per note intent). If the key is ABSENT, fall through to the shipped path
+    # BYTE-IDENTICALLY. A present-but-invalid graph is a bug → fail loud.
+    graph_spec = plan_doc.get("note_intent_graph")
+    if graph_spec is not None:
+        graph = (
+            graph_spec
+            if isinstance(graph_spec, NoteIntentGraph)
+            else NoteIntentGraph.model_validate(graph_spec)
+        )
+        execute_leaves = project_note_intent_graph(graph)
+    else:
+        execute_leaves = plan_doc.get("execute_leaves")
+        if not isinstance(execute_leaves, list) or not execute_leaves:
+            # Default: one leaf carrying the whole plan_doc (the execute skill's
+            # per-leaf step fans out from the plan it reads).
+            execute_leaves = [dict(plan_doc)]
     execute_run = run_pipeline_dynamic(
         execute_compiled,
         leaves=execute_leaves,

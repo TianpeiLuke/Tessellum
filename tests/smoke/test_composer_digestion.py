@@ -285,3 +285,67 @@ def test_build_plan_gate_predicate_causes() -> None:
 def test_plan_gate_fail_closed_on_missing_plan(bad) -> None:
     res = build_plan_gate().evaluate(bad)
     assert not res.passed
+
+
+# ── P2b: opt-in NoteIntentGraph projection drives the execute fan-out ────────
+
+
+def _note_intent_graph_blob() -> dict:
+    """A note_intent_graph the review phase can emit into plan_doc; two intents
+    → the execute wave must fan out to two per-intent leaves."""
+    return {
+        "objective_id": "obj",
+        "intents": [
+            {
+                "note_id": "n1",
+                "thesis": "first note",
+                "building_block": "concept",
+                "target_path": "notes/n1.md",
+                "provenance": [{"span_id": "s1", "source_ref": "src#1"}],
+            },
+            {
+                "note_id": "n2",
+                "thesis": "second note",
+                "building_block": "procedure",
+                "target_path": "notes/n2.md",
+                "provenance": [{"span_id": "s2", "source_ref": "src#2"}],
+            },
+        ],
+    }
+
+
+def test_note_intent_graph_projection_drives_execute(tmp_path: Path) -> None:
+    """When plan_doc carries a valid note_intent_graph, the execute wave fans
+    out one leaf per intent (P2b wiring) rather than the whole-plan fallback."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    vault = tmp_path / "vault"
+    # The mock emits the graph as a phase's structured output → it threads into
+    # plan_doc, engaging the opt-in projection branch. Each execute leaf carries
+    # its own target_path.
+    backend = _mock(note_intent_graph=_note_intent_graph_blob())
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=backend, vault_root=vault,
+    )
+    assert result.completed
+    execute_phase = [p for p in result.phases if p.phase == "execute"][0]
+    # Two intents → two per-leaf execute results (vs the single whole-plan leaf).
+    assert len(execute_phase.run.leaves) == 2
+    leaf_paths = {leaf.get("target_path") for leaf in execute_phase.run.leaves}
+    assert leaf_paths == {"notes/n1.md", "notes/n2.md"}
+
+
+def test_absent_note_intent_graph_is_shipped_single_leaf(tmp_path: Path) -> None:
+    """Without a note_intent_graph, the shipped whole-plan fallback runs: a
+    single execute leaf (byte-identical to pre-P2b behaviour)."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=_mock(),
+        vault_root=tmp_path / "vault",
+    )
+    assert result.completed
+    execute_phase = [p for p in result.phases if p.phase == "execute"][0]
+    assert len(execute_phase.run.leaves) == 1  # the whole-plan fallback leaf

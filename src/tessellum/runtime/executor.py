@@ -541,10 +541,25 @@ class DigestionExecutor:
             source_suffix=Path(job.request.original_path).suffix,
         )
         source_hash = hashlib.sha256(source_content.encode("utf-8")).hexdigest()
+        # P2b (A2.2): the plan skill prompt references ``{{leaf.source_url}}``
+        # (skill_tessellum_plan_digestion.md), but the leaf previously carried
+        # only ``source_path`` — so the placeholder rendered a
+        # ``<missing leaf.source_url>`` sentinel and the planner was under-fed.
+        # Provide a bounded reference (a file:// URI for absolute paths, else
+        # the raw path) — NOT the content. ``source_content`` stays on the leaf
+        # for a context_assembler to window; it is never force-injected into
+        # the prompt (that would breach HARD_PROMPT_CAP_CHARS).
+        original_path = job.request.original_path
+        source_url = (
+            Path(original_path).as_uri()
+            if Path(original_path).is_absolute()
+            else original_path
+        )
         source_leaf = {
             "_id": job.job_id,
-            "source_path": job.request.original_path,
-            "source_name": Path(job.request.original_path).name,
+            "source_path": original_path,
+            "source_url": source_url,
+            "source_name": Path(original_path).name,
             "source_type": route.source_kind,
             "source_content": source_content,
             "source_hash": source_hash,

@@ -269,6 +269,70 @@ def project_note_intent_graph(graph: NoteIntentGraph) -> list[dict]:
     return leaves
 
 
+# ── P2b (A2.1): SourceBundle — a document set admitted as ONE objective ─────
+
+
+class BundleMember(BaseModel):
+    """One member of a :class:`SourceBundle`.
+
+    ``ordinal`` fixes the member's position in the objective (members are
+    stored in ascending-ordinal canonical order so the bundle content hash is
+    order-independent of admission order). ``ref`` is the member's source
+    reference (path/URL); ``extracted_text_hash`` pins the parsed content.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    source_id: str = Field(min_length=1)
+    ordinal: int = Field(ge=0)
+    ref: str = Field(min_length=1)
+    parser_id: str = Field(min_length=1)
+    extracted_text_hash: str = Field(min_length=1)
+    provenance: str = ""
+
+
+class SourceBundle(BaseModel):
+    """A set of sources admitted as ONE coordinated objective (P2b, A2.1).
+
+    This is the parent that :attr:`NoteIntentGraph.objective_id` points at. A
+    bundle is admitted as a single objective — never inferred from a directory
+    scan. Members are normalized into ascending-ordinal order at construction
+    so :func:`bundle_content_hash` is independent of admission order.
+
+    Validators (``model_validator(mode="after")``): ordinals are unique;
+    members are re-sorted into canonical ascending-ordinal order.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    bundle_id: str = Field(min_length=1)
+    objective: str = Field(min_length=1)
+    members: tuple[BundleMember, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _normalize_members(self) -> "SourceBundle":
+        ordinals = [m.ordinal for m in self.members]
+        if len(set(ordinals)) != len(ordinals):
+            raise ValueError("SourceBundle members must have unique ordinals")
+        ordered = tuple(sorted(self.members, key=lambda m: m.ordinal))
+        if ordered != self.members:
+            # frozen model → rebuild via object.__setattr__ on the validated copy
+            object.__setattr__(self, "members", ordered)
+        return self
+
+
+def bundle_content_hash(bundle: SourceBundle) -> str:
+    """Deterministic content id for a bundle (P2b, A2.1).
+
+    ``sha256`` over :func:`proposals.canonical_json_bytes` of the bundle's
+    JSON dump (float-banned, NFC-normalized, order-independent). Pure — no
+    clock/random/IO — so re-admitting the same members yields the same id.
+    """
+    return hashlib.sha256(
+        canonical_json_bytes(bundle.model_dump(mode="json"))
+    ).hexdigest()
+
+
 __all__ = [
     "ClaimProvenance",
     "NoteDisposition",
@@ -276,4 +340,8 @@ __all__ = [
     "NoteIntentGraph",
     "note_intent_content_id",
     "project_note_intent_graph",
+    # P2b (A2.1) — SourceBundle
+    "BundleMember",
+    "SourceBundle",
+    "bundle_content_hash",
 ]
