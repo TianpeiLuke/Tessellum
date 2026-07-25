@@ -83,6 +83,16 @@ from tessellum.dks.validation import (
     temporal_holdout_scorer,
     validate_claims,
 )
+from tessellum.dks.autonomy import (
+    # P5 (b2a + b6a) — outer control plane: frontier + VOI stop + authority
+    AuthorityLadder,
+    AuthorityLadderError,
+    EpistemicObligation,
+    InquiryFrontier,
+    StopDecision,
+    run_bounded_inquiry,
+    voi_stop_decision,
+)
 from tessellum.dks.retrieval_client import (
     # P-side retrieval client (warrant-grounding evidence fetch)
     RetrievalClient,
@@ -184,6 +194,14 @@ __all__ = [
     "classify_claim",
     "temporal_holdout_scorer",
     "validate_claims",
+    # Autonomy (P5)
+    "EpistemicObligation",
+    "InquiryFrontier",
+    "StopDecision",
+    "voi_stop_decision",
+    "run_bounded_inquiry",
+    "AuthorityLadder",
+    "AuthorityLadderError",
     # Runtime
     "DKSCycle",
     "DKSRunner",

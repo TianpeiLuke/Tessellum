@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### DKS refactor — P5 autonomy loop: inquiry frontier + VOI stop + authority ladder — 2026-07-25
+
+The thinking-machine milestone (decisions b2a + b6a): the outer control plane that makes DKS self-driving, staged behind explicit gates so a wrong autonomous decision cannot compound. New `dks/autonomy.py`; reuses the shipped `planner_loop`; +15 tests.
+
+- **A5.1 — inquiry frontier.** `InquiryFrontier` is an `EpistemicObligation` ledger (question + expected information gain + priority); `open()` ranks by a VOI index (EIG desc), `deficit()` maps the open-obligation count onto the substrate `Deficit` for the scheduler.
+- **A5.2 — VOI-indexed stopping.** `voi_stop_decision(frontier, lambda_cost)` stops with `understood=True` only on a `fixpoint` (empty frontier) or `retired_below_lambda` (every remaining obligation's EIG < λ, the write cost) — the anti-non-termination guard (the AutoGPT failure mode). A budget stop is `truncated`, never `understood`. The EIG/stop signal is computed by the independent evaluator, never the reasoning model (P3).
+- **A5.3 — bounded scheduler (reuse `planner_loop`).** `run_bounded_inquiry` threads the frontier deficit into the shipped `run_planner_loop`; its monotone-variant + depth/fuel/oscillation stops already prove halting — a divergent inquiry halts `blocked` (never livelock), a converging one reaches `complete`. DKS does not re-implement the loop.
+- **A5.4 — per-capability authority ladder.** Each stage (`DETECT`/`FORM_FRONTIER`/`PROPOSE`/`ACCEPT`/`EXECUTE`/`RECONCILE`) climbs `suggest → auto_with_veto → auto_in_odd → auto` independently; **`ACCEPT`/`RECONCILE` are capped below `auto` PERMANENTLY** (the certificate never self-authorizes — the mover is never the judge, P3). The cap is a CLASS INVARIANT: enforced at construction (`__post_init__`), on the setter, AND defensively re-capped on read, so no construction or direct mutation can produce a full-auto judge. An ODD-exit tripwire and a kill switch force every stage to `suggest`.
+- New `tests/smoke/test_dks_p5.py` (15): frontier ranking, VOI understood-vs-truncated, converging/divergent/budget halting via the reused loop, the permanent cap (incl. bypass attempts), ODD-exit + kill switch, and the mover-is-never-the-judge configuration. Adversarially reviewed: 0 correctness bugs (the class-invariant + enum-validation nits fixed pre-push).
+
 ### DKS refactor — P4 independent validation: claim-type router + conformal gate — 2026-07-25
 
 Makes Dung-`IN` stop self-certifying (decision b3a): promotion is authorized by an EXOGENOUS signal keyed to claim type, not by the reasoning model asserting its own conclusion. The conformal machinery is REUSED from the substrate's P7 (`semantic_certificate.certify`); DKS builds only the router + scorers. New `dks/validation.py`; +11 tests.
