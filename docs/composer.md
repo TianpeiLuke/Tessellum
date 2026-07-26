@@ -230,7 +230,12 @@ different key; a transient blip keeps the lease. Crucially the pool holds key
 never touches a credential.
 
 Sign-off is the approval ladder from plan to execute, climbed cheapest-first. A
-program gate is a pure structural pre-filter that can reject outright; an agent
+program gate is a pure structural pre-filter that can reject outright — and on the
+digestion path it now includes a deterministic note-atomicity gate that fails a plan
+on objective signals a program can measure (a note over the density ceiling, a
+multi-block building block, a source section left out of coverage) and loops it back
+to re-planning, so the split-the-notes rules are enforced by code rather than left to
+the planner's goodwill. An agent
 judge returns an approve-or-reject with a confidence; and a human seam is reached
 *only* when agent confidence is low or the blast radius is high. The rung callables
 are injected — this module owns the ladder's logic, not the model or the UI behind

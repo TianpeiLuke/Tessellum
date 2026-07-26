@@ -54,6 +54,17 @@ when every checkpoint passes. A rejection stops the pipeline here, before a sing
 is authored — because the entire point of a gate is to not spend the execution wave on
 an unsound plan.
 
+Two layers make up that gate, and they are deliberately different. A hard, deterministic
+atomicity gate fires only on *objective* signals a program can measure without argument: a
+note estimated over the density ceiling, a building block that crams more than one type, a
+source section left out of the coverage map, or a plan that enumerates notes yet declares no
+word estimate at all. Any of these fails the plan closed and loops it back to re-planning —
+and the gate only asserts "not acceptable"; the planner is free to remedy by splitting new
+notes *or* rearranging the coverage, not a prescribed fix. On top of that sits the reviewer's
+*subjective* read — is this note truly one idea, is the decomposition genuinely complete —
+which advises but never hard-fails. Machine-checkable rules are enforced by code; judgment
+stays with the reviewer.
+
 **Execute.** The fourth phase authors the notes. It fans the reviewed plan out into the
 parallel wave — one writer per planned note — and each authored note flows through the
 same discipline every Composer write obeys: it is validated against its schema, written
