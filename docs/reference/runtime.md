@@ -727,6 +727,7 @@ rebuild_index_atomically(
     paths: RuntimePaths,
     *,
     with_dense: bool = True,
+    incremental: bool = True,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     lock_vault: bool = True,
 ) -> tuple[Path, bool]   # (index_path, dense_degraded)
@@ -746,9 +747,15 @@ CommitResult(archive_path: Path, index_path: Path, dense_degraded: bool | None =
 
 `rebuild_index_atomically()` holds a thread lock plus a POSIX advisory index
 lock and, by default, the live-vault lock across snapshot construction and
-publication, always acquiring the vault lock before the index lock. It builds
-to a sibling temporary database, fsyncs it, calls `os.replace()` only after
-success, and fsyncs the parent directory. The effect guard fences publication,
+publication, always acquiring the vault lock before the index lock. With
+`incremental=True` (the default) it `copy2`s the live index to a sibling
+temporary database and applies only the delta (`build_incremental` — added /
+changed / deleted notes, proven equal to a from-scratch rebuild) so an O(vault)
+rebuild no longer runs on every one-note commit; `incremental=False` (or no live
+index) does a full `build()` for a schema change or repair. Either way it fsyncs
+the temp, calls `os.replace()` only after success (the live index is never
+mutated in place), and fsyncs the parent directory. A `_assert_not_wal` guard and
+a stale-temp sweep run before the copy. The effect guard fences publication,
 not the expensive build. `commit_job()` rebuilds first, then durably archives
 admitted spool bytes. Source acknowledgement replays a prior job-owned hidden
 quarantine after process death. The supervisor already owns the live-vault

@@ -295,12 +295,16 @@ dead-letter job. Completed jobs are not retryable through this operation.
 
 After Composer reports a clean result, the supervisor enters `committing`.
 The same cross-process live-vault transaction remains held. Unless
-`--no-index` was requested, it builds the vault projection into a unique
-temporary database with the dense vector surface enabled, then atomically replaces
-`data/tessellum.db`. The dense build is fail-soft — a missing encoder degrades to a
-BM25-only index and sets `dense_degraded`, which the supervisor threads into the
-job-completion detail so a degraded live index is visible, never silent. File and
-parent-directory fsyncs make publication durable.
+`--no-index` was requested, it copies the live index to a unique temporary
+database and re-indexes only the notes that changed — an incremental delta build
+proven equal to a from-scratch rebuild, so a one-note commit no longer re-parses
+and re-embeds the whole vault — then atomically replaces `data/tessellum.db`. The
+live index is never mutated in place; a full rebuild is still used when no index
+exists yet or a schema change demands it. The build carries the dense vector
+surface and is fail-soft — a missing encoder degrades to a BM25-only index and
+sets `dense_degraded`, which the supervisor threads into the job-completion detail
+so a degraded live index is visible, never silent. File and parent-directory
+fsyncs make publication durable.
 A separate index lock serializes standalone rebuild calls, with the vault lock
 always acquired first to avoid lock-order inversion. A failed build leaves the
 previous index in place.

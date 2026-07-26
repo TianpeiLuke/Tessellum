@@ -6,10 +6,10 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 
 | File | Role |
 |------|------|
-| `build.py` | The compiler. `build()` entry point + `BuildResult`, the vault walk, per-file metadata extraction, link mining/resolution/repair, and the four DB writers (notes, links, FTS, embeddings). Owns the link regex, the non-note skip list, and the embedding model constants. |
+| `build.py` | The compiler. `build()` (full from-scratch) + `build_incremental()` (delta-only) + `BuildResult`, the vault walk, per-file metadata extraction, link mining/resolution/repair, and the four DB writers (notes, links, FTS, embeddings). Owns the link regex, the non-note skip list, and the embedding model constants. |
 | `db.py` | The read side. `Database` wrapper + `NoteRow` / `LinkRow` dataclasses and their row converters. Read-only, typed query helpers; no mutation. |
 | `schema.sql` | The DDL. `notes` + `note_links` base tables (with indexes + FKs), the `notes_vec` sqlite-vec virtual table, and the `notes_fts` FTS5 virtual table. Applied verbatim via `executescript` at build time. |
-| `__init__.py` | Public surface: re-exports `build`, `BuildResult`, `Database`, `NoteRow`, `LinkRow`. |
+| `__init__.py` | Public surface: re-exports `build`, `build_incremental`, `BuildResult`, `Database`, `NoteRow`, `LinkRow`. |
 | `cli/index.py` | The `tessellum index build` command: wires `build()` into the CLI, resolves paths, maps exceptions to exit codes, prints the summary. |
 
 ## Public API — `tessellum.indexer`
@@ -17,6 +17,7 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 ### Builder (`build.py`)
 
 - `build(vault_path: Path | str, db_path: Path | str, *, force: bool = False, with_dense: bool = True) -> BuildResult` — full from-scratch scan and write. Creates `db_path` parent dirs as needed. Raises `FileNotFoundError` if `vault_path` is not a directory; raises `FileExistsError` if `db_path` exists and `force=False` (with `force=True`, deletes and recreates). `with_dense=False` skips embedding generation. **Fail-soft:** with `with_dense=True`, a missing `sentence-transformers` dep or an encoder failure degrades to a BM25-only index (`dense_degraded=True`, zero embeddings, warning logged with `exc_info`) instead of crashing the build.
+- `build_incremental(vault_path: Path | str, db_path: Path | str, *, with_dense: bool = True) -> BuildResult` — update an EXISTING index in place, re-indexing **only the delta**. Diffs the vault against the `notes` table by `note_id` → added / modified (detected by `last_indexed_mtime` OR `content_hash`, so a same-mtime edit is caught) / deleted, and applies only that. Unchanged notes AND their `notes_vec` embeddings are left untouched (no re-encode); `note_int_id` is preserved for unchanged/modified notes (new = `MAX+1`), so existing vec rows stay valid; `note_links` is rebuilt globally (cross-note resolution). Falls back to a full `build()` when the DB doesn't exist. One transaction; the dense DELETE+INSERT is `SAVEPOINT`-wrapped so an encoder failure preserves prior embeddings. Proven equal (parity) to a from-scratch `build()`.
 - `BuildResult` — `@dataclass(frozen=True)`: `db_path: Path`, `notes_indexed: int`, `links_indexed: int`, `skipped_files: int`, `duration_seconds: float`, `embeddings_generated: int = 0` (0 when `with_dense=False`), `dense_degraded: bool = False` (True iff dense was requested but the encoder failed → BM25-only).
 
 ### Reader (`db.py`)
@@ -63,6 +64,7 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 | `folgezettel_parent` | TEXT | frontmatter `folgezettel_parent`, else `fz_parent` |
 | `indexed_at` | TIMESTAMP | `DEFAULT CURRENT_TIMESTAMP` |
 | `last_indexed_mtime` | REAL | file mtime (epoch float) |
+| `content_hash` | TEXT | sha256 of frontmatter + body — the incremental change-detection key (a legacy NULL row falls back to `last_indexed_mtime`) |
 | `note_int_id` | INTEGER UNIQUE | surrogate key for the `notes_vec` join |
 
 Indexes: `note_int_id`, `note_category`, `note_second_category`, `note_status`, `building_block`, `folgezettel`, `folgezettel_parent`.
