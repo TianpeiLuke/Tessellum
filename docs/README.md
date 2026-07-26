@@ -39,5 +39,6 @@ this for *how knowledge gets in and connected*; read the module docs below for *
 | Format — the note validator | [format.md](format.md) | [reference/format.md](reference/format.md) |
 | CLI — the command surface | [cli.md](cli.md) | [reference/cli.md](reference/cli.md) |
 | MCP — the agent tool server | [mcp.md](mcp.md) | [reference/mcp.md](reference/mcp.md) |
+| Semantic certificate — the shared unattended-promotion gate (composer P7 + DKS P4) | [semantic-certificate.md](semantic-certificate.md) | [reference/composer.md](reference/composer.md) |
 
 When code and docs disagree, the **code is truth** — open an issue or a PR against the doc.

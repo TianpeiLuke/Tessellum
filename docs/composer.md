@@ -342,10 +342,12 @@ with an unreachable cutoff for any class that cannot meet the bound so it always
 abstains. The gate fails closed everywhere uncertainty enters — an empty claim set, a
 note outside the calibrated domain, a claim the scorer could not judge — routing those
 to a human. One honest limit bounds the promise: this is an empirical, in-sample
-calibration, not yet a distribution-free guarantee, so the machinery stays a framework
-until its false-accept rate is shown below target on a real held-out corpus of wrong-
-but-well-formed notes. Until that measurement lands, it does not license skipping
-human review.
+calibration, not yet a distribution-free guarantee. The certificate now runs end to end —
+a reference scorer, note-to-claim extraction, the runtime seam, and an A7.5 go/no-go gate
+all ship — but a production entailment model and a labelled corpus of wrong-but-well-formed
+notes remain an external prerequisite. Until that gate returns GO on a real corpus it does
+not license skipping human review: the certificate fails closed and promotion stays
+supervised. See [semantic-certificate.md](semantic-certificate.md) for the full mechanism.
 
 **Bounded planning that always halts.** When a planner re-plans from review evidence,
 the loop makes a deliberately modest promise: it always halts, in bounded time, at one
