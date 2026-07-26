@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-07-26
+
 ### Incremental index build — O(delta) commits replacing the O(vault) full rebuild (FZ 20k9d3 P1) — 2026-07-26
 
 Every runtime commit rebuilt the ENTIRE index from scratch (`build.py` walked + re-parsed + re-embedded all ~665 notes, `# no incremental update yet`) — the one vault-write defect that strictly worsens as the vault grows. This ports abuse_slipbox's proven incremental pattern: a commit now re-indexes only the notes that changed. The atomic-swap publish is unchanged, so the reader-isolation guarantee (proved bounded here, P0) holds. Additive; full rebuild stays available for schema changes / corruption. +19 tests; full suite 1702 passed. Adversarially reviewed (3 dimensions → find → independent verify; 6 findings — 1 high pre-fixed + 3 confirmed/partial fixed, 2 verified-not-bugs).

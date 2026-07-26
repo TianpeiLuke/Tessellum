@@ -1,6 +1,6 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.8.0"
+__version__ = "1.9.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
@@ -25,8 +25,10 @@ __status__ = (
     "is now the system's own LLM backend, leaving a labelled corpus as the one "
     "external prerequisite. Hybrid retrieval (BM25 + dense, RRF-fused) runs end to "
     "end on the live index — feeding reference context to the writer and "
-    "auto-generating each note's relevance-ranked ## References graph edges. "
-    "Suite: 1657 passing.\n"
+    "auto-generating each note's relevance-ranked ## References graph edges. Note "
+    "atomicity (density / one building block / full coverage) is enforced by a hard "
+    "plan gate, and the runtime commit re-indexes only changed notes (incremental, "
+    "proven equal to a full rebuild). Suite: 1703 passing.\n"
     "\n"
     "See CHANGELOG.md and docs/ for release details and engineering reference."
 )
