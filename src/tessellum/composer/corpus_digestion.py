@@ -34,9 +34,11 @@ from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.corpus_plan import (
     CorpusPlan,
     SharedCrossRef,
+    SharedCrossRefResolution,
     SubObjective,
     TermOwnershipResult,
     build_corpus_leaf,
+    resolve_shared_cross_refs,
     term_ownership_gate,
 )
 from tessellum.composer.credential_pool import RunBudget
@@ -188,6 +190,7 @@ def run_corpus_planning_wave(
     context_assembler: ContextAssembler | None = None,
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
+    shared_cross_refs: tuple[SharedCrossRef, ...] | None = None,
 ) -> CorpusPlanningResult:
     """Plan every sub-objective of a corpus into an accepted sub-plan (M3).
 
@@ -222,6 +225,13 @@ def run_corpus_planning_wave(
             f"corpus_plan.bundle_id {corpus_plan.bundle_id!r} does not match "
             f"bundle.bundle_id {bundle.bundle_id!r}"
         )
+    # M7: use the corpus-resolved shared cross-refs when the driver supplies
+    # them (deduped + existence-filtered once at corpus scope); else fall back
+    # to the plan's raw set (unresolved) so this wave stays usable standalone.
+    threaded_refs = (
+        corpus_plan.shared_cross_refs if shared_cross_refs is None
+        else shared_cross_refs
+    )
     outcomes: list[SubPlanOutcome] = []
     for sub in corpus_plan.sub_objectives:
         if cancellation_check is not None and cancellation_check():
@@ -237,7 +247,7 @@ def run_corpus_planning_wave(
             sub_bundle = _slice_bundle(bundle, sub)
             sub_contents = _slice_contents(bundle, sub, member_contents)
             leaf = build_corpus_leaf(sub_bundle, sub_contents)
-            leaf = _thread_shared_cross_refs(leaf, corpus_plan.shared_cross_refs)
+            leaf = _thread_shared_cross_refs(leaf, threaded_refs)
             # sub_id / priority / objective travel on the leaf so the sub-planner
             # (and downstream M4) can attribute the accepted plan to its owner.
             leaf["sub_id"] = sub.sub_id
@@ -468,6 +478,7 @@ class CorpusDigestionResult:
     executions: tuple[SubPlanExecution, ...]
     bundle_status: str
     term_ownership: "TermOwnershipResult | None" = None
+    shared_cross_refs: "SharedCrossRefResolution | None" = None
 
 
 def run_corpus_digestion(
@@ -487,6 +498,7 @@ def run_corpus_digestion(
     corpus_sign_off_policy: SignOffPolicy | None = None,
     human_prompt: HumanPrompt | None = None,
     introduced_terms: tuple[str, ...] | set[str] | None = None,
+    shared_cross_ref_exists: Callable[[str], bool] | None = None,
     execute_max_workers: int = 4,
     max_sub_plan_workers: int = 1,
     **execute_kwargs: Any,
@@ -518,6 +530,15 @@ def run_corpus_digestion(
     planning, so a corpus destined to be blocked pays zero planning-wave cost; a
     failed gate promotes NOTHING (an unowned cross-cutting term would ship a
     ghost reference). Opt-in — omitted → the gate does not run.
+
+    **M7 shared cross-refs.** The corpus's shared cross-references are resolved
+    ONCE (:func:`~tessellum.composer.corpus_plan.resolve_shared_cross_refs`) —
+    deduped by target and, when ``shared_cross_ref_exists`` is injected,
+    existence-filtered against the pinned snapshot — then threaded into every
+    sub-plan, so a broken/duplicate shared link is dropped here instead of
+    re-derived and re-linked in N sub-plans. The resolution report is on the
+    result's ``shared_cross_refs`` field. ``shared_cross_ref_exists`` is injected
+    (composer stays vault-I/O-free); omitted → dedup only.
 
     **M5 scheduling.** Execution walks
     :meth:`~tessellum.composer.corpus_plan.CorpusPlan.dependency_layers` —
@@ -579,11 +600,22 @@ def run_corpus_digestion(
                 bundle_status="blocked", term_ownership=term_ownership,
             )
 
+    # ── M7: resolve shared cross-refs ONCE at corpus scope ──────────────────
+    # Dedup by target + (when a snapshot existence check is injected) drop refs
+    # to notes not in the vault, so a broken/duplicate shared link is removed
+    # here instead of re-derived and re-linked in every sub-plan. The resolved
+    # set is threaded into the planning wave; the report is surfaced on the
+    # result. With no resolver + no shared refs this is a no-op.
+    shared_resolution = resolve_shared_cross_refs(
+        corpus_plan.shared_cross_refs, exists=shared_cross_ref_exists
+    )
+
     planning = run_corpus_planning_wave(
         corpus_plan, bundle, member_contents,
         skills_dir=skills_dir, backend=backend, vault_root=vault_root,
         dry_run=dry_run, budget=budget, context_assembler=context_assembler,
         cancellation_check=cancellation_check, effect_guard=effect_guard,
+        shared_cross_refs=shared_resolution.resolved,
     )
     accepted = [o for o in planning.sub_plans if o.accepted]
 
@@ -644,6 +676,7 @@ def run_corpus_digestion(
                 planning=planning, corpus_sign_off=corpus_sign_off,
                 executions=(), bundle_status="blocked",
                 term_ownership=term_ownership,
+                shared_cross_refs=shared_resolution,
             )
 
     # ── write-closure disjointness gate (M5): fail CLOSED on overlap ─────────
@@ -735,6 +768,7 @@ def run_corpus_digestion(
         planning=planning, corpus_sign_off=corpus_sign_off,
         executions=tuple(executions), bundle_status=bundle_status,
         term_ownership=term_ownership,
+        shared_cross_refs=shared_resolution,
     )
 
 

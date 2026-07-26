@@ -512,6 +512,50 @@ def test_corpus_term_ownership_gate_passes_and_promotes(tmp_path: Path) -> None:
     assert res.bundle_status == "complete"
 
 
+def test_corpus_shared_cross_refs_resolved_once_and_threaded(tmp_path: Path) -> None:
+    # M7: shared cross-refs are resolved ONCE at corpus scope (existence-filtered
+    # + deduped) and the RESOLVED set is threaded into every sub-plan — a missing
+    # ref is dropped, not re-linked in N sub-plans.
+    from tessellum.composer import SharedCrossRef
+
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    # plan skill echoes the threaded shared_cross_refs so we can observe them.
+    (sd / "skill_tessellum_plan_digestion.md").write_text(
+        (sd / "skill_tessellum_plan_digestion.md").read_text(encoding="utf-8").replace(
+            "Plan sub {{leaf.sub_id}} members:\n{{leaf.members}}",
+            "Plan sub {{leaf.sub_id}} xrefs:\n{{leaf.shared_cross_refs}}",
+        ),
+        encoding="utf-8",
+    )
+    b = _bundle(4)
+    plan = _corpus_plan(4).model_copy(update={
+        "shared_cross_refs": (
+            SharedCrossRef(target="term_real", relationship="uses"),
+            SharedCrossRef(target="term_ghost", relationship="x"),
+            SharedCrossRef(target="term_real", relationship="dup"),
+        ),
+    })
+    backend = _mock()
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=backend, vault_root=tmp_path / "vault",
+        shared_cross_ref_exists=lambda t: t == "term_real",
+    )
+    # resolution report on the result: ghost dropped, dup collapsed.
+    assert res.shared_cross_refs is not None
+    assert [r.target for r in res.shared_cross_refs.resolved] == ["term_real"]
+    assert res.shared_cross_refs.dropped_missing == ("term_ghost",)
+    assert res.shared_cross_refs.dropped_duplicate == ("term_real",)
+    # every sub-plan's plan prompt carries ONLY the resolved ref (no ghost).
+    plan_prompts = [c.user_prompt for c in backend.calls if "xrefs" in c.user_prompt]
+    assert len(plan_prompts) == 2
+    for p in plan_prompts:
+        assert "term_real" in p
+        assert "term_ghost" not in p
+
+
 def test_corpus_no_term_gate_when_introduced_terms_omitted(tmp_path: Path) -> None:
     # M6 is opt-in: without introduced_terms the gate does not run (term_ownership
     # is None) and the corpus digests as in M4/M5.

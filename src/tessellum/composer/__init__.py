@@ -213,6 +213,7 @@ from tessellum.composer.corpus_plan import (
     MemberExcerpt,
     PlanShape,
     SharedCrossRef,
+    SharedCrossRefResolution,
     SubObjective,
     SubObjectivePriority,
     SubObjectiveRow,
@@ -221,6 +222,7 @@ from tessellum.composer.corpus_plan import (
     build_corpus_leaf,
     classify_plan_shape,
     corpus_plan_content_id,
+    resolve_shared_cross_refs,
     term_ownership_gate,
 )
 from tessellum.composer.knowledge_plan import (
@@ -474,6 +476,8 @@ __all__ = [
     "corpus_plan_content_id",
     "TermOwnershipResult",
     "term_ownership_gate",
+    "SharedCrossRefResolution",
+    "resolve_shared_cross_refs",
     "DEFAULT_CORPUS_LEAF_MAX_CHARS",
     "MemberExcerpt",
     "build_corpus_leaf",

@@ -4,6 +4,18 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Multi-document corpus digestion — M0–M7 COMPLETE — 2026-07-25
+
+All eight phases of the multi-document corpus-digestion plan (FZ 20k9c1a1a1b7b1) are implemented as additive composer modules (`corpus_plan.py`, `corpus_digestion.py`) + a `run_execute_wave` seam and a `scheduler._corpus_leaf` fix. Tessellum can now take a *set* of incoming documents into ONE coordinated planning run and, above a volume threshold, decompose the corpus into a master plan + N self-contained sub-plans — the capability reviewed as missing in FZ 20k9c1a1a1b7b. The single-document `run_digestion_pipeline` path stays byte-identical (the corpus path is a new entry point). Every phase was adversarially reviewed with an independent verify pass; the reviews caught and fixed real bugs before merge (M0 rendered-budget overflow + scheduler-parity critical, M4/M5 per-sub-plan transaction isolation incl. path-less-manifest high, M6 duplicate-row miscount, M7 re-probe nit). Full suite 1289 passed.
+
+### Multi-document corpus digestion — M7: shared cross-reference resolution — 2026-07-25
+
+Resolves the corpus's shared cross-references ONCE at corpus scope instead of re-deriving them per sub-plan. Additive; +6 tests; adversarially reviewed (1 nit — fixed pre-commit).
+
+- **`resolve_shared_cross_refs(shared_cross_refs, *, exists=None) -> SharedCrossRefResolution`** (`composer/corpus_plan.py`) — pure: deduplicates by target (first-seen relationship wins) and, when an `exists(target) -> bool` predicate is injected, drops refs to notes not in the pinned snapshot (so a broken shared link is removed once, not re-linked in N sub-plans). `exists` is injected (composer stays vault-I/O-free); omitted → dedup only. A repeated missing target is probed at most once and reported once (review-fix, nit). Returns the resolved set + `dropped_missing` / `dropped_duplicate` report.
+- **`run_corpus_digestion(shared_cross_ref_exists=...)`** resolves once and threads the resolved set into `run_corpus_planning_wave` (new `shared_cross_refs` override, falling back to the plan's raw set standalone); the resolution report is on `CorpusDigestionResult.shared_cross_refs`.
+- New tests: dedup, existence-filter, no-resolver dedup-only, empty, repeated-missing-probed-once, and integration (resolved refs threaded to every sub-plan, ghost dropped).
+
 ### Multi-document corpus digestion — M6: corpus-wide term-ownership gate — 2026-07-25
 
 The machine-checked form of the plan skill's §4e.4 corpus-wide term-ownership sweep: every undigested term the corpus introduces must have exactly one owner sub-objective, or the whole corpus is blocked before promotion. Additive + opt-in; +9 tests; full suite 1283 passed. Adversarially reviewed (3 findings — all fixed pre-commit).

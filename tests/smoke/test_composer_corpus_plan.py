@@ -26,6 +26,7 @@ from tessellum.composer import (
     TermOwnerRow,
     classify_plan_shape,
     corpus_plan_content_id,
+    resolve_shared_cross_refs,
     term_ownership_gate,
 )
 
@@ -413,3 +414,64 @@ def test_term_ownership_gate_surfaces_unknown_owner_for_multiply_owned() -> None
     assert not res.passed
     assert res.multiply_owned == {"term_a": ("ghost1", "ghost2")}
     assert res.unknown_owner == {"term_a": "ghost1"}  # first unknown, sorted
+
+
+# ── M7: resolve_shared_cross_refs ────────────────────────────────────────────
+
+
+def test_resolve_shared_cross_refs_dedups_by_target() -> None:
+    refs = (
+        SharedCrossRef(target="term_a", relationship="uses"),
+        SharedCrossRef(target="term_b", relationship="x"),
+        SharedCrossRef(target="term_a", relationship="ignored-dup"),
+    )
+    res = resolve_shared_cross_refs(refs)
+    assert [r.target for r in res.resolved] == ["term_a", "term_b"]
+    # first-seen relationship wins; the later dup is dropped + reported.
+    assert res.resolved[0].relationship == "uses"
+    assert res.dropped_duplicate == ("term_a",)
+    assert res.dropped_missing == ()
+
+
+def test_resolve_shared_cross_refs_existence_filters() -> None:
+    refs = (
+        SharedCrossRef(target="term_real"),
+        SharedCrossRef(target="term_ghost"),
+    )
+    res = resolve_shared_cross_refs(refs, exists=lambda t: t == "term_real")
+    assert [r.target for r in res.resolved] == ["term_real"]
+    assert res.dropped_missing == ("term_ghost",)
+
+
+def test_resolve_shared_cross_refs_no_resolver_is_dedup_only() -> None:
+    refs = (SharedCrossRef(target="term_a"), SharedCrossRef(target="term_a"))
+    res = resolve_shared_cross_refs(refs, exists=None)
+    assert [r.target for r in res.resolved] == ["term_a"]
+    assert res.dropped_missing == ()  # existence filter skipped
+    assert res.dropped_duplicate == ("term_a",)
+
+
+def test_resolve_shared_cross_refs_empty() -> None:
+    res = resolve_shared_cross_refs(())
+    assert res.resolved == ()
+    assert res.dropped_missing == () and res.dropped_duplicate == ()
+
+
+def test_resolve_shared_cross_refs_repeated_missing_probed_once() -> None:
+    # Review (nit): a repeated MISSING target is probed by exists() at most once
+    # and reported once in dropped_missing; its repeat lands in dropped_duplicate.
+    probes: list[str] = []
+
+    def _exists(t: str) -> bool:
+        probes.append(t)
+        return False
+
+    refs = (SharedCrossRef(target="g"), SharedCrossRef(target="g"))
+    res = resolve_shared_cross_refs(refs, exists=_exists)
+    assert res.resolved == ()
+    assert res.dropped_missing == ("g",)      # reported once, not ("g","g")
+    assert res.dropped_duplicate == ("g",)    # the repeat is a duplicate
+    assert probes == ["g"]                    # exists() probed only once
+    # count invariant still holds.
+    assert (len(res.resolved) + len(res.dropped_missing)
+            + len(res.dropped_duplicate)) == len(refs)

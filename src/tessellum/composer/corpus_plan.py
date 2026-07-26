@@ -51,7 +51,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -529,6 +529,73 @@ def term_ownership_gate(
     )
 
 
+# ── M7 — shared cross-reference resolution ──────────────────────────────────
+
+
+@dataclass(frozen=True)
+class SharedCrossRefResolution:
+    """The result of :func:`resolve_shared_cross_refs` (M7).
+
+    Attributes:
+        resolved: the deduplicated, existence-filtered shared cross-refs to
+            thread into every sub-plan (first-seen order per target).
+        dropped_missing: targets removed because the injected resolver reported
+            them absent from the pinned snapshot (would be a broken link).
+        dropped_duplicate: targets seen more than once and collapsed to the
+            first occurrence (surfaced so the inventory stays honest).
+    """
+
+    resolved: tuple[SharedCrossRef, ...]
+    dropped_missing: tuple[str, ...] = ()
+    dropped_duplicate: tuple[str, ...] = ()
+
+
+def resolve_shared_cross_refs(
+    shared_cross_refs: tuple[SharedCrossRef, ...],
+    *,
+    exists: "Callable[[str], bool] | None" = None,
+) -> SharedCrossRefResolution:
+    """Resolve the corpus's shared cross-references ONCE at corpus scope (M7).
+
+    The shared cross-refs are the vault notes EVERY sub-plan links (the master
+    plan's "Shared Cross-References" set). Resolving them once here — rather than
+    having each sub-plan re-derive the common set — (1) DEDUPLICATES by target
+    (first-seen wins; a later row for the same target is dropped, its
+    relationship ignored) and (2) EXISTENCE-FILTERS against the pinned snapshot
+    via an injected ``exists(target) -> bool`` predicate, so a shared ref to a
+    note that isn't in the vault is dropped before it becomes a broken link in
+    N sub-plans.
+
+    ``exists`` is injected (composer stays vault-I/O-free — the caller supplies
+    the snapshot-pinned existence check). When ``exists`` is ``None`` the
+    existence filter is skipped (dedup only), so a caller without a snapshot
+    still gets a clean, deduplicated set. Pure w.r.t. its inputs given a pure
+    ``exists``; deterministic first-seen order.
+    """
+    seen: dict[str, SharedCrossRef] = {}
+    dropped: set[str] = set()  # targets already routed to a dropped bucket
+    dropped_duplicate: list[str] = []
+    dropped_missing: list[str] = []
+    for ref in shared_cross_refs:
+        # A repeat of an already-seen OR already-dropped target is a duplicate —
+        # so a missing target is probed by ``exists`` at most once (it may be an
+        # expensive snapshot call) and reported once in dropped_missing, its
+        # repeats landing in dropped_duplicate like any other repeat.
+        if ref.target in seen or ref.target in dropped:
+            dropped_duplicate.append(ref.target)
+            continue
+        if exists is not None and not exists(ref.target):
+            dropped_missing.append(ref.target)
+            dropped.add(ref.target)
+            continue
+        seen[ref.target] = ref
+    return SharedCrossRefResolution(
+        resolved=tuple(seen.values()),
+        dropped_missing=tuple(dropped_missing),
+        dropped_duplicate=tuple(dropped_duplicate),
+    )
+
+
 # ── M0 — bundle → joint-planner leaf (the fan-in) ───────────────────────────
 
 # Aggregate ceiling for the RENDERED corpus ``members`` block (the JSON the
@@ -761,6 +828,9 @@ __all__ = [
     # M6 — term-ownership gate
     "TermOwnershipResult",
     "term_ownership_gate",
+    # M7 — shared cross-ref resolution
+    "SharedCrossRefResolution",
+    "resolve_shared_cross_refs",
     # M0 — fan-in leaf
     "DEFAULT_CORPUS_LEAF_MAX_CHARS",
     "MemberExcerpt",
