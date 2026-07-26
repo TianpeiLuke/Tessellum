@@ -277,6 +277,11 @@ LEAF METADATA
 - target_path: {{leaf.target_path}}
 - source_ref: {{leaf.source_ref}}
 
+RELATED NOTES (retrieved per-note by relevance to THIS note's thesis;
+each is an EXISTING vault note with a path already resolved relative to
+this note's target_path — ready to paste as a markdown link):
+{{leaf.related_references_md}}
+
 PER-BATCH CONTRACTS (from the extract_contracts step — read your
 shared contract + batch assignment + pilot worked example)
 {{upstream.batch_contracts}}
@@ -284,6 +289,8 @@ shared contract + batch assignment + pilot worked example)
 Follow this procedure:
 
 This is the write phase and the ONLY per-leaf step: one sub-agent per planned note, dispatched as a wave (this is the step that maps onto `run_pipeline_dynamic`'s wave-parallel scheduler). Each agent receives the shared contract plus its per-batch assignment plus the worked-example pilot, reads its assigned source page(s) FIRST, and writes exactly one note that matches the pilot's shape and the plan's format definition — verbatim code, honest inferred/not-in-source markers, one building_block per note. Concurrency is auto-capped; the wave runs enrich → validate → bounded fix (at most two rounds) with a master validator that runs the gate script, does a live-source faithfulness spot-check, checks cross-reference integrity, and confirms the domain completeness invariant. Source-reading agents fail closed: an auth failure sets `source_fetch_ok=false` and status `auth_blocked` rather than falling back to memory. Read the per-batch contracts from `{{upstream.batch_contracts}}`.
+
+RELATED NOTES → `## References` (knowledge-graph edges). The note MUST end with a `## References` section that links relevance-selected EXISTING vault notes — these links are how the knowledge graph is built (the indexer turns each `[title](relative/path.md)` into an edge). Use the `RELATED NOTES` block above (`{{leaf.related_references_md}}`): it was retrieved per-note by relevance to this note's thesis, and each path is ALREADY resolved relative to this note's `target_path`, so paste the links as-is. You MAY drop a suggestion that is genuinely irrelevant to this note and MAY add a link you know is relevant that retrieval missed, but do NOT invent paths — only link notes that exist. If the block is empty (retrieval found nothing / no index yet), still add a `## References` section with any relevant links you can ground from the plan's cross-reference mapping. Keep every reference a relative markdown link ending in `.md`.
 
 OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON). The frontmatter MUST contain the key `output_path` whose value is the vault-relative `.md` path for this note; everything after the closing `---` IS the note body, written verbatim. Read your assigned source
 page(s) FIRST, then write one note matching the pilot's shape and the
@@ -315,6 +322,7 @@ expected_output_schema:
   - broken_links
   - ghost_references
   - graph_island_notes
+  - outbound_reference_gaps
   - overall_ok
   properties:
     notes_created:
@@ -335,6 +343,9 @@ expected_output_schema:
     graph_island_notes:
       type: integer
       description: New notes with 0 inbound links from outside their folder (G8; must be 0)
+    outbound_reference_gaps:
+      type: integer
+      description: New notes with no resolvable outbound ## References link (must be 0) — related notes build the graph
     dedup_findings:
       type: array
       description: Duplicate / coverage findings surfaced by the independent sweep
@@ -354,7 +365,7 @@ WRITTEN NOTES (from the per-leaf dispatch_notes step)
 
 Follow this procedure:
 
-The wave's "all batches passed" is a claim, not proof; this cross-leaf step is the independent backstop that runs once over the full output set on disk, regardless of what any in-loop validator reported. Re-run the plan's full gate suite across ALL new notes (not per batch), run the format check, run the broken-link check (must report zero), rebuild the database and query for ghost references from the new notes (must be zero), and run the G8 discoverability check (every new note must have at least one inbound link from OUTSIDE its own folder — any graph-island note fails). Deduplication, ghost-reference, and coverage findings are surfaced here. Any residual issue is patched in place and re-verified; the run is NOT complete while broken, ghost, format, or graph-island issues remain. Emit a `verify_report` rollup (notes created vs. planned, gate results, broken-link count, ghost count, graph-island count, and an overall pass/fail) so the orchestrator has an auditable completion record. Read the written note set from `{{upstream.note_body}}`. Re-run the plan's full gate
+The wave's "all batches passed" is a claim, not proof; this cross-leaf step is the independent backstop that runs once over the full output set on disk, regardless of what any in-loop validator reported. Re-run the plan's full gate suite across ALL new notes (not per batch), run the format check, run the broken-link check (must report zero), rebuild the database and query for ghost references from the new notes (must be zero), and run the G8 discoverability check (every new note must have at least one inbound link from OUTSIDE its own folder — any graph-island note fails). ALSO run the OUTBOUND-reference check: every new note must have a `## References` section with at least one resolvable relative markdown link to an existing vault note (these outbound links are what the indexer turns into knowledge-graph edges) — a note with an empty/absent References section is an `outbound_reference_gap` and must be patched by adding the relevant links the enrichment surfaced (`{{leaf.related_references_md}}`) or grounded from the plan's cross-reference mapping. Deduplication, ghost-reference, and coverage findings are surfaced here. Any residual issue is patched in place and re-verified; the run is NOT complete while broken, ghost, format, graph-island, or outbound-reference issues remain. Emit a `verify_report` rollup (notes created vs. planned, gate results, broken-link count, ghost count, graph-island count, outbound-reference-gap count, and an overall pass/fail) so the orchestrator has an auditable completion record. Read the written note set from `{{upstream.note_body}}`. Re-run the plan's full gate
 suite across ALL new notes, run the format check, the broken-link
 check, rebuild the DB and query ghost references, and run the G8
 outside-folder inbound-link check; surface dedup / coverage findings.

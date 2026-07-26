@@ -102,12 +102,23 @@ def route(
     db_path: Path | str,
     query: str,
     *,
+    dense_query: str | None = None,
     k: int = 20,
 ) -> tuple[
     RouterDecision,
     list[BM25Hit] | list[DenseHit] | list[HybridHit] | list[GraphHit] | list[MetadataHit],
 ]:
     """Classify ``query`` and dispatch to the recommended retrieval surface.
+
+    Args:
+        db_path: Index DB.
+        query: The query used for classification and for the lexical arms
+            (BM25 MATCH) — must be FTS5-safe.
+        dense_query: Optional natural-language query for the dense arm (the
+            embedding model ranks prose better than an ``OR``-bag). Forwarded
+            to :func:`hybrid_search` and used directly for the ``dense``
+            strategy. ``None`` → the dense arm reuses ``query``.
+        k: Max results.
 
     Returns:
         ``(decision, hits)`` — the router's classification *and* the
@@ -126,7 +137,10 @@ def route(
     elif decision.strategy == "bm25":
         hits = bm25_search(db_path, query, k=k)
     elif decision.strategy == "dense":
-        hits = dense_search(db_path, query, k=k)
+        # Prefer the natural-language dense_query when the caller supplied it.
+        hits = dense_search(
+            db_path, dense_query if dense_query is not None else query, k=k
+        )
     elif decision.strategy == "metadata":
         # The router never picks metadata for free-text queries — it's
         # invoked when the caller has structured filters in hand. Kept
@@ -134,7 +148,7 @@ def route(
         # documents all five surfaces.
         hits = metadata_search(db_path, k=k)
     else:  # hybrid
-        hits = hybrid_search(db_path, query, k=k)
+        hits = hybrid_search(db_path, query, dense_query=dense_query, k=k)
 
     return decision, hits
 

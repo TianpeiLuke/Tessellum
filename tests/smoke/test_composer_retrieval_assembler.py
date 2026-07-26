@@ -236,3 +236,46 @@ def test_warns_when_source_fills_budget(tmp_path: Path) -> None:
     assert "SOURCE_START" in out.text
     assert "Related vault notes" not in out.text
     assert any("source fills the char budget" in w for w in out.warnings)
+
+
+def test_pending_warning_is_thread_local(tmp_path: Path) -> None:
+    # E3 (G5) fix: a SINGLE assembler instance is shared by reference across the
+    # concurrent execute wave. The per-call fail-soft warning must be thread-
+    # local — a degrading call in one thread must NOT leak its warning onto a
+    # succeeding call in another. Hammer one shared instance concurrently with a
+    # mix of hitting and no-hit queries and assert each result's warnings match
+    # ITS OWN outcome.
+    import threading
+
+    db = _index(tmp_path)
+    shared = RetrievalAugmentedAssembler(db_path=db)  # ONE instance, no query
+    barrier = threading.Barrier(8)
+    errors: list[str] = []
+    lock = threading.Lock()
+
+    def worker(i: int) -> None:
+        barrier.wait()  # maximize interleaving
+        for _ in range(15):
+            if i % 2 == 0:
+                # a hitting query → block present, no degrade warning
+                out = shared.assemble("reversal BSM model recall abuse scores")
+                if "Related vault notes" not in out.text:
+                    with lock:
+                        errors.append(f"t{i}: expected block, warnings={out.warnings}")
+                if any("retrieval degraded" in w for w in out.warnings):
+                    with lock:
+                        errors.append(f"t{i}: hit call got a degrade warning leak")
+            else:
+                # a no-hit query → no block, a degrade warning that must belong
+                # to THIS call only
+                out = shared.assemble("zzzznomatch quuxnonsense wibblewobble")
+                if "Related vault notes" in out.text:
+                    with lock:
+                        errors.append(f"t{i}: unexpected block on no-hit query")
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors, errors[:5]

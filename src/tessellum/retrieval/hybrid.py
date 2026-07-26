@@ -75,6 +75,7 @@ def hybrid_search(
     db_path: Path | str,
     query: str,
     *,
+    dense_query: str | None = None,
     k: int = 20,
     k1: int = DEFAULT_RRF_K1,
     per_strategy_k: int | None = None,
@@ -87,9 +88,18 @@ def hybrid_search(
             have both ``notes_fts`` (BM25) and ``notes_vec`` (dense)
             populated. ``--no-dense`` builds will return BM25-only
             results (dense ranks all None).
-        query: Free-form query. Passed verbatim to both rankers — BM25
-            applies FTS5 MATCH semantics; dense embeds via
-            sentence-transformers.
+        query: Free-form query for the BM25 arm — FTS5 MATCH semantics
+            apply, so it must be FTS5-safe (bare terms / operators, no
+            unescaped syntax characters).
+        dense_query: Optional SEPARATE query for the dense (embedding) arm.
+            The two rankers want different query shapes: BM25 wants a
+            (possibly ``OR``-joined) keyword bag, while the embedding model
+            ranks best on natural-language text — an ``OR``-bag embeds poorly
+            (the literal token ``OR`` and the bag structure dilute the
+            vector). When ``None`` (default), the dense arm reuses ``query``
+            (backward-compatible). Callers holding the original prose (e.g.
+            per-note related-notes enrichment) should pass the raw thesis here
+            and the FTS5-safe bag as ``query``.
         k: Maximum number of fused results.
         k1: RRF smoothing constant. Default 60 (Cormack et al. recommend).
         per_strategy_k: How many results to fetch from EACH ranker before
@@ -118,7 +128,9 @@ def hybrid_search(
 
     bm25_hits = bm25_search(db, query, k=fetch_k, snippet_length=snippet_length)
     try:
-        dense_hits = dense_search(db, query, k=fetch_k)
+        dense_hits = dense_search(
+            db, dense_query if dense_query is not None else query, k=fetch_k
+        )
     except Exception:  # noqa: BLE001
         # If dense isn't available (e.g. the index was built --no-dense)
         # fall back to BM25-only fusion. Better than failing the query.

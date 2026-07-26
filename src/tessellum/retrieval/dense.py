@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import sqlite3
 import struct
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,16 +31,28 @@ EMBEDDING_DIM = 384
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 _ENCODER = None  # module-level singleton
+# Guards the lazy init so concurrent dense_search callers (the per-note
+# related-notes enrichment can drive several at once via the concurrent execute
+# wave / parallel corpus sub-plans) don't each construct their own encoder —
+# a wasteful double-load of the sentence-transformers model.
+_ENCODER_LOCK = threading.Lock()
 
 
 def _get_encoder():
-    """Lazy-load the sentence-transformers encoder (process-level cache)."""
+    """Lazy-load the sentence-transformers encoder (process-level cache).
+
+    Double-checked locking: the fast path (already loaded) stays lock-free;
+    only the first, racing callers serialize on ``_ENCODER_LOCK`` so the model
+    is constructed exactly once."""
     global _ENCODER
     if _ENCODER is not None:
         return _ENCODER
-    from sentence_transformers import SentenceTransformer
+    with _ENCODER_LOCK:
+        if _ENCODER is not None:  # re-check under the lock
+            return _ENCODER
+        from sentence_transformers import SentenceTransformer
 
-    _ENCODER = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        _ENCODER = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return _ENCODER
 
 

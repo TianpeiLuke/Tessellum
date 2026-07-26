@@ -634,6 +634,14 @@ class DigestionExecutor:
                     db_path=self.paths.index_db if self.paths.index_db.exists() else None,
                     query=source_content[:512],
                 ),
+                # FZ 20k9d2: the live index feeds per-note related-notes
+                # enrichment (each written note gets relevance-ranked
+                # ## References links → note_links graph edges). None when the
+                # index does not yet exist (first-ever digestion) → fail-soft
+                # pass-through, byte-identical to pre-fix.
+                related_notes_db=(
+                    self.paths.index_db if self.paths.index_db.exists() else None
+                ),
                 events_path=artifact_dir / "composer-events.jsonl",
                 stats_path=artifact_dir / "statistics.json",
             )

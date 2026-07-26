@@ -156,6 +156,83 @@ def _collect_structured(run: RunResult) -> dict[str, Any]:
     return merged
 
 
+def _enrich_leaves_with_related_notes(
+    leaves: list[dict],
+    *,
+    related_notes_db: Path | str | None,
+) -> list[dict]:
+    """Attach per-note relevance-ranked related notes to each execute leaf.
+
+    FZ 20k9d2 fix — the retrieval home for knowledge-graph edges. For each
+    projected note leaf, retrieve related EXISTING vault notes keyed on THAT
+    note's own ``thesis`` + ``coverage`` (not a shared job-level query),
+    compute links relative to its ``target_path``, and attach:
+
+        leaf["related_notes"]        # list of {note_id, note_name, rel_path, score}
+        leaf["related_references_md"] # pre-rendered ## References block
+
+    The writer sub-agent renders these into the note's ``## References`` section
+    (the execute skill), so the indexer records them as ``note_links`` edges.
+
+    Pure + fail-soft. A leaf lacking a typed ``note`` payload (the whole-plan
+    fallback leaf) passes through UNCHANGED. With ``related_notes_db=None`` (no
+    index yet — e.g. the first-ever digestion) note-bearing leaves are still
+    stamped with EMPTY ``related_notes`` / ``related_references_md`` so the
+    writer's placeholder renders "" (a clean empty block the skill handles),
+    never a ``<missing …>`` sentinel. A retrieval failure for one leaf degrades
+    THAT leaf to no related notes; it never raises.
+    """
+    from tessellum.composer.related_notes import enrich_related_notes
+
+    enriched: list[dict] = []
+    for leaf in leaves:
+        note = leaf.get("note") if isinstance(leaf, dict) else None
+        target_path = leaf.get("target_path") if isinstance(leaf, dict) else None
+        # Only the typed per-note projection carries a ``note`` payload with a
+        # thesis; the whole-plan fallback leaf has neither → pass through.
+        if not isinstance(note, dict) or not isinstance(target_path, str):
+            enriched.append(leaf)
+            continue
+        thesis = note.get("thesis")
+        if not isinstance(thesis, str) or not thesis.strip():
+            # A typed note leaf with no usable thesis: stamp empty defaults so
+            # the writer's {{leaf.related_references_md}} renders "" rather than
+            # a <missing …> sentinel (the skill handles an empty block).
+            no_related = dict(leaf)
+            no_related["related_notes"] = []
+            no_related["related_references_md"] = ""
+            enriched.append(no_related)
+            continue
+        coverage = note.get("coverage") or ()
+        # depends_on edges are structural (the plan already expresses them) —
+        # exclude them from "related" references so we don't double-encode.
+        # Guard the type symmetrically with coverage: an opt-in execute_leaves
+        # leaf (not the model-validated typed projection) could carry a non-
+        # iterable depends_on; tuple(5) would raise and kill the wave.
+        dep = note.get("depends_on")
+        exclude = tuple(dep) if isinstance(dep, (list, tuple)) else ()
+        result = enrich_related_notes(
+            thesis=thesis,
+            target_path=target_path,
+            db_path=related_notes_db,
+            coverage=coverage if isinstance(coverage, (list, tuple)) else (),
+            exclude_ids=exclude,
+        )
+        new_leaf = dict(leaf)
+        new_leaf["related_notes"] = [
+            {
+                "note_id": r.note_id,
+                "note_name": r.note_name,
+                "rel_path": r.rel_path,
+                "score": r.score,
+            }
+            for r in result.related
+        ]
+        new_leaf["related_references_md"] = result.references_markdown
+        enriched.append(new_leaf)
+    return enriched
+
+
 def run_execute_wave(
     plan_doc: dict,
     *,
@@ -166,6 +243,7 @@ def run_execute_wave(
     execute_max_workers: int = 4,
     budget: RunBudget | None = None,
     context_assembler: ContextAssembler | None = None,
+    related_notes_db: Path | str | None = None,
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
@@ -190,6 +268,13 @@ def run_execute_wave(
     ``close_gate``, ``manifest``, ``wave_gate``, ``informed_fixer``,
     ``max_fix_rounds``, ``run_id``, ``generation``).
 
+    ``related_notes_db``: **FZ 20k9d2** — the live index DB used to enrich each
+    projected note leaf with per-note relevance-ranked related notes (keyed on
+    that note's own thesis + coverage, links relative to its target_path) that
+    the writer renders into ``## References`` → ``note_links`` graph edges.
+    ``None`` (default) → leaves pass through unchanged (byte-identical); fail-
+    soft per leaf when the index is absent or retrieval errors.
+
     Fail-soft: when no ``context_assembler`` is passed, defaults a head+tail
     ``WindowedAssembler`` sized just under ``HARD_PROMPT_CAP_CHARS`` (the same
     default ``run_digestion_pipeline`` gives its linear phases) so an oversized
@@ -212,6 +297,12 @@ def run_execute_wave(
         execute_leaves = plan_doc.get("execute_leaves")
         if not isinstance(execute_leaves, list) or not execute_leaves:
             execute_leaves = [dict(plan_doc)]
+    # FZ 20k9d2: enrich each note leaf with per-note relevance-ranked related
+    # notes → the writer renders them into ## References → note_links edges.
+    # No-op when related_notes_db is None (byte-identical to pre-fix).
+    execute_leaves = _enrich_leaves_with_related_notes(
+        execute_leaves, related_notes_db=related_notes_db
+    )
     return run_pipeline_dynamic(
         compiled,
         leaves=execute_leaves,
@@ -241,6 +332,7 @@ def run_digestion_pipeline(
     execute_max_workers: int = 4,
     budget: RunBudget | None = None,
     context_assembler: ContextAssembler | None = None,
+    related_notes_db: Path | str | None = None,
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
@@ -415,6 +507,7 @@ def run_digestion_pipeline(
         execute_max_workers=execute_max_workers,
         budget=budget,
         context_assembler=context_assembler,
+        related_notes_db=related_notes_db,
         cancellation_check=cancellation_check,
         effect_guard=effect_guard,
         effect_recorder=effect_recorder,

@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import abc
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -260,6 +261,19 @@ class RetrievalAugmentedAssembler(ContextAssembler):
     keeps the rest), deduped by note_id, and clearly delimited so the writer
     treats it as REFERENCE context, not the source of record.
 
+    **Role vs. per-note related-notes enrichment (FZ 20k9d2).** This assembler
+    provides *reading context* — extra vault material the writer may consult —
+    and is deliberately framed "reference only, NOT the source of record". It is
+    NOT the mechanism that produces the note's ``## References`` graph edges:
+    that is :func:`tessellum.composer.related_notes.enrich_related_notes`, which
+    runs per note leaf (keyed on the note's own thesis, with links relative to
+    its target_path) and is rendered into ``## References`` by the writer. The
+    two are complementary — one seeds the writer's context, the other produces
+    resolvable ``note_links`` edges — and are kept separate so the assembler's
+    reference-context block is never mistaken for (or double-counted as) the
+    note's authored references. This assembler stays opt-in
+    (``policy.context_strategy="retrieval"``); the edge path is default-on.
+
     **Fail-soft + opt-in.** Constructed only when a caller selects the
     ``"retrieval"`` strategy AND supplies a ``db_path``; the default assembler
     is unchanged. ANY retrieval failure (missing index, missing dense embeddings
@@ -267,6 +281,12 @@ class RetrievalAugmentedAssembler(ContextAssembler):
     the bare source with a warning — retrieval never crashes a write. The query
     defaults to the source's head (the note being written is about its own
     opening); a caller can inject an explicit ``query``.
+
+    **Thread-safe.** A single assembler instance is shared by reference across
+    the concurrent execute wave (``scheduler.py`` fans out ``assemble()`` calls
+    on a thread pool), so the per-call fail-soft warning is held in
+    THREAD-LOCAL state, not a single instance slot — concurrent writes never
+    clobber each other's warning.
     """
 
     def __init__(
@@ -287,12 +307,22 @@ class RetrievalAugmentedAssembler(ContextAssembler):
         self.seeds = max(1, seeds)
         self.neighbors = max(0, neighbors)
         self.retrieval_fraction = retrieval_fraction
-        # A fail-soft warning to surface on the NEXT assemble() (retrieval was
-        # requested but degraded to bare source). Reset at the top of each
-        # assemble() call; merged into the AssembledContext.warnings there.
-        # Assemblers are single-active (one write at a time) per the seam's
-        # contract, so a single-slot pending warning is safe.
-        self._pending_warning: str | None = None
+        # A fail-soft warning to surface on the current assemble() (retrieval was
+        # requested but degraded to bare source), merged into
+        # AssembledContext.warnings there. Held in THREAD-LOCAL state because a
+        # SINGLE assembler instance is shared by reference across the concurrent
+        # execute wave (scheduler.py fans out assemble() on a thread pool); a
+        # plain instance slot would race — one note's warning clobbering
+        # another's. Each thread reads/writes its own slot.
+        self._tls = threading.local()
+
+    @property
+    def _pending_warning(self) -> str | None:
+        return getattr(self._tls, "pending_warning", None)
+
+    @_pending_warning.setter
+    def _pending_warning(self, value: str | None) -> None:
+        self._tls.pending_warning = value
 
     _BLOCK_HEADER = (
         "## Related vault notes (retrieved context — reference only, "
