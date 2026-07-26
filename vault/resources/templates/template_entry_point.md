@@ -75,6 +75,14 @@ as "I want to X → see Y".>
 | <use case 2> | [Note Title](path/to/note.md) |
 | <use case 3> | [Note Title](path/to/note.md) |
 
+## Index
+
+<The core of an entry point: the indexed notes. Present them grouped into the
+categorized subsections below (one H3 or H2 group per category), each a table
+that lists every member note with a title, a one-line description, and the link.
+BB_SPECS[navigation] requires an "Index" section; the grouped subsections are
+its content. Every note in the indexed surface must appear here exactly once.>
+
 ## <Section A — Primary Categorization>
 
 <Group indexed notes into a category. Each row should give a title, a one-line

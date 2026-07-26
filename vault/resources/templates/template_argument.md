@@ -52,17 +52,17 @@ counter-argument; that's how the dialectic engine works. The strongest arguments
 make a single, sharp claim that survives counter-arguments.
 -->
 
-## Thesis
+## Claim
 
-<One sentence. The thesis (a.k.a. claim) is the load-bearing assertion this
+<One sentence. The claim (a.k.a. thesis) is the load-bearing assertion this
 note makes. It must be specific enough to be falsifiable — vague claims that
 everyone already agrees with don't earn an argument note.
 
-Note: in the parent research vault, argument notes commonly title this section
-"Thesis"; either "Thesis" or "Claim" is acceptable. Use whichever fits the
-register of your note.>
+Note: "Claim" is the BB_SPECS contract header for argument notes; "Thesis" is
+an accepted synonym in prose if it fits your register, but keep the H2 as
+"Claim" so the note satisfies the building-block section contract.>
 
-> The thesis is: <state it sharply, in one sentence>.
+> The claim is: <state it sharply, in one sentence>.
 
 ## Reason
 

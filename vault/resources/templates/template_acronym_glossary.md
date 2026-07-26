@@ -88,9 +88,20 @@ machine-parseable for export to other glossary surfaces.
 
 # <Domain> Glossary
 
-**Purpose**: Quick reference for <domain> acronyms, terms, and abbreviations used in <project context>. Indexes every term note in `vault/resources/term_dictionary/` whose subject matter falls under <domain>.
-
 **Navigation**: [← Back to Main Glossary](entry_glossaries.md) <!-- pattern B; remove this line in pattern A -->
+
+## Purpose
+
+<Quick reference for <domain> acronyms, terms, and abbreviations used in
+<project context>. Indexes every term note in `vault/resources/term_dictionary/`
+whose subject matter falls under <domain>. (BB_SPECS[navigation] requires a
+Purpose section.)>
+
+## Index
+
+<The indexed acronyms/terms, grouped into the topical subsections below. Every
+term note in scope appears here exactly once. BB_SPECS[navigation] requires an
+Index section; the grouped subsections are its content.>
 
 ## <Section A — Primary Topical Group>
 

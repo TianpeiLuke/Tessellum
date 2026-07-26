@@ -34,7 +34,7 @@ def vault_root(tmp_path: Path) -> Path:
 
 def test_list_flavors_returns_all_registered():
     flavors = list_flavors()
-    assert len(flavors) == 14
+    assert len(flavors) == 18
     assert flavors == sorted(flavors)
     expected = {
         "concept", "procedure", "skill", "model",
@@ -42,6 +42,8 @@ def test_list_flavors_returns_all_registered():
         "empirical_observation", "experiment",
         "navigation", "entry_point", "acronym_glossary",
         "code_snippet", "code_repo",
+        # FZ 20k9d1b1a P3 additions
+        "faq", "sop", "coe", "thought",
     }
     assert set(flavors) == expected
 

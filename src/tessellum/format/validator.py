@@ -17,6 +17,7 @@ import re
 from pathlib import Path
 
 from tessellum.bb.types import BBType, VALID_BB_TYPE_VALUES
+from tessellum.format.building_blocks import BB_SPECS, BuildingBlock
 from tessellum.format.frontmatter_spec import (
     DATE_FORMAT_REGEX,
     FORBIDDEN_FIELDS,
@@ -102,8 +103,52 @@ def validate(target: Path | str | Note) -> list[Issue]:
     issues.extend(check_links(note))
     issues.extend(_check_counter_argument_link(note))
     issues.extend(_check_bb_typed_edges(note))
+    issues.extend(_check_required_sections(note))
 
     return issues
+
+
+_H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+
+
+def _check_required_sections(note: Note) -> list[Issue]:
+    """FZ 20k9d1b1a P3 — surface missing per-type required H2 sections.
+
+    ``BB_SPECS[bb].required_sections`` (``building_blocks.py``) is the
+    authoritative per-building-block section contract. This wires it into
+    validation at INFO severity: a note whose ``building_block`` omits one of
+    its required sections gets a TESS-010 info issue (advisory, not a hard
+    fail — matching the section-rule-is-guidance stance; the closer/gate keys
+    on ERROR). Templates + notes with a ``status: template``/``stub`` are
+    exempt (scaffolds legitimately omit filled sections). A note with NO H2
+    sections at all is treated as freeform (a short stub or prose-only note,
+    not an attempt at the sectioned structure) and is likewise exempt — the
+    advisory targets notes that adopt the section layout but omit a required
+    one, not notes that decline sections entirely."""
+    bb_value = note.frontmatter.get("building_block")
+    if not isinstance(bb_value, str):
+        return []
+    status = note.frontmatter.get("status")
+    if isinstance(status, str) and status.lower() in ("template", "stub"):
+        return []
+    try:
+        spec = BB_SPECS[BuildingBlock(bb_value)]
+    except (ValueError, KeyError):
+        return []  # unknown BB already flagged by YAML-063
+    present = {h.split("<!--")[0].strip() for h in _H2_RE.findall(note.body)}
+    if not present:
+        return []  # freeform / prose-only note — not adopting the section layout
+    return [
+        Issue(
+            Severity.INFO,
+            "TESS-010",
+            "sections",
+            f"note is missing the '{section}' section required for "
+            f"building_block '{bb_value}' (per BB_SPECS)",
+        )
+        for section in spec.required_sections
+        if section not in present
+    ]
 
 
 def is_valid(target: Path | str | Note) -> bool:

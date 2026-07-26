@@ -78,6 +78,13 @@ form a reader can extract in 5 seconds.>
 > **Result**: <metric> = <value> (<unit>) on <dataset/condition> at <date>.
 > **Verdict**: <SUPPORTS / REFUTES / PARTIAL / INDETERMINATE> the hypothesis above.
 
+## Method
+
+<How the observation was produced — the procedure/measurement that yielded the
+result: what was run, on what inputs, with what instruments. A replicator reads
+Method + Setup together to reproduce the number. (BB_SPECS[empirical_observation]
+requires this section; the fuller Setup / How to Run below expand on it.)>
+
 ## Setup
 
 <Pre-experiment configuration. State the inputs, instruments, and conditions

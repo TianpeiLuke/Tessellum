@@ -4,6 +4,19 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-07-26
+
+### Note-type contract registry — templates ⟺ registry ⟺ BB_SPECS reconciled + a per-type section advisory (FZ 20k9d1b1a P1–P3) — 2026-07-26
+
+The vault carries a template per note type, but the three contract sources — `capture.REGISTRY` (flavor → template + building_block), the template FILES, and `BB_SPECS[bb].required_sections` (the authoritative per-building-block section contract) — could silently drift, and nothing surfaced a note that adopted the section layout yet omitted a required section. This closes that gap: it registers four previously-templateless note types, ships their templates, adds a drift gate that reconciles all three sources, and wires the section contract into validation at INFO severity. The building-block-keyed contract stays authoritative for each BB's PRIMARY note; genuinely-divergent specialized flavors are documented + exempted rather than forced. Additive; validation stays permissive (the advisory is INFO, never an ERROR — the closer/gate keys on ERROR). +8 tests; full suite 1717 passed.
+
+- **Four new registered flavors + templates** (`capture.REGISTRY`, `vault/resources/templates/`): `faq` (concept BB → `resources/faqs/faq_`), `sop` (procedure BB → `resources/policy_sops/sop_`), `coe` (empirical_observation BB → `resources/analysis_thoughts/coe_`), `thought` (argument BB → `resources/analysis_thoughts/thought_`). Each declares its BB's required sections and validates at 0 errors. Flavor count 14 → 18.
+- **`check_template_registry_consistency()`** (`capture.py`) — the FZ 20k9d1b1a P3 drift gate. For every registered flavor it asserts (1) the template file exists, (2) the template's `building_block` YAML equals the registry `bb_type`, and (3) the template declares every `BB_SPECS[bb_type].required_sections` header — UNLESS the flavor is in `SECTION_DIVERGENT_FLAVORS`. Returns [] (green) for the shipped vault.
+- **`SECTION_DIVERGENT_FLAVORS`** — the documented divergences: `code_snippet` + `skill` (procedure BB, but code-doc / section_id-marked shapes), `experiment` (empirical_observation BB, full pre-registration shape), `code_repo` (model BB, repo-doc shape). Their `building_block` is still checked; only the exact section triple is exempt, so a NEW drift in a PRIMARY template still fails the gate.
+- **Primary-type templates reconciled to their BB contract:** `template_argument.md` (`## Thesis` → `## Claim`, with Thesis kept as an accepted prose synonym), `template_empirical_observation.md` (added `## Method`), `template_entry_point.md` (added `## Index` umbrella over the categorized subsections), `template_acronym_glossary.md` (promoted `Purpose` + added `## Index` as H2 sections).
+- **`TESS-010` section advisory** (`format/validator.py`, `_check_required_sections`) — a note whose `building_block` omits one of its `BB_SPECS` required sections gets an INFO issue. Exempt: `status: template`/`stub` scaffolds, and freeform notes with NO H2 sections at all (declining the section layout is not a violation — the advisory targets notes that adopt it but omit a required header).
+- New `tests/smoke/test_template_registry_consistency.py` (8): consistency gate is green, divergent set ⊆ registry, every registry bb_type resolves in BB_SPECS, the four new flavors registered, and TESS-010 fires on a missing section / stays silent when complete / exempts template-status + section-less notes. `test_capture.py` flavor count updated 14 → 18.
+
 ## [1.9.0] — 2026-07-26
 
 ### Incremental index build — O(delta) commits replacing the O(vault) full rebuild (FZ 20k9d3 P1) — 2026-07-26

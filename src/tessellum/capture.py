@@ -7,9 +7,11 @@ Public API:
     get_spec(flavor)        — TemplateSpec for a flavor
     capture(...)            — copy template, transform, write; returns CaptureResult
 
-Each ``flavor`` maps to one of the 14 capture templates under
+Each ``flavor`` maps to one of the capture templates under
 ``vault/resources/templates/`` (excluding ``template_yaml_header`` which is a
-spec reference, not a copy-and-fill skeleton). The capture step:
+spec reference, not a copy-and-fill skeleton). :data:`REGISTRY` is the single
+source of truth for the flavor set; :func:`check_template_registry_consistency`
+reconciles it against the template files and ``BB_SPECS``. The capture step:
 
 1. Validates the slug (lowercase letters/digits/underscores).
 2. Reads the source template via ``tessellum.data.templates_dir()``.
@@ -173,6 +175,42 @@ REGISTRY: dict[str, TemplateSpec] = {
         second_category="code_repos",
         description="Code repository documentation note",
     ),
+    "faq": TemplateSpec(
+        flavor="faq",
+        template_filename="template_faq.md",
+        destination="resources/faqs",
+        filename_prefix="faq_",
+        bb_type="concept",
+        second_category="faq",
+        description="One answerable question and its answer (FAQ note)",
+    ),
+    "sop": TemplateSpec(
+        flavor="sop",
+        template_filename="template_sop.md",
+        destination="resources/policy_sops",
+        filename_prefix="sop_",
+        bb_type="procedure",
+        second_category="sop",
+        description="Standard operating procedure (policy operationalized)",
+    ),
+    "coe": TemplateSpec(
+        flavor="coe",
+        template_filename="template_coe.md",
+        destination="resources/analysis_thoughts",
+        filename_prefix="coe_",
+        bb_type="empirical_observation",
+        second_category="analysis",
+        description="Correction of error / incident postmortem",
+    ),
+    "thought": TemplateSpec(
+        flavor="thought",
+        template_filename="template_thought.md",
+        destination="resources/analysis_thoughts",
+        filename_prefix="thought_",
+        bb_type="argument",
+        second_category="analysis",
+        description="General analytical thought (defaults to argument BB)",
+    ),
 }
 
 
@@ -234,6 +272,77 @@ def get_spec(flavor: str) -> TemplateSpec:
             f"Available: {', '.join(list_flavors())}"
         )
     return REGISTRY[flavor]
+
+
+_TMPL_H2_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+_TMPL_BB_RE = re.compile(r"^building_block:\s*(.+?)\s*$", re.MULTILINE)
+
+
+def check_template_registry_consistency() -> list[str]:
+    """FZ 20k9d1b1a P3 — the drift gate reconciling the THREE contract sources:
+    ``capture.REGISTRY`` (flavor → template + bb_type), the template FILES, and
+    ``BB_SPECS[bb].required_sections`` (the authoritative section contract).
+
+    Returns a list of human-readable drift findings (empty == consistent). For
+    each registered flavor it asserts: (1) the template file exists; (2) the
+    template's ``building_block`` YAML equals the flavor's ``bb_type``; (3) the
+    template declares every section in ``BB_SPECS[bb_type].required_sections``
+    as an H2 header — UNLESS the flavor is in :data:`SECTION_DIVERGENT_FLAVORS`.
+
+    Some flavors share a coarse ``building_block`` but have a legitimately
+    finer note shape (e.g. ``code_snippet`` and ``skill`` are ``procedure`` but
+    do not use the Setup/Steps/Validation triple; ``experiment`` is
+    ``empirical_observation`` with a fuller pre-registration shape). Those are
+    the FZ 20k9d1b1a P3 documented divergences: the building_block-keyed
+    contract is authoritative for the PRIMARY note of each BB, and these
+    specialized flavors are exempted here so the check is green when the primary
+    templates match — while a NEW drift in a primary template still fails."""
+    from tessellum.format.building_blocks import BB_SPECS, BuildingBlock
+
+    tdir = templates_dir()
+    findings: list[str] = []
+    for flavor, spec in sorted(REGISTRY.items()):
+        section_check = flavor not in SECTION_DIVERGENT_FLAVORS
+        tf = tdir / spec.template_filename
+        if not tf.is_file():
+            findings.append(f"{flavor}: template file {spec.template_filename} missing")
+            continue
+        text = tf.read_text(encoding="utf-8")
+        bb_match = _TMPL_BB_RE.search(text)
+        tmpl_bb = bb_match.group(1).strip() if bb_match else None
+        if tmpl_bb != spec.bb_type:
+            findings.append(
+                f"{flavor}: template building_block '{tmpl_bb}' != "
+                f"REGISTRY bb_type '{spec.bb_type}'"
+            )
+        try:
+            required = BB_SPECS[BuildingBlock(spec.bb_type)].required_sections
+        except (ValueError, KeyError):
+            findings.append(f"{flavor}: bb_type '{spec.bb_type}' not in BB_SPECS")
+            continue
+        if not section_check:
+            continue  # documented section-divergent flavor — bb_type still checked above
+        headers = {h.split("<!--")[0].strip() for h in _TMPL_H2_RE.findall(text)}
+        missing = [s for s in required if s not in headers]
+        if missing:
+            findings.append(
+                f"{flavor} (bb={spec.bb_type}): template missing required "
+                f"section(s) {missing} — reconcile the template with "
+                f"BB_SPECS[{spec.bb_type}].required_sections"
+            )
+    return findings
+
+
+# Flavors that share a coarse building_block but have a legitimately finer note
+# shape, so their templates are NOT required to declare the BB's exact
+# required_sections (FZ 20k9d1b1a P3 documented divergence). The building_block
+# contract stays authoritative for each BB's PRIMARY flavor.
+SECTION_DIVERGENT_FLAVORS: frozenset[str] = frozenset({
+    "code_snippet",   # procedure BB, but code-doc shape (Purpose/Code/Explanation)
+    "skill",          # procedure BB, but section_id-marked step contract
+    "experiment",     # empirical_observation BB, but full pre-registration shape
+    "code_repo",      # model BB, but repo-doc shape (Overview/Sub-Notes/…)
+})
 
 
 def capture(
