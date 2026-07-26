@@ -1,10 +1,11 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
-    "track, the v5 automatic runtime, and the DKS P1-P7 self-driving reasoning arc.\n"
+    "track, multi-document corpus digestion, the v5 automatic runtime, and the "
+    "DKS P1-P7 self-driving reasoning arc.\n"
     "\n"
     "Tessellum provides typed Composer pipelines, durable verified resume, the "
     "P0-P9 snapshot-pinned knowledge-transaction track (typed intents, staging "
@@ -15,8 +16,10 @@ __status__ = (
     "a bounded autonomy loop, a four-axis ontology, and validator-issued elevation, "
     "hybrid retrieval, a 12-command CLI, a 12-tool MCP server, and supervised "
     "eight-lane inbox digestion with durable jobs, leases, bounded retries, "
-    "cancellation, atomic index publication, and source acknowledgement. "
-    "Suite: 1478 passing.\n"
+    "cancellation, atomic index publication, and source acknowledgement. Corpus "
+    "digestion takes a whole set of documents into one coordinated planning run, "
+    "decomposing a large corpus into a master plan plus dependency-ordered "
+    "sub-plans that each promote as their own transaction. Suite: 1564 passing.\n"
     "\n"
     "See CHANGELOG.md and docs/ for release details and engineering reference."
 )

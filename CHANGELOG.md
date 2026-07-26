@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-07-25
+
 ### Multi-document corpus digestion — M0–M7 COMPLETE — 2026-07-25
 
 All eight phases of the multi-document corpus-digestion plan (FZ 20k9c1a1a1b7b1) are implemented as additive composer modules (`corpus_plan.py`, `corpus_digestion.py`) + a `run_execute_wave` seam and a `scheduler._corpus_leaf` fix. Tessellum can now take a *set* of incoming documents into ONE coordinated planning run and, above a volume threshold, decompose the corpus into a master plan + N self-contained sub-plans — the capability reviewed as missing in FZ 20k9c1a1a1b7b. The single-document `run_digestion_pipeline` path stays byte-identical (the corpus path is a new entry point). Every phase was adversarially reviewed with an independent verify pass; the reviews caught and fixed real bugs before merge (M0 rendered-budget overflow + scheduler-parity critical, M4/M5 per-sub-plan transaction isolation incl. path-less-manifest high, M6 duplicate-row miscount, M7 re-probe nit). Full suite 1289 passed.
