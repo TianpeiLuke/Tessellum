@@ -194,11 +194,17 @@ def certify(
             GroundingVerdict("ungrounded", "no checkable claims — fail-closed"),
             detail="empty claim set",
         )
-    if thresholds.domains and note_domain not in thresholds.domains:
+    # Fail-closed domain gate: an EMPTY calibrated-domain set means "no domain
+    # has passed A7.5" → abstain everywhere (NOT "accept everywhere"). Only a
+    # note whose domain is explicitly in a non-empty calibrated set proceeds.
+    # (A calibration that legitimately spans all domains records a sentinel
+    # domain and passes it as note_domain — it never leaves domains empty.)
+    if not thresholds.domains or note_domain not in thresholds.domains:
         return CertificateResult(
             "abstain", 0.0,
             GroundingVerdict("ungrounded",
-                             f"domain {note_domain!r} outside calibrated {thresholds.domains}"),
+                             f"domain {note_domain!r} not in calibrated {thresholds.domains} "
+                             "(empty = no domain passed A7.5)"),
             detail="out-of-calibrated-domain",
         )
 

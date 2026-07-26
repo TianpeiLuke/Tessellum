@@ -281,6 +281,23 @@ from tessellum.composer.semantic_certificate import (
     certify,
     measure_false_accept_rate,
 )
+from tessellum.composer.lexical_scorer import (
+    claim_support_score,
+    make_lexical_scorer,
+)
+from tessellum.composer.claim_extraction import (
+    MULTI_SOURCE_SEP,
+    extract_claims,
+    split_sentences,
+)
+from tessellum.composer.certificate_verifier import make_certificate_verifier
+from tessellum.composer.calibration_gate import (
+    MIN_HELD_OUT,
+    CalibrationCorpus,
+    CalibrationGateResult,
+    CorpusExample,
+    run_calibration_gate,
+)
 from tessellum.composer.planner_loop import (
     Deficit,
     LoopPolicy,
@@ -530,6 +547,18 @@ __all__ = [
     "calibrate",
     "certify",
     "measure_false_accept_rate",
+    # semantic certificate — runnable pieces (C1-C4)
+    "claim_support_score",
+    "make_lexical_scorer",
+    "MULTI_SOURCE_SEP",
+    "extract_claims",
+    "split_sentences",
+    "make_certificate_verifier",
+    "CalibrationCorpus",
+    "CalibrationGateResult",
+    "CorpusExample",
+    "MIN_HELD_OUT",
+    "run_calibration_gate",
     # Bounded planner search (P8, A8.1-A8.3)
     "Deficit",
     "Revision",

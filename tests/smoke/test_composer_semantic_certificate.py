@@ -120,7 +120,7 @@ def test_certify_abstains_out_of_calibrated_domain() -> None:
     scorer = _scorer({"c1": 0.99})
     res = certify(claims, scorer=scorer, thresholds=th, note_domain="finance")
     assert res.decision == "abstain"
-    assert "outside calibrated" in (res.verdict.detail or "")
+    assert "not in calibrated" in (res.verdict.detail or "")
 
 
 def test_certify_per_class_thresholds_independent() -> None:
