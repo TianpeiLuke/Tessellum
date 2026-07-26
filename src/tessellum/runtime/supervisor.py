@@ -47,6 +47,7 @@ class Supervisor:
         executor: DigestionExecutor,
         owner_id: str | None = None,
         rebuild_index: bool = True,
+        with_dense: bool = True,
         sleep_fn=time.sleep,
     ) -> None:
         self.store = store
@@ -54,6 +55,11 @@ class Supervisor:
         self.executor = executor
         self.owner_id = owner_id or f"{socket.gethostname()}:{uuid.uuid4().hex}"
         self.rebuild_index = rebuild_index
+        # Build the runtime index WITH dense embeddings by default so the dense
+        # retrieval surface is populated on the live path (build() is fail-soft:
+        # a missing encoder degrades to BM25-only, never crashes the commit).
+        # Opt out (BM25-only, faster / no ML deps) via with_dense=False.
+        self.with_dense = with_dense
         self.sleep_fn = sleep_fn
         self._active_job_id: str | None = None
 
@@ -152,7 +158,7 @@ class Supervisor:
                         job,
                         paths=self.paths,
                         rebuild_index=self.rebuild_index,
-                        with_dense=False,
+                        with_dense=self.with_dense,
                         effect_guard=effect_guard,
                         lock_vault=False,
                     )
@@ -162,7 +168,7 @@ class Supervisor:
                     target=JobState.COMPLETE,
                     lease=lease,
                     result_path=str(committed.archive_path),
-                    detail={"index_path": str(committed.index_path)},
+                    detail=self._commit_detail(committed),
                 )
                 return WorkOutcome(job.job_id, "complete")
         except LeaseLostError:
@@ -305,7 +311,7 @@ class Supervisor:
                 job,
                 paths=self.paths,
                 rebuild_index=self.rebuild_index,
-                with_dense=False,
+                with_dense=self.with_dense,
                 effect_guard=effect_guard,
                 lock_vault=False,
             )
@@ -315,9 +321,20 @@ class Supervisor:
             target=JobState.COMPLETE,
             lease=lease,
             result_path=str(committed.archive_path),
-            detail={"index_path": str(committed.index_path)},
+            detail=self._commit_detail(committed),
         )
         return WorkOutcome(job.job_id, "complete")
+
+    @staticmethod
+    def _commit_detail(committed) -> dict:
+        """Completion detail recorded in job state. Includes the published
+        index path and — when the index was rebuilt with dense degraded to
+        BM25-only — a visible ``dense_degraded`` flag so a degraded live
+        retrieval surface is diagnosable from job state, not silent."""
+        detail: dict = {"index_path": str(committed.index_path)}
+        if committed.dense_degraded:
+            detail["dense_degraded"] = True
+        return detail
 
     def _cancel(self, job: Job, lease: Lease) -> None:
         if JobState.CANCELLED in ALLOWED_TRANSITIONS[job.state]:

@@ -27,8 +27,42 @@ No LLM, no network — pure assembly + I/O guards (IDENT-3).
 from __future__ import annotations
 
 import abc
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
+
+# Alphanumeric (incl. underscore) token runs — everything else (FTS5-special
+# punctuation: - : " ( ) # * ^ etc., and markdown/YAML markers) is dropped so a
+# source-derived query can never be an FTS5 syntax error.
+_FTS5_TOKEN_RE = re.compile(r"[A-Za-z0-9_]+")
+# Cap the number of query terms — a 512-char head can hold ~80 tokens; a long
+# OR-bag both dilutes relevance and slows MATCH. First N content tokens.
+_MAX_QUERY_TERMS = 32
+
+
+def _fts5_safe_query(text: str) -> str:
+    """Reduce arbitrary text to a valid FTS5 query: the first
+    :data:`_MAX_QUERY_TERMS` alphanumeric tokens, lowercased, joined by the
+    ``OR`` operator.
+
+    Two properties matter:
+
+    - **Safe.** Tokens are ``[A-Za-z0-9_]`` runs only — every FTS5-special char
+      (``- : " ( ) # * ^`` and YAML/markdown markers) is dropped, so the result
+      can never be a MATCH syntax error.
+    - **Recall.** ``OR`` (not the space-implicit ``AND``) joins the terms: a
+      source-head query carries frontmatter noise (``title``/``tags``/…) that
+      appears in NO note body, so an implicit-AND bag would require every token
+      present in one doc and match nothing. ``OR`` lets any term contribute a
+      hit; BM25 then ranks the seeds by relevance. Terms are lowercased so a
+      token equal to ``and``/``or``/``not`` is a bareword literal, never an
+      operator (FTS5 operators must be uppercase).
+
+    Returns ``""`` when no usable token remains."""
+    if not isinstance(text, str):
+        return ""
+    tokens = _FTS5_TOKEN_RE.findall(text.lower())
+    return " OR ".join(tokens[:_MAX_QUERY_TERMS])
 
 # Character budget an assembled context must not exceed. The assembler
 # truncates to this and warns rather than raising.
@@ -197,22 +231,261 @@ class WindowedAssembler(ContextAssembler):
         return source[:head_n] + marker + source[len(source) - tail_n :]
 
 
+# Fraction of the context budget reserved for retrieved related-note context
+# (the rest stays for the source). Kept modest so retrieval AUGMENTS, never
+# crowds out, the primary source the writer is digesting.
+DEFAULT_RETRIEVAL_BUDGET_FRACTION: float = 0.25
+
+# Retrieval-neighborhood defaults for the augmenting assembler.
+DEFAULT_RETRIEVAL_SEEDS: int = 5      # hybrid top-K used as BFS seeds
+DEFAULT_RETRIEVAL_NEIGHBORS: int = 8  # BFS neighbors per seed (best-first)
+
+
+class RetrievalAugmentedAssembler(ContextAssembler):
+    """The graph-retrieval assembler the module header anticipated (WIRING).
+
+    Turns the composer's input seam into a hybrid-retrieval consumer: before
+    the writer sees the source, this PREPENDS a bounded "Related vault notes"
+    block gathered from the indexed vault via the FULL hybrid stack —
+
+    - **hybrid_search** (BM25 + dense, RRF-fused) picks the top ``seeds`` most
+      relevant existing notes to the query; then
+    - **best_first_bfs** expands each seed's neighborhood over the note-link
+      graph (priority queue, depth-major + in_degree-minor, hub-skipped), so
+      the writer also sees structurally-adjacent context, not just lexical/
+      semantic top hits — the multi-hop surface the vault's search skill calls
+      Best-First BFS.
+
+    The block is capped to ``retrieval_fraction`` of ``max_chars`` (the source
+    keeps the rest), deduped by note_id, and clearly delimited so the writer
+    treats it as REFERENCE context, not the source of record.
+
+    **Fail-soft + opt-in.** Constructed only when a caller selects the
+    ``"retrieval"`` strategy AND supplies a ``db_path``; the default assembler
+    is unchanged. ANY retrieval failure (missing index, missing dense embeddings
+    — dense simply drops per hybrid's own fallback, unreadable DB) degrades to
+    the bare source with a warning — retrieval never crashes a write. The query
+    defaults to the source's head (the note being written is about its own
+    opening); a caller can inject an explicit ``query``.
+    """
+
+    def __init__(
+        self,
+        *,
+        max_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
+        db_path: "Path | str | None" = None,
+        query: str | None = None,
+        seeds: int = DEFAULT_RETRIEVAL_SEEDS,
+        neighbors: int = DEFAULT_RETRIEVAL_NEIGHBORS,
+        retrieval_fraction: float = DEFAULT_RETRIEVAL_BUDGET_FRACTION,
+    ) -> None:
+        super().__init__(max_chars=max_chars)
+        if not (0.0 < retrieval_fraction < 1.0):
+            raise ValueError("retrieval_fraction must be in (0, 1)")
+        self.db_path = Path(db_path) if db_path is not None else None
+        self.query = query
+        self.seeds = max(1, seeds)
+        self.neighbors = max(0, neighbors)
+        self.retrieval_fraction = retrieval_fraction
+        # A fail-soft warning to surface on the NEXT assemble() (retrieval was
+        # requested but degraded to bare source). Reset at the top of each
+        # assemble() call; merged into the AssembledContext.warnings there.
+        # Assemblers are single-active (one write at a time) per the seam's
+        # contract, so a single-slot pending warning is safe.
+        self._pending_warning: str | None = None
+
+    _BLOCK_HEADER = (
+        "## Related vault notes (retrieved context — reference only, "
+        "NOT the source of record)\n"
+    )
+
+    @property
+    def strategy(self) -> str:
+        return "retrieval"
+
+    def assemble(self, source: str) -> AssembledContext:
+        """Assemble with retrieval augmentation, then surface any fail-soft
+        retrieval warning alongside the base size warnings.
+
+        The base :meth:`ContextAssembler.assemble` only knows about
+        size/type warnings; a retrieval degradation (missing/broken index,
+        empty query, dense-drop) is recorded by :meth:`_related_block` /
+        :meth:`_assemble_raw` in ``self._pending_warning`` and merged in here so
+        the worker can log that augmentation silently fell back to bare source.
+        """
+        self._pending_warning = None
+        result = super().assemble(source)
+        if self._pending_warning is None:
+            return result
+        return AssembledContext(
+            text=result.text,
+            truncated=result.truncated,
+            original_chars=result.original_chars,
+            warnings=result.warnings + (self._pending_warning,),
+        )
+
+    def _query_for(self, source: str) -> str:
+        """The retrieval query: the injected query, else the source head —
+        SANITIZED into a valid FTS5 bag-of-words.
+
+        A raw note source begins with YAML frontmatter (``---``), markdown
+        headers (``#``), and punctuation (``:``, ``(``, quotes) — all FTS5
+        syntax errors that would make ``bm25_search``'s ``MATCH`` raise and
+        silently no-op the whole retrieval. So the query is reduced to
+        alphanumeric content tokens joined by spaces (an implicit FTS5 AND/OR
+        over bare terms — no operators), which can never be a syntax error.
+        Returns ``""`` when nothing usable remains (caller skips retrieval)."""
+        raw = self.query if self.query else source[:512]
+        return _fts5_safe_query(raw)
+
+    def _related_note_ids(self, source: str) -> list[str]:
+        """Retrieve the ordered related note-ids via hybrid + BFS.
+
+        Returns ``[]`` on any degradation (no db configured, empty query,
+        missing/broken index, no hits), recording a fail-soft warning in
+        ``self._pending_warning`` when retrieval was ATTEMPTED but yielded
+        nothing usable — so the caller degrades to bare source AND the worker
+        can see that augmentation silently fell back."""
+        if self.db_path is None:
+            return []
+        # Lazy import: retrieval pulls sqlite_vec / networkx; keep the composer
+        # import DAG light for callers that never use the retrieval strategy.
+        from tessellum.retrieval.graph import best_first_bfs
+        from tessellum.retrieval.hybrid import hybrid_search
+
+        query = self._query_for(source)
+        if not query:
+            self._pending_warning = (
+                "retrieval degraded: query reduced to empty after FTS5 "
+                "sanitization; using bare source"
+            )
+            return []
+        try:
+            hits = hybrid_search(self.db_path, query, k=self.seeds)
+        except Exception as e:  # noqa: BLE001 — index failure degrades, not kills
+            self._pending_warning = (
+                f"retrieval degraded: hybrid_search failed "
+                f"({type(e).__name__}); using bare source"
+            )
+            return []
+        if not hits:
+            self._pending_warning = (
+                "retrieval degraded: no related notes found; using bare source"
+            )
+            return []
+        # first-seen dedup: hybrid seeds first (most relevant), then each seed's
+        # best-first neighborhood, so the block reads relevance-ordered.
+        ordered: list[str] = []
+        seen: set[str] = set()
+        for h in hits:
+            if h.note_id not in seen:
+                seen.add(h.note_id)
+                ordered.append(h.note_id)
+        if self.neighbors:
+            for h in hits:
+                try:
+                    neigh = best_first_bfs(self.db_path, h.note_id, k=self.neighbors)
+                except Exception:  # noqa: BLE001 — a bad seed never sinks the block
+                    continue
+                for g in neigh:
+                    if g.note_id not in seen:
+                        seen.add(g.note_id)
+                        ordered.append(g.note_id)
+        return ordered
+
+    def _render_block(self, note_ids: list[str], block_budget: int) -> str:
+        """Render the related-notes block to fit ``block_budget`` chars by
+        dropping WHOLE note lines from the tail — never char-slicing (which
+        would cut the anti-fabrication header mid-string). Returns "" if not
+        even the header + one line fits, so the disclaimer is all-or-nothing."""
+        header = self._BLOCK_HEADER
+        kept: list[str] = []
+        # +1 for the trailing "\n\n" the joined block ends with.
+        size = len(header) + 1
+        for nid in note_ids:
+            line = f"- {nid}\n"
+            if size + len(line) > block_budget:
+                break
+            kept.append(line)
+            size += len(line)
+        if not kept:
+            return ""  # header alone (or +1 line) won't fit → drop whole block
+        if len(kept) < len(note_ids):
+            self._pending_warning = (
+                f"retrieval block trimmed to {len(kept)}/{len(note_ids)} "
+                f"notes to fit the source-first budget"
+            )
+        return header + "".join(kept) + "\n"
+
+    def _assemble_raw(self, source: str) -> str:
+        # Retrieval is best-effort: never let it crash assembly (the base class
+        # also guards, but we degrade to bare source explicitly here too so a
+        # retrieval failure yields the FULL source, not an empty context).
+        try:
+            note_ids = self._related_note_ids(source)
+        except Exception as e:  # noqa: BLE001
+            self._pending_warning = (
+                f"retrieval degraded ({type(e).__name__}); using bare source"
+            )
+            note_ids = []
+        if not note_ids:
+            return source
+        # SOURCE-FIRST budgeting. The source is the record the writer must
+        # digest; augmentation must NEVER evict it. The base assemble() bounds
+        # the whole output to max_chars by truncating from the END — so a
+        # prepended block that pushes block+source over max_chars would drop the
+        # SOURCE tail. Guard against that here: the block gets at most its
+        # fraction AND at most the room the source leaves; if the source alone
+        # already fills (or overflows) max_chars, the block is dropped entirely
+        # so the base truncation only ever trims the source, never loses it to
+        # retrieved context. (The base then still windows an oversized source.)
+        room_for_block = self.max_chars - len(source)
+        block_budget = min(int(self.max_chars * self.retrieval_fraction), room_for_block)
+        if block_budget <= 0:
+            self._pending_warning = (
+                "retrieval block dropped: source fills the char budget; "
+                "source preserved (never evicted for retrieved context)"
+            )
+            return source  # no room without evicting source → source-only
+        block = self._render_block(note_ids, block_budget)
+        if not block:
+            self._pending_warning = (
+                "retrieval block dropped: does not fit the source-first "
+                "budget without char-slicing the disclaimer header"
+            )
+            return source
+        return block + source
+
+
 # Registry so the driver selects an assembler by config string.
 ASSEMBLER_REGISTRY: dict[str, type[ContextAssembler]] = {
     "full_source": FullSourceAssembler,
     "windowed": WindowedAssembler,
+    "retrieval": RetrievalAugmentedAssembler,
 }
 
 
 def get_assembler(
-    strategy: str = "full_source", *, max_chars: int = DEFAULT_MAX_CONTEXT_CHARS
+    strategy: str = "full_source",
+    *,
+    max_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
+    db_path: "Path | str | None" = None,
+    query: str | None = None,
 ) -> ContextAssembler:
     """Construct the single-active assembler by config string.
+
+    ``db_path`` / ``query`` are consumed only by the ``"retrieval"`` strategy
+    (the :class:`RetrievalAugmentedAssembler`); the source-only strategies
+    (``full_source`` / ``windowed``) ignore them, so existing callers are
+    unaffected. Selecting ``"retrieval"`` without a ``db_path`` yields an
+    assembler that simply passes the source through (fail-soft).
 
     Raises:
         KeyError: If ``strategy`` is not registered.
     """
     cls = ASSEMBLER_REGISTRY[strategy]
+    if cls is RetrievalAugmentedAssembler:
+        return cls(max_chars=max_chars, db_path=db_path, query=query)
     return cls(max_chars=max_chars)
 
 

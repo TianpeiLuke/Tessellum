@@ -26,6 +26,11 @@ from tessellum.runtime.paths import RuntimePaths
 class CommitResult:
     archive_path: Path
     index_path: Path
+    # True iff the index was rebuilt with_dense=True but dense embedding
+    # generation failed, so the published index is BM25-only. Surfaced up to
+    # the supervisor's completion detail so a degraded live index is visible
+    # in job state, not silent. None when the index was not rebuilt.
+    dense_degraded: bool | None = None
 
 
 _INDEX_THREAD_LOCK = threading.Lock()
@@ -61,19 +66,28 @@ def _index_publication_lock(target: Path) -> Iterator[None]:
 def rebuild_index_atomically(
     paths: RuntimePaths,
     *,
-    with_dense: bool = False,
+    with_dense: bool = True,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     lock_vault: bool = True,
-) -> Path:
+) -> tuple[Path, bool]:
+    """Rebuild + atomically publish the index.
+
+    Returns ``(index_path, dense_degraded)`` where ``dense_degraded`` is True
+    iff ``with_dense=True`` was requested but embedding generation failed, so
+    the published index is BM25-only (build() is fail-soft). The caller
+    surfaces this so a degraded live index is visible, not silent.
+    """
     target = paths.index_db
     target.parent.mkdir(parents=True, exist_ok=True)
     guard = effect_guard or nullcontext
     vault_guard = vault_write_lock(paths) if lock_vault else nullcontext()
+    dense_degraded = False
     with vault_guard:
         with _index_publication_lock(target):
             temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
             try:
-                build(paths.vault, temporary, with_dense=with_dense)
+                result = build(paths.vault, temporary, with_dense=with_dense)
+                dense_degraded = result.dense_degraded
                 with temporary.open("rb") as handle:
                     os.fsync(handle.fileno())
                 with guard():
@@ -81,7 +95,7 @@ def rebuild_index_atomically(
                     _fsync_dir(target.parent)
             finally:
                 temporary.unlink(missing_ok=True)
-    return target
+    return target, dense_degraded
 
 
 def commit_job(
@@ -89,17 +103,22 @@ def commit_job(
     *,
     paths: RuntimePaths,
     rebuild_index: bool = True,
-    with_dense: bool = False,
+    with_dense: bool = True,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     lock_vault: bool = True,
 ) -> CommitResult:
     index_path = paths.index_db
+    dense_degraded: bool | None = None
     if rebuild_index:
-        index_path = rebuild_index_atomically(
+        index_path, dense_degraded = rebuild_index_atomically(
             paths,
             with_dense=with_dense,
             effect_guard=effect_guard,
             lock_vault=lock_vault,
         )
     archive_path = archive_source(job, paths=paths, effect_guard=effect_guard)
-    return CommitResult(archive_path=archive_path, index_path=index_path)
+    return CommitResult(
+        archive_path=archive_path,
+        index_path=index_path,
+        dense_degraded=dense_degraded,
+    )

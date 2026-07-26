@@ -76,6 +76,15 @@ def run_index_build(args: argparse.Namespace) -> int:
     print(f"  links indexed:  {result.links_indexed}")
     if result.embeddings_generated:
         print(f"  embeddings:     {result.embeddings_generated}")
+    if result.dense_degraded:
+        # with_dense was requested but embedding generation failed: the index
+        # is BM25-only. Warn visibly so a degraded hybrid surface isn't silent.
+        print(
+            "  WARNING: dense embeddings requested but generation failed; "
+            "index is BM25-only (hybrid retrieval falls back to lexical). "
+            "Install ML deps or re-run with --no-dense to silence.",
+            file=sys.stderr,
+        )
     if result.skipped_files:
         print(f"  files skipped:  {result.skipped_files} (unparseable frontmatter)")
     print(f"  duration:       {result.duration_seconds:.2f}s")

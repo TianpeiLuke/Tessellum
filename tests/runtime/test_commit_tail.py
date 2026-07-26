@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from tessellum.indexer.build import BuildResult
 from tessellum.runtime.admission import AdmissionError, admit_path, archive_source
 from tessellum.runtime.commit_tail import rebuild_index_atomically
 from tessellum.runtime.locking import vault_write_lock
@@ -25,6 +26,19 @@ def _paths(root: Path) -> RuntimePaths:
     (paths.inbox / "papers").mkdir()
     paths.vault.mkdir()
     return paths
+
+
+def _fake_build_result(target: Path, *, dense_degraded: bool = False) -> BuildResult:
+    """Minimal BuildResult for build() fakes (commit_tail now reads
+    result.dense_degraded off the return value)."""
+    return BuildResult(
+        db_path=Path(target),
+        notes_indexed=0,
+        links_indexed=0,
+        skipped_files=0,
+        duration_seconds=0.0,
+        dense_degraded=dense_degraded,
+    )
 
 
 def test_archive_uses_spool_and_preserves_replaced_source(tmp_path: Path) -> None:
@@ -98,6 +112,7 @@ def test_index_rebuilds_are_serialized(
         Path(target).write_text(str(threading.get_ident()), encoding="utf-8")
         with state_lock:
             active -= 1
+        return _fake_build_result(target)
 
     monkeypatch.setattr("tessellum.runtime.commit_tail.build", fake_build)
     threads = [
@@ -122,6 +137,7 @@ def test_standalone_and_supervised_index_rebuilds_do_not_deadlock(
     def fake_build(_vault, target, *, with_dense):
         time.sleep(0.02)
         Path(target).write_text("index", encoding="utf-8")
+        return _fake_build_result(target)
 
     monkeypatch.setattr("tessellum.runtime.commit_tail.build", fake_build)
 
@@ -140,6 +156,54 @@ def test_standalone_and_supervised_index_rebuilds_do_not_deadlock(
 
     assert all(not thread.is_alive() for thread in threads)
     assert paths.index_db.read_text(encoding="utf-8") == "index"
+
+
+def test_rebuild_index_atomically_threads_dense_degraded(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """R1 review-fix: rebuild_index_atomically returns (path, dense_degraded)
+    off the BuildResult so a degraded (BM25-only) live index is not silent."""
+    paths = _paths(tmp_path)
+
+    def fake_build(_vault, target, *, with_dense):
+        Path(target).write_text("index", encoding="utf-8")
+        return _fake_build_result(target, dense_degraded=True)
+
+    monkeypatch.setattr("tessellum.runtime.commit_tail.build", fake_build)
+    index_path, dense_degraded = rebuild_index_atomically(paths)
+    assert index_path == paths.index_db
+    assert dense_degraded is True
+
+
+def test_commit_job_surfaces_dense_degraded(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """R1 review-fix: commit_job carries dense_degraded up to CommitResult so
+    the supervisor can record it in the job's completion detail."""
+    from tessellum.runtime.commit_tail import commit_job
+
+    paths = _paths(tmp_path)
+
+    def fake_build(_vault, target, *, with_dense):
+        Path(target).write_text("index", encoding="utf-8")
+        return _fake_build_result(target, dense_degraded=True)
+
+    monkeypatch.setattr("tessellum.runtime.commit_tail.build", fake_build)
+    # No real job/archive needed — stub archive_source to a no-op path.
+    monkeypatch.setattr(
+        "tessellum.runtime.commit_tail.archive_source",
+        lambda job, *, paths, effect_guard=None: paths.artifacts,
+    )
+    result = commit_job(object(), paths=paths, rebuild_index=True)
+    assert result.dense_degraded is True
+
+    # When the index is NOT rebuilt, dense_degraded stays None (not applicable).
+    result2 = commit_job(object(), paths=paths, rebuild_index=False)
+    assert result2.dense_degraded is None
+
+
 def test_vault_effect_journal_restores_overwrites_and_creations(
     tmp_path: Path,
 ) -> None:

@@ -184,6 +184,47 @@ def test_build_with_dense_true_populates_embeddings(indexed_db):
     assert len(hits) >= 1
 
 
+def test_build_dense_encoder_failure_degrades_to_bm25(tmp_path, monkeypatch):
+    """Review-fix (R1): a failing encoder must NOT crash the build (or, on the
+    runtime path, a whole commit). It degrades to a BM25-only index with
+    ``dense_degraded=True`` and zero embeddings, and dense_search returns []."""
+    import importlib
+
+    build_mod = importlib.import_module("tessellum.indexer.build")
+
+    def boom(*_a, **_k):
+        raise RuntimeError("no sentence-transformers here")
+
+    monkeypatch.setattr(build_mod, "_write_embeddings", boom)
+
+    v = tmp_path / "v"
+    (v / "resources/term_dictionary").mkdir(parents=True)
+    (v / "resources/term_dictionary/term_alpha.md").write_text(
+        _make_note("Alpha", "alpha body about graphs")
+    )
+    db = tmp_path / "degraded.db"
+    result = build(v, db, with_dense=True)  # must NOT raise
+    assert result.notes_indexed == 1
+    assert result.dense_degraded is True
+    assert result.embeddings_generated == 0
+    # BM25 surface is intact; dense simply has no rows.
+    assert dense_search(db, "graphs") == []
+
+
+def test_build_with_dense_true_success_not_degraded(tmp_path):
+    """The happy path leaves ``dense_degraded=False`` (the flag is not
+    spuriously set when embeddings DO generate)."""
+    v = tmp_path / "v"
+    (v / "resources/term_dictionary").mkdir(parents=True)
+    (v / "resources/term_dictionary/term_alpha.md").write_text(
+        _make_note("Alpha", "alpha body about graphs and networks")
+    )
+    db = tmp_path / "ok.db"
+    result = build(v, db, with_dense=True)
+    assert result.dense_degraded is False
+    assert result.embeddings_generated == 1
+
+
 def test_dense_search_against_real_tessellum_vault():
     """Smoke against the shipped Tessellum vault (with embeddings)."""
     repo = Path(__file__).resolve().parents[2]

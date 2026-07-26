@@ -12,6 +12,7 @@ Idempotent — the DB is dropped + recreated each run.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sqlite3
 import struct
@@ -25,6 +26,7 @@ import sqlite_vec
 from tessellum.format.parser import FrontmatterParseError, parse_note
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+_LOG = logging.getLogger(__name__)
 
 # Markdown link regex: ``[text](path.md)`` with optional ``#anchor``.
 # Allows nested ``[..]`` in text (matches link_checker but tightened to
@@ -95,6 +97,10 @@ class BuildResult:
     skipped_files: int
     duration_seconds: float
     embeddings_generated: int = 0  # populated when ``with_dense=True``
+    # True iff dense was requested (``with_dense=True``) but the encoder was
+    # unavailable/failed, so the index is BM25-only despite the request. The
+    # build still SUCCEEDS (fail-soft) — dense retrieval degrades to BM25.
+    dense_degraded: bool = False
 
 
 def build(
@@ -158,15 +164,35 @@ def build(
     links_records = _extract_all_links(notes_meta, vault, name_index)
 
     conn = _open_with_vec(db)
+    dense_degraded = False
     try:
         with conn:
             conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
             _write_notes(conn, notes_meta)
             _write_links(conn, links_records)
             _write_fts(conn, notes_meta)
-            embeddings_count = (
-                _write_embeddings(conn, notes_meta) if with_dense else 0
-            )
+            embeddings_count = 0
+            if with_dense:
+                # Fail-soft: a missing sentence-transformers dep or an encoder
+                # failure must degrade to a BM25-only index, NOT crash the build
+                # (or, on the runtime path, a whole commit). notes_vec stays
+                # empty; dense_search then returns [] and hybrid falls back to
+                # BM25 — the index is usable, just without the dense surface.
+                try:
+                    embeddings_count = _write_embeddings(conn, notes_meta)
+                except Exception:  # noqa: BLE001 — dense is optional; degrade
+                    dense_degraded = True
+                    # Surface the degradation: the index is BM25-only despite
+                    # with_dense=True, so hybrid retrieval silently loses its
+                    # dense surface. Log with exc_info so the missing-dep or
+                    # encoder error is diagnosable, not swallowed.
+                    _LOG.warning(
+                        "dense embedding generation failed; index degraded to "
+                        "BM25-only (%d notes, no notes_vec). Hybrid retrieval "
+                        "will fall back to lexical search.",
+                        len(notes_meta),
+                        exc_info=True,
+                    )
     finally:
         conn.close()
 
@@ -177,6 +203,7 @@ def build(
         skipped_files=skipped,
         duration_seconds=time.monotonic() - started,
         embeddings_generated=embeddings_count,
+        dense_degraded=dense_degraded,
     )
 
 

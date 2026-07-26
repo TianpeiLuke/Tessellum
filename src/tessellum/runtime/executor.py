@@ -625,6 +625,14 @@ class DigestionExecutor:
                 context_assembler=get_assembler(
                     policy.context_strategy,
                     max_chars=policy.context_max_chars,
+                    # db_path/query are consumed only by the "retrieval" strategy
+                    # (RetrievalAugmentedAssembler) — the default "windowed"
+                    # strategy ignores them, so this is byte-identical unless a
+                    # deployment opts into policy.context_strategy="retrieval".
+                    # The index exists only once a prior commit built it; the
+                    # assembler is fail-soft when it is absent.
+                    db_path=self.paths.index_db if self.paths.index_db.exists() else None,
+                    query=source_content[:512],
                 ),
                 events_path=artifact_dir / "composer-events.jsonl",
                 stats_path=artifact_dir / "statistics.json",
