@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-07-25
+
 ### Semantic certificate — runnable end-to-end (C1–C4): reference scorer, claim extraction, seam wiring, A7.5 go/no-go gate — 2026-07-25
 
 Makes the calibrated semantic certificate (`semantic_certificate.py`, P7 / DKS P4) — the gate for UNATTENDED promotion — runnable, wireable, and A7.5-measurable NOW, so the day a real NLI/SummaC model + a human-labelled corpus arrive, calibration and the unattended-promotion decision are one command. Until then the certificate stays fail-closed and promotion stays human-supervised (M4 / P6). The real model + labelled corpus remain the standing (external, non-code) research prerequisite. New modules `composer/{lexical_scorer,claim_extraction,certificate_verifier,calibration_gate}.py`; additive; +22 tests; full suite 1312 passed. Adversarially reviewed (12 findings incl. 1 critical + 3 high — all fixed pre-commit).

@@ -1,6 +1,6 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
@@ -19,7 +19,10 @@ __status__ = (
     "cancellation, atomic index publication, and source acknowledgement. Corpus "
     "digestion takes a whole set of documents into one coordinated planning run, "
     "decomposing a large corpus into a master plan plus dependency-ordered "
-    "sub-plans that each promote as their own transaction. Suite: 1564 passing.\n"
+    "sub-plans that each promote as their own transaction. The calibrated grounding "
+    "certificate now runs end to end — a reference scorer, claim extraction, the "
+    "grounding-verifier seam, and an A7.5 go/no-go gate — with a production model "
+    "and a labelled corpus remaining an external prerequisite. Suite: 1587 passing.\n"
     "\n"
     "See CHANGELOG.md and docs/ for release details and engineering reference."
 )
