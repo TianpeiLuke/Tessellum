@@ -26,6 +26,7 @@ from tessellum.composer import (
     TermOwnerRow,
     classify_plan_shape,
     corpus_plan_content_id,
+    term_ownership_gate,
 )
 
 
@@ -319,3 +320,96 @@ def test_content_id_changes_with_content() -> None:
     a = corpus_plan_content_id(_plan())
     b = corpus_plan_content_id(_plan(objective="a different objective"))
     assert a != b
+
+
+# ── M6: term_ownership_gate ──────────────────────────────────────────────────
+
+
+def test_term_ownership_gate_passes_when_every_term_owned() -> None:
+    plan = _plan(term_ownership=(
+        TermOwnerRow(term="term_a", owner_sub_id="s1"),
+        TermOwnerRow(term="term_b", owner_sub_id="s2"),
+    ))
+    res = term_ownership_gate(plan, ("term_a", "term_b"))
+    assert res.passed
+    assert res.reason() == ""
+
+
+def test_term_ownership_gate_fails_on_unowned_term() -> None:
+    # term_b is introduced by the corpus but has NO owner row → ghost-ref risk.
+    plan = _plan(term_ownership=(TermOwnerRow(term="term_a", owner_sub_id="s1"),))
+    res = term_ownership_gate(plan, ("term_a", "term_b"))
+    assert not res.passed
+    assert res.unowned == ("term_b",)
+    assert "unowned" in res.reason()
+
+
+def test_term_ownership_gate_fails_on_multiply_owned_term() -> None:
+    plan = _plan(term_ownership=(
+        TermOwnerRow(term="term_a", owner_sub_id="s1"),
+        TermOwnerRow(term="term_a", owner_sub_id="s2"),
+    ))
+    res = term_ownership_gate(plan, ("term_a",))
+    assert not res.passed
+    assert res.multiply_owned == {"term_a": ("s1", "s2")}
+
+
+def test_term_ownership_gate_fails_on_orphan_ownership_row() -> None:
+    # an ownership row for a term the corpus does NOT introduce (stale row).
+    plan = _plan(term_ownership=(
+        TermOwnerRow(term="term_a", owner_sub_id="s1"),
+        TermOwnerRow(term="term_stale", owner_sub_id="s2"),
+    ))
+    res = term_ownership_gate(plan, ("term_a",))
+    assert not res.passed
+    assert res.orphan_ownership == ("term_stale",)
+
+
+def test_term_ownership_gate_detects_unknown_owner_via_bypass() -> None:
+    # The CorpusPlan validator normally rejects an unknown-owner row; the gate
+    # re-checks defensively (reachable via model_construct).
+    plan = CorpusPlan.model_construct(
+        bundle_id="b", objective="o", plan_shape="master_plus_subplans",
+        sub_objectives=(_sub("s1", (0,)),),
+        term_ownership=(TermOwnerRow(term="term_a", owner_sub_id="ghost"),),
+        shared_cross_refs=(), bundle_member_count=0,
+    )
+    res = term_ownership_gate(plan, ("term_a",))
+    assert not res.passed
+    assert res.unknown_owner == {"term_a": "ghost"}
+
+
+def test_term_ownership_gate_empty_when_no_terms_introduced() -> None:
+    # a corpus that introduces no undigested terms trivially passes.
+    plan = _plan()
+    assert term_ownership_gate(plan, ()).passed
+
+
+def test_term_ownership_gate_duplicate_identical_rows_pass() -> None:
+    # Review (medium): two IDENTICAL rows (same term, same owner) are ONE owner,
+    # not ambiguous — must NOT be flagged multiply_owned.
+    plan = _plan(term_ownership=(
+        TermOwnerRow(term="term_a", owner_sub_id="s1"),
+        TermOwnerRow(term="term_a", owner_sub_id="s1"),
+    ))
+    res = term_ownership_gate(plan, ("term_a",))
+    assert res.passed
+    assert res.multiply_owned == {}
+
+
+def test_term_ownership_gate_surfaces_unknown_owner_for_multiply_owned() -> None:
+    # Review (low): a term with multiple owners that are ALL unknown sub_ids must
+    # surface in BOTH multiply_owned AND unknown_owner (one-pass diagnostics).
+    plan = CorpusPlan.model_construct(
+        bundle_id="b", objective="o", plan_shape="master_plus_subplans",
+        sub_objectives=(_sub("s1", (0,)),),
+        term_ownership=(
+            TermOwnerRow(term="term_a", owner_sub_id="ghost1"),
+            TermOwnerRow(term="term_a", owner_sub_id="ghost2"),
+        ),
+        shared_cross_refs=(), bundle_member_count=0,
+    )
+    res = term_ownership_gate(plan, ("term_a",))
+    assert not res.passed
+    assert res.multiply_owned == {"term_a": ("ghost1", "ghost2")}
+    assert res.unknown_owner == {"term_a": "ghost1"}  # first unknown, sorted

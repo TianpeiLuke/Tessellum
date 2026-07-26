@@ -457,6 +457,76 @@ def test_corpus_gate_low_blast_use_human_auto_approves(tmp_path: Path) -> None:
     assert res.bundle_status == "complete"
 
 
+def test_corpus_term_ownership_gate_blocks_on_unowned_term(tmp_path: Path) -> None:
+    # M6: an introduced term with no owner sub-objective blocks the WHOLE corpus
+    # before any promotion (fail-closed) — nothing written.
+    from tessellum.composer import TermOwnerRow
+
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    vault = tmp_path / "vault"
+    b = _bundle(4)
+    # s1 owns term_x; term_y is introduced but owned by nobody.
+    plan = _corpus_plan(4).model_copy(update={
+        "term_ownership": (TermOwnerRow(term="term_x", owner_sub_id="s1"),),
+    })
+    backend = _mock()
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=backend, vault_root=vault,
+        introduced_terms=("term_x", "term_y"),
+    )
+    assert res.bundle_status == "blocked"
+    assert res.term_ownership is not None
+    assert not res.term_ownership.passed
+    assert res.term_ownership.unowned == ("term_y",)
+    assert res.executions == ()
+    assert not list(vault.rglob("*.md")), "term-gate failure must promote nothing"
+    # M6 review (low): the gate runs BEFORE the planning wave, so a blocked
+    # corpus pays ZERO planning-wave LLM cost (no backend calls) and the
+    # planning result is empty.
+    assert backend.calls == [], "term gate must fail fast before any LLM call"
+    assert res.planning.sub_plans == ()
+
+
+def test_corpus_term_ownership_gate_passes_and_promotes(tmp_path: Path) -> None:
+    from tessellum.composer import TermOwnerRow
+
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    plan = _corpus_plan(4).model_copy(update={
+        "term_ownership": (
+            TermOwnerRow(term="term_x", owner_sub_id="s1"),
+            TermOwnerRow(term="term_y", owner_sub_id="s2"),
+        ),
+    })
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=_mock(), vault_root=tmp_path / "vault",
+        introduced_terms=("term_x", "term_y"),
+    )
+    assert res.term_ownership is not None and res.term_ownership.passed
+    assert res.bundle_status == "complete"
+
+
+def test_corpus_no_term_gate_when_introduced_terms_omitted(tmp_path: Path) -> None:
+    # M6 is opt-in: without introduced_terms the gate does not run (term_ownership
+    # is None) and the corpus digests as in M4/M5.
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    plan = _corpus_plan(4)
+    res = run_corpus_digestion(plan, b, {i: f"doc {i}" for i in range(4)},
+                               skills_dir=sd, backend=_mock(),
+                               vault_root=tmp_path / "vault")
+    assert res.term_ownership is None
+    assert res.bundle_status == "complete"
+
+
 def test_write_closure_overlap_detects_shared_note() -> None:
     # unit: two sub-plan outcomes whose note_intent_graphs write the SAME note
     # are both reported as overlapping (the M5 disjointness gate input).

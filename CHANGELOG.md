@@ -4,6 +4,14 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Multi-document corpus digestion — M6: corpus-wide term-ownership gate — 2026-07-25
+
+The machine-checked form of the plan skill's §4e.4 corpus-wide term-ownership sweep: every undigested term the corpus introduces must have exactly one owner sub-objective, or the whole corpus is blocked before promotion. Additive + opt-in; +9 tests; full suite 1283 passed. Adversarially reviewed (3 findings — all fixed pre-commit).
+
+- **`term_ownership_gate(plan, introduced_terms) -> TermOwnershipResult`** (`composer/corpus_plan.py`) — pure: given the corpus-wide undigested-term sweep, fails closed on an unowned term (ghost-ref risk — the exact §4e.4 failure), a multiply-owned term (ambiguous), an unknown-owner row, or an orphan-ownership row (a term the corpus doesn't introduce). Owner sub_ids are DE-DUPLICATED per term so two identical rows aren't misread as ambiguous (review-fix, medium); unknown-owner is reported independent of ownership cardinality so one gate pass surfaces every defect on a term (review-fix, low).
+- **`run_corpus_digestion(introduced_terms=...)`** runs the gate FIRST — before the planning wave — because its inputs are known at entry and not produced by planning, so a corpus destined to be blocked pays zero planning-wave LLM cost (review-fix, low: fail-fast). A failed gate returns `bundle_status="blocked"` with nothing promoted and an empty planning result. Opt-in: omitting `introduced_terms` preserves the M4/M5 behavior. `CorpusDigestionResult` gains a `term_ownership` field (the verdict, or `None` when the gate didn't run).
+- New tests: gate pass / unowned / multiply-owned / orphan / unknown-owner-via-bypass / empty, duplicate-identical-rows-pass + all-ghost-multiply-owned-surfaces-unknown (the two review fixes), plus integration (blocks-and-promotes-nothing with a fail-fast zero-LLM-call assertion, passes-and-promotes, opt-in-omitted-no-op).
+
 ### Multi-document corpus digestion — M5: priority + dependency-aware wave scheduling — 2026-07-25
 
 Turns the corpus execute wave into a dependency-layered schedule with opt-in intra-layer concurrency and real per-sub-plan transaction isolation. Additive; +11 tests; full suite 1272 passed. Adversarially reviewed (two passes, 12 findings incl. 1 high + 1 high latent from the M4 re-review — all fixed pre-commit).

@@ -35,7 +35,9 @@ from tessellum.composer.corpus_plan import (
     CorpusPlan,
     SharedCrossRef,
     SubObjective,
+    TermOwnershipResult,
     build_corpus_leaf,
+    term_ownership_gate,
 )
 from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.digestion import (
@@ -450,6 +452,10 @@ class CorpusDigestionResult:
             order of ``CorpusPlan.wave_order`` — a dependency-independent P3
             sub-plan runs in an earlier layer than a P1 sub-plan that depends on
             it. Read ``bundle_status`` / per-outcome ``promoted``, not position.
+        term_ownership: The M6 corpus-wide term-ownership gate verdict (``None``
+            when no ``introduced_terms`` were supplied → the gate did not run).
+            A failed gate blocks the whole corpus (``bundle_status="blocked"``,
+            nothing promoted).
         bundle_status: ``"complete"`` (every sub-objective promoted) |
             ``"partially_promoted"`` (some promoted, some blocked) |
             ``"blocked"`` (none promoted) — the a3a bundle-completion rollup.
@@ -461,6 +467,7 @@ class CorpusDigestionResult:
     corpus_sign_off: SignOffResult | None
     executions: tuple[SubPlanExecution, ...]
     bundle_status: str
+    term_ownership: "TermOwnershipResult | None" = None
 
 
 def run_corpus_digestion(
@@ -479,6 +486,7 @@ def run_corpus_digestion(
     effect_recorder: Callable[[Path], None] | None = None,
     corpus_sign_off_policy: SignOffPolicy | None = None,
     human_prompt: HumanPrompt | None = None,
+    introduced_terms: tuple[str, ...] | set[str] | None = None,
     execute_max_workers: int = 4,
     max_sub_plan_workers: int = 1,
     **execute_kwargs: Any,
@@ -502,6 +510,14 @@ def run_corpus_digestion(
        snapshot-pinned transaction. A sub-plan whose execute wave errors is
        ``blocked``; the others still promote (a weak sub-plan blocks only
        itself). Blocked-at-planning sub-objectives are never executed.
+
+    **M6 term-ownership gate.** When ``introduced_terms`` (the corpus-wide
+    undigested-term sweep) is supplied, :func:`term_ownership_gate` asserts every
+    introduced term has exactly one owner sub-objective. It runs FIRST — before
+    the planning wave — because its inputs are known at entry and not produced by
+    planning, so a corpus destined to be blocked pays zero planning-wave cost; a
+    failed gate promotes NOTHING (an unowned cross-cutting term would ship a
+    ghost reference). Opt-in — omitted → the gate does not run.
 
     **M5 scheduling.** Execution walks
     :meth:`~tessellum.composer.corpus_plan.CorpusPlan.dependency_layers` —
@@ -533,6 +549,36 @@ def run_corpus_digestion(
     corpus sign-off, per-sub-plan execute outcomes, and the bundle-completion
     rollup (``complete`` | ``partially_promoted`` | ``blocked``).
     """
+    # ── M6 corpus-wide term-ownership gate (fail closed, FAIL FAST) ─────────
+    # When the caller supplies the corpus-wide undigested-term sweep, assert
+    # every introduced term has exactly one owner sub-objective — an unowned
+    # cross-cutting term would ship a ghost reference (the exact failure the
+    # skill §4e.4 sweep prevents). Its inputs (corpus_plan.term_ownership +
+    # introduced_terms) are known at entry and are NOT produced by planning, so
+    # this runs BEFORE the planning wave: a corpus destined to be blocked pays
+    # ZERO planning-wave LLM cost. The bundle_id match (normally checked inside
+    # the wave) is asserted here first so a mismatch still raises before the gate.
+    # Skipped when introduced_terms is None (opt-in), preserving M4/M5 behavior.
+    term_ownership: TermOwnershipResult | None = None
+    if introduced_terms is not None:
+        if corpus_plan.bundle_id != bundle.bundle_id:
+            raise ValueError(
+                f"corpus_plan.bundle_id {corpus_plan.bundle_id!r} does not match "
+                f"bundle.bundle_id {bundle.bundle_id!r}"
+            )
+        term_ownership = term_ownership_gate(corpus_plan, introduced_terms)
+        if not term_ownership.passed:
+            return CorpusDigestionResult(
+                bundle_id=bundle.bundle_id, objective=corpus_plan.objective,
+                planning=CorpusPlanningResult(
+                    bundle_id=bundle.bundle_id, objective=corpus_plan.objective,
+                    sub_plans=(), all_accepted=False,
+                    accepted_count=0, blocked_count=0,
+                ),
+                corpus_sign_off=None, executions=(),
+                bundle_status="blocked", term_ownership=term_ownership,
+            )
+
     planning = run_corpus_planning_wave(
         corpus_plan, bundle, member_contents,
         skills_dir=skills_dir, backend=backend, vault_root=vault_root,
@@ -597,6 +643,7 @@ def run_corpus_digestion(
                 bundle_id=bundle.bundle_id, objective=corpus_plan.objective,
                 planning=planning, corpus_sign_off=corpus_sign_off,
                 executions=(), bundle_status="blocked",
+                term_ownership=term_ownership,
             )
 
     # ── write-closure disjointness gate (M5): fail CLOSED on overlap ─────────
@@ -687,6 +734,7 @@ def run_corpus_digestion(
         bundle_id=bundle.bundle_id, objective=corpus_plan.objective,
         planning=planning, corpus_sign_off=corpus_sign_off,
         executions=tuple(executions), bundle_status=bundle_status,
+        term_ownership=term_ownership,
     )
 
 

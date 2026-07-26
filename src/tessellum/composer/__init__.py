@@ -217,9 +217,11 @@ from tessellum.composer.corpus_plan import (
     SubObjectivePriority,
     SubObjectiveRow,
     TermOwnerRow,
+    TermOwnershipResult,
     build_corpus_leaf,
     classify_plan_shape,
     corpus_plan_content_id,
+    term_ownership_gate,
 )
 from tessellum.composer.knowledge_plan import (
     ClaimProvenance,
@@ -470,6 +472,8 @@ __all__ = [
     "CorpusPlan",
     "SubObjectiveRow",
     "corpus_plan_content_id",
+    "TermOwnershipResult",
+    "term_ownership_gate",
     "DEFAULT_CORPUS_LEAF_MAX_CHARS",
     "MemberExcerpt",
     "build_corpus_leaf",

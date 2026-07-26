@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass, field
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -432,6 +433,102 @@ def corpus_plan_content_id(plan: CorpusPlan) -> str:
     ).hexdigest()
 
 
+# ── M6 — corpus-wide term-ownership gate ────────────────────────────────────
+
+
+@dataclass(frozen=True)
+class TermOwnershipResult:
+    """The verdict of :func:`term_ownership_gate` (M6).
+
+    Attributes:
+        passed: ``True`` iff every introduced term has exactly one owner and no
+            ownership row is malformed (unknown owner / unintroduced term).
+        unowned: introduced terms with NO owner row (would ship a ghost ref).
+        multiply_owned: ``{term -> owner sub_ids}`` for terms owned more than
+            once (ambiguous ownership).
+        unknown_owner: ``{term -> owner sub_id}`` rows whose owner is not a
+            sub-objective of the plan.
+        orphan_ownership: owner rows for terms NOT in ``introduced_terms``
+            (ownership of a term the corpus does not introduce — a stale row).
+    """
+
+    passed: bool
+    unowned: tuple[str, ...] = ()
+    multiply_owned: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    unknown_owner: dict[str, str] = field(default_factory=dict)
+    orphan_ownership: tuple[str, ...] = ()
+
+    def reason(self) -> str:
+        """A short one-line cause when ``not passed`` (empty when passed)."""
+        parts: list[str] = []
+        if self.unowned:
+            parts.append(f"unowned={sorted(self.unowned)}")
+        if self.multiply_owned:
+            parts.append(f"multiply_owned={sorted(self.multiply_owned)}")
+        if self.unknown_owner:
+            parts.append(f"unknown_owner={sorted(self.unknown_owner)}")
+        if self.orphan_ownership:
+            parts.append(f"orphan_ownership={sorted(self.orphan_ownership)}")
+        return "; ".join(parts)
+
+
+def term_ownership_gate(
+    plan: "CorpusPlan", introduced_terms: tuple[str, ...] | set[str]
+) -> TermOwnershipResult:
+    """Assert every undigested term the corpus introduces has EXACTLY ONE owner
+    sub-objective (M6) — the machine-checked form of the plan skill's §4e.4
+    corpus-wide term-ownership sweep. Pure; no IO.
+
+    ``introduced_terms`` is the corpus-wide set of undigested terms the sweep
+    surfaced (the caller supplies it — the plan does not itself enumerate the
+    source's terms). The gate fails closed on:
+
+    - an introduced term with NO owner row → would ship a ghost reference
+      (the exact failure §4e.4 exists to prevent);
+    - a term owned by more than one sub-objective → ambiguous ownership;
+    - an ownership row whose owner is not a sub-objective of ``plan``;
+    - an ownership row for a term NOT in ``introduced_terms`` (a stale/orphan
+      row) — surfaced so the inventory stays honest.
+
+    Note the ``CorpusPlan`` validator already rejects an unknown-owner row at
+    construction, so ``unknown_owner`` is normally empty here; the gate re-checks
+    it defensively (it may run on a ``model_construct``-bypassed plan) and to
+    make the corpus-scope contract self-contained.
+    """
+    introduced = set(introduced_terms)
+    sub_ids = {s.sub_id for s in plan.sub_objectives}
+    # DISTINCT owners per term (first-seen order): duplicate identical rows
+    # (term_a→s1 twice) are NOT ambiguous ownership, so dedup before counting —
+    # counting rows would false-flag a single-owner term as multiply_owned.
+    owners: dict[str, list[str]] = {}
+    for row in plan.term_ownership:
+        bucket = owners.setdefault(row.term, [])
+        if row.owner_sub_id not in bucket:
+            bucket.append(row.owner_sub_id)
+
+    unowned = tuple(sorted(t for t in introduced if t not in owners))
+    multiply_owned = {
+        term: tuple(sorted(o)) for term, o in owners.items() if len(o) > 1
+    }
+    # unknown-owner is reported INDEPENDENT of ownership cardinality (a term
+    # with several owners that are ALL unknown sub_ids still surfaces here, not
+    # only in multiply_owned) so one gate pass reports every defect on a term.
+    unknown_owner = {
+        term: sorted(oi for oi in o if oi not in sub_ids)[0]
+        for term, o in owners.items()
+        if any(oi not in sub_ids for oi in o)
+    }
+    orphan_ownership = tuple(sorted(t for t in owners if t not in introduced))
+    passed = not (unowned or multiply_owned or unknown_owner or orphan_ownership)
+    return TermOwnershipResult(
+        passed=passed,
+        unowned=unowned,
+        multiply_owned=multiply_owned,
+        unknown_owner=unknown_owner,
+        orphan_ownership=orphan_ownership,
+    )
+
+
 # ── M0 — bundle → joint-planner leaf (the fan-in) ───────────────────────────
 
 # Aggregate ceiling for the RENDERED corpus ``members`` block (the JSON the
@@ -661,6 +758,9 @@ __all__ = [
     "CorpusPlan",
     "SubObjectiveRow",
     "corpus_plan_content_id",
+    # M6 — term-ownership gate
+    "TermOwnershipResult",
+    "term_ownership_gate",
     # M0 — fan-in leaf
     "DEFAULT_CORPUS_LEAF_MAX_CHARS",
     "MemberExcerpt",
