@@ -127,6 +127,42 @@ rebuild. The transaction track's versioned publication is the same fail-closed, 
 idea one layer up, waiting to be wired in as the accept point (the deferred A1.4 step);
 until then it runs opt-in, and every path it adds is byte-identical when its flags are off.
 
+## Corpus digestion — many documents, one coordinated pass
+
+A single digestion takes one source. But a set of related documents — a whole wiki, the
+chapters of a book, a design doc and its appendices — should be digested *together*, so
+their notes share entry points, cross-link cleanly, and don't each independently coin a
+duplicate of the same term. Corpus digestion is that coordinated pass. It is an additive
+entry point built on everything above, and the single-source path stays exactly as it was.
+
+**One joint plan, not N independent jobs.** The members of a source bundle are fanned *in*
+to a single planning prompt rather than handed to the planner one file at a time, so the
+plan is made with the whole corpus in view. From the corpus's total volume the planner
+picks a shape: a small corpus stays one plan, a medium one runs in phases, and a large one
+is decomposed into a master index plus several self-contained sub-plans. The threshold is
+measured, not guessed, and the stronger of two axes — total words or expected note count —
+decides.
+
+**A hierarchy of sub-plans, each its own transaction.** A decomposed corpus becomes a
+typed corpus plan: a master index — purely derived, never a second copy of the note tables
+— over a set of sub-objectives. Each sub-objective owns a slice of the bundle, a priority,
+and its dependencies on sibling sub-plans. Every sub-objective is then planned on its own,
+through the same plan → augment → review → sign-off flow over just its slice, and every
+accepted sub-plan is executed as its own snapshot-pinned transaction. A sub-plan that fails
+review or execution is blocked on its own; the rest still promote.
+
+**Dependencies decide the order; the whole is gated as one.** Sub-plans run in dependency
+layers: a foundational sub-plan commits before the one whose cross-links point at it, so a
+later sub-plan resolves its links against already-published notes, and independent sub-plans
+in the same layer may run concurrently. Three corpus-wide checks hold the set together. A
+term-ownership gate requires every term the corpus introduces to have exactly one owning
+sub-plan, or the whole corpus is blocked before any planning cost is spent. A shared
+cross-reference is resolved once at corpus scope — deduplicated, and dropped if its target
+does not exist — rather than re-derived in every sub-plan. And a write-closure disjointness
+gate refuses to let two sub-plans write the same note, so neither a race nor a
+last-writer-wins clobber can corrupt shared knowledge. Above all of it, one whole-corpus
+human gate can require sign-off on the total blast radius before anything is published.
+
 ## Operating a digestion
 
 Two front doors run the same pipeline. A human runs `tessellum composer digest --source
