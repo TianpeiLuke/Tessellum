@@ -11,6 +11,7 @@ Idempotent — the DB is dropped + recreated each run.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -101,6 +102,12 @@ class BuildResult:
     # unavailable/failed, so the index is BM25-only despite the request. The
     # build still SUCCEEDS (fail-soft) — dense retrieval degrades to BM25.
     dense_degraded: bool = False
+    # Incremental-only deltas (0 on a full :func:`build`). Populated by
+    # :func:`build_incremental`: notes added / modified / deleted this pass.
+    notes_added: int = 0
+    notes_modified: int = 0
+    notes_deleted: int = 0
+    incremental: bool = False
 
 
 def build(
@@ -207,6 +214,240 @@ def build(
     )
 
 
+def build_incremental(
+    vault_path: Path | str,
+    db_path: Path | str,
+    *,
+    with_dense: bool = True,
+) -> BuildResult:
+    """Update an EXISTING index in place, re-indexing only changed notes.
+
+    The scaling replacement for the O(vault) full :func:`build` on every commit.
+    Diffs the vault filesystem against the ``notes`` table and applies only the
+    delta: notes ADDED, notes whose content changed (MODIFIED — detected by
+    ``last_indexed_mtime`` OR ``content_hash``, so a same-mtime edit is still
+    caught), and notes DELETED. Unchanged notes — and their ``notes_vec``
+    embeddings — are left untouched (no re-encode), which is the whole point:
+    a single-note digestion no longer re-parses + re-embeds the entire vault.
+
+    ``note_links`` is rebuilt GLOBALLY from the current note set (links are
+    cross-note relationships — a new/deleted note changes other notes' link
+    resolution + broken-path fallbacks — and re-resolving all links is cheap
+    relative to re-parsing every file). ``note_int_id`` is PRESERVED for every
+    unchanged/modified note (new notes get ``max(note_int_id)+1``), so existing
+    ``notes_vec`` rows stay valid.
+
+    Falls back to a full :func:`build` (``force=True``) when the DB does not yet
+    exist. Same fail-soft dense contract as :func:`build`. Runs in one
+    transaction; the caller (``commit_tail``) publishes the whole DB atomically.
+    """
+    vault = Path(vault_path).expanduser().resolve()
+    if not vault.is_dir():
+        raise FileNotFoundError(f"vault path does not exist: {vault}")
+    db = Path(db_path).expanduser().resolve()
+    if not db.exists():
+        # No prior index → nothing to update incrementally; do a full build.
+        return build(vault, db, force=False, with_dense=with_dense)
+
+    started = time.monotonic()
+
+    # Current filesystem note set (parsed metadata keyed by note_id).
+    md_files = sorted(_walk_vault(vault))
+    fs_meta: dict[str, dict] = {}
+    skipped = 0
+    for f in md_files:
+        meta = _extract_note_metadata(f, vault)
+        if meta is None:
+            skipped += 1
+            continue
+        fs_meta[meta["note_id"]] = meta
+
+    conn = _open_with_vec(db)
+    dense_degraded = False
+    added = modified = deleted = 0
+    embeddings_count = 0
+    try:
+        with conn:
+            _ensure_content_hash_column(conn)
+            existing = {
+                row[0]: (row[1], row[2])  # note_id -> (last_indexed_mtime, content_hash)
+                for row in conn.execute(
+                    "SELECT note_id, last_indexed_mtime, content_hash FROM notes"
+                )
+            }
+            fs_ids = set(fs_meta)
+            db_ids = set(existing)
+
+            to_delete = db_ids - fs_ids
+            to_add = fs_ids - db_ids
+            to_check = fs_ids & db_ids
+            to_modify = {
+                nid for nid in to_check if _note_changed(fs_meta[nid], existing[nid])
+            }
+
+            # Allocate fresh surrogate keys for added notes above the current max
+            # so existing notes_vec rows (keyed by note_int_id) stay valid.
+            next_int_id = (
+                conn.execute("SELECT COALESCE(MAX(note_int_id), 0) FROM notes")
+                .fetchone()[0]
+                + 1
+            )
+
+            changed_meta: list[dict] = []
+            for nid in to_delete:
+                _delete_note_row(conn, nid)
+                deleted += 1
+            for nid in sorted(to_add):
+                fs_meta[nid]["note_int_id"] = next_int_id
+                next_int_id += 1
+                added += 1
+                changed_meta.append(fs_meta[nid])
+            for nid in sorted(to_modify):
+                # Preserve the existing surrogate key for a modified note.
+                int_id = conn.execute(
+                    "SELECT note_int_id FROM notes WHERE note_id = ?", (nid,)
+                ).fetchone()[0]
+                fs_meta[nid]["note_int_id"] = int_id
+                modified += 1
+                changed_meta.append(fs_meta[nid])
+
+            # Upsert notes + FTS for every changed note.
+            for meta in changed_meta:
+                _upsert_note_row(conn, meta)
+
+            # Rebuild note_links GLOBALLY (cross-note resolution + broken-path
+            # fallback depend on the whole current note set).
+            if to_delete or to_add or to_modify:
+                all_meta = _load_all_note_bodies(conn, fs_meta)
+                name_index = _build_note_name_index(all_meta)
+                links_records = _extract_all_links(all_meta, vault, name_index)
+                conn.execute("DELETE FROM note_links")
+                _write_links(conn, links_records)
+
+            # Dense: (re)embed only the changed notes, fail-soft. Wrap the vec
+            # DELETE+INSERT in a SAVEPOINT so an encoder failure rolls back the
+            # deletes too — otherwise the deletes would commit (the outer
+            # `with conn` still succeeds since we swallow the error), leaving
+            # changed notes with NO embedding while unchanged notes keep theirs
+            # (a partial notes_vec). On failure the PRIOR embeddings are
+            # preserved instead (review-fix). NB: a full build under the same
+            # failure yields an EMPTY notes_vec; both are flagged dense_degraded
+            # + usable, but the incremental path keeps more working embeddings.
+            if with_dense and changed_meta:
+                try:
+                    conn.execute("SAVEPOINT vec_update")
+                    for meta in changed_meta:
+                        conn.execute(
+                            "DELETE FROM notes_vec WHERE note_int_id = ?",
+                            (meta["note_int_id"],),
+                        )
+                    embeddings_count = _write_embeddings(conn, changed_meta)
+                    conn.execute("RELEASE vec_update")
+                except Exception:  # noqa: BLE001 — dense is optional; degrade
+                    conn.execute("ROLLBACK TO vec_update")
+                    conn.execute("RELEASE vec_update")
+                    embeddings_count = 0
+                    dense_degraded = True
+                    _LOG.warning(
+                        "incremental dense embedding failed; index degraded to "
+                        "BM25-only for %d changed notes (prior embeddings kept).",
+                        len(changed_meta),
+                        exc_info=True,
+                    )
+    finally:
+        conn.close()
+
+    return BuildResult(
+        db_path=db,
+        notes_indexed=_count_notes(db),
+        links_indexed=_count_links(db),
+        skipped_files=skipped,
+        duration_seconds=time.monotonic() - started,
+        embeddings_generated=embeddings_count,
+        dense_degraded=dense_degraded,
+        notes_added=added,
+        notes_modified=modified,
+        notes_deleted=deleted,
+        incremental=True,
+    )
+
+
+def _note_changed(fs_meta: dict, db_row: tuple) -> bool:
+    """A note is changed iff its content_hash differs (authoritative) — falling
+    back to mtime when the DB row predates the content_hash column (NULL)."""
+    db_mtime, db_hash = db_row
+    if db_hash is not None:
+        return fs_meta.get("content_hash") != db_hash
+    # Legacy row without a hash: fall back to mtime inequality.
+    return fs_meta.get("last_indexed_mtime") != db_mtime
+
+
+def _ensure_content_hash_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add the ``content_hash`` column to a pre-existing DB built
+    before the column existed (a NULL hash falls back to mtime detection)."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(notes)")}
+    if "content_hash" not in cols:
+        conn.execute("ALTER TABLE notes ADD COLUMN content_hash TEXT")
+
+
+def _upsert_note_row(conn: sqlite3.Connection, meta: dict) -> None:
+    """INSERT-OR-REPLACE one note across ``notes`` + ``notes_fts`` (vec handled
+    separately). ``meta`` carries a resolved ``note_int_id``."""
+    placeholders = ", ".join(f":{c}" for c in _NOTES_INSERT_COLUMNS)
+    columns = ", ".join(_NOTES_INSERT_COLUMNS)
+    conn.execute(
+        f"INSERT OR REPLACE INTO notes ({columns}) VALUES ({placeholders})", meta
+    )
+    # FTS5 has no upsert — delete the note's row then re-insert.
+    conn.execute("DELETE FROM notes_fts WHERE note_id = ?", (meta["note_id"],))
+    conn.execute(
+        "INSERT INTO notes_fts (note_id, note_name, body) "
+        "VALUES (:note_id, :note_name, :_body)",
+        meta,
+    )
+
+
+def _delete_note_row(conn: sqlite3.Connection, note_id: str) -> None:
+    """Cascade-delete a note from notes_vec + notes_fts + notes."""
+    row = conn.execute(
+        "SELECT note_int_id FROM notes WHERE note_id = ?", (note_id,)
+    ).fetchone()
+    if row and row[0] is not None:
+        conn.execute("DELETE FROM notes_vec WHERE note_int_id = ?", (row[0],))
+    conn.execute("DELETE FROM notes_fts WHERE note_id = ?", (note_id,))
+    # note_links FK is ON DELETE CASCADE, but it is rebuilt globally anyway.
+    conn.execute("DELETE FROM notes WHERE note_id = ?", (note_id,))
+
+
+def _load_all_note_bodies(conn: sqlite3.Connection, fs_meta: dict[str, dict]) -> list[dict]:
+    """The full current note set as link-extraction metadata dicts.
+
+    ``fs_meta`` already holds freshly-parsed bodies for every CURRENT note (the
+    incremental walk parses all files to diff), so link resolution reads bodies
+    from there — no second disk read. Only ``note_id`` + ``_body`` are needed by
+    :func:`_extract_all_links`."""
+    return [
+        {"note_id": nid, "note_name": m["note_name"], "_body": m["_body"]}
+        for nid, m in fs_meta.items()
+    ]
+
+
+def _count_notes(db: Path) -> int:
+    conn = sqlite3.connect(str(db))
+    try:
+        return conn.execute("SELECT COUNT(*) FROM notes").fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _count_links(db: Path) -> int:
+    conn = sqlite3.connect(str(db))
+    try:
+        return conn.execute("SELECT COUNT(*) FROM note_links").fetchone()[0]
+    finally:
+        conn.close()
+
+
 # ── Vault walk ────────────────────────────────────────────────────────────
 
 
@@ -287,8 +528,29 @@ def _extract_note_metadata(md_file: Path, vault_path: Path) -> dict | None:
             front.get("folgezettel_parent") or front.get("fz_parent")
         ),
         "last_indexed_mtime": stat.st_mtime,
+        # content_hash over BOTH frontmatter AND body — the incremental
+        # change-detection safety net. It must cover the frontmatter because the
+        # index derives category / building_block / tags / folgezettel from it,
+        # so a frontmatter-only edit (same body) MUST be re-indexed; and it
+        # catches a same-mtime edit (git checkout, touch-restore) that mtime
+        # alone would miss.
+        "content_hash": _content_hash(note.raw_frontmatter, note.body),
         "_body": note.body,  # consumed by link extraction; not written to DB
     }
+
+
+def _content_hash(raw_frontmatter: str, body: str) -> str:
+    """sha256 over a note's frontmatter + body — the incremental change key.
+
+    Covers both planes the index reads: a change to EITHER the YAML frontmatter
+    (tags/building_block/folgezettel/…) or the prose body flips the hash, so the
+    incremental path re-indexes on any content change, matching a full rebuild.
+    A reserved separator keeps the two fields unambiguous."""
+    h = hashlib.sha256()
+    h.update((raw_frontmatter or "").encode("utf-8"))
+    h.update(b"\x00---content---\x00")
+    h.update((body or "").encode("utf-8"))
+    return h.hexdigest()
 
 
 def _str_or_none(value: object) -> str | None:
@@ -470,6 +732,7 @@ _NOTES_INSERT_COLUMNS: tuple[str, ...] = (
     "folgezettel",
     "folgezettel_parent",
     "last_indexed_mtime",
+    "content_hash",
     "note_int_id",
 )
 

@@ -115,8 +115,13 @@ def test_index_rebuilds_are_serialized(
         return _fake_build_result(target)
 
     monkeypatch.setattr("tessellum.runtime.commit_tail.build", fake_build)
+    # incremental=False: this test exercises the publication LOCK/serialization
+    # with a full-build fake, not the incremental copy+update path.
     threads = [
-        threading.Thread(target=rebuild_index_atomically, args=(paths,))
+        threading.Thread(
+            target=rebuild_index_atomically, args=(paths,),
+            kwargs={"incremental": False},
+        )
         for _ in range(2)
     ]
     for thread in threads:
@@ -143,10 +148,13 @@ def test_standalone_and_supervised_index_rebuilds_do_not_deadlock(
 
     def supervised_rebuild() -> None:
         with vault_write_lock(paths):
-            rebuild_index_atomically(paths, lock_vault=False)
+            rebuild_index_atomically(paths, lock_vault=False, incremental=False)
 
     threads = [
-        threading.Thread(target=rebuild_index_atomically, args=(paths,)),
+        threading.Thread(
+            target=rebuild_index_atomically, args=(paths,),
+            kwargs={"incremental": False},
+        ),
         threading.Thread(target=supervised_rebuild),
     ]
     for thread in threads:
@@ -202,6 +210,61 @@ def test_commit_job_surfaces_dense_degraded(
     # When the index is NOT rebuilt, dense_degraded stays None (not applicable).
     result2 = commit_job(object(), paths=paths, rebuild_index=False)
     assert result2.dense_degraded is None
+
+
+def test_stale_temp_index_copies_are_swept(tmp_path: Path, monkeypatch) -> None:
+    """I3 review-fix: a .tmp index copy left by a killed process (finally never
+    ran) is swept on the next rebuild, under the publication lock."""
+    paths = _paths(tmp_path)
+
+    def fake_build(_vault, target, *, with_dense):
+        Path(target).write_text("index", encoding="utf-8")
+        return _fake_build_result(target)
+
+    monkeypatch.setattr("tessellum.runtime.commit_tail.build", fake_build)
+    # simulate a leaked temp from a prior killed build
+    leaked = paths.index_db.with_name(f".{paths.index_db.name}.deadbeef.tmp")
+    leaked.parent.mkdir(parents=True, exist_ok=True)
+    leaked.write_text("orphan", encoding="utf-8")
+    assert leaked.exists()
+
+    rebuild_index_atomically(paths, incremental=False)
+    assert not leaked.exists(), "stale .tmp copy should be swept"
+    assert paths.index_db.is_file()
+
+
+def test_wal_index_is_rejected_by_copy_path(tmp_path: Path) -> None:
+    """I3 review-fix: the incremental copy path fails closed on a WAL index
+    (shutil.copy2 would drop the -wal sidecar → a silently stale copy)."""
+    import sqlite3
+
+    import pytest
+
+    from tessellum.runtime.commit_tail import _assert_not_wal
+
+    paths = _paths(tmp_path)
+    db = paths.index_db
+    db.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db))
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("CREATE TABLE t (x)")
+    conn.close()
+    with pytest.raises(RuntimeError, match="WAL"):
+        _assert_not_wal(db)
+
+
+def test_non_wal_index_passes_guard(tmp_path: Path) -> None:
+    import sqlite3
+
+    from tessellum.runtime.commit_tail import _assert_not_wal
+
+    paths = _paths(tmp_path)
+    db = paths.index_db
+    db.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db))  # default rollback journal
+    conn.execute("CREATE TABLE t (x)")
+    conn.close()
+    _assert_not_wal(db)  # must not raise
 
 
 def test_vault_effect_journal_restores_overwrites_and_creations(

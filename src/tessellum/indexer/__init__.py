@@ -21,11 +21,12 @@ Public API:
     results.
 """
 
-from tessellum.indexer.build import BuildResult, build
+from tessellum.indexer.build import BuildResult, build, build_incremental
 from tessellum.indexer.db import Database, LinkRow, NoteRow
 
 __all__ = [
     "build",
+    "build_incremental",
     "BuildResult",
     "Database",
     "NoteRow",

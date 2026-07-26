@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS notes (
     folgezettel_parent   TEXT,
     indexed_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_indexed_mtime   REAL,                         -- file mtime as epoch float
+    content_hash         TEXT,                         -- sha256 of note body (incremental change-detection safety net)
     note_int_id          INTEGER UNIQUE                -- surrogate key for notes_vec join
 );
 CREATE INDEX IF NOT EXISTS idx_notes_int_id ON notes(note_int_id);
