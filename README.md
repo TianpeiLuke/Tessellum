@@ -111,6 +111,10 @@ Tessellum rests on four foundations — remove any one and the system stops work
 
 ## Architecture
 
+![Tessellum 1.4.0 architecture showing the markdown vault, SQLite projection, runtime, Composer, DKS, and external interfaces](docs/assets/tessellum_architecture.png)
+
+*Source-level view of Tessellum's write and retrieval paths. Solid arrows are active runtime paths; dashed arrows identify opt-in primitives or integrations that are implemented but not wired into the automatic runtime end to end.*
+
 ```
                     inbox sources (papers, drafts, PDFs, docs)
                                        │  digest: plan → augment → review → execute
