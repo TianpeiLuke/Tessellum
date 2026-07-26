@@ -457,6 +457,158 @@ def test_corpus_gate_low_blast_use_human_auto_approves(tmp_path: Path) -> None:
     assert res.bundle_status == "complete"
 
 
+def test_write_closure_overlap_detects_shared_note() -> None:
+    # unit: two sub-plan outcomes whose note_intent_graphs write the SAME note
+    # are both reported as overlapping (the M5 disjointness gate input).
+    from tessellum.composer.corpus_digestion import (
+        SubPlanOutcome,
+        _write_closure_overlaps,
+    )
+
+    def _graph(note_id: str) -> dict:
+        return {
+            "objective_id": "obj",
+            "intents": [{
+                "note_id": note_id, "thesis": "t", "building_block": "concept",
+                "target_path": f"areas/{note_id}.md",
+                "provenance": [{"span_id": "s", "source_ref": "r"}],
+            }],
+        }
+
+    # s1 and s2 both write note "shared"; s3 writes "unique".
+    s1 = SubPlanOutcome(sub_id="s1", priority="P1", accepted=True,
+                        status="accepted", plan_doc={"note_intent_graph": _graph("shared")})
+    s2 = SubPlanOutcome(sub_id="s2", priority="P1", accepted=True,
+                        status="accepted", plan_doc={"note_intent_graph": _graph("shared")})
+    s3 = SubPlanOutcome(sub_id="s3", priority="P1", accepted=True,
+                        status="accepted", plan_doc={"note_intent_graph": _graph("unique")})
+    overlaps = _write_closure_overlaps([s1, s2, s3])
+    assert set(overlaps) == {"s1", "s2"}  # s3 disjoint → not flagged
+    assert "shared" in overlaps["s1"] and "shared" in overlaps["s2"]
+
+
+def test_write_closure_overlap_abstains_on_prose_fallback() -> None:
+    # a sub-plan with no typed note_intent_graph (prose fallback) can't be proven
+    # to conflict → the gate abstains (does not block it).
+    from tessellum.composer.corpus_digestion import (
+        SubPlanOutcome,
+        _write_closure_overlaps,
+    )
+    a = SubPlanOutcome(sub_id="a", priority="P1", accepted=True, status="accepted",
+                       plan_doc={"plan_path": "plans/a.md"})  # no graph
+    b = SubPlanOutcome(sub_id="b", priority="P1", accepted=True, status="accepted",
+                       plan_doc={"plan_path": "plans/b.md"})
+    assert _write_closure_overlaps([a, b]) == {}
+
+
+def test_corpus_isolates_run_scoped_execute_kwargs_per_sub_plan(tmp_path: Path) -> None:
+    # M4 review (high): run-scoped execute kwargs (manifest / run_id /
+    # events_path / stats_path) forwarded verbatim would collide across sibling
+    # sub-plan waves. They must be uniquified per sub_id so each sub-plan is its
+    # own transaction. Assert two sub-plans produce SEPARATE per-sub sidecars.
+    from tessellum.composer import Manifest
+
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    plan = _corpus_plan(4)  # s1, s2 both accepted
+    manifest_path = tmp_path / "run.manifest.json"
+    events_path = tmp_path / "run.events.jsonl"
+    res = run_corpus_digestion(
+        plan, b, {i: f"doc {i}" for i in range(4)}, skills_dir=sd,
+        backend=_mock(), vault_root=tmp_path / "vault",
+        manifest=Manifest(path=manifest_path), events_path=events_path,
+        run_id="corpus-run",
+    )
+    assert res.bundle_status == "complete"
+    # per-sub-plan manifests + event streams were written (not one clobbered file).
+    assert (tmp_path / "run.manifest.s1.json").exists()
+    assert (tmp_path / "run.manifest.s2.json").exists()
+    assert (tmp_path / "run.events.s1.jsonl").exists()
+    assert (tmp_path / "run.events.s2.jsonl").exists()
+
+
+def test_isolate_execute_kwargs_uniquifies_by_sub_id() -> None:
+    # unit: the helper rewrites run-scoped keys and passes others through.
+    from tessellum.composer import Manifest
+    from tessellum.composer.corpus_digestion import _isolate_execute_kwargs
+
+    kw = {
+        "run_id": "R",
+        "events_path": Path("/tmp/x/run.events.jsonl"),
+        "stats_path": Path("/tmp/x/run.stats.json"),
+        "manifest": Manifest(path=Path("/tmp/x/run.manifest.json")),
+        "max_fix_rounds": 3,  # passthrough
+    }
+    out = _isolate_execute_kwargs(kw, "sA")
+    assert out["run_id"] == "R:sA"
+    assert out["events_path"].name == "run.events.sA.jsonl"
+    assert out["stats_path"].name == "run.stats.sA.json"
+    assert Path(out["manifest"].path).name == "run.manifest.sA.json"
+    assert out["max_fix_rounds"] == 3
+    # input not mutated
+    assert kw["run_id"] == "R"
+    # empty kwargs → same object (fast path)
+    assert _isolate_execute_kwargs({}, "sA") == {}
+
+
+def test_corpus_concurrent_within_layer_preserves_order_and_promotes(tmp_path: Path) -> None:
+    # M5: two dependency-INDEPENDENT sub-objectives (same first layer) run
+    # concurrently (max_sub_plan_workers>1); the execution result list stays in
+    # the layer's deterministic order and both promote.
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(4)
+    # s1 and s2 both P1, no deps → one layer {s1, s2}.
+    plan = CorpusPlan(
+        bundle_id="corpus-bundle", objective="digest the corpus",
+        sub_objectives=(
+            SubObjective(sub_id="s1", topic="a", priority="P1",
+                         member_ordinals=(0, 1), est_note_count=2),
+            SubObjective(sub_id="s2", topic="b", priority="P1",
+                         member_ordinals=(2, 3), est_note_count=2),
+        ),
+        bundle_member_count=4,
+    )
+    res = run_corpus_digestion(plan, b, {i: f"doc {i}" for i in range(4)},
+                               skills_dir=sd, backend=_mock(),
+                               vault_root=tmp_path / "vault",
+                               max_sub_plan_workers=4)
+    assert res.bundle_status == "complete"
+    # deterministic order preserved despite concurrency (P1 s1 before P1 s2).
+    assert [e.sub_id for e in res.executions] == ["s1", "s2"]
+    assert all(e.promoted for e in res.executions)
+
+
+def test_corpus_dependent_layer_runs_after_dependency(tmp_path: Path) -> None:
+    # M5: a chain s1 -> s2 -> s3 executes strictly in dependency order across
+    # layers, even with concurrency enabled (each layer is a singleton).
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    b = _bundle(3)
+    plan = CorpusPlan(
+        bundle_id="corpus-bundle", objective="digest the corpus",
+        sub_objectives=(
+            SubObjective(sub_id="s1", topic="a", priority="P1",
+                         member_ordinals=(0,), est_note_count=1),
+            SubObjective(sub_id="s2", topic="b", priority="P1",
+                         member_ordinals=(1,), est_note_count=1, depends_on=("s1",)),
+            SubObjective(sub_id="s3", topic="c", priority="P1",
+                         member_ordinals=(2,), est_note_count=1, depends_on=("s2",)),
+        ),
+        bundle_member_count=3,
+    )
+    res = run_corpus_digestion(plan, b, {i: f"doc {i}" for i in range(3)},
+                               skills_dir=sd, backend=_mock(),
+                               vault_root=tmp_path / "vault",
+                               max_sub_plan_workers=4)
+    assert res.bundle_status == "complete"
+    assert [e.sub_id for e in res.executions] == ["s1", "s2", "s3"]
+
+
 def test_corpus_execute_error_blocks_only_that_sub_plan(tmp_path: Path) -> None:
     # M4 headline invariant: an accepted sub-plan whose EXECUTE wave errors is
     # blocked while the others still promote. Drive s1's execute step to emit

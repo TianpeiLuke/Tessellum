@@ -351,6 +351,57 @@ class CorpusPlan(BaseModel):
             remaining.discard(chosen)
         return tuple(order)
 
+    def dependency_layers(self) -> tuple[tuple[str, ...], ...]:
+        """Partition the sub-objectives into ordered dependency LAYERS (M5).
+
+        Layer ``i`` contains exactly the sub-objectives all of whose
+        ``depends_on`` are in layers ``0..i-1`` and that are not yet placed.
+        Consequences, both load-bearing for M5:
+
+        - **Cross-layer ordering is a hard barrier**: a sub-objective NEVER
+          appears before one it depends on, so a dependent sub-plan's execute
+          transaction runs strictly after its dependency's has committed (M4
+          executes layer by layer). This is what lets a P2 sub-plan's
+          cross-links resolve against a P1 sub-plan's already-published notes.
+        - **Within a layer the sub-objectives are mutually independent** (no
+          ``depends_on`` among them), so they MAY run concurrently — the
+          precondition for the opt-in concurrent wave. Disjoint write-closures
+          are the caller's separate guarantee; independence here is only the
+          dependency-graph precondition.
+
+        Within each layer, ids are sorted priority-major (``P1`` → ``P3``) then
+        by ``sub_id`` for determinism. Flattening the layers reproduces a valid
+        (though not necessarily identical) topological order; the strict
+        priority-major single-stream order is :meth:`wave_order`. Pure; the
+        acyclicity validator guarantees termination.
+        """
+        rank = {"P1": 0, "P2": 1, "P3": 2}
+        by_id = {s.sub_id: s for s in self.sub_objectives}
+        placed: set[str] = set()
+        layers: list[tuple[str, ...]] = []
+        while len(placed) < len(by_id):
+            layer = [
+                sid
+                for sid in by_id
+                if sid not in placed
+                and all(dep in placed for dep in by_id[sid].depends_on)
+            ]
+            if not layer:
+                # An acyclic graph always adds ≥1 per round; an empty layer with
+                # nodes remaining means a cycle. The CorpusPlan validator makes
+                # this unreachable, but fail LOUD (mirroring wave_order's
+                # _assert_acyclic) rather than spin forever if ever called on an
+                # unvalidated graph.
+                raise ValueError(
+                    f"cyclic depends_on among sub-objectives: "
+                    f"{sorted(set(by_id) - placed)!r}"
+                )
+            # Acyclic → each round adds ≥1; sort for a deterministic layer.
+            layer.sort(key=lambda sid: (rank[by_id[sid].priority], sid))
+            layers.append(tuple(layer))
+            placed.update(layer)
+        return tuple(layers)
+
 
 class SubObjectiveRow(BaseModel):
     """One derived master-index row (see :meth:`CorpusPlan.master_index`).

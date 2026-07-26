@@ -216,6 +216,83 @@ def test_wave_order_priority_major_ties_by_id() -> None:
     assert plan.wave_order() == ("a", "c", "b")
 
 
+def test_dependency_layers_independent_first_layer() -> None:
+    # s1(P1) and s2(P2) both depend on nothing → same first layer, priority-major.
+    plan = _plan()  # s1 P1 no deps, s2 P2 deps=(s1,)
+    layers = plan.dependency_layers()
+    assert layers == (("s1",), ("s2",))  # s2 depends on s1 → second layer
+
+
+def test_dependency_layers_chain_is_all_singletons() -> None:
+    plan = _plan(
+        sub_objectives=(
+            _sub("a", (0,), priority="P1"),
+            _sub("b", (1,), priority="P1", deps=("a",)),
+            _sub("c", (2,), priority="P1", deps=("b",)),
+        ),
+        bundle_member_count=3,
+    )
+    assert plan.dependency_layers() == (("a",), ("b",), ("c",))
+
+
+def test_dependency_layers_independent_share_a_layer() -> None:
+    # three mutually-independent sub-objectives → one layer, priority-major/id.
+    plan = _plan(
+        sub_objectives=(
+            _sub("b", (0,), priority="P2"),
+            _sub("a", (1,), priority="P1"),
+            _sub("c", (2,), priority="P1"),
+        ),
+        bundle_member_count=3,
+    )
+    assert plan.dependency_layers() == (("a", "c", "b"),)  # P1 a,c then P2 b
+
+
+def test_dependency_layers_diamond() -> None:
+    # a → {b, c} → d : layers [a], [b,c], [d].
+    plan = _plan(
+        sub_objectives=(
+            _sub("a", (0,), priority="P1"),
+            _sub("b", (1,), priority="P1", deps=("a",)),
+            _sub("c", (2,), priority="P1", deps=("a",)),
+            _sub("d", (3,), priority="P1", deps=("b", "c")),
+        ),
+        bundle_member_count=4,
+    )
+    assert plan.dependency_layers() == (("a",), ("b", "c"), ("d",))
+
+
+def test_dependency_layers_fails_loud_on_cycle_via_bypass() -> None:
+    # Review (low): dependency_layers must raise (not hang) on a cyclic graph,
+    # mirroring wave_order/_assert_acyclic, if ever reached via a validator
+    # bypass (model_construct). The normal constructor rejects cycles earlier.
+    plan = CorpusPlan.model_construct(
+        bundle_id="b", objective="o", plan_shape="master_plus_subplans",
+        sub_objectives=(
+            SubObjective(sub_id="x", topic="x", member_ordinals=(0,),
+                         est_note_count=1, depends_on=("y",)),
+            SubObjective(sub_id="y", topic="y", member_ordinals=(1,),
+                         est_note_count=1, depends_on=("x",)),
+        ),
+        term_ownership=(), shared_cross_refs=(), bundle_member_count=0,
+    )
+    with pytest.raises(ValueError, match="cyclic"):
+        plan.dependency_layers()
+
+
+def test_dependency_layers_respect_cross_layer_barrier() -> None:
+    # flattening layers is a valid topological order (dep never before its dep).
+    plan = _plan(
+        sub_objectives=(
+            _sub("hi", (0,), priority="P1", deps=("lo",)),
+            _sub("lo", (1, 2), priority="P3"),
+        ),
+        bundle_member_count=3,
+    )
+    flat = [sid for layer in plan.dependency_layers() for sid in layer]
+    assert flat.index("lo") < flat.index("hi")
+
+
 def test_wave_order_dependency_beats_priority() -> None:
     # a P1 sub-plan that depends on a P3 sub-plan must still come AFTER it.
     plan = _plan(

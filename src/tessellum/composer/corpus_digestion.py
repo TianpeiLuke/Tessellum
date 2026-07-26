@@ -25,6 +25,7 @@ runtime — keeping the composer import DAG acyclic.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, ContextManager
@@ -42,9 +43,15 @@ from tessellum.composer.digestion import (
     run_digestion_pipeline,
     run_execute_wave,
 )
-from tessellum.composer.knowledge_plan import BundleMember, SourceBundle
+from tessellum.composer.knowledge_plan import (
+    BundleMember,
+    NoteIntentGraph,
+    SourceBundle,
+)
 from tessellum.composer.llm import LLMBackend
+from tessellum.composer.manifest import Manifest
 from tessellum.composer.scheduler import RunResult
+from tessellum.composer.write_closure import write_closure
 from tessellum.composer.signoff import (
     HumanPrompt,
     SignOffPolicy,
@@ -291,6 +298,114 @@ def _blocked_reason(result: DigestionResult) -> str:
     return "not accepted"
 
 
+# run/transaction-scoped execute kwargs that MUST be per-sub-plan-unique so N
+# sibling execute waves don't collide (shared manifest → colliding index-leaf
+# keys corrupt a sibling's committed record; shared run_id defeats owner-
+# fencing; a shared events_path/stats_path is write_text-overwritten by the
+# next sub-plan). Uniquified by sub_id in :func:`_isolate_execute_kwargs`.
+_RUN_SCOPED_EXECUTE_KWARGS: tuple[str, ...] = (
+    "manifest", "run_id", "events_path", "stats_path",
+)
+
+
+def _isolate_execute_kwargs(execute_kwargs: dict[str, Any], sub_id: str) -> dict[str, Any]:
+    """Per-sub-plan-clone the run/transaction-scoped execute kwargs (M4/M5).
+
+    Each accepted sub-plan is its OWN transaction, so run-scoped resources are
+    made sub-plan-unique rather than forwarded verbatim (which would collide
+    across sibling waves — and, under M5 concurrency, race):
+
+    - ``run_id`` → ``f"{run_id}:{sub_id}"`` so owner-fencing / reclaim isolates
+      each sub-plan;
+    - ``events_path`` / ``stats_path`` → the ``sub_id`` inserted into the
+      filename stem so one sub-plan's sidecar never overwrites another's;
+    - ``manifest`` → each sub-plan gets its OWN :class:`Manifest`. A path-ful
+      manifest is cloned to a ``sub_id``-suffixed path; a PATH-LESS (in-memory)
+      manifest gets a fresh empty ``Manifest()`` too — NOT left shared. A shared
+      in-memory manifest is unsafe on two counts the "nothing to collide"
+      intuition misses: its ``entries`` dict has no internal lock (each
+      ``run_pipeline_dynamic`` makes its OWN scheduler lock, so sibling waves
+      don't mutually exclude — torn read-modify-write), and sibling sub-plans
+      compile the SAME execute skill so their index-derived ``leaf_i`` claim
+      keys (e.g. ``capture::leaf_0``) COLLIDE, silently refusing one sibling's
+      leaf. A fresh per-sub-plan manifest costs nothing (a path-less manifest
+      never persists / resumes) and removes both hazards.
+
+    Returns a shallow copy with those keys rewritten; every other kwarg passes
+    through unchanged. Pure w.r.t. the input dict (never mutates it).
+    """
+    if not any(k in execute_kwargs for k in _RUN_SCOPED_EXECUTE_KWARGS):
+        return execute_kwargs
+    out = dict(execute_kwargs)
+    if out.get("run_id") is not None:
+        out["run_id"] = f"{out['run_id']}:{sub_id}"
+    for key in ("events_path", "stats_path"):
+        p = out.get(key)
+        if p is not None:
+            p = Path(p)
+            out[key] = p.with_name(f"{p.stem}.{sub_id}{p.suffix}")
+    manifest = out.get("manifest")
+    if manifest is not None:
+        mpath = getattr(manifest, "path", None)
+        if mpath is not None:
+            mpath = Path(mpath)
+            sub_path = mpath.with_name(f"{mpath.stem}.{sub_id}{mpath.suffix}")
+            out["manifest"] = (
+                Manifest.load(sub_path) if sub_path.exists()
+                else Manifest(path=sub_path)
+            )
+        else:
+            # Path-less in-memory manifest STILL must be per-sub-plan: a shared
+            # entries dict has no lock and sibling execute skills mint identical
+            # leaf_i claim keys. A fresh manifest never persists, so this is free.
+            out["manifest"] = Manifest()
+    return out
+
+
+def _sub_plan_touched_notes(outcome: "SubPlanOutcome") -> frozenset[str] | None:
+    """The vault notes a sub-plan's accepted plan WOULD write, from its typed
+    ``note_intent_graph`` via the shipped exact ``write_closure`` (M5 gate).
+
+    Returns ``None`` when the accepted plan carries no typed graph (the prose
+    fallback path) — write targets can't be computed exactly there, so the
+    disjointness gate abstains rather than guess. Pure."""
+    graph_spec = outcome.plan_doc.get("note_intent_graph")
+    if graph_spec is None:
+        return None
+    graph = (
+        graph_spec
+        if isinstance(graph_spec, NoteIntentGraph)
+        else NoteIntentGraph.model_validate(graph_spec)
+    )
+    return write_closure(graph).touched_note_ids
+
+
+def _write_closure_overlaps(
+    outcomes: list["SubPlanOutcome"],
+) -> dict[str, frozenset[str]]:
+    """Detect pairwise write-closure OVERLAP among a set of sub-plans (M5 gate).
+
+    Returns ``{sub_id -> shared_note_ids}`` for every sub-plan that shares at
+    least one written note with another in the set. A sub-plan whose typed
+    write-closure is unavailable (prose fallback) is skipped (cannot prove a
+    conflict, so it is not blocked here). Pure — reads only the frozen plans.
+    """
+    touched: dict[str, frozenset[str]] = {}
+    for o in outcomes:
+        t = _sub_plan_touched_notes(o)
+        if t is not None:
+            touched[o.sub_id] = t
+    conflicts: dict[str, set[str]] = {}
+    ids = list(touched)
+    for i, a in enumerate(ids):
+        for b in ids[i + 1:]:
+            shared = touched[a] & touched[b]
+            if shared:
+                conflicts.setdefault(a, set()).update(shared)
+                conflicts.setdefault(b, set()).update(shared)
+    return {sid: frozenset(s) for sid, s in conflicts.items()}
+
+
 # ── M4 — corpus execute wave (per-sub-plan transactions) ────────────────────
 
 
@@ -328,7 +443,13 @@ class CorpusDigestionResult:
         corpus_sign_off: The whole-corpus-plan sign-off (``None`` when the
             corpus gate was not run — e.g. every sub-plan blocked at planning,
             or the default headless policy approved without a human rung).
-        executions: Per-accepted-sub-plan EXECUTE outcomes (in wave order).
+        executions: Per-accepted-sub-plan EXECUTE outcomes. Order: any
+            write-closure-overlap-blocked sub-plans first (in accepted order),
+            then the executed sub-plans in dependency-LAYER order (priority-major
+            within each layer). This is NOT the strict single-stream priority
+            order of ``CorpusPlan.wave_order`` — a dependency-independent P3
+            sub-plan runs in an earlier layer than a P1 sub-plan that depends on
+            it. Read ``bundle_status`` / per-outcome ``promoted``, not position.
         bundle_status: ``"complete"`` (every sub-objective promoted) |
             ``"partially_promoted"`` (some promoted, some blocked) |
             ``"blocked"`` (none promoted) — the a3a bundle-completion rollup.
@@ -359,6 +480,7 @@ def run_corpus_digestion(
     corpus_sign_off_policy: SignOffPolicy | None = None,
     human_prompt: HumanPrompt | None = None,
     execute_max_workers: int = 4,
+    max_sub_plan_workers: int = 1,
     **execute_kwargs: Any,
 ) -> CorpusDigestionResult:
     """Digest a whole corpus: plan every sub-objective (M3), then EXECUTE each
@@ -375,13 +497,37 @@ def run_corpus_digestion(
        policy it approves; pass ``corpus_sign_off_policy`` with ``use_human`` +
        ``human_prompt`` to require human approval before promoting a high-blast
        corpus. A ``rejected`` / ``needs_human`` corpus gate promotes NOTHING.
-    3. **Execute** — each ACCEPTED sub-plan is executed in the corpus plan's
-       :meth:`~tessellum.composer.corpus_plan.CorpusPlan.wave_order` (priority +
-       dependency; M5 refines scheduling) via
-       :func:`~tessellum.composer.digestion.run_execute_wave` — its OWN
+    3. **Execute** — each ACCEPTED, non-overlapping sub-plan is executed via
+       :func:`~tessellum.composer.digestion.run_execute_wave` as its OWN
        snapshot-pinned transaction. A sub-plan whose execute wave errors is
        ``blocked``; the others still promote (a weak sub-plan blocks only
        itself). Blocked-at-planning sub-objectives are never executed.
+
+    **M5 scheduling.** Execution walks
+    :meth:`~tessellum.composer.corpus_plan.CorpusPlan.dependency_layers` —
+    ordered dependency layers, priority-major within each. Cross-layer ordering
+    is a hard barrier (a dependent sub-plan's transaction runs strictly after
+    its dependency's committed), so a P2 sub-plan's cross-links resolve against
+    a P1 sub-plan's already-published notes. Note this LAYER order is not the
+    strict single-stream :meth:`~tessellum.composer.corpus_plan.CorpusPlan.wave_order`
+    of M4 (a dependency-independent P3 sub-plan runs before a P1 that depends on
+    it), so the ``executions`` order differs from the pre-M5 build — read
+    ``bundle_status`` / ``promoted``, not tuple position.
+
+    **Concurrency + isolation.** ``max_sub_plan_workers`` (default ``1`` =
+    sequential) opts into running the dependency-INDEPENDENT sub-plans of a
+    single layer concurrently. Each sub-plan is a real transaction: run-scoped
+    execute kwargs (``manifest`` / ``run_id`` / ``events_path`` / ``stats_path``)
+    are per-sub-plan-isolated (:func:`_isolate_execute_kwargs`), and a
+    **write-closure disjointness gate** blocks any two accepted sub-plans that
+    would write the same vault note BEFORE executing (fail-closed, so neither
+    silent last-writer-wins nor a concurrent race can corrupt a shared note).
+    Two knobs multiply into leaf concurrency: peak backend calls ≈
+    ``max_sub_plan_workers × execute_max_workers`` (each sub-plan opens its own
+    ``execute_max_workers`` leaf pool), so budget the PRODUCT against the shared
+    provider's rate limit. A stateful ``effect_recorder`` / ``effect_guard`` must
+    be thread-safe (leaf-level and sub-plan-level concurrency both invoke it);
+    the shipped ``VaultEffectJournal`` already is (internal lock).
 
     Returns a :class:`CorpusDigestionResult` with the planning result, the
     corpus sign-off, per-sub-plan execute outcomes, and the bundle-completion
@@ -453,17 +599,29 @@ def run_corpus_digestion(
                 executions=(), bundle_status="blocked",
             )
 
-    # ── execute each accepted sub-plan in wave order, as its own transaction ─
+    # ── write-closure disjointness gate (M5): fail CLOSED on overlap ─────────
+    # Two accepted sub-plans that would write the SAME vault note cannot both be
+    # promoted safely: sequentially it is a silent last-writer-wins clobber;
+    # concurrently (max_sub_plan_workers>1) it is a nondeterministic race. Rather
+    # than trust the caller's "disjoint write-closures" guarantee, compute each
+    # sub-plan's exact touched-note set (via the shipped write_closure over its
+    # typed note_intent_graph) and BLOCK every sub-plan that overlaps another —
+    # across the whole accepted set, not just within a layer (cross-layer clobber
+    # is equally silent). Sub-plans on the prose fallback (no typed graph) can't
+    # be proven to conflict, so they are not blocked here. This is the seed of
+    # the M6 term-ownership gate.
+    overlaps = _write_closure_overlaps(accepted)
     accepted_by_id = {o.sub_id: o for o in accepted}
-    executions: list[SubPlanExecution] = []
-    for sub_id in corpus_plan.wave_order():
-        outcome = accepted_by_id.get(sub_id)
-        if outcome is None:
-            continue  # blocked at planning → never executed
-        if cancellation_check is not None and cancellation_check():
-            raise InterruptedError(
-                f"corpus digestion cancelled before executing {sub_id!r}"
-            )
+    executions: list[SubPlanExecution] = [
+        SubPlanExecution(
+            sub_id=o.sub_id, priority=o.priority, promoted=False,
+            status="blocked", run=None,
+            reason=f"write-closure overlap on {sorted(overlaps[o.sub_id])}"[:200],
+        )
+        for o in accepted if o.sub_id in overlaps
+    ]
+
+    def _execute_one(outcome: SubPlanOutcome) -> SubPlanExecution:
         try:
             run = run_execute_wave(
                 outcome.plan_doc,
@@ -471,27 +629,49 @@ def run_corpus_digestion(
                 dry_run=dry_run, execute_max_workers=execute_max_workers,
                 budget=budget, context_assembler=context_assembler,
                 cancellation_check=cancellation_check, effect_guard=effect_guard,
-                effect_recorder=effect_recorder, **execute_kwargs,
+                effect_recorder=effect_recorder,
+                **_isolate_execute_kwargs(execute_kwargs, outcome.sub_id),
             )
         except InterruptedError:
             raise
         except Exception as exc:  # one sub-plan's execute failure isolates
-            executions.append(
-                SubPlanExecution(
-                    sub_id=sub_id, priority=outcome.priority, promoted=False,
-                    status="blocked", run=None,
-                    reason=f"execute raised: {type(exc).__name__}: {exc}"[:200],
-                )
+            return SubPlanExecution(
+                sub_id=outcome.sub_id, priority=outcome.priority, promoted=False,
+                status="blocked", run=None,
+                reason=f"execute raised: {type(exc).__name__}: {exc}"[:200],
             )
-            continue
         promoted = run.error_count == 0
-        executions.append(
-            SubPlanExecution(
-                sub_id=sub_id, priority=outcome.priority, promoted=promoted,
-                status="promoted" if promoted else "blocked", run=run,
-                reason=None if promoted else f"{run.error_count} execute error(s)",
-            )
+        return SubPlanExecution(
+            sub_id=outcome.sub_id, priority=outcome.priority, promoted=promoted,
+            status="promoted" if promoted else "blocked", run=run,
+            reason=None if promoted else f"{run.error_count} execute error(s)",
         )
+
+    for layer in corpus_plan.dependency_layers():
+        # accepted, non-overlapping sub-plans in this layer, in layer order.
+        todo = [
+            accepted_by_id[sid]
+            for sid in layer
+            if sid in accepted_by_id and sid not in overlaps
+        ]
+        if not todo:
+            continue
+        if cancellation_check is not None and cancellation_check():
+            raise InterruptedError(
+                "corpus digestion cancelled before executing layer "
+                f"{[o.sub_id for o in todo]!r}"
+            )
+        if max_sub_plan_workers <= 1 or len(todo) == 1:
+            executions.extend(_execute_one(o) for o in todo)
+        else:
+            # Concurrent within the layer; results re-ordered to the layer's
+            # deterministic order so the run list is reproducible.
+            with ThreadPoolExecutor(max_workers=max_sub_plan_workers) as pool:
+                by_sub = dict(zip(
+                    (o.sub_id for o in todo),
+                    pool.map(_execute_one, todo),
+                ))
+            executions.extend(by_sub[o.sub_id] for o in todo)
 
     promoted_count = sum(1 for e in executions if e.promoted)
     # bundle rollup over ALL sub-objectives (planning-blocked count against the
