@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-07-25
+
 ### Hybrid retrieval activated end-to-end (R1–R3): dense-on, fail-soft, wired into the composer — 2026-07-25
 
 The architecture diagram marked DENSE **degraded** and WIRING **disconnected**, and the code confirmed it: the runtime commit path forced `with_dense=False` (so `notes_vec` was never populated on the live index → `dense_search` returned nothing → hybrid silently collapsed to BM25), and `best_first_bfs` / `hybrid_search` had no composer or runtime caller feeding retrieval into note authoring — only the CLI and an unwired `route()` touched them. This turns on the full hybrid stack (BM25 + dense, RRF-fused) and multi-hop graph expansion (best-first BFS) as REFERENCE context for the writer. Additive + opt-in; the default `windowed` strategy is byte-identical. +21 tests; full suite 1628 passed. Adversarially reviewed (7 confirmed + 2 partial + 1 refuted — all confirmed/partial fixed pre-commit).
