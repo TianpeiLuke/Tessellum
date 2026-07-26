@@ -282,6 +282,12 @@ each is an EXISTING vault note with a path already resolved relative to
 this note's target_path — ready to paste as a markdown link):
 {{leaf.related_references_md}}
 
+NOTE-TYPE CONTRACT (resolved from this note's target_path → its template
+flavor; the required `## H2` sections + reference rule for THIS note's
+type. An empty block means the type could not be resolved — fall back to
+the plan's format definition and the pilot worked example):
+{{leaf.type_contract_md}}
+
 PER-BATCH CONTRACTS (from the extract_contracts step — read your
 shared contract + batch assignment + pilot worked example)
 {{upstream.batch_contracts}}
@@ -291,6 +297,8 @@ Follow this procedure:
 This is the write phase and the ONLY per-leaf step: one sub-agent per planned note, dispatched as a wave (this is the step that maps onto `run_pipeline_dynamic`'s wave-parallel scheduler). Each agent receives the shared contract plus its per-batch assignment plus the worked-example pilot, reads its assigned source page(s) FIRST, and writes exactly one note that matches the pilot's shape and the plan's format definition — verbatim code, honest inferred/not-in-source markers, one building_block per note. Concurrency is auto-capped; the wave runs enrich → validate → bounded fix (at most two rounds) with a master validator that runs the gate script, does a live-source faithfulness spot-check, checks cross-reference integrity, and confirms the domain completeness invariant. Source-reading agents fail closed: an auth failure sets `source_fetch_ok=false` and status `auth_blocked` rather than falling back to memory. Read the per-batch contracts from `{{upstream.batch_contracts}}`.
 
 RELATED NOTES → `## References` (knowledge-graph edges). The note MUST end with a `## References` section that links relevance-selected EXISTING vault notes — these links are how the knowledge graph is built (the indexer turns each `[title](relative/path.md)` into an edge). Use the `RELATED NOTES` block above (`{{leaf.related_references_md}}`): it was retrieved per-note by relevance to this note's thesis, and each path is ALREADY resolved relative to this note's `target_path`, so paste the links as-is. You MAY drop a suggestion that is genuinely irrelevant to this note and MAY add a link you know is relevant that retrieval missed, but do NOT invent paths — only link notes that exist. If the block is empty (retrieval found nothing / no index yet), still add a `## References` section with any relevant links you can ground from the plan's cross-reference mapping. Keep every reference a relative markdown link ending in `.md`.
+
+NOTE-TYPE CONTRACT → required sections. The `NOTE-TYPE CONTRACT` block above (`{{leaf.type_contract_md}}`) names this note's type (resolved from its `target_path`) and the `## H2` sections that type requires — treat that section list as a FLOOR for this note (include each one; you MAY add type-appropriate sections beyond it). This is why the writer produces the right shape per type in one run: a term note gets Definition/Examples/References, a how-to gets Setup/Steps/Validation/References, an argument gets Claim/Reason/Evidence/References, and so on. If the block is empty (the type could not be resolved from the path), fall back to the plan's format definition and the pilot worked example. The section contract is advisory guidance, not a substitute for faithful, non-fabricated content.
 
 OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON). The frontmatter MUST contain the key `output_path` whose value is the vault-relative `.md` path for this note; everything after the closing `---` IS the note body, written verbatim. Read your assigned source
 page(s) FIRST, then write one note matching the pilot's shape and the

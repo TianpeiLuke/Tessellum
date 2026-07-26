@@ -233,6 +233,69 @@ def _enrich_leaves_with_related_notes(
     return enriched
 
 
+def _enrich_leaves_with_type_contract(
+    leaves: list[dict],
+    *,
+    enabled: bool = True,
+) -> list[dict]:
+    """Attach each execute leaf's NOTE-TYPE contract, resolved from its type.
+
+    FZ 20k9d1b1a1a (P4) — the type home for the writer, the structural twin of
+    :func:`_enrich_leaves_with_related_notes`. For each projected note leaf,
+    reverse-resolve its ``target_path`` to a ``capture.REGISTRY`` flavor (keyed
+    on the flavor, NOT ``building_block`` — the two are orthogonal, and a
+    per-note BB override must not fight resolution), build that flavor's section
+    contract, and attach:
+
+        leaf["type_contract"]     # {flavor, second_category, building_block, required_sections}
+        leaf["type_contract_md"]  # pre-rendered compact contract block
+
+    The writer renders ``## H2`` sections from ``{{leaf.type_contract_md}}`` next
+    to the ``## References`` block (the execute skill's ``dispatch_notes`` step),
+    so a written note satisfies the ``TESS-010`` section advisory by construction.
+
+    Pure + fail-soft, mirroring the related-notes precedent. ``enabled=False`` is
+    the explicit off-switch → the input list is returned UNCHANGED (byte-
+    identical). A leaf lacking a typed ``note`` payload + ``target_path`` (the
+    whole-plan fallback leaf) passes through UNCHANGED (no keys added). A typed
+    leaf whose ``target_path`` resolves to NO flavor (a ``capture()`` override
+    dir, a bare filename) is stamped with an EMPTY contract / ``""`` so the
+    writer's ``{{leaf.type_contract_md}}`` renders "" rather than a ``<missing …>``
+    sentinel. Resolution is wrapped fail-soft; one malformed leaf degrades to an
+    empty contract, never raises into the wave-parallel run.
+    """
+    if not enabled:
+        return leaves
+    from tessellum.composer.type_contract import resolve_note_contract
+
+    enriched: list[dict] = []
+    for leaf in leaves:
+        note = leaf.get("note") if isinstance(leaf, dict) else None
+        target_path = leaf.get("target_path") if isinstance(leaf, dict) else None
+        # Only the typed per-note projection carries a ``note`` + ``target_path``;
+        # the whole-plan fallback leaf has neither → pass through unchanged.
+        if not isinstance(note, dict) or not isinstance(target_path, str):
+            enriched.append(leaf)
+            continue
+        tc = resolve_note_contract(target_path)
+        new_leaf = dict(leaf)
+        if tc is None:
+            # Unresolvable typed leaf: stamp empty defaults so the writer's
+            # {{leaf.type_contract_md}} renders "" (not a <missing …> sentinel).
+            new_leaf["type_contract"] = {}
+            new_leaf["type_contract_md"] = ""
+        else:
+            new_leaf["type_contract"] = {
+                "flavor": tc.flavor,
+                "second_category": tc.second_category,
+                "building_block": tc.building_block,
+                "required_sections": list(tc.required_sections),
+            }
+            new_leaf["type_contract_md"] = tc.contract_md
+        enriched.append(new_leaf)
+    return enriched
+
+
 def run_execute_wave(
     plan_doc: dict,
     *,
@@ -303,6 +366,11 @@ def run_execute_wave(
     execute_leaves = _enrich_leaves_with_related_notes(
         execute_leaves, related_notes_db=related_notes_db
     )
+    # FZ 20k9d1b1a1a (P4): stamp each note leaf with its NOTE-TYPE contract
+    # (resolved from target_path → capture flavor → required sections) → the
+    # writer renders {{leaf.type_contract_md}}. No-op ("" stamp) for a leaf whose
+    # type can't be resolved; passthrough for the whole-plan fallback leaf.
+    execute_leaves = _enrich_leaves_with_type_contract(execute_leaves)
     return run_pipeline_dynamic(
         compiled,
         leaves=execute_leaves,
