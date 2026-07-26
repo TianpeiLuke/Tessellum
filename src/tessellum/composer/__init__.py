@@ -285,6 +285,7 @@ from tessellum.composer.lexical_scorer import (
     claim_support_score,
     make_lexical_scorer,
 )
+from tessellum.composer.llm_claim_scorer import make_llm_claim_scorer
 from tessellum.composer.claim_extraction import (
     MULTI_SOURCE_SEP,
     extract_claims,
@@ -550,6 +551,7 @@ __all__ = [
     # semantic certificate — runnable pieces (C1-C4)
     "claim_support_score",
     "make_lexical_scorer",
+    "make_llm_claim_scorer",
     "MULTI_SOURCE_SEP",
     "extract_claims",
     "split_sentences",

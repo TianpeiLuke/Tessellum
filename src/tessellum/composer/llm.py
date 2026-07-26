@@ -40,11 +40,17 @@ class LLMRequest:
         user_prompt: The rendered user prompt — placeholders resolved
             by the executor.
         max_tokens: Cap on response length.
+        temperature: Sampling temperature. ``None`` (default) → the provider
+            default is used (unchanged behavior for every existing caller).
+            A caller that needs reproducible / low-variance output (e.g. the
+            calibrated entailment scorer, where calibration↔runtime score
+            stability is a load-bearing assumption) sets ``0.0``.
     """
 
     system_prompt: str
     user_prompt: str
     max_tokens: int = 4000
+    temperature: float | None = None
 
 
 @dataclass(frozen=True)
@@ -192,11 +198,15 @@ class AnthropicBackend:
     def call(self, request: LLMRequest) -> LLMResponse:
         start = time.monotonic()
         max_tokens = request.max_tokens or self.default_max_tokens
+        # temperature only passed when the caller set it — omitting it preserves
+        # the provider default (byte-identical for every existing caller).
+        extra = {} if request.temperature is None else {"temperature": request.temperature}
         response = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             system=request.system_prompt,
             messages=[{"role": "user", "content": request.user_prompt}],
+            **extra,
         )
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = _extract_text(response)
@@ -308,11 +318,15 @@ class BedrockBackend:
     def call(self, request: LLMRequest) -> LLMResponse:
         start = time.monotonic()
         max_tokens = request.max_tokens or self.default_max_tokens
+        # temperature only passed when the caller set it — omitting it preserves
+        # the provider default (byte-identical for every existing caller).
+        extra = {} if request.temperature is None else {"temperature": request.temperature}
         response = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             system=request.system_prompt,
             messages=[{"role": "user", "content": request.user_prompt}],
+            **extra,
         )
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = _extract_text(response)
