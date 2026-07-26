@@ -388,8 +388,250 @@ def plan_structure_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]
     return issues
 
 
+# FZ 20k9d4 — the OBJECTIVE density ceiling. A planned note at/above this word
+# count is not density-atomic and the plan must be re-planned (split OR the
+# coverage map rearranged). Matches the plan skill's ~1800-word split threshold
+# (skill_tessellum_plan_digestion.md). A number, not a judgement — so the hard
+# gate never rejects on a subjective "is this atomic?" read.
+PLAN_NOTE_MAX_WORDS: int = 1800
+
+
+def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
+    """A ``plan`` gate over OBJECTIVE note-atomicity signals (FZ 20k9d4).
+
+    Fails-closed on measurable, non-arguable facts only — never on a subjective
+    "is this note truly BB-atomic?" judgement (that stays advisory, judged by
+    the reviewer agent). On failure the issues surface into the review
+    ``failures`` list and force the plan back through re-planning, where the
+    planner may remedy by SPLITTING into new notes OR REARRANGING the coverage
+    map (redistributing content) — the gate asserts "not acceptable, re-plan",
+    it does not prescribe the fix.
+
+    Objective triggers, read from either the typed ``note_intent_graph``
+    (an OPT-IN P2b/corpus/DKS shape — NOT emitted by the current LLM phase
+    skills, so on the live single-doc path the ``planned_notes`` fallback is
+    what runs) or the skill's ``planned_notes`` + ``section_coverage_map``:
+
+    - **PLAN-004** a note declares ``approx_words >= PLAN_NOTE_MAX_WORDS`` —
+      the density ceiling (a number; word values are coerced from the int /
+      numeric-string / float shapes raw LLM JSON delivers).
+    - **PLAN-005** a note's ``building_block`` crams more than one block (a
+      comma/`/`/`+`/`and`-joined value) — the objective single-BB smell, keyed
+      on :data:`MULTI_BB_SEPARATORS`. (Neither a CONTENT mix within a
+      single-token note NOR an invalid-vocabulary token is flagged here — the
+      former is the reviewer's advisory call, the latter the G1 format
+      validator's job.)
+    - **PLAN-006** a source section is omitted from coverage — checked two
+      ways: (a) a ``section_coverage_map`` row with an empty/`none`/`tbd`
+      target, AND (b) set-difference of the authoritative source-section
+      inventory (``plan_doc['pages'][*]['headings']``) MINUS the sections the
+      coverage map actually names, so a section DROPPED from the map entirely
+      is still caught. Fails-closed if the plan enumerates notes but the
+      coverage map is not machine-checkable row-form (a shape drift must never
+      silently pass).
+    - **PLAN-007** the plan enumerates notes but NONE declares a positive
+      ``approx_words`` — density is unverifiable, so the plan must be re-planned
+      with real per-note word estimates (keeps IDENT-5 fail-closed; a count,
+      not a judgement).
+
+    A plan_doc with NEITHER a typed graph NOR planned_notes is not judged here
+    (no atomicity signal to check) — ``plan_structure_predicate`` already
+    fail-closes a shapeless plan; this predicate only adds objective checks
+    when the plan actually enumerates notes."""
+    if not isinstance(plan_doc, dict):
+        return []  # plan_structure_predicate owns the fail-closed shapeless case
+    issues: list[Issue] = []
+
+    notes, notes_source = _plan_notes(plan_doc)
+    any_words_declared = False
+    for note in notes:
+        name = str(note.get("note_id") or note.get("filename") or "?")
+        words = _coerce_words(note.get("approx_words"))
+        if words is not None and words > 0:
+            any_words_declared = True
+        if words is not None and words >= PLAN_NOTE_MAX_WORDS:
+            issues.append(Issue(
+                Severity.ERROR, "PLAN-004", name,
+                f"note '{name}' is not density-atomic: approx_words={words} "
+                f">= {PLAN_NOTE_MAX_WORDS} — re-plan (split or rearrange the "
+                f"coverage map so no note carries >= {PLAN_NOTE_MAX_WORDS} words)",
+            ))
+        bb = note.get("building_block")
+        if bb is not None and not is_single_bb(bb):
+            issues.append(Issue(
+                Severity.ERROR, "PLAN-005", name,
+                f"note '{name}' is not BB-atomic: building_block={bb!r} crams "
+                f"more than one building block — re-plan so each note declares "
+                f"a single building block",
+            ))
+
+    # PLAN-007 — density unverifiable. ONLY for the LLM ``planned_notes`` shape,
+    # where a word estimate is expected. A programmatically-compiled typed
+    # ``note_intent_graph`` (e.g. the DKS compiler) legitimately carries no word
+    # estimates, so it is exempt — density is not the LLM-planning concern there.
+    if notes and notes_source == "planned_notes" and not any_words_declared:
+        issues.append(Issue(
+            Severity.ERROR, "PLAN-007", "planned_notes",
+            f"no planned note declares a positive approx_words — density is "
+            f"unverifiable; re-plan with a per-note word estimate so the "
+            f"{PLAN_NOTE_MAX_WORDS}-word ceiling can be checked",
+        ))
+
+    issues.extend(_coverage_issues(plan_doc, has_notes=bool(notes)))
+    return issues
+
+
+_UNMAPPED_MARKERS: frozenset[str] = frozenset(
+    {"", "none", "null", "n/a", "na", "unmapped", "tbd", "todo", "-", "skip"}
+)
+
+
+def _coerce_words(value: object) -> int | None:
+    """Coerce an ``approx_words`` value to a non-negative int, tolerating the
+    int / numeric-string ("1800") / float (1800.0) shapes raw LLM JSON delivers.
+    Excludes ``bool`` (an int subclass) and unparseable values → ``None``
+    (unknown, not density-checkable)."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, float):
+        return int(value) if value >= 0 else None
+    if isinstance(value, str):
+        try:
+            n = int(float(value.strip()))
+        except (ValueError, TypeError):
+            return None
+        return n if n >= 0 else None
+    return None
+
+
+def _coverage_issues(plan_doc: dict, *, has_notes: bool) -> list[Issue]:
+    """PLAN-006 — every source section must be covered. Two checks:
+    (a) empty/marker targets in the coverage-map rows, and (b) set-difference of
+    the authoritative source-section inventory minus the covered sections (so a
+    section dropped from the map entirely is caught). Fails-closed if notes are
+    enumerated but the coverage map is present in a non-row-form shape (drift)."""
+    issues: list[Issue] = []
+    raw = plan_doc.get("section_coverage_map")
+    covered: set[str] = set()
+
+    if isinstance(raw, list):
+        for row in raw:
+            if not isinstance(row, dict):
+                continue
+            section = str(row.get("source_section") or "").strip()
+            target = str(row.get("maps_to_note") or "").strip()
+            if section and (not target or target.lower() in _UNMAPPED_MARKERS):
+                issues.append(Issue(
+                    Severity.ERROR, "PLAN-006", section,
+                    f"source section '{section}' is not covered (maps_to_note="
+                    f"{target!r}) — re-plan so every source section maps to a "
+                    f"note (no content omitted)",
+                ))
+            elif section:
+                covered.add(_norm_section(section))
+    elif raw is not None and has_notes:
+        # Shape drift (e.g. an ASCII-tree string) must NOT silently pass — the
+        # coverage dimension is unverifiable, so fail closed.
+        issues.append(Issue(
+            Severity.ERROR, "PLAN-006", "section_coverage_map",
+            "section_coverage_map is not a machine-checkable list of "
+            "{source_section, maps_to_note} rows — coverage completeness "
+            "cannot be verified; emit the coverage map in row form",
+        ))
+        return issues
+
+    # (b) set-difference: authoritative source headings the map never names.
+    for section in _source_sections(plan_doc):
+        if _norm_section(section) not in covered:
+            issues.append(Issue(
+                Severity.ERROR, "PLAN-006", section,
+                f"source section '{section}' is omitted from the coverage map "
+                f"— re-plan so every source section maps to a note (no content "
+                f"omitted)",
+            ))
+    return issues
+
+
+def _norm_section(section: str) -> str:
+    """Normalize a section heading for set membership (case/space-insensitive)."""
+    return " ".join(section.split()).strip().lower()
+
+
+def _source_sections(plan_doc: dict) -> list[str]:
+    """The authoritative source-section inventory: the ``headings`` recorded
+    per page in the plan's ``source_assessment`` (``plan_doc['pages']``). Empty
+    when the plan carries no measured headings (then only the row-level empty-
+    target check in PLAN-006 applies — no inventory to diff against)."""
+    pages = plan_doc.get("pages")
+    if not isinstance(pages, list):
+        return []
+    sections: list[str] = []
+    for page in pages:
+        if not isinstance(page, dict):
+            continue
+        headings = page.get("headings")
+        if isinstance(headings, list):
+            sections.extend(str(h).strip() for h in headings if str(h).strip())
+    return sections
+
+
+# Multi-BB separators — a building_block value containing any of these crams
+# more than one block into one note. This is the SINGLE SOURCE OF TRUTH for the
+# multi-BB smell: both the plan gate (PLAN-005) and the capsule gate
+# (STRUCT-BB-ATOMIC, structural_gates.bb_atomicity_predicate) consume THIS
+# constant, so the two never drift to different single-BB semantics.
+MULTI_BB_SEPARATORS: tuple[str, ...] = (",", "/", "+", " and ")
+
+
+def is_single_bb(building_block: object) -> bool:
+    """True iff ``building_block`` is a single (non-multi-BB) value.
+
+    Rejects a value that crams two blocks into the field
+    (``"concept, procedure"``, ``"concept+procedure"``, ``"concept and
+    procedure"``, ``"concept/procedure"``) — the OBJECTIVE half of single-BB,
+    keyed on :data:`MULTI_BB_SEPARATORS`. A CONTENT mix within a validly-named
+    note is the reviewer's advisory call, not gated here; and vocabulary
+    validity (is the token a real BB?) is the G1 format validator's job."""
+    if not isinstance(building_block, str):
+        return False
+    return not any(sep in building_block for sep in MULTI_BB_SEPARATORS)
+
+
+def _plan_notes(plan_doc: dict) -> tuple[list[dict], str]:
+    """The plan's per-note records + their SOURCE shape.
+
+    Returns ``(notes, source)`` where ``source`` is ``"note_intent_graph"``
+    (the typed shape), ``"planned_notes"`` (the LLM skill table), or ``"none"``.
+    The source matters for PLAN-007: word estimates are expected on the LLM
+    ``planned_notes`` shape but NOT on a programmatically-compiled typed graph
+    (e.g. the DKS compiler), which is exempt.
+
+    NOTE: the ``note_intent_graph`` branch is an OPT-IN P2b/corpus/DKS shape and
+    is NOT emitted by the current LLM phase skills; on the live single-doc
+    digestion path this always uses the ``planned_notes`` fallback. Both branches
+    keep only dict rows — a graph whose intents are already typed ``NoteIntent``
+    OBJECTS (not dicts) is skipped here, but at the live plan-gate call site
+    plan_doc holds raw LLM JSON (dicts), so this is not hit in practice."""
+    graph = plan_doc.get("note_intent_graph")
+    if isinstance(graph, dict) and isinstance(graph.get("intents"), list):
+        dict_intents = [n for n in graph["intents"] if isinstance(n, dict)]
+        if dict_intents:
+            return dict_intents, "note_intent_graph"
+    planned = plan_doc.get("planned_notes")
+    if isinstance(planned, list):
+        return [n for n in planned if isinstance(n, dict)], "planned_notes"
+    return [], "none"
+
+
 def build_plan_gate() -> GateSuite:
-    """The plan-scope structural pre-filter (the sign-off ladder's rung 1)."""
+    """The plan-scope structural pre-filter (the sign-off ladder's rung 1).
+
+    Two objective gates: ``plan_structure`` (the plan is shaped like a plan) and
+    ``plan_atomicity`` (FZ 20k9d4 — no note over the density ceiling, each note
+    single-BB, every source section covered). Both are pure/deterministic; a
+    failure loops the plan back to re-planning via the review verdict."""
     return GateSuite(
         gates=(
             Gate(
@@ -398,6 +640,13 @@ def build_plan_gate() -> GateSuite:
                 scope="plan",
                 predicate=plan_structure_predicate,
                 cause="plan_structure",
+            ),
+            Gate(
+                gate_id="plan_atomicity",
+                kind="preflight",
+                scope="plan",
+                predicate=plan_atomicity_predicate,
+                cause="plan_atomicity",
             ),
         )
     )
@@ -430,5 +679,7 @@ __all__ = [
     "build_wave_gate",
     "build_plan_gate",
     "plan_structure_predicate",
+    "plan_atomicity_predicate",
+    "PLAN_NOTE_MAX_WORDS",
     "DIGEST_GATES",
 ]

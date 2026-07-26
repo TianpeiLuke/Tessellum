@@ -225,12 +225,12 @@ output_key: coverage_and_gates
 expected_output_schema:
   type: object
   required:
-  - section_coverage_map
+  - section_coverage_tree
   - per_phase_gate_tables
   properties:
-    section_coverage_map:
+    section_coverage_tree:
       type: string
-      description: ASCII tree mapping every source H2/H3 -> a planned note (or explicit SKIP+reason)
+      description: 'Human-facing ASCII tree mapping every source H2/H3 -> a planned note (or explicit SKIP+reason). NOTE: named section_coverage_tree, NOT section_coverage_map, so it does NOT clobber the plan phase''s machine-readable section_coverage_map LIST (which the deterministic PLAN-006 coverage gate reads at sign-off, FZ 20k9d4).'
     split_decisions:
       type: array
       items:
@@ -283,7 +283,7 @@ Follow this procedure:
 
 Using the density re-assessment from the prior step, assemble the structural-integrity sections of the augmented plan.
 
-Build the **Section Coverage Map**: an ASCII tree mapping every source H2/H3 heading to a planned note (or to an explicit SKIP with a documented reason). No source heading may be silently orphaned. Record the **Split Decisions** table — for every note split beyond the initial grouping, capture the original, what it split into, and the rationale (BB mixing, >1800-word threshold, >6 code blocks).
+Build the **Section Coverage Map** as the `section_coverage_tree` field (a human-facing ASCII tree mapping every source H2/H3 heading to a planned note, or to an explicit SKIP with a documented reason). Emit it under the key `section_coverage_tree` — NOT `section_coverage_map` — so it does not overwrite the plan phase's machine-readable `section_coverage_map` LIST that the deterministic PLAN-006 coverage gate reads at sign-off (FZ 20k9d4). No source heading may be silently orphaned. Record the **Split Decisions** table — for every note split beyond the initial grouping, capture the original, what it split into, and the rationale (BB mixing, >1800-word threshold, >6 code blocks).
 
 Add the **Validation Scripts** (format + density, cross-link resolution, prerequisite-duplication, and a ghost-reference/target-exists check that verifies every internal link resolves to a real vault note), the **Pacing Rules** (one phase at a time, re-read source before each note, ≤400 lines per note, verbatim code, split-when-dense), and a **per-phase GATE table** for each execution phase. Each gate table must cover G1-Format, G2-Grounding, G3-Density, G3-Coverage, G4-CrossRef, G5-Ghost (every reference exists in the vault), G6-Broken (zero broken links after the batch lands), and G8-Discoverability (every new note ends with ≥1 inbound link from an existing note outside the digest folder). Emit these sections as `{{upstream.coverage_and_gates}}` for the writer step. Build the Section Coverage Map
 with zero orphaned source headings, the Split Decisions table, the

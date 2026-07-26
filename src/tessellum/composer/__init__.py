@@ -138,6 +138,7 @@ from tessellum.composer.fix import (
 )
 from tessellum.composer.gates import (
     DIGEST_GATES,
+    PLAN_NOTE_MAX_WORDS,
     CompositeGateResult,
     Gate,
     GateResult,
@@ -146,6 +147,7 @@ from tessellum.composer.gates import (
     build_close_gate,
     build_plan_gate,
     build_wave_gate,
+    plan_atomicity_predicate,
 )
 from tessellum.composer.planning import (
     LeafComplexity,
@@ -410,6 +412,8 @@ __all__ = [
     "build_close_gate",
     "build_plan_gate",
     "build_wave_gate",
+    "plan_atomicity_predicate",
+    "PLAN_NOTE_MAX_WORDS",
     "DIGEST_GATES",
     # Fix stage + planner economics (Phase 4)
     "FixContext",

@@ -107,7 +107,15 @@ class NoteIntent(BaseModel):
     Attributes:
         note_id: Stable graph-local id; dependency/inlink edges reference it.
         thesis: The single claim/point the note makes.
-        building_block: Exactly ONE building block per intent.
+        building_block: Exactly ONE building block per intent. The model stays
+            permissive (``min_length=1``); single-BB-atomicity is enforced by
+            the GATES — ``STRUCT-BB-ATOMIC`` (structural gate) and ``PLAN-005``
+            (plan gate, FZ 20k9d4) reject a multi-BB value so it surfaces as a
+            re-plannable failure, not a construction error.
+        approx_words: Planner's estimated word count for this note's body
+            (0 = unknown / not estimated). The plan-atomicity gate (FZ 20k9d4)
+            fails a plan whose note declares ``approx_words >= 1800`` — the
+            OBJECTIVE density trigger that forces a re-plan (split OR rearrange).
         disposition: Only ``"create"`` is accepted in P2 (see class note).
         target_path: Vault-relative path. The MODEL only stores it; the
             relative-only + confinement enforcement lives in the overlay
@@ -136,6 +144,7 @@ class NoteIntent(BaseModel):
     note_id: str = Field(min_length=1)
     thesis: str = Field(min_length=1)
     building_block: str = Field(min_length=1)
+    approx_words: int = Field(default=0, ge=0)
     disposition: NoteDisposition = "create"
     target_path: str = Field(min_length=1)
     expected_preimage: str | None = None
@@ -164,6 +173,11 @@ class NoteIntent(BaseModel):
         # "skip" is an explicit no-op; expected_preimage is optional there.
         if self.note_id in self.depends_on:
             raise ValueError("NoteIntent cannot depend on itself")
+        # NOTE: single-BB-atomicity is deliberately NOT enforced on the model —
+        # the model stays permissive (min_length=1) and the GATES enforce it
+        # (STRUCT-BB-ATOMIC in structural_gates + PLAN-005 in the plan gate,
+        # FZ 20k9d4), so a malformed BB surfaces as a re-plannable gate failure
+        # rather than an unrecoverable construction error.
         return self
 
 

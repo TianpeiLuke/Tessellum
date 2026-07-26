@@ -31,7 +31,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
-from tessellum.composer.gates import Gate, GateSuite
+from tessellum.composer.gates import MULTI_BB_SEPARATORS, Gate, GateSuite
 from tessellum.composer.knowledge_plan import NoteIntent, NoteIntentGraph
 from tessellum.composer.overlay_index import OverlayIndex
 from tessellum.composer.write_closure import WriteClosure, write_closure
@@ -92,8 +92,10 @@ def bb_atomicity_predicate(target: StructuralGateContext, /, **_) -> Sequence[Is
     issues: list[Issue] = []
     for intent in _intents(target):
         # exactly one building block per note (the model enforces min_length=1;
-        # here we reject a comma/space-joined multi-BB smell).
-        if any(sep in intent.building_block for sep in (",", "/", "+", " and ")):
+        # here we reject a comma/space-joined multi-BB smell). The separator set
+        # is shared with the plan gate's PLAN-005 (gates.MULTI_BB_SEPARATORS) so
+        # the two single-BB checks never drift.
+        if any(sep in intent.building_block for sep in MULTI_BB_SEPARATORS):
             issues.append(Issue(
                 severity=Severity.ERROR, rule_id="STRUCT-BB-ATOMIC",
                 field=intent.note_id,
