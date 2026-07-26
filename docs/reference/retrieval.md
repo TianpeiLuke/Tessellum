@@ -11,7 +11,7 @@ API, symbols, and signatures for the read layer. For the mental model and how wo
 | `hybrid.py` | Reciprocal Rank Fusion of BM25 + dense. `HybridHit` + `hybrid_search`. Pure Python fusion — calls `bm25_search` and `dense_search`, sums `1/(k1+rank)`. Swallows a dense-side exception and falls back to BM25-only. |
 | `graph.py` | Best-first BFS over the `note_links` graph. `GraphHit` + `best_first_bfs`. Builds a NetworkX `DiGraph` (`_load_graph`), traverses the undirected view, uses directed in-degree as the hub signal, hub-skips popular nodes. |
 | `metadata.py` | Structured metadata filtering via direct SQL on `notes` columns. `MetadataHit` + `metadata_search`. AND-combines filters; JSON-array fields matched via `json_each`. |
-| `router.py` | Heuristic query classifier + dispatcher. `Strategy`, `RouterDecision`, `classify_query`, `route`. Not wired into any CLI command. |
+| `router.py` | Heuristic query classifier + dispatcher. `Strategy`, `RouterDecision`, `classify_query`, `route`. First live caller: composer per-note related-notes enrichment (still no CLI command uses it). |
 | `__init__.py` | Public surface: re-exports every hit type, search function, and the router symbols; its docstring records the deliberate no-PageRank decision. |
 
 ## Public API — `tessellum.retrieval`
@@ -28,7 +28,7 @@ API, symbols, and signatures for the read layer. For the mental model and how wo
 
 ### Hybrid (`hybrid.py`)
 
-- `hybrid_search(db_path: Path | str, query: str, *, k: int = 20, k1: int = 60, per_strategy_k: int | None = None) -> list[HybridHit]` — RRF fusion of BM25 + dense; ordered by descending RRF score, ties broken by `note_id`. `per_strategy_k` defaults to `max(2*k, 20)`. Falls back to BM25-only if dense raises.
+- `hybrid_search(db_path: Path | str, query: str, *, dense_query: str | None = None, k: int = 20, k1: int = 60, per_strategy_k: int | None = None) -> list[HybridHit]` — RRF fusion of BM25 + dense; ordered by descending RRF score, ties broken by `note_id`. `per_strategy_k` defaults to `max(2*k, 20)`. Falls back to BM25-only if dense raises. `dense_query` (default `query`) lets the embedding arm receive a natural-language query while the BM25 arm keeps an FTS5-safe token bag.
 - `HybridHit` — `@dataclass(frozen=True)`: `note_id: str`, `note_name: str`, `score: float` (RRF sum, higher = better), `bm25_rank: int | None`, `dense_rank: int | None` (1-indexed ranks per ranker; `None` if absent from that ranker's top-K).
 
 ### Graph / BFS (`graph.py`)
@@ -44,7 +44,7 @@ API, symbols, and signatures for the read layer. For the mental model and how wo
 ### Router (`router.py`)
 
 - `classify_query(query: str) -> RouterDecision` — pure function, no DB access; maps a query to a strategy + reason.
-- `route(db_path: Path | str, query: str, *, k: int = 20) -> tuple[RouterDecision, list[...]]` — classify then dispatch to the chosen surface; returns `(decision, hits)`.
+- `route(db_path: Path | str, query: str, *, k: int = 20, dense_query: str | None = None) -> tuple[RouterDecision, list[...]]` — classify then dispatch to the chosen surface; returns `(decision, hits)`. `dense_query` is forwarded to the dense/hybrid arms.
 - `RouterDecision` — `@dataclass(frozen=True)`: `strategy: Strategy`, `reason: str`.
 - `Strategy` — `Literal["metadata", "bfs", "bm25", "dense", "hybrid"]`.
 

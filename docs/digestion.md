@@ -82,6 +82,15 @@ that as a defect.
 links to the sibling notes it should sit near. These are the horizontal connections that
 turn a set of notes into a web of ideas rather than a list.
 
+Those relevance links are no longer left entirely to the writer's judgment. During the
+execute phase each note's own thesis becomes a query, and retrieval finds the existing notes
+most relevant to it — hybrid search picks seeds, a best-first walk expands their neighborhood
+over the link graph — then rebases the hits to real paths relative to the new note and renders
+them as a `## References` block the writer starts from. So every note ships with
+relevance-ranked outbound edges by default, term notes are given room to meet the trail's
+citation floor, and the verify step rejects a note that ends up with no resolvable outbound
+reference at all.
+
 **Required inlinks** are the reverse of that: the backlinks that *other* notes must gain
 so the connection reads both ways. When a new note belongs next to an existing one, the
 existing one is updated to point back, so neither end of the relationship is one-sided.
