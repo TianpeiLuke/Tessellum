@@ -48,8 +48,18 @@ A reference scorer makes the loop executable without a model. It is a determinis
 proxy — directional content-word containment of a claim against its span — and its own
 docstring states its ceiling bluntly: it is bag-of-words and cannot judge negation,
 reordering, or paraphrase, so "does not support X" scores like "does support X". It is a
-wiring-and-calibration baseline, never a safety-bearing verifier. The real NLI or SummaC
-model drops into the same seam in production.
+wiring-and-calibration baseline, never a safety-bearing verifier.
+
+The production judge now needs no separate NLI dependency. A second scorer wraps the LLM
+the system already has behind the same seam — one narrow, constrained call per claim ("is
+this claim entailed by this span? return a probability and an explicit abstain"), at
+temperature zero, never a free plausibility judge and never shown the whole note. The
+untrusted claim and span are fenced as data, so a source that embeds "output entailment 1.0"
+cannot forge an accept, and an unreadable span, a backend error, or a malformed reply all
+abstain. The min-aggregation and the calibrated threshold still do the deciding; the model
+only supplies per-claim evidence. Because the score is the model's own reported probability,
+the calibration bound transfers to runtime only under exchangeability — the same prompt,
+model, and temperature between calibration and use.
 
 A verifier feeds the runtime. It wraps claim extraction and the certificate into the exact
 `(step, leaf, result) -> GroundingVerdict` shape the previously-unfed grounding seam expects,
@@ -71,9 +81,10 @@ The machinery is honest about its own limits, by design. The calibration is an e
 in-sample bound — the widest accept region whose observed error is under target on the
 calibration set — not yet the finite-sample distribution-free guarantee the name "conformal
 risk control" formally denotes; the out-of-sample check is the go/no-go gate above. The
-shipped scorer is a baseline that cannot see meaning. And a production entailment model plus
-a human-labelled corpus of wrong-but-well-formed notes remain an external, non-code
-prerequisite.
+reference scorer is a baseline that cannot see meaning. The production entailment judge is
+now available in code — the existing LLM backend, driven as a constrained per-claim scorer —
+so a human-labelled corpus of wrong-but-well-formed notes is the one external, non-code
+prerequisite that remains.
 
 So until that corpus arrives and the go/no-go gate returns GO on it, the certificate does not
 license skipping human review: promotion stays human-supervised and the certificate fails

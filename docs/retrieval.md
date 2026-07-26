@@ -50,4 +50,6 @@ One convention unifies all five: the score. Every hit carries a `score` where hi
 
 **The CLI splits along the content/metadata seam.** Content retrieval lives under `tessellum search`, with mutually-exclusive strategy flags defaulting to hybrid. Metadata filtering lives under a separate `tessellum filter`. The split mirrors the underlying divide — one command asks about content, the other about kind — and keeps each command's flags coherent.
 
+**Retrieval now feeds authoring, not just search.** For most of the system's life the five surfaces answered queries and nothing else — and on the runtime's *committed* index the dense surface was effectively dark, because the commit path built BM25-only, so `notes_vec` was never populated and "hybrid" silently collapsed to lexical. Both are now closed. The live index carries the dense vector surface by default (fail-soft to BM25-only if the encoder is missing), and Composer's opt-in `retrieval` context strategy prepends a bounded, source-first block of related notes — hybrid seeds expanded by best-first BFS over the link graph — as *reference* context for the writer. Retrieval stays read-only and one-directional: it grounds the note being authored; it never becomes the record.
+
 **Reference:** [reference/retrieval.md](reference/retrieval.md) — API, symbols, and signatures.

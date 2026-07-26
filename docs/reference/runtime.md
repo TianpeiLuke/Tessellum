@@ -726,22 +726,22 @@ objective is idempotent (same `bundle_id`, no duplicate jobs, `created=False`).
 rebuild_index_atomically(
     paths: RuntimePaths,
     *,
-    with_dense: bool = False,
+    with_dense: bool = True,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     lock_vault: bool = True,
-) -> Path
+) -> tuple[Path, bool]   # (index_path, dense_degraded)
 
 commit_job(
     job: Job,
     *,
     paths: RuntimePaths,
     rebuild_index: bool = True,
-    with_dense: bool = False,
+    with_dense: bool = True,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     lock_vault: bool = True,
 ) -> CommitResult
 
-CommitResult(archive_path: Path, index_path: Path)
+CommitResult(archive_path: Path, index_path: Path, dense_degraded: bool | None = None)
 ```
 
 `rebuild_index_atomically()` holds a thread lock plus a POSIX advisory index
@@ -753,7 +753,12 @@ not the expensive build. `commit_job()` rebuilds first, then durably archives
 admitted spool bytes. Source acknowledgement replays a prior job-owned hidden
 quarantine after process death. The supervisor already owns the live-vault
 transaction, so it invokes the commit tail with
-`with_dense=False, lock_vault=False`.
+`with_dense=True, lock_vault=False` (R1 — the published live index now carries a
+dense vector surface, not BM25-only). The build is **fail-soft**: a missing
+`sentence-transformers` dep or an encoder failure degrades to a BM25-only index
+with `dense_degraded=True`, which `rebuild_index_atomically` returns, `commit_job`
+carries on `CommitResult.dense_degraded`, and the supervisor threads into the
+job-completion `detail` — so a degraded live index is visible, never silent.
 
 ## Tool broker API
 

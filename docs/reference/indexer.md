@@ -16,8 +16,8 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 
 ### Builder (`build.py`)
 
-- `build(vault_path: Path | str, db_path: Path | str, *, force: bool = False, with_dense: bool = True) -> BuildResult` — full from-scratch scan and write. Creates `db_path` parent dirs as needed. Raises `FileNotFoundError` if `vault_path` is not a directory; raises `FileExistsError` if `db_path` exists and `force=False` (with `force=True`, deletes and recreates). `with_dense=False` skips embedding generation.
-- `BuildResult` — `@dataclass(frozen=True)`: `db_path: Path`, `notes_indexed: int`, `links_indexed: int`, `skipped_files: int`, `duration_seconds: float`, `embeddings_generated: int = 0` (0 when `with_dense=False`).
+- `build(vault_path: Path | str, db_path: Path | str, *, force: bool = False, with_dense: bool = True) -> BuildResult` — full from-scratch scan and write. Creates `db_path` parent dirs as needed. Raises `FileNotFoundError` if `vault_path` is not a directory; raises `FileExistsError` if `db_path` exists and `force=False` (with `force=True`, deletes and recreates). `with_dense=False` skips embedding generation. **Fail-soft:** with `with_dense=True`, a missing `sentence-transformers` dep or an encoder failure degrades to a BM25-only index (`dense_degraded=True`, zero embeddings, warning logged with `exc_info`) instead of crashing the build.
+- `BuildResult` — `@dataclass(frozen=True)`: `db_path: Path`, `notes_indexed: int`, `links_indexed: int`, `skipped_files: int`, `duration_seconds: float`, `embeddings_generated: int = 0` (0 when `with_dense=False`), `dense_degraded: bool = False` (True iff dense was requested but the encoder failed → BM25-only).
 
 ### Reader (`db.py`)
 
