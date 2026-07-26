@@ -1,4 +1,4 @@
-# Tessellum 1.7.0 — System Architecture
+# Tessellum 1.8.0 — System Architecture
 
 ## 1. What Tessellum is
 

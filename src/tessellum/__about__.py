@@ -1,6 +1,6 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.7.0"
+__version__ = "1.8.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
@@ -24,8 +24,9 @@ __status__ = (
     "grounding-verifier seam, and an A7.5 go/no-go gate — and its production judge "
     "is now the system's own LLM backend, leaving a labelled corpus as the one "
     "external prerequisite. Hybrid retrieval (BM25 + dense, RRF-fused) runs end to "
-    "end on the live index and can feed reference context to the writer. "
-    "Suite: 1629 passing.\n"
+    "end on the live index — feeding reference context to the writer and "
+    "auto-generating each note's relevance-ranked ## References graph edges. "
+    "Suite: 1657 passing.\n"
     "\n"
     "See CHANGELOG.md and docs/ for release details and engineering reference."
 )

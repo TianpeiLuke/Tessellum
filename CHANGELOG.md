@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.8.0] — 2026-07-25
+
 ### Per-note related-notes enrichment — every note gets relevancy-ranked ## References graph edges (FZ 20k9d2) — 2026-07-25
 
 Closes the gap FZ 20k9d2 identified: the shipped retrieval activation reached a seam but nothing produced the knowledge-graph edges the requirement needs. Each written note must carry relevance-selected related notes in its `## References` section, keyed on THAT note's own topic — and those links are how the graph is built (the indexer turns `[title](rel/path.md)` into `note_links` edges). This wires retrieval into the per-note authoring path where the note's identity + target path are known — NOT the shared, concurrent, boilerplate-headed `ContextAssembler` seam (which stays opt-in reading context). Additive + default-on + fail-soft; the whole-plan fallback and no-index paths are unchanged. +28 tests; full suite 1656 passed. Adversarially reviewed (4 dimensions → find → independent verify; 8 findings, 3 CONFIRMED + 4 PARTIAL + 1 REFUTED, all confirmed/partial fixed pre-commit; a focused correctness pass returned NO-BUG on 5 traced questions).
