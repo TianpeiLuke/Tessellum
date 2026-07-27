@@ -59,6 +59,7 @@ expected_output_schema:
         - url
         - measured_words
         - code_blocks
+        - headings
         properties:
           url:
             type: string
@@ -68,6 +69,10 @@ expected_output_schema:
             type: integer
           headings:
             type: array
+            description: EVERY H1/H2/H3 heading of this page, verbatim from the
+              actual source — NOT from memory. This is the content-grounding
+              ledger the coverage map (decompose) and gate G3/PLAN-006 check
+              against, so it must be the real section list, complete and exact.
             items:
               type: string
     total_words:
@@ -261,6 +266,9 @@ expected_output_schema:
 
 You are running Phase 1, step 3 (decompose) of tessellum-plan-digestion.
 
+SOURCE ASSESSMENT (from step 1 — the MEASURED source pages + their EXACT headings)
+{{upstream.source_assessment}}
+
 ROUTING_DECISION (from step 2)
 {{upstream.routing_decision}}
 
@@ -268,10 +276,11 @@ Follow this procedure:
 
 Read `{{upstream.routing_decision}}` and break the source into atomic notes, one building block per note.
 
+- **GROUND the coverage map in the ACTUAL source sections.** The `pages[].headings` list in `{{upstream.source_assessment}}` is the authoritative, measured inventory of every real H1/H2/H3 in the source. The Section Coverage Map MUST be built from THAT list — every heading in `source_assessment.pages[].headings` is a row in the coverage map, mapped to a planned note. Do NOT invent, rename, or infer section names from your own knowledge of the topic: use the source's real headings verbatim. (This is content grounding — the plan gate PLAN-006 + gate G3 compare the coverage map against these measured headings and reject the plan if any real section is unmapped.)
 - **Classify each source section by building block**: definitions/terminology → concept; step-by-step instructions/commands → procedure; architecture/components/data flow → model; claims-with-evidence/design rationale → argument; observed behaviour/metrics/demos → empirical_observation; testable predictions → hypothesis; limitations/risks/critiques → counter_argument; index/routing structures → navigation.
 - **Group adjacent same-BB sections** into one candidate note; NEVER mix building blocks in a single note.
 - **Apply density thresholds and split BEFORE writing.** First at the page level: a source page over ~1800 words cannot map to one note (1800–3600 → ≥2 notes; >3600 → ≥3 notes). Then per note: split when a note would exceed ~1800 words, ~400 lines, 6 code blocks, or 6 unrelated H2 topics, or when it mixes a procedure and a concept of >500 words each.
-- **Write the Section Coverage Map**: for EVERY source H1/H2/H3, record which planned note it maps to — no section may be orphaned, no content compressed away.
+- **Write the Section Coverage Map**: for EVERY heading in `source_assessment.pages[].headings` (verbatim), record which planned note it maps to — no source section may be orphaned, no content compressed away, and no invented section may appear that is not in the measured headings.
 - **Document Split Decisions**: for any note split beyond the initial grouping, record the original, what it split into, and why (over a threshold or mixed BB).
 - **These three are now HARD, MACHINE-ENFORCED plan gates (FZ 20k9d4), not just guidance.** The plan gate fails the plan — blocking sign-off and forcing a re-plan — on any OBJECTIVE breach: **PLAN-004** a note whose `approx_words` ≥ 1800 (so give every note a REAL per-note word estimate; a note at/over the ceiling is rejected); **PLAN-005** a note whose `building_block` crams more than one block (e.g. `"concept, procedure"`); **PLAN-006** a source section in the coverage map with an empty/`none`/`TBD` target. On failure you may remedy EITHER by splitting into more notes OR by rearranging the coverage map (redistributing content across notes) — the gate does not prescribe which; it only requires the breach be gone. (A *subjective* "is this note truly atomic?" judgement is NOT gated — that stays the reviewer's advisory call.)
 

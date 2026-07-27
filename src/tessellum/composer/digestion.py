@@ -175,7 +175,16 @@ _PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
 def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
     """Bridge plan-skill output keys to the canonical names the gate + augment/
     review steps consume. Mutates ``plan_doc`` in place; idempotent; only fills a
-    canonical key that is absent or empty, from the first present alias."""
+    canonical key that is absent or empty, from the first present alias.
+
+    Also PROTECTS the authoritative full plan body (FZ 20k9c1a1a1b7c2c): the
+    review step ``step_1_read_plan`` re-emits ``plan_text``, and the model tends
+    to return a lossy SUMMARY (e.g. 3.9 KB for a 43 KB plan). Under
+    last-writer-wins that shrunken copy clobbers the real plan, so the gate +
+    reviewer then judge an incomplete plan and falsely reject a good one. The
+    write-plan/augment ``body_markdown`` is the complete artifact; if it is
+    longer than the current ``plan_text``, restore it as ``plan_text`` so a
+    downstream re-emission can never shrink the plan of record."""
     for canonical, aliases in _PLAN_DOC_KEY_ALIASES.items():
         cur = plan_doc.get(canonical)
         if cur not in (None, "", 0):
@@ -185,6 +194,11 @@ def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
             if val not in (None, "", 0):
                 plan_doc[canonical] = val
                 break
+    # plan_text of record = the longest of {current plan_text, body_markdown}.
+    body = plan_doc.get("body_markdown")
+    ptext = plan_doc.get("plan_text")
+    if isinstance(body, str) and isinstance(ptext, str) and len(body) > len(ptext):
+        plan_doc["plan_text"] = body
 
 
 def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:

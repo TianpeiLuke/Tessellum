@@ -249,7 +249,7 @@ def execute_step(
     # FORMAT — markdown with YAML frontmatter (NOT JSON)" prose and makes the
     # materializer reject the result. Their ``expected_output_schema`` is a
     # loose validation aid (e.g. requires ``output_path``), not a JSON mandate.
-    if step.expected_output_schema and _consumes_json(step.materializer_key):
+    if step.expected_output_schema and _step_consumes_json(step):
         prompt = f"{prompt}\n\n{_render_output_schema_instruction(step.expected_output_schema)}"
 
     # Augment the system prompt on retries so the model sees both the
@@ -384,7 +384,7 @@ def execute_step(
     # Schema validation — best effort, and only for JSON-consuming materializers
     # (a markdown/XML materializer's output is not JSON; its own materializer
     # validates the format, so a json.loads schema check would spuriously fail).
-    if step.expected_output_schema and _consumes_json(step.materializer_key):
+    if step.expected_output_schema and _step_consumes_json(step):
         validation_error = _validate_against_schema(
             parse_content, step.expected_output_schema
         )
@@ -525,21 +525,32 @@ def _stringify(value: Any) -> str:
     return str(value)
 
 
-# Materializers whose response the executor parses as JSON. The others consume a
-# different wire format — ``body_markdown_frontmatter_to_file`` wants raw
-# markdown-with-YAML-frontmatter, ``edits_apply_xml_tags`` wants XML — so neither
-# the "return ONLY JSON" prompt instruction nor a json.loads schema check applies
-# to them. ``None``/unknown → treat as JSON (the ``no_op`` default parses JSON).
+# Fallback for steps whose materializer contract is unresolved (contract=None):
+# the materializer keys whose response is NOT JSON. Used only when the
+# authoritative ``wire_format`` (below) is unavailable. ``None``/unknown key →
+# JSON (the ``no_op`` default parses JSON).
 _NON_JSON_MATERIALIZERS: frozenset[str] = frozenset({
     "body_markdown_frontmatter_to_file",
     "edits_apply_xml_tags",
 })
 
 
-def _consumes_json(materializer_key: str | None) -> bool:
-    """True iff the step's materializer parses its response as JSON (so the
-    JSON-schema prompt-injection + json.loads validation are appropriate)."""
-    return (materializer_key or "no_op") not in _NON_JSON_MATERIALIZERS
+def _step_consumes_json(step: "CompiledStep") -> bool:
+    """True iff the step's response is parsed as JSON — so the JSON-schema
+    prompt-injection + json.loads schema validation are appropriate.
+
+    Keys on the AUTHORITATIVE ``materializer_contract.wire_format`` declared in
+    :mod:`tessellum.composer.contracts` (``json`` / ``markdown_with_frontmatter``
+    / ``xml_tag_list`` / ``none``) — the single source of truth for a step's
+    output shape — rather than re-deriving it from materializer names. A
+    markdown/XML/none step wants THAT format, so injecting "return ONLY JSON" or
+    running ``json.loads`` on it is wrong (that was the E9 defect). Falls back to
+    the materializer-key name set only when the contract is unresolved."""
+    contract = getattr(step, "materializer_contract", None)
+    wf = getattr(contract, "wire_format", None)
+    if wf is not None:
+        return wf == "json"
+    return (step.materializer_key or "no_op") not in _NON_JSON_MATERIALIZERS
 
 
 def _render_output_schema_instruction(schema: dict) -> str:
