@@ -182,6 +182,79 @@ def test_bedrock_records_elapsed_ms() -> None:
     assert backend.call(LLMRequest(system_prompt="s", user_prompt="u")).elapsed_ms >= 0
 
 
+# ── P1 (FZ 20k9c1a1a1b7c2g / E7/D4): mid-run credential auto-refresh ─────────
+
+class _ExpiredThenOkMessages:
+    """First call raises a 403 expired-token error; after the credential-refresh
+    hook fires and the client is rebuilt, the next client's call succeeds."""
+
+    def __init__(self, *, expired: bool) -> None:
+        self.expired = expired
+        self.calls = 0
+
+    def create(self, **kwargs: Any) -> _FakeResponse:
+        self.calls += 1
+        if self.expired:
+            raise RuntimeError(
+                "PermissionDeniedError: Error code: 403 - "
+                "{'message': 'The security token included in the request is expired'}"
+            )
+        return _FakeResponse(content=[_FakeTextBlock(type="text", text='{"ok": true}')])
+
+
+class _ExpiredThenOkClient:
+    def __init__(self, *, expired: bool) -> None:
+        self.messages = _ExpiredThenOkMessages(expired=expired)
+
+
+def test_bedrock_refreshes_credentials_and_retries_on_auth_error() -> None:
+    """P1 (E7/D4): an expired-token 403 mid-run triggers the credential_refresh
+    hook + a client rebuild + a single retry that succeeds."""
+    expired_client = _ExpiredThenOkClient(expired=True)
+    healthy_client = _ExpiredThenOkClient(expired=False)
+    refreshed = {"n": 0}
+
+    backend = BedrockBackend(client=expired_client)
+    # Simulate a self-built client (so the P1 path is enabled) with a refresh hook
+    # that "renews creds" and a _build_client that returns the healthy client.
+    backend._injected_client = False
+    backend.credential_refresh = lambda: refreshed.__setitem__("n", refreshed["n"] + 1)
+    backend._build_client = lambda: healthy_client
+
+    resp = backend.call(LLMRequest(system_prompt="s", user_prompt="u"))
+    assert refreshed["n"] == 1, "credential_refresh must be invoked exactly once"
+    assert backend.client is healthy_client, "client must be rebuilt after refresh"
+    assert resp.content == '{"ok": true}', "the retry after refresh must succeed"
+
+
+def test_bedrock_no_refresh_hook_reraises_auth_error() -> None:
+    """Without a refresh hook (or with an injected client), an auth error
+    propagates unchanged — no silent swallow, prior behaviour preserved."""
+    backend = BedrockBackend(client=_ExpiredThenOkClient(expired=True))
+    with pytest.raises(RuntimeError, match="security token .* expired"):
+        backend.call(LLMRequest(system_prompt="s", user_prompt="u"))
+
+
+def test_bedrock_refresh_not_triggered_on_non_auth_error() -> None:
+    """A non-auth error must NOT trigger the refresh/retry (don't mask real
+    bugs); it re-raises and the hook is never called."""
+    class _BoomMessages:
+        def create(self, **kwargs: Any):
+            raise ValueError("some non-auth failure")
+
+    class _BoomClient:
+        def __init__(self) -> None:
+            self.messages = _BoomMessages()
+
+    called = {"n": 0}
+    backend = BedrockBackend(client=_BoomClient())
+    backend._injected_client = False
+    backend.credential_refresh = lambda: called.__setitem__("n", called["n"] + 1)
+    with pytest.raises(ValueError, match="non-auth failure"):
+        backend.call(LLMRequest(system_prompt="s", user_prompt="u"))
+    assert called["n"] == 0, "non-auth error must not trigger a credential refresh"
+
+
 # ── E15 (FZ 20k9c1a1a1b7c2g): stream above the SDK non-streaming ceiling ─────
 
 def test_bedrock_small_max_tokens_uses_create_not_stream() -> None:

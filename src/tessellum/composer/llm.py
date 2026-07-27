@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Callable, Protocol
 
 
 @dataclass(frozen=True)
@@ -279,6 +279,7 @@ class BedrockBackend:
         aws_profile: str | None = None,
         default_max_tokens: int = 16000,
         client: object | None = None,
+        credential_refresh: "Callable[[], None] | None" = None,
     ) -> None:
         """Construct a Bedrock-backed LLM backend.
 
@@ -295,29 +296,47 @@ class BedrockBackend:
                 leaves it at the default.
             client: Optional pre-built ``anthropic.AnthropicBedrock`` (or a
                 fake) — used by tests. When ``None``, one is constructed.
+            credential_refresh: Optional zero-arg callable that renews the
+                ambient AWS credentials (e.g. re-invokes ``ada credentials
+                update``). **P1 / FZ 20k9c1a1a1b7c2g (E7/D4):** federated
+                Bedrock creds are short-lived (~15–30 min); a long digestion
+                run (the big streamed writers legitimately take minutes each)
+                outlives one window and a late phase fails with a 403
+                ``security token expired``. When set, ``call`` catches an
+                auth-class failure, invokes this hook, **rebuilds the client**
+                so it re-reads the renewed profile, and retries the request
+                ONCE. Fail-soft: if the hook raises or the retry still fails,
+                the original error propagates (no retry-budget burn on a
+                known-expired token). ``None`` → prior behaviour (no refresh).
 
         Raises:
             ImportError: If the ``anthropic`` package isn't installed
                 (``pip install tessellum[agent]``).
         """
-        if client is None:
-            if aws_profile is not None:
-                import os
-
-                os.environ["AWS_PROFILE"] = aws_profile
-            try:
-                from anthropic import AnthropicBedrock  # type: ignore[import-not-found]
-            except ImportError as e:  # pragma: no cover — environment-dep
-                raise ImportError(
-                    "BedrockBackend requires the `anthropic` package. "
-                    "Install with: pip install tessellum[agent]"
-                ) from e
-            self.client = AnthropicBedrock(aws_region=region)
-        else:
-            self.client = client
         self.model = model
         self.region = region
+        self.aws_profile = aws_profile
         self.default_max_tokens = default_max_tokens
+        self.credential_refresh = credential_refresh
+        self._injected_client = client is not None
+        self.client = client if client is not None else self._build_client()
+
+    def _build_client(self) -> object:
+        """Construct a fresh ``AnthropicBedrock`` reading the ambient (possibly
+        just-renewed) AWS credential chain. Rebuilt after a credential refresh so
+        the new token is picked up (P1)."""
+        if self.aws_profile is not None:
+            import os
+
+            os.environ["AWS_PROFILE"] = self.aws_profile
+        try:
+            from anthropic import AnthropicBedrock  # type: ignore[import-not-found]
+        except ImportError as e:  # pragma: no cover — environment-dep
+            raise ImportError(
+                "BedrockBackend requires the `anthropic` package. "
+                "Install with: pip install tessellum[agent]"
+            ) from e
+        return AnthropicBedrock(aws_region=self.region)
 
     def call(self, request: LLMRequest) -> LLMResponse:
         start = time.monotonic()
@@ -325,11 +344,35 @@ class BedrockBackend:
         # temperature only passed when the caller set it — omitting it preserves
         # the provider default (byte-identical for every existing caller).
         extra = {} if request.temperature is None else {"temperature": request.temperature}
-        response = _messages_create_or_stream(
-            self.client, model=self.model, max_tokens=max_tokens,
-            system_prompt=request.system_prompt, user_prompt=request.user_prompt,
-            extra=extra,
-        )
+        try:
+            response = _messages_create_or_stream(
+                self.client, model=self.model, max_tokens=max_tokens,
+                system_prompt=request.system_prompt, user_prompt=request.user_prompt,
+                extra=extra,
+            )
+        except Exception as e:  # noqa: BLE001
+            # P1 (E7/D4): on an AUTH failure (expired federated token mid-run),
+            # renew creds via the hook, rebuild the client so it re-reads the new
+            # token, and retry ONCE. Fail-soft — re-raise the ORIGINAL error if
+            # there is no hook, the client was injected (a test fake), the refresh
+            # raises, or the retry still fails, so a non-auth error or a truly-dead
+            # credential doesn't silently loop.
+            if (
+                self.credential_refresh is None
+                or self._injected_client
+                or not _is_auth_error(e)
+            ):
+                raise
+            try:
+                self.credential_refresh()
+                self.client = self._build_client()
+                response = _messages_create_or_stream(
+                    self.client, model=self.model, max_tokens=max_tokens,
+                    system_prompt=request.system_prompt, user_prompt=request.user_prompt,
+                    extra=extra,
+                )
+            except Exception:
+                raise e from None
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = _extract_text(response)
         metadata = {
@@ -483,6 +526,24 @@ def _messages_create_or_stream(
         system=system_prompt,
         messages=messages,
         **extra,
+    )
+
+
+def _is_auth_error(exc: Exception) -> bool:
+    """True if an exception is an auth/credential failure (expired token, 403,
+    unauthorized) — the class the P1 credential-refresh retry targets. String
+    heuristic over the rendered exception, mirroring
+    ``executor.classify_error``'s auth precedence so the two agree."""
+    msg = f"{type(exc).__name__}: {exc}".lower()
+    return (
+        "401" in msg
+        or "403" in msg
+        or "expired" in msg
+        or "credential" in msg
+        or "forbidden" in msg
+        or "unauthorized" in msg
+        or "permissiondenied" in msg
+        or "security token" in msg
     )
 
 
