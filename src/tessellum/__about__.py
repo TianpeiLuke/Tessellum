@@ -1,6 +1,6 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.9.0"
+__version__ = "1.11.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
@@ -28,7 +28,8 @@ __status__ = (
     "auto-generating each note's relevance-ranked ## References graph edges. Note "
     "atomicity (density / one building block / full coverage) is enforced by a hard "
     "plan gate, and the runtime commit re-indexes only changed notes (incremental, "
-    "proven equal to a full rebuild). Suite: 1703 passing.\n"
+    "proven equal to a full rebuild), and each digestion writer is handed its "
+    "note-type's required-section contract, resolved by flavor. Suite: 1762 passing.\n"
     "\n"
     "See CHANGELOG.md and docs/ for release details and engineering reference."
 )

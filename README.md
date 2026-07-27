@@ -63,7 +63,7 @@ tessellum mcp serve                                                          # s
 
 ## Status
 
-**Current `main` — every engine subsystem shipped.** Test suite: **1389 passing, 1 skipped**. Newest: the Composer v4 engine, the knowledge-transaction track, and the v5 automatic runtime.
+**Current `main` — every engine subsystem shipped.** Test suite: **1762 passing**. Newest: per-note type contracts, incremental indexing, a hard plan-atomicity gate, hybrid retrieval feeding note authoring, a runnable grounding certificate, and the DKS self-driving reasoning arc.
 
 - **Composer** — *typed-contract pipeline runtime.* A skill compiles to a typed DAG with **zero LLM calls**. It then runs serially or in parallel. Backends: Mock / Anthropic / Bedrock / Pooled.
 - **Knowledge transaction** — *a multi-note digestion as one atomic transaction.* Staged, gated, then **published all-or-nothing**. Additive and opt-in.
@@ -111,7 +111,7 @@ Tessellum rests on four foundations — remove any one and the system stops work
 
 ## Architecture
 
-![Tessellum 1.9.0 architecture showing runtime orchestration, plan atomicity gates, registry-driven note contracts, semantic certification, incremental indexing, hybrid retrieval, and vault publication](docs/assets/tessellum_architecture.png)
+![Tessellum 1.11.0 architecture showing runtime orchestration, plan atomicity gates, registry-driven note contracts, semantic certification, incremental indexing, hybrid retrieval, and vault publication](docs/assets/tessellum_architecture.png)
 
 *Source-level view of Tessellum's write and retrieval paths. Solid arrows are active runtime paths; dashed arrows identify opt-in primitives or integrations that are implemented but not wired into the automatic runtime end to end.*
 
