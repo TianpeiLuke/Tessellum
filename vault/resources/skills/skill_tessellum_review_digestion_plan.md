@@ -43,6 +43,7 @@ batchable: false
 depends_on: []
 materializer: no_op
 output_key: plan_doc
+max_tokens: 32000
 expected_output_schema:
   type: object
   required:
@@ -59,6 +60,7 @@ expected_output_schema:
       type: integer
     plan_text:
       type: string
+      description: The COMPLETE augmented plan body, copied VERBATIM — every section, table, and gate. Do NOT summarize, abridge, or truncate; the CP1–CP8 checkpoints inspect this text to decide what the plan contains, so any omission here is read as a MISSING layer and falsely fails the plan.
 ```
 
 Step 1 of tessellum-review-digestion-plan: Read the Plan.
@@ -74,7 +76,7 @@ Read the augmented plan file that augmentation produced. This step establishes t
 
 Confirm the plan carries `status: pending` (not already `ready`, `in-progress`, or `completed`). If it is already `ready` or `completed`, report "Plan already reviewed" and skip the remaining checkpoints. Record the plan path and its declared total-note count so downstream size and entry-point checks have the number they need.
 
-This is a read-only load — no file is written. Emit the plan's identity (path, status, total planned notes) plus the full plan text so the structure and density passes can inspect it without re-reading from disk. This is read-only — write no file.
+This is a read-only load — no file is written. Emit the plan's identity (path, status, total planned notes) plus the full plan text so the structure and density passes can inspect it without re-reading from disk. **Emit `plan_text` VERBATIM — the entire augmented plan body, every section/table/gate, with NO summarization, abridgement, or truncation.** The CP1–CP8 checkpoints read only this `{{upstream.plan_doc}}` text (not the file on disk), so anything you drop here is read as ABSENT from the plan and falsely fails it — a large plan (tens of thousands of characters) must still be copied in full. This is read-only — write no file.
 
 Return ONLY the JSON object specified by expected_output_schema;
 no prose, no code fences.
