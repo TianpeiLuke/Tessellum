@@ -27,6 +27,7 @@ from tessellum.composer import (
     run_corpus_digestion,
     run_corpus_planning_wave,
     run_digestion_pipeline,
+    run_execute_wave,
 )
 from tessellum.composer.knowledge_plan import BundleMember, SourceBundle
 
@@ -315,6 +316,46 @@ def test_corpus_digestion_all_promoted(tmp_path: Path) -> None:
     assert all(e.promoted and e.status == "promoted" for e in res.executions)
     # execute actually ran now (unlike the planning-only wave) → notes written.
     assert list(vault.rglob("*.md")), "execute wave should materialize notes"
+
+
+def test_corpus_execute_wave_inherits_planned_notes_fanout(tmp_path: Path) -> None:
+    """P2.3 (FZ 20k9c1a1a1b7c2b): the corpus M4 path executes each accepted
+    sub-plan by calling ``run_execute_wave`` (corpus_digestion.py `_execute_one`),
+    the SAME seam the native single-doc path uses. So a sub-plan's accepted
+    plan_doc carrying ``planned_notes`` must fan out to one writer leaf PER note.
+
+    Assert at that seam directly (feeding an already-accepted corpus-shaped
+    plan_doc to ``run_execute_wave``) rather than through the planning wave, so
+    the test isolates the fan-out inheritance from the corpus sign-off policy.
+    Guards that the E11 native fan-out is inherited by the corpus execute path
+    (an N-note sub-plan must not silently produce ~1 note).
+    """
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _write_phase_skills(sd)
+    backend = MockBackend(default=json.dumps({
+        "output_path": "notes/n.md", "body_markdown": "# N",
+    }))
+    # An accepted corpus sub-plan_doc (what M4's _execute_one receives), carrying
+    # the 3-note planned_notes list the projector fans out.
+    plan_doc = {
+        "plan_path": "plans/sub_s1.md", "plan_text": "# Sub-plan s1",
+        "total_notes": 3,
+        "planned_notes": [
+            {"filename": "a", "building_block": "concept", "description": "A"},
+            {"filename": "b", "building_block": "concept", "description": "B"},
+            {"filename": "c", "building_block": "procedure", "description": "C"},
+        ],
+        "note_dir": "resources/documentation/corpus",
+    }
+    run = run_execute_wave(
+        plan_doc, skills_dir=sd, backend=backend, vault_root=tmp_path / "vault",
+    )
+    # 3 planned notes → 3 writer leaves (projection inherited), NOT 1 fallback.
+    assert len(run.leaves) == 3, (
+        f"corpus execute wave fanned out to {len(run.leaves)} leaf(es), "
+        f"expected 3 (planned_notes projection not inherited by run_execute_wave)"
+    )
 
 
 def test_corpus_digestion_partial_when_one_sub_blocked_at_planning(tmp_path: Path) -> None:
