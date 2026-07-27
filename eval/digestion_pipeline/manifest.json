@@ -1,0 +1,54 @@
+{
+  "eval_name": "digestion_pipeline_golden",
+  "version": "1.0.0",
+  "created": "2026-07-26",
+  "purpose": "Evaluate Tessellum's digestion pipeline (plan -> augment -> review -> execute) against real golden triples produced by the SAME four skills, run at scale in a production vault.",
+  "framing": {
+    "why_this_is_a_valid_golden": "The reference plans and notes were produced by the identical four digestion skills that Tessellum's composer runs as tessellum.composer.digestion.run_digestion_pipeline (PHASE_SKILLS = plan_digestion, augment_digestion_plan, review_digestion_plan, execute_digestion_plan). So this is a same-pipeline reproduction test: feed Tessellum the same raw docs, and its generated plan + notes should match the golden's measurable structure (schema, BB atomicity, section coverage, cross-reference floors, density caps, gate outcomes).",
+    "what_it_is_not": "Not a byte-for-byte match test. Digestion is generative; the golden fixes the STRUCTURE and MEASURABLE CONTRACTS (counts, distributions, schema conformance, coverage, floors), and an LLM-judge rubric scores content fidelity against the source. Prose will differ run-to-run."
+  },
+  "full_corpora": {
+    "note": "The complete triples live in a private knowledge vault (git 59bdae36c). Only the three curated, scrubbed SLICES + measured golden facts are vendored into this public repo. To reproduce against the full corpora, point a runner at the vault paths below.",
+    "sources": [
+      {"id": "claude_code", "raw_docs": 134, "golden_plans": 41, "golden_notes": 339, "note_dir": "resources/documentation/claude_code", "entry_point": "0_entry_points/entry_claude_code_docs.md", "inbox": "inbox/claude_code_docs", "plan_glob": "plans/plan_digest_claude_code_docs_*.md", "note_bb_distribution": {"procedure": 176, "concept": 142, "argument": 18, "model": 3}},
+      {"id": "hermes_agent", "raw_docs": 348, "golden_plans": 27, "golden_notes": 226, "note_dir": "resources/documentation/hermes_agent", "entry_point": "0_entry_points/entry_hermes_agent_docs.md", "inbox": "inbox/hermes_agent_docs", "plan_glob": "plans/plan_digest_hermes_agent_docs_*.md", "note_bb_distribution": {"procedure": 158, "model": 48, "navigation": 11, "concept": 8, "empirical_observation": 1}},
+      {"id": "openclaw", "raw_docs": 665, "golden_plans": 106, "golden_notes": 816, "note_dir": "resources/documentation/openclaw", "entry_point": "0_entry_points/entry_openclaw_docs.md", "inbox": "inbox/openclaw_docs", "plan_glob": "plans/plan_digest_openclaw_docs_*.md", "note_bb_distribution": {"procedure": 531, "concept": 138, "model": 117, "argument": 30}}
+    ]
+  },
+  "curated_slices": [
+    {
+      "id": "claude_code_mcp",
+      "source": "Claude Code docs — MCP (sub-plan B08A)",
+      "input_pages": 3,
+      "golden_plan_notes": 8,
+      "golden_facts": "claude_code_mcp/golden_facts.json",
+      "difficulty": "mix of concept + procedure; one very large source page (mcp.md, 6822 words, 41 code blocks) that MUST split into 8 notes",
+      "tests": ["aggressive split of an oversized code-heavy page", "concept-vs-procedure BB routing within one topic", "term-link floor (>=6)"]
+    },
+    {
+      "id": "hermes_getting_started",
+      "source": "Hermes Agent docs — Getting Started & Install (sub-plan SP01)",
+      "input_pages": 8,
+      "golden_plan_notes": 9,
+      "golden_facts": "hermes_getting_started/golden_facts.json",
+      "difficulty": "procedure-heavy with one navigation (router) note and one model (container architecture) note; the FOUR-FLOOR cross-ref (>=8 term, >=5 repo, >=10 snippet, >=10 doc)",
+      "tests": ["BB routing to navigation + model, not just procedure", "highest cross-ref floor of the three", "install-variant note fan-out (termux / nix / nixos-module / container)"]
+    },
+    {
+      "id": "openclaw_concepts",
+      "source": "OpenClaw docs — Concepts / agent runtime core (sub-plan co01)",
+      "input_pages": 7,
+      "golden_plan_notes": 8,
+      "golden_facts": "openclaw_concepts/golden_facts.json",
+      "difficulty": "concept + procedure + model mix; a 9-gate plan (adds G9 prose-integrity); notes carry BOTH ## Related Notes and a ## References (external-URL) section",
+      "tests": ["9-gate variant", "dual cross-ref blocks (Related Notes internal + References external)", "one-page-to-two-notes split (active-memory -> overview concept + config procedure)"]
+    }
+  ],
+  "scoring": {
+    "rubric_file": "rubric.md",
+    "scorer": "score.py",
+    "plan_level_metrics": ["planned_note_count_ratio", "bb_distribution_similarity", "section_coverage_completeness", "split_decision_presence", "xref_contract_declared", "gate_table_present", "mandatory_sections_present"],
+    "note_level_metrics": ["frontmatter_schema_conformance", "forbidden_key_absence", "required_h2_present", "single_bb_atomicity", "density_caps_respected", "xref_floor_met", "cross_ref_block_resolvable"],
+    "content_fidelity": "LLM-judge 6-dim rubric (relevance, completeness, accuracy, clarity, structural_integrity, epistemic_congruence) — reuses tessellum.composer.eval.LLMJudge against the named source page(s)."
+  }
+}

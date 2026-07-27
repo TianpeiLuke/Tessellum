@@ -1,0 +1,305 @@
+{
+  "slice": "hermes_getting_started",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "59bdae36c",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "Hermes Agent documentation (NousResearch/hermes-agent Docusaurus site)",
+  "source_url_pattern": "https://hermes-agent.nousresearch.com/docs/<path>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) \u2014 the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 8,
+    "pages": [
+      "index.mdx",
+      "quickstart.md",
+      "installation.md",
+      "learning-path.md",
+      "updating.md",
+      "termux.md",
+      "nix-setup.md",
+      "user-stories.mdx"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_hermes_agent_docs_01_getting_started.md",
+    "subplan": "SP01 (Getting Started & Install)",
+    "planned_note_count": 9,
+    "gate_count": 8,
+    "xref_floor_per_note": {
+      "term_dictionary": 8,
+      "code_repos": 5,
+      "code_snippets": 10,
+      "documentation": 10
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/hermes_agent",
+    "note_prefix": "hermes_",
+    "note_count": 9,
+    "bb_distribution": {
+      "procedure": 7,
+      "navigation": 1,
+      "model": 1
+    },
+    "word_count": {
+      "min": 908,
+      "median": 1362,
+      "max": 1943
+    },
+    "term_links": {
+      "min": 8,
+      "median": 8
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "title",
+      "category",
+      "created",
+      "updated",
+      "source",
+      "parent",
+      "author",
+      "related_wiki",
+      "note_second_category",
+      "last_updated",
+      "folgezettel"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "hermes_quickstart_first_chat": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Fastest Path",
+          "1. Install Hermes Agent",
+          "2. Choose a Provider",
+          "3. Run Your First Chat",
+          "4. Verify Sessions Work",
+          "Quick Reference",
+          "Related Notes"
+        ],
+        "word_count": 1346,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 38
+      },
+      "hermes_quickstart_next_layer": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "5. Try Key Features",
+          "6. Add the Next Layer",
+          "Common Failure Modes",
+          "Recovery Toolkit",
+          "Related Notes"
+        ],
+        "word_count": 1362,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      },
+      "hermes_installation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Install",
+          "Prerequisites",
+          "Manual / Developer Installation",
+          "Non-Sudo / System Service User Installs",
+          "Troubleshooting",
+          "Install Method Auto-Detection",
+          "Related Notes"
+        ],
+        "word_count": 1469,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 34
+      },
+      "hermes_learning_path": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How to Use This Page",
+          "By Experience Level",
+          "By Use Case",
+          "Key Features at a Glance",
+          "Related Notes"
+        ],
+        "word_count": 908,
+        "term_links": 9,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 42
+      },
+      "hermes_updating_uninstalling": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Updating",
+          "What Happens During an Update (git installs)",
+          "Update Flags",
+          "Local Changes on Non-Interactive Updates",
+          "Windows: Another `hermes.exe` Is Running",
+          "Recommended Post-Update Validation",
+          "Terminal Disconnect Mid-Update",
+          "Updating from Messaging Platforms & Manually",
+          "Rollback",
+          "Uninstalling",
+          "Related Notes"
+        ],
+        "word_count": 1943,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 33
+      },
+      "hermes_install_termux_android": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What is supported in the tested path?",
+          "What is not part of the tested path yet?",
+          "Option 1: One-line installer",
+          "Option 2: Manual install (fully explicit)",
+          "Recommended follow-up setup",
+          "Troubleshooting",
+          "Known limitations on phones",
+          "Related Notes"
+        ],
+        "word_count": 1309,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 33
+      },
+      "hermes_install_nix_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three Levels of Nix Integration",
+          "Prerequisites",
+          "Quick Start (Any Nix User)",
+          "Messaging Platforms: `#messaging` / `#full` Variants",
+          "Post-Install Workflow",
+          "Related Notes"
+        ],
+        "word_count": 1222,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 43
+      },
+      "hermes_install_nixos_module": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "NixOS Module \u2014 Add the Flake Input",
+          "Configuration \u2014 Declarative Settings",
+          "Secrets Management (sops-nix / agenix)",
+          "MCP Servers (Declarative)",
+          "Plugins (Declarative)",
+          "Development \u2014 Dev Shell",
+          "Related Notes"
+        ],
+        "word_count": 1835,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      },
+      "hermes_nixos_container_mode": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choosing a Deployment Mode",
+          "Container Architecture",
+          "What Persists Across What",
+          "GC Root Protection",
+          "Directory Layout (Container Mode)",
+          "Options Reference (Container)",
+          "Updating",
+          "Troubleshooting",
+          "Related Notes"
+        ],
+        "word_count": 1747,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      }
+    }
+  }
+}

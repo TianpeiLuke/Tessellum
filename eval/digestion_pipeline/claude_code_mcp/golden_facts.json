@@ -1,0 +1,269 @@
+{
+  "slice": "claude_code_mcp",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "59bdae36c",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "Claude Code documentation (code.claude.com/docs/en)",
+  "source_url_pattern": "https://code.claude.com/docs/en/<slug>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) \u2014 the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 3,
+    "pages": [
+      "mcp.md",
+      "mcp-quickstart.md",
+      "managed-mcp.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_claude_code_docs_b08a_mcp.md",
+    "subplan": "B08A (MCP \u2014 Model Context Protocol)",
+    "planned_note_count": 8,
+    "gate_count": 8,
+    "xref_floor_per_note": {
+      "term_dictionary": 6
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/claude_code",
+    "note_prefix": "cc_",
+    "note_count": 8,
+    "bb_distribution": {
+      "concept": 3,
+      "procedure": 5
+    },
+    "word_count": {
+      "min": 1023,
+      "median": 1551,
+      "max": 1903
+    },
+    "term_links": {
+      "min": 6,
+      "median": 6
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "title",
+      "category",
+      "created",
+      "updated",
+      "source",
+      "parent",
+      "author",
+      "related_wiki",
+      "note_second_category",
+      "last_updated",
+      "folgezettel"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "cc_mcp_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What you can do with MCP",
+          "Find and build MCP servers",
+          "Related Notes"
+        ],
+        "word_count": 1023,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 18
+      },
+      "cc_mcp_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Before you begin",
+          "Add and verify a server",
+          "Additional server examples",
+          "Practical examples (from the MCP reference)",
+          "Connect from other surfaces",
+          "Troubleshooting",
+          "Next steps",
+          "Related Notes"
+        ],
+        "word_count": 1705,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 17
+      },
+      "cc_mcp_transports": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Option 1: Add a remote HTTP server",
+          "Option 2: Add a remote SSE server",
+          "Option 3: Add a local stdio server",
+          "Option 4: Add a remote WebSocket server",
+          "Add MCP servers from JSON configuration",
+          "Import MCP servers from Claude Desktop",
+          "Related Notes"
+        ],
+        "word_count": 1328,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 15
+      },
+      "cc_mcp_server_management": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Managing your servers",
+          "Dynamic tool updates",
+          "Automatic reconnection",
+          "Push messages with channels",
+          "Server timeouts and tips",
+          "Plugin-provided MCP servers",
+          "MCP output limits and warnings",
+          "Related Notes"
+        ],
+        "word_count": 1551,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 14
+      },
+      "cc_mcp_installation_scopes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The three scopes",
+          "Where servers are saved on disk",
+          "Choosing and changing scope",
+          "Scope hierarchy and precedence",
+          "Environment variable expansion in `.mcp.json`",
+          "Related Notes"
+        ],
+        "word_count": 1146,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 11
+      },
+      "cc_mcp_authentication": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Authenticate with the interactive OAuth flow",
+          "Use a fixed OAuth callback port",
+          "Use pre-configured OAuth credentials",
+          "Override OAuth metadata discovery",
+          "Restrict OAuth scopes",
+          "Use dynamic headers for custom authentication",
+          "Use MCP servers from Claude.ai",
+          "Use Claude Code as an MCP server",
+          "Related Notes"
+        ],
+        "word_count": 1673,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 11
+      },
+      "cc_mcp_tool_search": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Scale with MCP Tool Search",
+          "Use MCP resources",
+          "Use MCP prompts as commands",
+          "Respond to MCP elicitation requests",
+          "Related Notes"
+        ],
+        "word_count": 1494,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "cc_managed_mcp_configuration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choose a pattern",
+          "Exclusive control with managed-mcp.json",
+          "Policy-based control with allowlists and denylists",
+          "How restrictions appear to users",
+          "Monitor MCP usage",
+          "Configuration summary",
+          "Related Notes"
+        ],
+        "word_count": 1903,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      }
+    }
+  }
+}

@@ -1,0 +1,316 @@
+{
+  "slice": "openclaw_concepts",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "59bdae36c",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "OpenClaw documentation (docs.openclaw.ai)",
+  "source_url_pattern": "https://docs.openclaw.ai/<slug>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) \u2014 the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 7,
+    "pages": [
+      "concepts/active-memory.md",
+      "concepts/agent.md",
+      "concepts/agent-loop.md",
+      "concepts/agent-runtimes.md",
+      "concepts/agent-workspace.md",
+      "concepts/architecture.md",
+      "concepts/channel-docking.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_openclaw_docs_co01.md",
+    "subplan": "co01 (Concepts \u2014 agent runtime core)",
+    "planned_note_count": 8,
+    "gate_count": 9,
+    "xref_floor_per_note": {
+      "term_dictionary": 8,
+      "code_snippets": 10,
+      "documentation": 10
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/openclaw",
+    "note_prefix": "oc_",
+    "note_count": 8,
+    "bb_distribution": {
+      "concept": 4,
+      "procedure": 3,
+      "model": 1
+    },
+    "word_count": {
+      "min": 1145,
+      "median": 1818,
+      "max": 2500
+    },
+    "term_links": {
+      "min": 8,
+      "median": 9
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "title",
+      "category",
+      "created",
+      "updated",
+      "source",
+      "parent",
+      "author",
+      "related_wiki",
+      "note_second_category",
+      "last_updated",
+      "folgezettel"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "oc_concepts_active_memory_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Active Memory Is",
+          "How It Is Exposed (and Not Exposed)",
+          "When It Runs \u2014 The Two Gates",
+          "Session Types (Concept)",
+          "Where It Runs (Surface Eligibility)",
+          "Why Use It",
+          "How It Works (Recall Runtime Shape)",
+          "Query Modes (Concept)",
+          "Prompt Styles (Concept)",
+          "Model Fallback Policy (Resolution Order)",
+          "Common Issues (Conceptual)",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2187,
+        "term_links": 9,
+        "snippet_links": 12,
+        "repo_links": 2,
+        "total_internal_md_links": 35
+      },
+      "oc_concepts_active_memory_config": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Speed recommendations (dedicated recall models)",
+          "Session toggle (`/active-memory`)",
+          "Scoping by session type and id",
+          "Query-mode and prompt-style tuning",
+          "Model fallback policy",
+          "Memory-tool wiring per memory plugin",
+          "Advanced escape hatches",
+          "Transcript persistence",
+          "Configuration field reference",
+          "Recommended setup",
+          "Debugging",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2500,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 33
+      },
+      "oc_concepts_agent": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Workspace (required)",
+          "Bootstrap files (injected)",
+          "Built-in tools",
+          "Skills",
+          "Runtime boundaries",
+          "Sessions",
+          "Steering while streaming",
+          "Model refs",
+          "Configuration (minimal)",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1375,
+        "term_links": 9,
+        "snippet_links": 12,
+        "repo_links": 3,
+        "total_internal_md_links": 36
+      },
+      "oc_concepts_agent_loop": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Entry Points and Dispatch Flow",
+          "Queueing, Concurrency, and the Session Write Lock",
+          "Hook Points",
+          "Streaming, Tools, and Reply Shaping",
+          "Compaction, Timeouts, and Early Exit",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1818,
+        "term_links": 9,
+        "snippet_links": 12,
+        "repo_links": 3,
+        "total_internal_md_links": 36
+      },
+      "oc_concepts_agent_runtimes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What an Agent Runtime Is",
+          "Runtime Families: Embedded Harnesses vs CLI Backends",
+          "Codex Surfaces",
+          "Runtime Ownership",
+          "Runtime Selection (Precedence)",
+          "GitHub Copilot Agent Runtime",
+          "Compatibility Contract",
+          "Status Labels",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2496,
+        "term_links": 9,
+        "snippet_links": 12,
+        "repo_links": 4,
+        "total_internal_md_links": 37
+      },
+      "oc_concepts_agent_workspace": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Default location",
+          "Extra workspace folders",
+          "Workspace file map",
+          "What is NOT in the workspace",
+          "Git backup (recommended, private)",
+          "Do not commit secrets",
+          "Moving the workspace to a new machine",
+          "Advanced notes",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1730,
+        "term_links": 8,
+        "snippet_links": 12,
+        "repo_links": 3,
+        "total_internal_md_links": 35
+      },
+      "oc_concepts_architecture": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Overview (single Gateway + WS)",
+          "Components and flows",
+          "Connection lifecycle (single client)",
+          "Wire protocol (summary)",
+          "Pairing + local trust",
+          "Protocol typing and codegen",
+          "Remote access",
+          "Operations snapshot",
+          "Invariants",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1440,
+        "term_links": 8,
+        "snippet_links": 12,
+        "repo_links": 3,
+        "total_internal_md_links": 35
+      },
+      "oc_concepts_channel_docking": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What docking does",
+          "Why use it",
+          "Required config \u2014 `session.identityLinks`",
+          "Commands \u2014 `/dock-<channel>`",
+          "What changes \u2014 session delivery fields",
+          "What does not change",
+          "Troubleshooting",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1145,
+        "term_links": 8,
+        "snippet_links": 11,
+        "repo_links": 3,
+        "total_internal_md_links": 33
+      }
+    }
+  }
+}
