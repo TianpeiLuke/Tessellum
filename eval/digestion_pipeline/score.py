@@ -169,16 +169,26 @@ def main() -> int:
     if args.notes:
         report["tier2_notes"] = score_notes(args.notes, golden_facts)
 
-    # Verdict: tier-2 mean pass rate >= 0.9 with N2/N4 at 100% (N7/N8 need a DB,
-    # scored separately). Tier-1 >= 6/7 when a plan was supplied.
+    # Verdict: a supplied plan must pass >= 6/7 tier-1 metrics AND (if notes were
+    # supplied) tier-2 mean >= 0.9 with N2/N4 at 100%. Neither tier is skipped
+    # when present — scoring a plan alone must not report GREEN on tier-1 failures.
     green = True
+    scored_any = False
+    t1 = report.get("tier1_plan", {})
+    if t1:
+        scored_any = True
+        t1_pass = sum(1 for v in t1.values() if isinstance(v, dict) and v.get("pass"))
+        report["tier1_pass_count"] = f"{t1_pass}/{len(t1)}"
+        green = green and t1_pass >= max(1, len(t1) - 1)  # allow one marginal
     t2 = report.get("tier2_notes", {})
     if "metric_pass_rates" in t2:
+        scored_any = True
         r = t2["metric_pass_rates"]
         mean = sum(r.values()) / len(r)
         green = green and mean >= 0.9 and r.get("N2_forbidden_absent") == 1.0 \
             and r.get("N4_single_bb") == 1.0
         report["tier2_mean_pass_rate"] = round(mean, 3)
+    green = green and scored_any  # nothing scored → not GREEN
     report["verdict"] = "GREEN" if green else "NEEDS_WORK"
     print(json.dumps(report, indent=2))
     return 0 if green else 1
