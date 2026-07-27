@@ -35,6 +35,7 @@ The E11 backstop emitted a `RuntimeWarning` when the execute wave fanned out to 
 
 - **`DigestionResult.under_produced: bool`** (`digestion.py`). `True` iff the execute wave wrote fewer note leaves than the plan declared — the programmatic signal an orchestrator can branch on. `False` on the full path when leaf-count ≥ declared, and when the pipeline stopped before execute (nothing produced to compare). Additive field (defaults `False`); the existing `RuntimeWarning` is unchanged.
 - **`_declared_note_count(plan_doc)`** — one source of truth for the declared count (prefers `total_notes`, falls back to `len(planned_notes)`), keyed on by both the warning and the flag so a dev and an orchestrator see the same number. +2 tests; full suite 1766 passed.
+- **Fan-out projection edge-case tests** (`tests/smoke/test_composer_planned_notes_fanout.py`, +14). Pin the pure, fail-soft contract of `_project_planned_notes_to_leaves` (empty/missing/non-list `planned_notes` → `[]`; skip entries lacking a filename; `.md` + `file_prefix` derivation with no double-prefix; `note_dir` from `routing_decision`; inline member excerpts + `source_ref` on every leaf; one-leaf-per-note) and `_declared_note_count` (prefers positive `total_notes`, else `len(planned_notes)`, else 0). Guards the E11 driver-level fix so a refactor can't silently reopen the single-whole-plan-leaf fallback.
 
 ## [1.11.0] — 2026-07-26
 
