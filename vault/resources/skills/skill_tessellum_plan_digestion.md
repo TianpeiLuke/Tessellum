@@ -199,6 +199,8 @@ depends_on:
 - route
 materializer: no_op
 output_key: note_breakdown
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -303,6 +305,8 @@ depends_on:
 - decompose
 materializer: no_op
 output_key: cross_ref_plan
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:

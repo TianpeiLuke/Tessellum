@@ -94,6 +94,8 @@ depends_on:
 - step_1_read_plan
 materializer: no_op
 output_key: structure_checks
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -181,6 +183,8 @@ depends_on:
 - step_2_check_structure_and_gates
 materializer: no_op
 output_key: density_checks
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:

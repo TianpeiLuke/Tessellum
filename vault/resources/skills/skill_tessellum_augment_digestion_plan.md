@@ -58,6 +58,8 @@ batchable: false
 depends_on: []
 materializer: no_op
 output_key: draft_assessment
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -128,6 +130,8 @@ depends_on:
 - read_draft
 materializer: no_op
 output_key: density_reassessment
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -222,6 +226,8 @@ depends_on:
 - reread_source
 materializer: no_op
 output_key: coverage_and_gates
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -304,6 +310,8 @@ depends_on:
 - add_coverage_and_gates
 materializer: no_op
 output_key: crossref_contract
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:

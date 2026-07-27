@@ -95,6 +95,8 @@ depends_on:
 - preflight
 materializer: no_op
 output_key: boot_report
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -176,6 +178,8 @@ depends_on:
 - boot_and_amend
 materializer: no_op
 output_key: batch_contracts
+max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:
@@ -258,6 +262,7 @@ depends_on:
 - extract_contracts
 materializer: body_markdown_frontmatter_to_file
 output_key: note_body
+timeout_seconds: 600
 expected_output_schema:
   type: object
   required:
