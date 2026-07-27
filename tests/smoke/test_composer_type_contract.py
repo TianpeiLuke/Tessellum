@@ -55,13 +55,49 @@ def test_entry_point_prefixes_and_navigation_default() -> None:
     assert tc.resolve_flavor("0_entry_points/random_index.md") == "navigation"
 
 
-def test_override_dir_and_bare_name_unresolvable() -> None:
-    # capture() destination= override dirs (areas/tools, resources/teams) are NOT
-    # in REGISTRY → resolve to None (fail-soft). A bare filename likewise.
-    assert tc.resolve_flavor("areas/tools/tool_x.md") is None
-    assert tc.resolve_flavor("resources/teams/team_x.md") is None
+def test_bare_name_and_unknown_prefix_unresolvable() -> None:
+    # A bare filename resolves to None; an unregistered filename prefix under a
+    # registered destination also resolves to None (fail-soft).
     assert tc.resolve_flavor("README.md") is None
     assert tc.resolve_flavor("") is None
+    assert tc.resolve_flavor("resources/teams/team_x.md") is None
+    assert tc.resolve_flavor("areas/code_repos/notaprefix_x.md") is None
+
+
+def test_nested_model_dir_resolves_via_parent_walk() -> None:
+    # HIGH#1 fix: model notes live in areas/models/ but the model flavor's
+    # destination is the bare `areas` — a parent-directory walk resolves them.
+    assert tc.resolve_flavor("areas/models/model_x.md") == "model"
+    # bare-destination model notes still resolve (no regression)
+    assert tc.resolve_flavor("areas/model_x.md") == "model"
+    # a deeper registered destination wins over the shallower `areas` (its own
+    # prefix matches before the walk reaches `areas`)
+    assert tc.resolve_flavor("areas/code_repos/repo_x.md") == "code_repo"
+    # a note genuinely nested under a registered dest still resolves by walking up
+    assert (
+        tc.resolve_flavor("resources/analysis_thoughts/sub/thought_x.md")
+        is not None
+    )
+
+
+def test_model_prefix_aliases_resolve() -> None:
+    # HIGH#1 fix: pattern_ (DKS pattern discovery) and tool_ are documented
+    # model-flavor filename-prefix aliases under `areas` (the capture() override
+    # convention), so they resolve to the model contract.
+    for path in ("areas/models/pattern_foo.md", "areas/tools/tool_x.md"):
+        assert tc.resolve_flavor(path) == "model", path
+        assert tc.build_type_contract("model").required_sections == (
+            "Architecture", "Components", "Relationships", "References",
+        )
+
+
+def test_divergent_template_drops_placeholder_headers() -> None:
+    # LOW fix: the skill template's `## Step 1: <First action>` placeholder
+    # headers are scaffolds, not real section names — they must be dropped.
+    skill = tc.build_type_contract("skill")
+    assert all("<" not in s and ">" not in s for s in skill.required_sections)
+    assert "Setup" in skill.required_sections  # concrete headers kept
+    assert not any(s.startswith("Step 1") for s in skill.required_sections)
 
 
 @pytest.mark.parametrize("flavor", sorted(capture.REGISTRY))
@@ -132,7 +168,7 @@ def test_divergent_template_unreadable_failsoft(monkeypatch) -> None:
 
 
 def test_resolve_note_contract_none_for_unresolvable() -> None:
-    assert tc.resolve_note_contract("areas/tools/tool_x.md") is None
+    assert tc.resolve_note_contract("resources/teams/team_x.md") is None
     assert tc.resolve_note_contract("README.md") is None
 
 

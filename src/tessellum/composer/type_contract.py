@@ -39,9 +39,17 @@ Design invariants (mirroring the related-notes precedent):
   and template parse are ``lru_cache`` read-only after first build. An
   unresolvable path, an unreadable template, or any error yields ``None`` / an
   empty section list — never a raise, never a crash of the wave-parallel run.
-- **Advisory only.** This DELIVERS the right section list to the writer so a note
-  satisfies the ``TESS-010`` INFO advisory by construction; it adds no hard gate
-  (``required_sections`` is intentionally advisory today).
+- **Advisory only.** This DELIVERS a per-FLAVOR section list to the writer up
+  front; it adds no hard gate (``required_sections`` is intentionally advisory
+  today). NOTE: for a PRIMARY flavor the delivered list is exactly
+  ``BB_SPECS[bb].required_sections``, so a conforming note also satisfies the
+  ``TESS-010`` INFO advisory (which is BB-keyed). For the four
+  ``SECTION_DIVERGENT_FLAVORS`` (and any note whose per-note ``building_block``
+  differs from the flavor's default) the delivered flavor sections DIFFER from
+  the note's BB sections, so a note that follows this contract may STILL raise
+  TESS-010 INFOs — that divergence is expected and acceptable precisely because
+  TESS-010 is advisory, not a gate. A future flavor-keyed ``TESS-011`` would
+  reconcile the two, and is deliberately deferred.
 """
 
 from __future__ import annotations
@@ -81,10 +89,23 @@ class NoteTypeContract:
     contract_md: str
 
 
+# Domain-specific filename-prefix ALIASES for the ``capture()`` ``filename_prefix=``
+# override convention: a note may be written with a subject prefix other than its
+# flavor's default while keeping the flavor's shape. These are the documented
+# vault conventions (``skill_tessellum_append_to_trail.md`` / ``skill_tessellum_dks_cycle.md``):
+# a ``model``-flavored note may be named ``pattern_<slug>`` (DKS pattern discovery,
+# ``areas/models/pattern_*.md``, ``building_block: model``) or ``tool_<slug>`` (an
+# algorithm/tool model note). Keyed as ``(destination, alias_prefix) -> flavor`` so
+# the alias applies only under that flavor's destination subtree, never globally.
+_PREFIX_ALIASES: dict[str, list[tuple[str, str]]] = {
+    "areas": [("pattern_", "model"), ("tool_", "model")],
+}
+
+
 @lru_cache(maxsize=1)
 def _reverse_index() -> dict[str, list[tuple[str, str]]]:
     """Build ``destination -> [(filename_prefix, flavor), ...]`` from the
-    registry, sorted so the LONGEST prefix wins.
+    registry (plus :data:`_PREFIX_ALIASES`), sorted so the LONGEST prefix wins.
 
     Read-only after the one-time build (``lru_cache`` size 1). The sort key
     ``(-len(prefix), prefix)`` puts longer prefixes first — load-bearing so that
@@ -97,6 +118,8 @@ def _reverse_index() -> dict[str, list[tuple[str, str]]]:
     index: dict[str, list[tuple[str, str]]] = {}
     for flavor, spec in capture.REGISTRY.items():
         index.setdefault(spec.destination, []).append((spec.filename_prefix, flavor))
+    for dest, aliases in _PREFIX_ALIASES.items():
+        index.setdefault(dest, []).extend(aliases)
     for dest in index:
         index[dest].sort(key=lambda t: (-len(t[0]), t[0]))
     return index
@@ -105,29 +128,42 @@ def _reverse_index() -> dict[str, list[tuple[str, str]]]:
 def resolve_flavor(target_path: str) -> str | None:
     """Reverse-resolve a vault-relative ``target_path`` to its capture flavor.
 
-    Returns ``None`` (fail-soft) when the path's directory is not a registered
-    destination (e.g. a ``capture()`` ``destination=`` override dir like
-    ``areas/tools`` / ``resources/teams``), when the path is a bare filename, or
-    when no registered prefix matches the filename. The caller stamps an empty
-    contract for such leaves so the writer degrades gracefully.
+    Walks the note's ancestor directories DEEPEST-first: at each ancestor that
+    is a registered destination it tries that destination's prefixes (longest
+    first) and returns the first flavor whose prefix matches the filename. This
+    resolves notes NESTED under a registered destination — the ``model`` flavor's
+    destination is ``areas`` but the vault writes model notes to ``areas/models/``
+    (the DKS cycle's ``areas/models/pattern_*.md`` / ``model_*.md``), so an
+    exact-directory lookup would miss them. A deeper ancestor with a matching
+    prefix wins over a shallower one (more specific location); the longest-prefix
+    order is the tiebreak WITHIN one destination (see :func:`_reverse_index`).
 
-    Uses LONGEST-prefix matching (see :func:`_reverse_index`). The benign
-    ``thought_`` collision (``argument`` and ``thought`` share the destination,
-    prefix, ``bb_type`` and ``second_category``) resolves deterministically to
-    the alphabetically-first flavor, but the resulting contract is identical
-    either way, so callers must not depend on which flavor name wins.
+    Returns ``None`` (fail-soft) when no ancestor destination has a matching
+    prefix — a ``capture()`` ``destination=`` override dir whose filename prefix
+    is unregistered (``areas/tools/tool_x.md``, ``resources/teams/team_x.md``), a
+    bare filename, or an unknown prefix. The caller stamps an empty contract for
+    such leaves so the writer degrades gracefully.
+
+    The benign ``thought_`` collision (``argument`` and ``thought`` share the
+    destination, prefix, ``bb_type`` and ``second_category``) resolves
+    deterministically to the alphabetically-first flavor, but the resulting
+    contract is identical either way, so callers must not depend on which wins.
     """
     if not isinstance(target_path, str) or not target_path:
         return None
     p = PurePosixPath(target_path)
-    dest = str(p.parent)
     name = p.name
-    candidates = _reverse_index().get(dest)
-    if not candidates:
-        return None
-    for prefix, flavor in candidates:
-        if name.startswith(prefix):
-            return flavor
+    index = _reverse_index()
+    note_dir = p.parent
+    for ancestor in (note_dir, *note_dir.parents):
+        candidates = index.get(str(ancestor))
+        if not candidates:
+            continue
+        for prefix, flavor in candidates:
+            if name.startswith(prefix):
+                return flavor
+        # A registered ancestor with no matching prefix does not block a
+        # shallower ancestor — keep walking up.
     return None
 
 
@@ -140,7 +176,12 @@ def _template_h2_sections(flavor: str) -> tuple[str, ...]:
     building block's ``BB_SPECS`` section triple — so their contract must come
     from the template, not ``BB_SPECS[procedure]``. Reuses the exact parse
     :func:`capture.check_template_registry_consistency` uses
-    (``capture._TMPL_H2_RE`` + ``tessellum.data.templates_dir``). Fail-soft:
+    (``capture._TMPL_H2_RE`` + ``tessellum.data.templates_dir``).
+
+    Placeholder headers (containing an ``<…>`` fill token — e.g. the ``skill``
+    template's ``## Step 1: <First action>``) are DROPPED: they are authoring
+    scaffolds, not literal section names, and delivering them verbatim would tell
+    the writer to emit a section named ``## Step 1: <First action>``. Fail-soft:
     returns ``()`` on ANY read/parse error — never raises. Memoized (the
     templates are static per process)."""
     from tessellum.data import templates_dir
@@ -148,9 +189,12 @@ def _template_h2_sections(flavor: str) -> tuple[str, ...]:
     try:
         spec = capture.get_spec(flavor)
         text = (templates_dir() / spec.template_filename).read_text(encoding="utf-8")
-        return tuple(
+        headers = (
             h.split("<!--")[0].strip() for h in capture._TMPL_H2_RE.findall(text)
         )
+        # Drop placeholder-bearing headers (``<…>`` fill tokens) — scaffolds, not
+        # real section names — while keeping concrete ones.
+        return tuple(h for h in headers if h and "<" not in h and ">" not in h)
     except Exception:  # noqa: BLE001 — an unreadable template degrades, never kills
         return ()
 

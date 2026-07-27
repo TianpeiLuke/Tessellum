@@ -251,8 +251,12 @@ def _enrich_leaves_with_type_contract(
         leaf["type_contract_md"]  # pre-rendered compact contract block
 
     The writer renders ``## H2`` sections from ``{{leaf.type_contract_md}}`` next
-    to the ``## References`` block (the execute skill's ``dispatch_notes`` step),
-    so a written note satisfies the ``TESS-010`` section advisory by construction.
+    to the ``## References`` block (the execute skill's ``dispatch_notes`` step).
+    For a primary flavor the delivered sections match the BB-keyed ``TESS-010``
+    advisory; for a ``SECTION_DIVERGENT`` flavor (or a per-note ``building_block``
+    override) they differ and a conforming note may still raise TESS-010 INFOs —
+    acceptable because TESS-010 is advisory, not a gate (see
+    :mod:`tessellum.composer.type_contract`).
 
     Pure + fail-soft, mirroring the related-notes precedent. ``enabled=False`` is
     the explicit off-switch → the input list is returned UNCHANGED (byte-

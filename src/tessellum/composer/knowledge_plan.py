@@ -2,8 +2,9 @@
 
 Phase **P2** (core) of "Dynamic Digestion as a Snapshot-Pinned Knowledge
 Transaction". This module is the typed, deterministic replacement for the
-untyped whole-plan fallback at :func:`digestion.run_digestion_pipeline`
-(``execute_leaves = [dict(plan_doc)]``, currently at digestion.py:284-288):
+untyped whole-plan fallback in :func:`digestion.run_execute_wave`
+(``execute_leaves = [dict(plan_doc)]`` — the ``else`` branch when neither a
+``note_intent_graph`` nor ``execute_leaves`` is present):
 instead of one leaf carrying the entire opaque plan dict, a *set* of typed,
 provenance-carrying :class:`NoteIntent` objects is projected — one writer
 leaf per intent — via :func:`project_note_intent_graph`.
@@ -246,11 +247,10 @@ def project_note_intent_graph(graph: NoteIntentGraph) -> list[dict]:
     input; never mutates it (builds fresh dicts).
 
     This is the TYPED replacement for the whole-plan fallback
-    ``execute_leaves = [dict(plan_doc)]`` in
-    :func:`digestion.run_digestion_pipeline` (currently at digestion.py:284-288).
-    This phase does NOT wire it in — no import of / edit to ``digestion.py``;
-    the pointer is forward-looking only. Wiring is **P2b** (it needs the
-    deferred SourceBundle / source delivery — A2.1/A2.2).
+    ``execute_leaves = [dict(plan_doc)]`` in :func:`digestion.run_execute_wave`.
+    It is now wired: ``run_execute_wave`` projects a present ``note_intent_graph``
+    through this function, and the projected leaves flow into the per-note
+    related-notes and note-type-contract enrichments before the write wave.
 
     Leaf shape (exactly three top-level keys, nothing else):
 
@@ -273,7 +273,7 @@ def project_note_intent_graph(graph: NoteIntentGraph) -> list[dict]:
 
     Leaves carry no ``"_id"`` key — compatible with
     :func:`scheduler.run_pipeline_dynamic`, which auto-injects
-    ``_id = f"leaf_{i}"`` when absent (scheduler.py:621-623), so P2b can feed
+    ``_id = f"leaf_{i}"`` when absent, so P2b can feed
     these straight in.
     """
     leaves: list[dict] = []

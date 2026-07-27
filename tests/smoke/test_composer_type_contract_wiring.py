@@ -53,8 +53,11 @@ def test_typed_leaf_stamps_contract() -> None:
 
 
 def test_unresolvable_typed_leaf_stamps_empty() -> None:
-    # A capture() override dir → no flavor. Stamp empty (sentinel-safe), not crash.
-    out = _enrich_leaves_with_type_contract(_leaves(target_path="areas/tools/tool_x.md"))
+    # An unregistered destination + prefix → no flavor. Stamp empty (sentinel-
+    # safe), not crash.
+    out = _enrich_leaves_with_type_contract(
+        _leaves(target_path="resources/teams/team_x.md")
+    )
     assert out[0]["type_contract"] == {}
     assert out[0]["type_contract_md"] == ""
 
@@ -117,3 +120,51 @@ def test_per_leaf_failure_isolated(monkeypatch) -> None:
     out = _enrich_leaves_with_type_contract(_leaves())
     assert out[0]["type_contract"] == {}
     assert out[0]["type_contract_md"] == ""
+
+
+def test_run_execute_wave_actually_stamps_type_contract(monkeypatch) -> None:
+    # End-to-end guard: drive run_execute_wave (not the helper directly) and
+    # assert the leaves handed to run_pipeline_dynamic carry type_contract_md.
+    # This catches a regression that deletes the enrichment hook in
+    # run_execute_wave — which the helper-only tests would NOT catch.
+    import tessellum.composer.digestion as dig
+    from tessellum.composer.knowledge_plan import (
+        ClaimProvenance,
+        NoteIntent,
+        NoteIntentGraph,
+    )
+
+    captured: dict = {}
+
+    monkeypatch.setattr(dig, "compile_skill", lambda _p: object())
+
+    def _fake_dynamic(_compiled, *, leaves, **_kw):
+        captured["leaves"] = leaves
+        return object()  # RunResult stand-in; run_execute_wave returns it as-is
+
+    monkeypatch.setattr(dig, "run_pipeline_dynamic", _fake_dynamic)
+
+    graph = NoteIntentGraph(
+        objective_id="obj",
+        intents=(
+            NoteIntent(
+                note_id="n1",
+                thesis="a named concept",
+                building_block="concept",
+                target_path="resources/term_dictionary/term_x.md",
+                provenance=(ClaimProvenance(span_id="s1", source_ref="src#1"),),
+            ),
+        ),
+    )
+    dig.run_execute_wave(
+        {"note_intent_graph": graph},
+        skills_dir="/nonexistent",  # compile_skill is stubbed, never read
+        backend=object(),
+        vault_root="/tmp",
+        dry_run=True,
+    )
+    leaf = captured["leaves"][0]
+    assert leaf["type_contract"]["flavor"] == "concept"
+    assert leaf["type_contract_md"].startswith("Type:")
+    # related-notes enrichment also ran (composed, not clobbered)
+    assert "related_references_md" in leaf
