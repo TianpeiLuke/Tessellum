@@ -300,7 +300,7 @@ RELATED NOTES → `## References` (knowledge-graph edges). The note MUST end wit
 
 NOTE-TYPE CONTRACT → required sections. The `NOTE-TYPE CONTRACT` block above (`{{leaf.type_contract_md}}`) names this note's type (resolved from its `target_path`) and the `## H2` sections that type requires — treat that section list as a FLOOR for this note (include each one; you MAY add type-appropriate sections beyond it). This is why the writer produces the right shape per type in one run: a term note gets Definition/Examples/References, a how-to gets Setup/Steps/Validation/References, an argument gets Claim/Reason/Evidence/References, and so on. If the block is empty (the type could not be resolved from the path), fall back to the plan's format definition and the pilot worked example. The section contract is advisory guidance, not a substitute for faithful, non-fabricated content.
 
-OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON). The frontmatter MUST contain the key `output_path` whose value is the vault-relative `.md` path for this note; everything after the closing `---` IS the note body, written verbatim. Read your assigned source
+OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON). The frontmatter MUST contain the coordination key `output_path` (the vault-relative `.md` path for this note) AND the note's full vault frontmatter — every required field: `tags` (a list; `tags[0]` = the PARA bucket e.g. `resource`, `tags[1]` = the note's second-category/type, plus topical tags), `keywords` (≥5), `topics` (≥2), `language` (`markdown`), `date of note`, `status` (`active`), `building_block` (exactly one, from the closed 8-type enum — matching this note's declared type), and any type-specific fields (e.g. `source_url` for a documentation note). Everything after the closing `---` IS the note body, written verbatim. Read your assigned source
 page(s) FIRST, then write one note matching the pilot's shape and the
 plan's format definition: verbatim code, honest inferred / not-in-
 source markers, one building_block per note. If the source fetch
@@ -308,8 +308,17 @@ returns a login page / 403 / empty body, do NOT fall back to memory —
 fail closed.
 
 OUTPUT FORMAT — markdown with YAML frontmatter (NOT JSON). The
-frontmatter MUST contain the key:
+frontmatter MUST contain the coordination key `output_path` AND the
+note's full vault frontmatter (do NOT emit `output_path` alone):
   output_path: <vault-relative .md path for this note>
+  tags: [<PARA bucket>, <second-category/type>, <topical...>]
+  keywords: [<≥5 search phrases>]
+  topics: [<≥2>]
+  language: markdown
+  date of note: <YYYY-MM-DD>
+  status: active
+  building_block: <one of the closed 8-type enum, matching this note's type>
+  # + any type-specific fields (e.g. source_url for documentation)
 Everything after the closing `---` IS the note body, written verbatim.
 
 ## Verify — Independent Post-Hoc Sweep <!-- :: section_id = verify :: -->
