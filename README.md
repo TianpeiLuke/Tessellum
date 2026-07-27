@@ -111,7 +111,7 @@ Tessellum rests on four foundations — remove any one and the system stops work
 
 ## Architecture
 
-![Tessellum 1.8.0 architecture showing runtime orchestration, plan atomicity gates, semantic certification, incremental indexing, hybrid retrieval, and vault publication](docs/assets/tessellum_architecture.png)
+![Tessellum 1.9.0 architecture showing runtime orchestration, plan atomicity gates, registry-driven note contracts, semantic certification, incremental indexing, hybrid retrieval, and vault publication](docs/assets/tessellum_architecture.png)
 
 *Source-level view of Tessellum's write and retrieval paths. Solid arrows are active runtime paths; dashed arrows identify opt-in primitives or integrations that are implemented but not wired into the automatic runtime end to end.*
 
