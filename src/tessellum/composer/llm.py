@@ -39,7 +39,13 @@ class LLMRequest:
             a step's invocations).
         user_prompt: The rendered user prompt — placeholders resolved
             by the executor.
-        max_tokens: Cap on response length.
+        max_tokens: Cap on response length. Defaults to 16000 — the digestion
+            steps that emit a full plan body (``write_plan``), the planned-notes
+            table + coverage map (``decompose``), or a complete note body
+            (``dispatch_notes``) routinely exceed a few thousand output tokens;
+            the previous 4000 default truncated their JSON mid-string, so the
+            response failed to parse. 16000 is comfortably above what these
+            steps need and well within the model's output limit.
         temperature: Sampling temperature. ``None`` (default) → the provider
             default is used (unchanged behavior for every existing caller).
             A caller that needs reproducible / low-variance output (e.g. the
@@ -49,7 +55,7 @@ class LLMRequest:
 
     system_prompt: str
     user_prompt: str
-    max_tokens: int = 4000
+    max_tokens: int = 16000
     temperature: float | None = None
 
 
@@ -142,8 +148,8 @@ class AnthropicBackend:
         model: The Anthropic model ID (e.g. ``"claude-opus-4-7"``,
             ``"claude-sonnet-4-6"``, ``"claude-haiku-4-5-20251001"``).
         default_max_tokens: Used when ``LLMRequest.max_tokens`` is the
-            default (4000) — kept identical for now; expose if profiling
-            shows it matters.
+            default (16000) — sized for full plan/note-body generation
+            (see :class:`LLMRequest`).
         client: The ``anthropic.Anthropic`` instance. Reads
             ``ANTHROPIC_API_KEY`` from the environment by default.
 
@@ -161,7 +167,7 @@ class AnthropicBackend:
         *,
         model: str = "claude-sonnet-4-6",
         api_key: str | None = None,
-        default_max_tokens: int = 4000,
+        default_max_tokens: int = 16000,
         client: object | None = None,
     ) -> None:
         """Construct an Anthropic-backed LLM backend.
@@ -273,7 +279,7 @@ class BedrockBackend:
         model: str = "us.anthropic.claude-sonnet-4-6",
         region: str = "us-east-1",
         aws_profile: str | None = None,
-        default_max_tokens: int = 4000,
+        default_max_tokens: int = 16000,
         client: object | None = None,
     ) -> None:
         """Construct a Bedrock-backed LLM backend.

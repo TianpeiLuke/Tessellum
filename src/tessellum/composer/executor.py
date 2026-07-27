@@ -87,8 +87,12 @@ same-error loops. 200 chars is enough to distinguish most error-payload
 shapes without overfitting to a specific line/column hint."""
 
 
-DEFAULT_TIMEOUT_SECONDS: float = 120.0
-"""Default per-step watchdog timeout. Overridable via the step contract's
+DEFAULT_TIMEOUT_SECONDS: float = 300.0
+"""Default per-step watchdog timeout. Raised from 120s → 300s: the large-output
+generation steps (``write_plan`` emits a full multi-hundred-line plan body,
+``dispatch_notes`` a full note body) can legitimately take 2–4 minutes for a
+single Bedrock/Anthropic call over a large source, and 120s killed them
+mid-generation as a false "stall". Overridable via the step contract's
 ``timeout_seconds`` field or the :func:`execute_step` /
 :func:`execute_step_with_retry` ``timeout_seconds`` kwarg.
 
@@ -228,6 +232,17 @@ def execute_step(
         retry_attempt=retry_attempt,
         retry_last_error=retry_last_error,
     )
+
+    # Deliver the output schema to the model. The compiler strips the step's
+    # ```yaml``` contract block (which holds `expected_output_schema`) out of
+    # the prompt prose (skill_extractor.split_contract_and_prompt), yet the
+    # prose says "return the JSON object specified by expected_output_schema".
+    # So without this the model is asked to match a schema it was never shown —
+    # it invents close-but-wrong enum values and drops required fields, and the
+    # response then fails validation. Append the schema (+ required keys) so the
+    # model actually sees the contract it must satisfy.
+    if step.expected_output_schema:
+        prompt = f"{prompt}\n\n{_render_output_schema_instruction(step.expected_output_schema)}"
 
     # Augment the system prompt on retries so the model sees both the
     # behavioural nudge ("you're on attempt N") and the prior failure
@@ -498,6 +513,39 @@ def _stringify(value: Any) -> str:
     if isinstance(value, (dict, list)):
         return json.dumps(value, indent=2, ensure_ascii=False)
     return str(value)
+
+
+def _render_output_schema_instruction(schema: dict) -> str:
+    """Render an ``expected_output_schema`` into a prompt instruction block.
+
+    The compiler strips the step's ``​```yaml``` contract block (which carries
+    ``expected_output_schema``) out of the prompt, so the model otherwise never
+    sees the required keys / enum values it is validated against. This renders
+    the schema back into the prompt as an explicit, hard instruction: emit the
+    literal JSON Schema plus a plain-language restatement of the required keys,
+    so the model matches field names and closed enums exactly (no invented
+    variants, no dropped required fields).
+
+    Kept compact and deterministic (sorted keys) — it is appended to every
+    schema-bearing step's prompt and counts against the prompt budget.
+    """
+    lines = [
+        "OUTPUT CONTRACT — your response MUST be a single JSON object that "
+        "validates against this JSON Schema. Return ONLY the JSON (no prose, "
+        "no markdown code fence). Use these EXACT key names and, for any "
+        "`enum`, one of the listed literal values verbatim:",
+        "```json",
+        json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False),
+        "```",
+    ]
+    required = schema.get("required")
+    if isinstance(required, list) and required:
+        lines.append(
+            "REQUIRED top-level keys (all must be present): "
+            + ", ".join(str(k) for k in required)
+            + "."
+        )
+    return "\n".join(lines)
 
 
 _OUTER_FENCE_RE = re.compile(

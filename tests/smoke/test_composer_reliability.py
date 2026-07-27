@@ -159,8 +159,12 @@ def test_executor_kwarg_timeout_override(tmp_path: Path):
     assert "stalled" in result.error.lower()
 
 
-def test_default_timeout_constant_is_120():
-    assert DEFAULT_TIMEOUT_SECONDS == 120.0
+def test_default_timeout_constant_is_300():
+    # Raised 120 → 300: the large-output generation steps (write_plan emits a
+    # full plan body, dispatch_notes a full note body) can take 2–4 min for a
+    # single Bedrock/Anthropic call over a large source; 120s killed them as a
+    # false "stall".
+    assert DEFAULT_TIMEOUT_SECONDS == 300.0
 
 
 # ── Compile-time budget (B.3) ──────────────────────────────────────────────
