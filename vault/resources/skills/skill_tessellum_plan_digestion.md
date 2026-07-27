@@ -426,6 +426,7 @@ depends_on:
 materializer: body_markdown_to_file
 output_key: plan_doc
 max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:

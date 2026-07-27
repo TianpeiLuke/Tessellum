@@ -44,6 +44,7 @@ depends_on: []
 materializer: no_op
 output_key: plan_doc
 max_tokens: 32000
+timeout_seconds: 900
 expected_output_schema:
   type: object
   required:

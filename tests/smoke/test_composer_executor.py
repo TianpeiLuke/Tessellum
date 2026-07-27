@@ -17,11 +17,13 @@ from pathlib import Path
 import pytest
 
 from tessellum.composer import (
+    LLMResponse,
     MockBackend,
     StepResult,
     compile_skill,
     execute_step,
 )
+from tessellum.composer.executor import classify_error
 
 
 # Single-file skill: each pipeline step is an H2 section carrying a
@@ -324,3 +326,46 @@ def test_executor_defaults_max_tokens_when_step_unset(maxtok_compiled, tmp_path:
     small = [s for s in maxtok_compiled.steps if s.section_id == "small_step"][0]
     execute_step(small, leaf={"_id": "corpus"}, upstream={}, backend=backend, vault_root=tmp_path)
     assert backend.calls[0].max_tokens == 16000  # LLMRequest default, not overridden
+
+
+# ── P10 (FZ 20k9c1a1a1b7c2g): truncation is a first-class diagnosis, not "invalid JSON" ──
+
+class _TruncatingBackend:
+    """A backend whose response is cut off at the token cap — carries
+    ``stop_reason='max_tokens'`` + a partial (unparseable) JSON body, exactly
+    what the real SDK returns on truncation."""
+
+    backend_id = "fake-truncating"
+
+    def call(self, request):  # noqa: ANN001 — test double
+        return LLMResponse(
+            content='{"facets": "the body was cut off mid-str',  # truncated JSON
+            elapsed_ms=1.0,
+            backend_id=self.backend_id,
+            metadata={"stop_reason": "max_tokens", "output_tokens": 32000},
+        )
+
+
+def test_executor_diagnoses_truncation_not_invalid_json(compiled, tmp_path: Path):
+    """A response truncated at the token cap must be diagnosed as TRUNCATED
+    (actionable: raise max_tokens), NOT misclassified as 'not valid JSON' /
+    'validation' — the E14/E15 misdiagnosis P10 fixes. step_2 consumes JSON."""
+    step2 = compiled.steps[1]  # has expected_output_schema (JSON-consuming)
+    result = execute_step(
+        step2, leaf={"_id": "leaf_0", "id": "x"}, upstream={"prev": "P"},
+        backend=_TruncatingBackend(), vault_root=tmp_path,
+    )
+    assert result.error is not None
+    assert "truncated at max_tokens" in result.error
+    assert "32000 output tokens" in result.error
+    assert result.error_class == "truncated"
+    # The size diagnosis wins — it must NOT read as a schema/JSON validation defect.
+    assert "not valid json" not in result.error.lower()
+    assert "schema validation" not in result.error.lower()
+
+
+def test_classify_error_recognizes_truncation_above_validation():
+    """classify_error ranks truncation above validation: a truncated payload
+    also fails JSON parse, but the actionable class is 'truncated'."""
+    msg = "response truncated at max_tokens (32000 output tokens) — raise the step's max_tokens or split the output"
+    assert classify_error(msg) == "truncated"

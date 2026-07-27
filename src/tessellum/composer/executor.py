@@ -102,7 +102,7 @@ cancellation primitive. A late result is discarded.
 """
 
 
-ErrorClass = Literal["transient", "validation", "rate_limit", "auth", "crash"]
+ErrorClass = Literal["transient", "validation", "rate_limit", "auth", "crash", "truncated"]
 """Phase 1.4 (v4) — fine-grained error class returned by
 :func:`classify_error`. Orthogonal to the coarse logic/crash/stall split
 that :func:`execute_step_with_retry` uses for budget accounting; this is
@@ -386,10 +386,25 @@ def execute_step(
     # see the clean payload (inner code fences in a note body are untouched).
     parse_content = _strip_outer_code_fence(response.content)
 
+    # P10 (FZ 20k9c1a1a1b7c2g): a response cut off at the token cap is an
+    # OUTPUT-SIZE condition, not a logic/prompt defect. The backend records
+    # stop_reason in metadata (llm.py); read it here and diagnose truncation
+    # FIRST — otherwise the truncated JSON fails json.loads and is misclassified
+    # "validation" / "not valid JSON" (the E14/E15 symptom), sending operators to
+    # tune the prompt instead of the cap.
+    if response.metadata.get("stop_reason") == "max_tokens":
+        out_toks = response.metadata.get("output_tokens")
+        error = (
+            "response truncated at max_tokens"
+            + (f" ({out_toks} output tokens)" if out_toks else "")
+            + " — raise the step's max_tokens (a big-output writer) or split the output"
+        )
+
     # Schema validation — best effort, and only for JSON-consuming materializers
     # (a markdown/XML materializer's output is not JSON; its own materializer
     # validates the format, so a json.loads schema check would spuriously fail).
-    if step.expected_output_schema and _step_consumes_json(step):
+    # Skip when truncation already diagnosed the real cause.
+    if error is None and step.expected_output_schema and _step_consumes_json(step):
         validation_error = _validate_against_schema(
             parse_content, step.expected_output_schema
         )
@@ -644,6 +659,10 @@ def classify_error(error_msg: str) -> ErrorClass:
     Precedence, checked against the lower-cased message:
 
     1. ``transient`` — the watchdog stall marker (``"stalled after"``).
+    1b. ``truncated`` — response cut off at the token cap
+       (``"truncated at max_tokens"``); ranked above ``validation`` because a
+       truncated payload also fails JSON parse, and the size diagnosis is the
+       actionable one.
     2. ``validation`` — schema / materializer / contract failures.
     3. ``rate_limit`` — ``"429"`` / ``"rate limit"`` / ``"quota"`` /
        ``"too many requests"`` / ``"throttl"``.
@@ -668,6 +687,12 @@ def classify_error(error_msg: str) -> ErrorClass:
     # 1. Stall marker → transient (infra-level, retry may clear it).
     if "stalled after" in msg:
         return "transient"
+
+    # 1b. Output truncated at the token cap — an output-SIZE condition. Ranked
+    # ABOVE validation because a truncated payload ALSO fails json parse; we want
+    # the size diagnosis ("raise max_tokens"), not "not valid json".
+    if "truncated at max_tokens" in msg:
+        return "truncated"
 
     # 2. Logic-class validation failures.
     if (
