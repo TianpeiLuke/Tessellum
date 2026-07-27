@@ -103,6 +103,15 @@ class DigestionResult:
             (``None`` if the pipeline stopped before review completed).
         phases: Ordered per-phase outcomes.
         plan_doc: The final plan artifact threaded through the phases.
+        under_produced: ``True`` iff the execute wave wrote fewer note leaves
+            than the plan declared (FZ 20k9c1a1a1b7c2b / b7c2g) — the
+            silent-under-production failure mode (an N-note plan producing ~1
+            note). ``run_execute_wave`` also emits a ``RuntimeWarning``, but a
+            headless orchestrator never sees a warning; this is the programmatic
+            signal it can branch on (e.g. fail the run). ``False`` on the full
+            path when leaf-count ≥ declared, and always ``False`` when the plan
+            declares no count or the pipeline stopped before execute (nothing
+            was produced to compare).
     """
 
     completed: bool
@@ -110,6 +119,7 @@ class DigestionResult:
     sign_off: SignOffResult | None
     phases: tuple[PhaseOutcome, ...]
     plan_doc: dict = field(default_factory=dict)
+    under_produced: bool = False
 
 
 def _run_phase_linear(
@@ -199,6 +209,23 @@ def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
     ptext = plan_doc.get("plan_text")
     if isinstance(body, str) and isinstance(ptext, str) and len(body) > len(ptext):
         plan_doc["plan_text"] = body
+
+
+def _declared_note_count(plan_doc: dict) -> int:
+    """How many notes the plan declares — the single source of truth for the
+    under-production check (FZ 20k9c1a1a1b7c2b / b7c2g).
+
+    Prefers the explicit ``total_notes`` scalar, falling back to the length of
+    the ``planned_notes`` list. Both the loud ``RuntimeWarning`` in
+    :func:`run_execute_wave` and the ``DigestionResult.under_produced`` flag key
+    on this, so a headless orchestrator and a dev watching warnings see the same
+    number. Returns ``0`` when neither is present (nothing to compare against).
+    """
+    total = plan_doc.get("total_notes")
+    if isinstance(total, int) and total > 0:
+        return total
+    planned = plan_doc.get("planned_notes")
+    return len(planned) if isinstance(planned, list) else 0
 
 
 def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
@@ -502,7 +529,7 @@ def run_execute_wave(
     # declares N notes but the wave is about to fan out to far fewer leaves, that
     # is the single-whole-plan-leaf failure mode — surface it loudly rather than
     # silently writing ~1 note for an N-note plan.
-    declared = plan_doc.get("total_notes") or len(plan_doc.get("planned_notes") or [])
+    declared = _declared_note_count(plan_doc)
     if isinstance(declared, int) and declared > 1 and len(execute_leaves) < declared:
         import warnings
 
@@ -745,12 +772,20 @@ def run_digestion_pipeline(
         )
     )
 
+    # Under-production signal (FZ 20k9c1a1a1b7c2g): the execute wave's leaves are
+    # the writer leaves (one per note), so fewer leaves than the plan declared is
+    # the silent single-whole-plan-leaf failure. run_execute_wave already warns;
+    # this surfaces it on the result so a headless orchestrator can branch on it.
+    declared = _declared_note_count(plan_doc)
+    under_produced = declared > 1 and len(execute_run.leaves) < declared
+
     return DigestionResult(
         completed=execute_run.error_count == 0,
         stopped_at=None if execute_run.error_count == 0 else "execute",
         sign_off=sign_off,
         phases=tuple(phases),
         plan_doc=plan_doc,
+        under_produced=under_produced,
     )
 
 

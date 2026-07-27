@@ -351,3 +351,37 @@ def test_absent_note_intent_graph_is_shipped_single_leaf(tmp_path: Path) -> None
     assert result.completed
     execute_phase = [p for p in result.phases if p.phase == "execute"][0]
     assert len(execute_phase.run.leaves) == 1  # the whole-plan fallback leaf
+    # FZ 20k9c1a1a1b7c2g: the plan declares 2 notes but the wave produced 1 leaf
+    # → the under-production signal must be surfaced on the result so a headless
+    # orchestrator (which never sees the RuntimeWarning) can branch on it.
+    assert result.under_produced is True
+
+
+def test_under_produced_false_when_leaf_count_matches_declared(tmp_path: Path) -> None:
+    """A plan declaring 1 note that produces 1 leaf is NOT under-produced —
+    the flag keys on declared>1 (FZ 20k9c1a1a1b7c2g)."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    source = {"id": "demo", "plan_path": "plans/plan_demo.md",
+              "plan_text": "# Plan", "total_notes": 1}
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=source, backend=_mock(total_notes=1),
+        vault_root=tmp_path / "vault",
+    )
+    assert result.completed
+    assert result.under_produced is False
+
+
+def test_under_produced_false_when_stopped_before_execute(tmp_path: Path) -> None:
+    """stop_after='review' never executes, so under_produced stays False even
+    for a multi-note plan (nothing was produced to compare)."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=_mock(),
+        vault_root=tmp_path / "vault", stop_after="review",
+    )
+    assert result.stopped_at == "review_accepted"
+    assert result.under_produced is False

@@ -29,6 +29,13 @@ An audit of the E1–E13 fixes found no correctness regression, but two *incompl
 - **Scorer honors the golden** (`eval/…/score.py`). `N3_required_h2` now reads the slice's `golden_facts.required_h2` instead of hardcoding `Overview`/`Related Notes`, so a slice whose convention differs (or evolves) is graded against its own golden facts.
 - **Skill↔golden contract test** (`tests/smoke/test_eval_skill_golden_contract.py`). Asserts every `frontmatter_required_keys` entry and every `required_h2` section the golden requires is actually instructed by the execute skill — catching skill/golden drift the golden-self-consistency check structurally cannot (the golden already conforms to itself). Verified: a note built to the current skill spec now scores `N1=1.0` and `N3=1.0` (both were `False`); golden self-consistency stays GREEN 1.0 on all three slices; full suite 1764 passed.
 
+### Digestion — under-production is now a programmatic result signal, not just a warning (FZ 20k9c1a1a1b7c2g) — 2026-07-27
+
+The E11 backstop emitted a `RuntimeWarning` when the execute wave fanned out to fewer leaves than the plan declared (the single-whole-plan-leaf failure — an N-note plan producing ~1 note). A **headless orchestrator never sees a Python warning**, so it had no way to fail a silently-under-producing run. Now surfaced on the result object.
+
+- **`DigestionResult.under_produced: bool`** (`digestion.py`). `True` iff the execute wave wrote fewer note leaves than the plan declared — the programmatic signal an orchestrator can branch on. `False` on the full path when leaf-count ≥ declared, and when the pipeline stopped before execute (nothing produced to compare). Additive field (defaults `False`); the existing `RuntimeWarning` is unchanged.
+- **`_declared_note_count(plan_doc)`** — one source of truth for the declared count (prefers `total_notes`, falls back to `len(planned_notes)`), keyed on by both the warning and the flag so a dev and an orchestrator see the same number. +2 tests; full suite 1766 passed.
+
 ## [1.11.0] — 2026-07-26
 
 ### Registry-driven per-note NOTE-TYPE contract injection — keyed on flavor, not building_block (FZ 20k9d1b1a P4 / FZ 20k9d1b1a1a) — 2026-07-26
