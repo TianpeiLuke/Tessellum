@@ -156,6 +156,37 @@ def _collect_structured(run: RunResult) -> dict[str, Any]:
     return merged
 
 
+# The plan-structure gate (gates.plan_structure_predicate) and the augment/review
+# skill prompts read the canonical keys ``plan_path`` / ``plan_text`` /
+# ``total_notes``, but the plan skill's steps emit the write-plan materializer's
+# ``output_path`` / ``body_markdown`` and a note count under
+# ``planned_note_count`` / ``estimated_note_count``. Without bridging, the gate
+# reads ``total_notes=0`` + ``plan_path=<missing>`` and rejects every plan, and
+# the augment/review prompts render a ``<missing leaf.plan_path>`` sentinel. This
+# maps the produced keys to the canonical names the gate + downstream steps read,
+# in-place, never clobbering a value the plan already set under the canonical key.
+_PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
+    "plan_path": ("output_path",),
+    "plan_text": ("body_markdown",),
+    "total_notes": ("planned_note_count", "estimated_note_count"),
+}
+
+
+def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
+    """Bridge plan-skill output keys to the canonical names the gate + augment/
+    review steps consume. Mutates ``plan_doc`` in place; idempotent; only fills a
+    canonical key that is absent or empty, from the first present alias."""
+    for canonical, aliases in _PLAN_DOC_KEY_ALIASES.items():
+        cur = plan_doc.get(canonical)
+        if cur not in (None, "", 0):
+            continue
+        for alias in aliases:
+            val = plan_doc.get(alias)
+            if val not in (None, "", 0):
+                plan_doc[canonical] = val
+                break
+
+
 def _enrich_leaves_with_related_notes(
     leaves: list[dict],
     *,
@@ -499,6 +530,7 @@ def run_digestion_pipeline(
             PhaseOutcome(phase=phase, ran=True, error_count=run.error_count, run=run)
         )
         plan_doc.update(_collect_structured(run))
+        _normalize_plan_doc_keys(plan_doc)
         if run.error_count:
             # A broken linear phase halts the pipeline before the wave.
             return DigestionResult(
