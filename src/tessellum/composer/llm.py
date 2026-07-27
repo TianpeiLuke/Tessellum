@@ -207,12 +207,10 @@ class AnthropicBackend:
         # temperature only passed when the caller set it — omitting it preserves
         # the provider default (byte-identical for every existing caller).
         extra = {} if request.temperature is None else {"temperature": request.temperature}
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=request.system_prompt,
-            messages=[{"role": "user", "content": request.user_prompt}],
-            **extra,
+        response = _messages_create_or_stream(
+            self.client, model=self.model, max_tokens=max_tokens,
+            system_prompt=request.system_prompt, user_prompt=request.user_prompt,
+            extra=extra,
         )
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = _extract_text(response)
@@ -327,12 +325,10 @@ class BedrockBackend:
         # temperature only passed when the caller set it — omitting it preserves
         # the provider default (byte-identical for every existing caller).
         extra = {} if request.temperature is None else {"temperature": request.temperature}
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            system=request.system_prompt,
-            messages=[{"role": "user", "content": request.user_prompt}],
-            **extra,
+        response = _messages_create_or_stream(
+            self.client, model=self.model, max_tokens=max_tokens,
+            system_prompt=request.system_prompt, user_prompt=request.user_prompt,
+            extra=extra,
         )
         elapsed_ms = (time.monotonic() - start) * 1000.0
         content = _extract_text(response)
@@ -444,6 +440,50 @@ class PooledBackend:
             backend_id=self.backend_id,
             metadata={**response.metadata, "credential_key": key_id},
         )
+
+
+# The Anthropic SDK refuses a NON-streaming request whose max_tokens implies a
+# possible >10-min response: it raises ``ValueError: Streaming is required …``
+# BEFORE sending (_base_client._calculate_nonstreaming_timeout: the guard trips
+# when ``3600 * max_tokens / 128_000 > 600`` → ``max_tokens > 21_333``). Our
+# big-output writers set ``max_tokens=32000`` (E14/R3), which trips it. So above
+# the ceiling we route through the streaming API and accumulate the final message
+# — same ``Message`` shape ``_extract_text`` + the metadata read already expect.
+# Below the ceiling we keep ``messages.create`` (byte-identical for every prior
+# caller, all of which use the 16000 default).
+_NONSTREAMING_MAX_TOKENS = 21_000  # conservatively under the SDK's 21_333 guard
+
+
+def _messages_create_or_stream(
+    client: object,
+    *,
+    model: str,
+    max_tokens: int,
+    system_prompt: str,
+    user_prompt: str,
+    extra: dict,
+) -> object:
+    """Call the Anthropic Messages API, streaming iff ``max_tokens`` would trip
+    the SDK's non-streaming 10-minute guard. Returns the final ``Message``."""
+    messages = [{"role": "user", "content": user_prompt}]
+    if max_tokens > _NONSTREAMING_MAX_TOKENS:
+        # Streaming path: the context manager accumulates the final Message,
+        # which carries the same content/stop_reason/usage a create() returns.
+        with client.messages.stream(
+            model=model,
+            max_tokens=max_tokens,
+            system=system_prompt,
+            messages=messages,
+            **extra,
+        ) as stream:
+            return stream.get_final_message()
+    return client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=system_prompt,
+        messages=messages,
+        **extra,
+    )
 
 
 def _extract_text(response: object) -> str:

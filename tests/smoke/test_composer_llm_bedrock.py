@@ -41,19 +41,44 @@ class _FakeResponse:
     usage: _FakeUsage = field(default_factory=_FakeUsage)
 
 
+class _FakeStream:
+    """Context manager mirroring the SDK's ``messages.stream()`` — exposes
+    ``get_final_message()`` returning the accumulated ``Message``."""
+
+    def __init__(self, response: _FakeResponse) -> None:
+        self._response = response
+
+    def __enter__(self) -> "_FakeStream":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        return None
+
+    def get_final_message(self) -> _FakeResponse:
+        return self._response
+
+
 class _FakeMessages:
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
+        self.stream_calls: list[dict[str, Any]] = []
         self.next_response: _FakeResponse | None = None
 
-    def create(self, **kwargs: Any) -> _FakeResponse:
-        self.calls.append(kwargs)
+    def _resp(self) -> _FakeResponse:
         if self.next_response is None:
             return _FakeResponse(
                 content=[_FakeTextBlock(type="text", text='{"ok": true}')],
                 usage=_FakeUsage(input_tokens=7, output_tokens=3),
             )
         return self.next_response
+
+    def create(self, **kwargs: Any) -> _FakeResponse:
+        self.calls.append(kwargs)
+        return self._resp()
+
+    def stream(self, **kwargs: Any) -> _FakeStream:
+        self.stream_calls.append(kwargs)
+        return _FakeStream(self._resp())
 
 
 class _FakeClient:
@@ -155,6 +180,33 @@ def test_bedrock_aws_profile_sets_env(monkeypatch) -> None:
 def test_bedrock_records_elapsed_ms() -> None:
     backend = BedrockBackend(client=_FakeClient())
     assert backend.call(LLMRequest(system_prompt="s", user_prompt="u")).elapsed_ms >= 0
+
+
+# ── E15 (FZ 20k9c1a1a1b7c2g): stream above the SDK non-streaming ceiling ─────
+
+def test_bedrock_small_max_tokens_uses_create_not_stream() -> None:
+    """At/below the non-streaming ceiling the backend uses messages.create —
+    byte-identical to prior behaviour (all existing callers use ≤16000)."""
+    fake = _FakeClient()
+    backend = BedrockBackend(client=fake)
+    backend.call(LLMRequest(system_prompt="s", user_prompt="u", max_tokens=16000))
+    assert len(fake.messages.calls) == 1
+    assert len(fake.messages.stream_calls) == 0
+
+
+def test_bedrock_large_max_tokens_routes_to_stream() -> None:
+    """Above the SDK's ~21.3K non-streaming ceiling (the big-output writers set
+    32000, E14/R3), the backend MUST stream — else messages.create raises
+    'Streaming is required for operations that may take longer than 10 minutes'
+    before sending. Asserts the stream path + that the final message is used."""
+    fake = _FakeClient()
+    backend = BedrockBackend(client=fake)
+    resp = backend.call(LLMRequest(system_prompt="s", user_prompt="u", max_tokens=32000))
+    assert len(fake.messages.stream_calls) == 1, "large max_tokens must use messages.stream()"
+    assert len(fake.messages.calls) == 0, "must NOT call the guarded messages.create()"
+    assert fake.messages.stream_calls[0]["max_tokens"] == 32000
+    assert resp.content == '{"ok": true}'  # get_final_message() text extracted normally
+    assert resp.metadata["stop_reason"] == "end_turn"
 
 
 def test_bedrock_real_import_path() -> None:
