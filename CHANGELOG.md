@@ -4,6 +4,22 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Digestion pipeline — end-to-end evaluation harness (golden docs → plan → notes) — 2026-07-26
+
+A golden-set benchmark for the digestion pipeline under `eval/digestion_pipeline/`: three real documentation corpora (`claude_code_mcp`, `hermes_getting_started`, `openclaw_concepts`), each pairing scrubbed `input_pages/` with the reference output — a `golden_plan/`, `golden_notes/`, and a `golden_facts.json` — plus a `rubric.md`, a `manifest.json`, and `score.py` to grade an actual run against the golden set. The slices are self-contained (vendored input + plan + notes) so the eval runs without external fetches. Not packaged (outside the sdist include).
+
+### Digestion reliability — first-eval-run blockers fixed (E1–E13) — 2026-07-27
+
+Running the new harness surfaced a series of structured-output and grounding blockers that kept the pipeline from producing correct per-note output end to end; all are fixed. Internal/robustness — no public API change.
+
+- **E1 — strip the outer code fence** (`executor.py`). Chat models wrap a JSON/markdown response in an outer ` ```json … ``` ` fence, so `json.loads` failed at char 0 and the materializer saw a fence instead of `---`. `execute_step` now strips a single WHOLE-response fence once (before both schema validation and materialization); inner code fences in a note body are preserved.
+- **E2 / E4 / E5 — structured-output run blockers** (`executor.py`, `llm.py`). Includes raising the `LLMRequest.max_tokens` default 4000 → 16000, since the plan-body / planned-notes-table / full-note-body steps routinely exceed a few thousand output tokens and the old cap truncated their JSON mid-string.
+- **E6 — bridge plan-skill output keys** (`digestion.py`). `_normalize_plan_doc_keys` fills the canonical keys the gate + downstream consume from the plan skill's aliases (`plan_path`←`output_path`, `plan_text`←`body_markdown`, `total_notes`←`planned_note_count`/`estimated_note_count`); fail-soft, idempotent, only fills an absent/empty canonical key.
+- **E8 — scorer factors Tier-1** (`eval/…/score.py`). The eval verdict must weigh the plan-level (Tier-1) score, not only the per-note (Tier-2) score.
+- **E9 / E10 — scoped schema injection + full frontmatter** (`executor.py`). Schema injection is scoped to JSON materializers only, and a note write now requires full note frontmatter.
+- **E11 — per-note execute leaves** (`digestion.py`). The native execute wave now fans `planned_notes` out into one leaf per note (`_project_planned_notes_to_leaves`), so each writer gets its own note identity + target path — exactly what the note-type contract and related-notes enrichment key on.
+- **E12 / E13 (+ E9-robust) — contract integrity + coverage-map grounding** (`digestion.py`, phase skills). Hardens the plan-contract integrity checks and grounds the coverage map.
+
 ## [1.11.0] — 2026-07-26
 
 ### Registry-driven per-note NOTE-TYPE contract injection — keyed on flavor, not building_block (FZ 20k9d1b1a P4 / FZ 20k9d1b1a1a) — 2026-07-26
