@@ -67,6 +67,10 @@ def score_note(text: str, golden: dict) -> dict:
     lines = body.count("\n") + 1
     req = golden["frontmatter_required_keys"]
     forbidden = golden["frontmatter_forbidden_keys"]
+    # N3 honors the golden's declared required_h2 rather than hardcoding, so a
+    # slice whose convention differs (or evolves) is scored against its own
+    # golden facts. Default to the vault convention if the field is absent.
+    required_h2 = golden.get("required_h2", ["Overview", "Related Notes"])
     floors = {}  # measured link classes
     floors["term_dictionary"] = len(re.findall(r"term_dictionary/term_", text))
     floors["code_repos"] = len(re.findall(r"code_repos/repo_", text))
@@ -74,7 +78,7 @@ def score_note(text: str, golden: dict) -> dict:
     return {
         "N1_frontmatter_schema": all(k in keys for k in req),
         "N2_forbidden_absent": not any(k in keys for k in forbidden),
-        "N3_required_h2": ("Overview" in h2 and "Related Notes" in h2),
+        "N3_required_h2": all(sec in h2 for sec in required_h2),
         "N4_single_bb": bb_val in CLOSED_BB,
         "N5_density_caps": (words <= DENSITY_WORD_CAP and lines <= DENSITY_LINE_CAP
                             and code_blocks <= DENSITY_CODE_CAP),

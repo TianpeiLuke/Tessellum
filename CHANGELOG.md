@@ -20,6 +20,15 @@ Running the new harness surfaced a series of structured-output and grounding blo
 - **E11 — per-note execute leaves** (`digestion.py`). The native execute wave now fans `planned_notes` out into one leaf per note (`_project_planned_notes_to_leaves`), so each writer gets its own note identity + target path — exactly what the note-type contract and related-notes enrichment key on.
 - **E12 / E13 (+ E9-robust) — contract integrity + coverage-map grounding** (`digestion.py`, phase skills). Hardens the plan-contract integrity checks and grounds the coverage map.
 
+### Digestion eval — parity blockers closed: the execute skill now instructs what the golden scores (R1 / R2) — 2026-07-27
+
+An audit of the E1–E13 fixes found no correctness regression, but two *incomplete* fixes silently capped the eval: the execute skill diverged from the golden convention it is scored against, so a faithful reproduction run could never reach GREEN for reasons unrelated to digestion quality. Closed so the eval is scorable end to end. Skill/scorer only — no public API change.
+
+- **R1 — graph edges under `## Related Notes`, not `## References`** (`skill_tessellum_execute_digestion_plan.md`). The RELATED-NOTES instruction and the verify step's outbound-reference check now name `## Related Notes` (the vault's internal graph-edge convention; `## References` is external-URL-only). Also adds a universal `## Overview` lead-section instruction (BODY STRUCTURE): the golden requires `## Overview` + `## Related Notes` on every note, framing the type-specific sections the NOTE-TYPE CONTRACT injects. Both were previously un-instructed → `N3_required_h2` was capped at 0.
+- **R2 — `access_control_group` in OUTPUT FORMAT** (`skill_tessellum_execute_digestion_plan.md`). Completes E10: the golden requires 9 frontmatter keys; the OUTPUT FORMAT listed 8, omitting `access_control_group` → `N1_frontmatter_schema` could never reach 1.0. Added to both the prose and structured field lists (default `["general"]`).
+- **Scorer honors the golden** (`eval/…/score.py`). `N3_required_h2` now reads the slice's `golden_facts.required_h2` instead of hardcoding `Overview`/`Related Notes`, so a slice whose convention differs (or evolves) is graded against its own golden facts.
+- **Skill↔golden contract test** (`tests/smoke/test_eval_skill_golden_contract.py`). Asserts every `frontmatter_required_keys` entry and every `required_h2` section the golden requires is actually instructed by the execute skill — catching skill/golden drift the golden-self-consistency check structurally cannot (the golden already conforms to itself). Verified: a note built to the current skill spec now scores `N1=1.0` and `N3=1.0` (both were `False`); golden self-consistency stays GREEN 1.0 on all three slices; full suite 1764 passed.
+
 ## [1.11.0] — 2026-07-26
 
 ### Registry-driven per-note NOTE-TYPE contract injection — keyed on flavor, not building_block (FZ 20k9d1b1a P4 / FZ 20k9d1b1a1a) — 2026-07-26
