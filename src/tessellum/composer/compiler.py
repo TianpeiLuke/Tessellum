@@ -131,6 +131,14 @@ class CompiledStep:
             rendered prompt exceeds this, ``execute_step`` refuses to
             dispatch and surfaces a structured error
             rather than the LLM-side mystery failure.
+        max_tokens: Optional per-step cap on the LLM RESPONSE length.
+            ``None`` → use the ``LLMRequest`` default (16000). The big-output
+            writer steps (a full plan body; an augmented plan that re-emits the
+            plan PLUS the coverage map + gate tables + the per-note
+            cross-reference contract) exceed the global default and truncate
+            mid-JSON — they set a larger per-step cap here instead of raising the
+            global, which would just move the truncation threshold for every
+            other (small) step.
     """
 
     section_id: str
@@ -145,6 +153,7 @@ class CompiledStep:
     output_key: str | None
     timeout_seconds: float | None = None
     max_prompt_chars: int | None = None
+    max_tokens: int | None = None
 
 
 @dataclass(frozen=True)
@@ -463,6 +472,7 @@ def _compile_step(step: PipelineStep, skill_path: Path) -> CompiledStep:
         output_key=step.output_key,
         timeout_seconds=step.timeout_seconds,
         max_prompt_chars=step.max_prompt_chars,
+        max_tokens=step.max_tokens,
     )
 
 

@@ -98,12 +98,19 @@ class PipelineStep(BaseModel):
     prompt_template: str | None = None
     output_key: str | None = None
     mcp_dependencies: tuple[MCPDependency, ...] = ()
-    # Robustness fields. Both optional.
+    # Robustness fields. All optional.
     timeout_seconds: float | None = None
     """Per-step watchdog timeout. None → use executor default (120s)."""
     max_prompt_chars: int | None = None
     """Per-step hard cap on rendered prompt size. None → use
     compiler.HARD_PROMPT_CAP_CHARS (150K)."""
+    max_tokens: int | None = None
+    """Per-step cap on the LLM RESPONSE length. None → use the LLMRequest
+    default (16000). The big-output writer steps (a full plan body, an
+    augmented plan carrying the coverage map + gate tables + per-note
+    cross-reference contract) exceed the global default and truncate mid-JSON;
+    they declare a larger per-step cap here rather than raising the global
+    (which just moves the truncation threshold for every other step)."""
 
 
 class Pipeline(BaseModel):

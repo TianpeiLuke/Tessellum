@@ -310,9 +310,14 @@ def execute_step(
         prompt = assembled.text
         context_warnings = assembled.warnings
 
+    # Per-step response budget: a step may declare a larger max_tokens than the
+    # global default (the big-output writers — full plan body / augmented plan
+    # with coverage map + gate tables + per-note cross-ref contract — exceed
+    # 16000 and truncate mid-JSON). None → inherit the LLMRequest default.
     request = LLMRequest(
         system_prompt=system_prompt,
         user_prompt=prompt,
+        **({"max_tokens": step.max_tokens} if step.max_tokens is not None else {}),
     )
 
     # Watchdog. Wrap backend.call in a thread with a timeout. If the

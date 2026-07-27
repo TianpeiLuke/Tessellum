@@ -425,6 +425,7 @@ depends_on:
 - cross_references
 materializer: body_markdown_to_file
 output_key: plan_doc
+max_tokens: 32000
 expected_output_schema:
   type: object
   required:

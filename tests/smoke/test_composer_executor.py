@@ -237,3 +237,90 @@ def test_executor_no_assembler_preserves_hard_cap(compiled, tmp_path: Path) -> N
     assert result.error is not None
     assert "HARD_PROMPT_CAP_CHARS" in result.error
     assert result.error_class == "validation"
+
+
+# ── R3 (FZ 20k9c1a1a1b7c2g / E14): per-step max_tokens response budget ────────
+
+_MAXTOK_CANONICAL = textwrap.dedent(
+    """\
+    ---
+    tags:
+      - resource
+      - skill
+    keywords:
+      - alpha
+      - beta
+      - gamma
+    topics:
+      - X
+      - Y
+    language: markdown
+    date of note: 2026-07-27
+    status: active
+    building_block: procedure
+    ---
+
+    # MaxTok Demo
+
+    ## Step big: writer <!-- :: section_id = big_writer :: -->
+
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: big
+    max_tokens: 32000
+    ```
+
+    Write a large thing.
+
+    ## Step small: classify <!-- :: section_id = small_step :: -->
+
+    ```yaml
+    role: CORE
+    aggregation: corpus_wide
+    batchable: false
+    depends_on: []
+    materializer: no_op
+    output_key: small
+    ```
+
+    Classify.
+    """
+)
+
+
+@pytest.fixture
+def maxtok_compiled(tmp_path: Path):
+    skill = tmp_path / "skill_maxtok.md"
+    skill.write_text(_MAXTOK_CANONICAL, encoding="utf-8")
+    return compile_skill(skill)
+
+
+def test_compiled_step_carries_per_step_max_tokens(maxtok_compiled):
+    """A step declaring ``max_tokens`` in its contract carries it onto the
+    CompiledStep; a step omitting it stays ``None`` (inherit the default)."""
+    by_id = {s.section_id: s for s in maxtok_compiled.steps}
+    assert by_id["big_writer"].max_tokens == 32000
+    assert by_id["small_step"].max_tokens is None
+
+
+def test_executor_passes_per_step_max_tokens_to_request(maxtok_compiled, tmp_path: Path):
+    """The executor threads a step's ``max_tokens`` into the LLMRequest so a
+    big-output writer gets its larger response budget (the E14 fix — the
+    augmented plan truncated at the 16000 global default)."""
+    backend = MockBackend(default='{"ok": true}')
+    big = [s for s in maxtok_compiled.steps if s.section_id == "big_writer"][0]
+    execute_step(big, leaf={"_id": "corpus"}, upstream={}, backend=backend, vault_root=tmp_path)
+    assert backend.calls[0].max_tokens == 32000
+
+
+def test_executor_defaults_max_tokens_when_step_unset(maxtok_compiled, tmp_path: Path):
+    """A step without ``max_tokens`` inherits the LLMRequest default (16000) —
+    the executor must not force a value, so small steps aren't silently widened."""
+    backend = MockBackend(default='{"ok": true}')
+    small = [s for s in maxtok_compiled.steps if s.section_id == "small_step"][0]
+    execute_step(small, leaf={"_id": "corpus"}, upstream={}, backend=backend, vault_root=tmp_path)
+    assert backend.calls[0].max_tokens == 16000  # LLMRequest default, not overridden

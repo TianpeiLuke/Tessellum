@@ -432,6 +432,7 @@ depends_on:
 - add_crossref_contract
 materializer: body_markdown_to_file
 output_key: augmented_plan
+max_tokens: 32000
 expected_output_schema:
   type: object
   required:
