@@ -187,6 +187,87 @@ def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
                 break
 
 
+def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
+    """Project an LLM-authored plan's ``planned_notes`` into per-note writer
+    leaves — the native execute-wave fan-out (FZ 20k9c1a1a1b7c2b).
+
+    The plan/augment/review skills emit ``plan_doc["planned_notes"]`` (a list of
+    ``{filename, building_block, approx_words, description}``), but only the typed
+    ``note_intent_graph`` path had a projector, so the native single-doc path fell
+    back to a single whole-plan leaf and produced ~1 note for an N-note plan. This
+    builds one leaf per planned note, symmetric with
+    :func:`~tessellum.composer.knowledge_plan.project_note_intent_graph`.
+
+    Each leaf carries the ``note`` payload the ``dispatch_notes`` writer reads
+    (filename / thesis / building_block), a vault-relative ``target_path``
+    (routing dir + file prefix + filename — what the E2 type-contract resolver
+    keys on), the ``source_ref``, and — because the composer backend is single-
+    shot with no file-reading tool — the source content inline (``source_excerpt``
+    + the full ``plan_text`` for cross-note context). Pure + fail-soft: a
+    ``planned_notes`` that is missing, not a list, or has no usable ``filename``
+    yields ``[]`` so the caller falls through to the whole-plan leaf.
+    """
+    planned = plan_doc.get("planned_notes")
+    if not isinstance(planned, list) or not planned:
+        return []
+
+    # Routing: where notes land + their filename prefix (best-effort from the
+    # plan; default to a generic docs dir so target_path is always vault-relative).
+    routing = plan_doc.get("routing_decision")
+    routing = routing if isinstance(routing, dict) else {}
+    note_dir = str(
+        plan_doc.get("note_dir")
+        or plan_doc.get("target_directory")
+        or routing.get("target_directory")
+        or "resources/documentation"
+    ).strip("/") or "resources/documentation"
+    prefix = str(plan_doc.get("file_prefix") or routing.get("file_prefix") or "")
+
+    # Source content: the admitted members' excerpts (inline — single-shot backend).
+    members = plan_doc.get("members")
+    source_excerpt = ""
+    source_refs: list[str] = []
+    if isinstance(members, list) and members:
+        parts = []
+        for m in members:
+            if not isinstance(m, dict):
+                continue
+            ex = m.get("excerpt") or m.get("source_content") or ""
+            ref = m.get("source_url") or m.get("ref") or m.get("source_id") or ""
+            if ref:
+                source_refs.append(str(ref))
+            parts.append(f"# SOURCE: {m.get('source_id') or ref}\n\n{ex}")
+        source_excerpt = "\n\n".join(parts)
+    if not source_refs:
+        su = plan_doc.get("source_url")
+        source_refs = list(su) if isinstance(su, list) else ([str(su)] if su else [])
+    plan_text = str(plan_doc.get("plan_text") or "")
+
+    leaves: list[dict] = []
+    for pn in planned:
+        if not isinstance(pn, dict):
+            continue
+        filename = str(pn.get("filename") or pn.get("note") or "").strip().strip("/")
+        if not filename:
+            continue
+        if not filename.endswith(".md"):
+            filename += ".md"
+        name = filename if filename.startswith(prefix) else f"{prefix}{filename}"
+        leaves.append({
+            "note": {
+                "filename": name,
+                "thesis": str(pn.get("description") or ""),
+                "building_block": pn.get("building_block"),
+                "approx_words": pn.get("approx_words"),
+                "source_excerpt": source_excerpt,
+                "plan_text": plan_text,
+            },
+            "target_path": f"{note_dir}/{name}",
+            "source_ref": source_refs,
+        })
+    return leaves
+
+
 def _enrich_leaves_with_related_notes(
     leaves: list[dict],
     *,
@@ -394,7 +475,31 @@ def run_execute_wave(
     else:
         execute_leaves = plan_doc.get("execute_leaves")
         if not isinstance(execute_leaves, list) or not execute_leaves:
+            # FZ 20k9c1a1a1b7c2b: an LLM-authored plan carries `planned_notes`
+            # (one dict per note) but no typed `note_intent_graph`. Project it
+            # into one writer leaf per planned note — the native fan-out. Without
+            # this the fallback below hands the WHOLE plan to a single per-leaf
+            # writer, so an N-note plan silently produces ~1 note.
+            execute_leaves = _project_planned_notes_to_leaves(plan_doc)
+        if not isinstance(execute_leaves, list) or not execute_leaves:
+            # Last-resort single whole-plan leaf (degenerate/malformed plan).
             execute_leaves = [dict(plan_doc)]
+    # No-silent-under-production backstop (FZ 20k9c1a1a1b7c2b): if the plan
+    # declares N notes but the wave is about to fan out to far fewer leaves, that
+    # is the single-whole-plan-leaf failure mode — surface it loudly rather than
+    # silently writing ~1 note for an N-note plan.
+    declared = plan_doc.get("total_notes") or len(plan_doc.get("planned_notes") or [])
+    if isinstance(declared, int) and declared > 1 and len(execute_leaves) < declared:
+        import warnings
+
+        warnings.warn(
+            f"execute wave fanned out to {len(execute_leaves)} leaf(es) but the "
+            f"plan declares {declared} notes — the pipeline may under-produce. "
+            f"Expected one writer leaf per planned note "
+            f"(planned_notes projection / note_intent_graph).",
+            RuntimeWarning,
+            stacklevel=2,
+        )
     # FZ 20k9d2: enrich each note leaf with per-note relevance-ranked related
     # notes → the writer renders them into ## References → note_links edges.
     # No-op when related_notes_db is None (byte-identical to pre-fix).
