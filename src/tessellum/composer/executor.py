@@ -351,10 +351,17 @@ def execute_step(
 
     error: str | None = None
 
+    # Chat models habitually wrap a JSON/markdown response in an outer
+    # ```` ```json … ``` ```` fence, which makes json.loads fail at char 0 and
+    # hides the ``---`` frontmatter from the materializer. Strip a single
+    # WHOLE-response fence once, here, so both validation and materialization
+    # see the clean payload (inner code fences in a note body are untouched).
+    parse_content = _strip_outer_code_fence(response.content)
+
     # Schema validation — best effort.
     if step.expected_output_schema:
         validation_error = _validate_against_schema(
-            response.content, step.expected_output_schema
+            parse_content, step.expected_output_schema
         )
         if validation_error:
             error = f"response failed schema validation: {validation_error}"
@@ -365,7 +372,7 @@ def execute_step(
     try:
         materialized = materialize(
             materializer_key,
-            response.content,
+            parse_content,
             vault_root=vault_root,
             dry_run=dry_run,
             effect_guard=effect_guard,
@@ -491,6 +498,30 @@ def _stringify(value: Any) -> str:
     if isinstance(value, (dict, list)):
         return json.dumps(value, indent=2, ensure_ascii=False)
     return str(value)
+
+
+_OUTER_FENCE_RE = re.compile(
+    r"\A\s*```[^\n`]*\n(?P<body>.*?)\n?```\s*\Z",
+    re.DOTALL,
+)
+
+
+def _strip_outer_code_fence(content: str) -> str:
+    """Strip a single OUTER markdown code fence wrapping the whole response.
+
+    Chat models (Claude, GPT, …) habitually wrap a JSON or markdown response
+    in a ```` ```json … ``` ```` / ```` ```markdown … ``` ```` block, so the raw
+    response begins with a backtick and ``json.loads`` fails at char 0, and the
+    frontmatter materializer sees a fence instead of ``---``. This removes ONLY
+    a fence that wraps the ENTIRE (trimmed) content — a response that is exactly
+    one fenced block. It never touches inner fences (a note body's own ```code```
+    examples are preserved), because the regex is anchored to the whole string
+    and requires the closing fence at the very end.
+
+    Returns the content unchanged when it is not a single wrapping fence.
+    """
+    m = _OUTER_FENCE_RE.match(content)
+    return m.group("body") if m else content
 
 
 def _validate_against_schema(content: str, schema: dict) -> str | None:
