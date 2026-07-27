@@ -51,6 +51,8 @@ Two rules are different in kind. They are the only rules that look beyond the si
 
 One subtlety keeps TESS-005 honest as the ontology evolves. A note may record the schema version it was authored against, and when it does, TESS-005 validates against the schema *as of that version*, frozen at creation, tagging its message accordingly. A note written under an older ontology is judged by the ontology it knew, not by a schema that has since grown new edges. Only notes that record no version fall back to the live schema.
 
+**TESS-005 has a softer cousin still — TESS-010, an advisory below even a warning.** Each building block carries a contract of sections it should have — a term note a Definition and Examples, a how-to Setup, Steps, and Validation — declared once in the ontology. When a note adopts the section layout yet omits one of its type's required headers, TESS-010 emits an INFO note: a nudge, never a failure. It fires only on notes that opted in — a template or stub scaffold is exempt, and so is a freeform note with no sections at all, because declining the layout is a choice, not a defect. Like everything else, it reads its section contract from the same ontology, so it can never demand a header the building-block spec doesn't.
+
 Both rules share the authoring-state exemption that runs through the whole layer: they fire only for `status: active` notes. Templates, drafts, and stubs are works in progress; the gate waits until a note is promoted before it demands the note honor its typed contract.
 
 ## Design Decisions & Why

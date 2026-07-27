@@ -72,6 +72,16 @@ through the one materializer channel, and passed through the close-gate that che
 format and its grounding before the note is allowed to count. A note that fails its gate
 is repaired by the fix loop or left blocked; it is never silently recorded as done.
 
+Each writer is also handed the shape its note type owes. Every note kind has a required-
+section contract — a term note owes a Definition and Examples, a how-to owes Setup, Steps,
+and Validation — and the wave resolves that contract from the note's target path and stamps
+it onto the leaf as a section floor for the writer to fill. The contract is keyed on the
+note's *flavor* — the capture kind that fixes where it lives and what it looks like — not on
+its building block, because a vault-wide review found the two are genuinely independent: one
+building block spans many flavors and one flavor many building blocks. Enforcement stays
+advisory rather than a hard gate (an INFO note when an authored section is missing), on the
+same model-permissive, gates-enforce discipline the plan gate follows.
+
 ## How a note joins the graph
 
 Decomposition alone would leave islands. What makes a digested note part of the graph is

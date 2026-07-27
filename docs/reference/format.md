@@ -8,10 +8,10 @@ API, symbols, constants, rules, and CLI surface for the note-format layer. For t
 |------|------|
 | `parser.py` | Frozen `Note` dataclass + `parse_note` / `parse_text`. Regex-splits `---` frontmatter, `yaml.safe_load`s it, keeps `raw_frontmatter`. Raises `FrontmatterParseError` if frontmatter isn't a YAML mapping. |
 | `frontmatter_spec.py` | Closed enums, soft minima, regexes, required/forbidden field sets. `VALID_BUILDING_BLOCKS` is re-exported from `bb.types.VALID_BB_TYPE_VALUES`, not defined locally. |
-| `validator.py` | The rule engine: `validate` / `is_valid` + per-rule `_check_*` helpers. Owns YAML-\*, TESS-001/002/003, YAML-100/101, and the two BB-graph-aware rules TESS-004/005. Delegates LINK-\* to `link_checker`. |
+| `validator.py` | The rule engine: `validate` / `is_valid` + per-rule `_check_*` helpers. Owns YAML-\*, TESS-001/002/003, YAML-100/101, the two BB-graph-aware rules TESS-004/005, and the TESS-010 section advisory (`_check_required_sections`). Delegates LINK-\* to `link_checker`. |
 | `link_checker.py` | `check_links(note)` → LINK-001/002/003/006 (all WARNING). Owns the skip lists. |
 | `issue.py` | `Severity` (str-Enum) + frozen `Issue`. Own module to avoid a `validator` ↔ `link_checker` import cycle. |
-| `building_blocks.py` | BB taxonomy view re-exported by `__init__` (`BuildingBlock`, `BBSpec`, `BBEdge`, `BB_SPECS`, `EPISTEMIC_EDGES`, `get_spec`, `downstream`, `upstream`, `types_in_layer`, `EpistemicLayer`). |
+| `building_blocks.py` | BB taxonomy view re-exported by `__init__` (`BuildingBlock`, `BBSpec`, `BBEdge`, `BB_SPECS`, `EPISTEMIC_EDGES`, `get_spec`, `downstream`, `upstream`, `types_in_layer`, `EpistemicLayer`). `BBSpec.required_sections` is the per-type section contract TESS-010 and the note-type-contract resolver consume. |
 | `__init__.py` | Public surface: parser, spec constants, `Issue`/`Severity`, `validate`/`is_valid`/`check_links`, BB taxonomy. |
 | `cli/format_check.py` | `tessellum format check <path>` — wires `validate` into the CLI, recurses `*.md`, filters non-note files, emits human/JSON, computes exit code. Registered in `cli/main.py`. |
 
@@ -113,6 +113,7 @@ Enum, date, and list-min checks **skip when the value is absent** (presence is o
 |------|-------|----------|-----------|-----------|
 | TESS-004 | `links` | E | `building_block == "counter_argument"` AND `status == "active"` AND `note.path` set | no internal `.md` body link resolves to a `building_block: argument` note |
 | TESS-005 | `links` | W | source `building_block` is BB-typed AND `status == "active"` AND `note.path` set | a body link to a *different* BB-typed target whose (source→target) pair is in the BB schema in **neither** direction |
+| TESS-010 | `sections` | I | `building_block` has a `BB_SPECS` entry AND the note has ≥1 H2 section AND `status` not `template`/`stub` | a required section (`BB_SPECS[bb].required_sections`) is missing from the note's H2 headers (advisory only; a section-less freeform note is exempt) |
 
 TESS-004 does **not** require the target's FZ to match the counter's `folgezettel_parent` (that stronger invariant is enforced by the indexer/DKS at write time). TESS-005 is **version-aware**: an integer `bb_schema_version ≥ 1` in frontmatter selects `bb.types.BB_SCHEMA_AT_VERSION(n)` (message tagged `@v{n}`); otherwise it falls back to the live `bb.types.BB_SCHEMA` (tagged `@live`). Both rules strip fenced code before scanning, skip same-BB targets, skip un-typed / unresolvable / unparseable targets, and dedup repeat targets.
 

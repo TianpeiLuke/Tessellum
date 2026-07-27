@@ -15,7 +15,7 @@ pip install tessellum
 tessellum init ~/my-vault
 cd ~/my-vault
 
-# 2. Capture your first typed atomic note — 14 flavors available
+# 2. Capture your first typed atomic note — 18 flavors available
 tessellum capture concept page_rank --vault .        # creates resources/term_dictionary/term_page_rank.md
 tessellum capture skill my_skill --vault .           # creates a single self-contained skill_*.md
 tessellum capture code_snippet my_algo --vault .     # creates resources/code_snippets/snippet_*.md
@@ -203,9 +203,10 @@ Tessellum/
 │   │                      (Mock/Anthropic/Bedrock/Pooled) + batch + eval
 │   ├── dks/               Dialectic Knowledge System engine — core + fsm + dung + confidence + persistence + meta/
 │   ├── runtime/           Durable automatic inbox queue, routing, leased supervisor, commit tail, and tool broker
-│   ├── capture.py         14-flavor capture registry (concept, procedure, skill, model, argument,
+│   ├── capture.py         18-flavor capture registry (concept, procedure, skill, model, argument,
 │   │                      counter_argument, hypothesis, empirical_observation, experiment,
-│   │                      navigation, entry_point, acronym_glossary, code_snippet, code_repo)
+│   │                      navigation, entry_point, acronym_glossary, code_snippet, code_repo,
+│   │                      faq, sop, coe, thought) + a template⟺registry⟺BB_SPECS drift gate
 │   ├── init.py            tessellum init scaffold
 │   ├── cli/               Per-subcommand dispatchers (12 commands) wired into argparse
 │   ├── mcp/               Shipped MCP stdio server (12 tools) — `tessellum mcp serve`
