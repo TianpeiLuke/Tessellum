@@ -113,9 +113,25 @@ def score_notes(notes_dir: Path, golden_facts: dict) -> dict:
     }
 
 
+def _planned_notes_section(plan_text: str) -> str:
+    """The text of the plan's ``## Planned Notes`` section (up to the next H2).
+
+    A plan has several numbered tables (source pages, density re-assessment, …),
+    so counting every ``| N |`` row over-shoots. The planned-note count lives in
+    the ``## Planned Notes`` table only.
+    """
+    m = re.search(r"(?m)^##\s+Planned Notes.*?$", plan_text)
+    if not m:
+        return plan_text  # fall back to whole doc if the header is absent
+    rest = plan_text[m.end():]
+    nxt = re.search(r"(?m)^##\s+", rest)
+    return rest[: nxt.start()] if nxt else rest
+
+
 def score_plan(plan_text: str, golden_facts: dict) -> dict:
     gp = golden_facts["golden_plan"]
-    planned = len(re.findall(r"(?m)^\|\s*\d+\s*\|", plan_text))  # numbered table rows
+    # count numbered rows ONLY inside the ## Planned Notes section
+    planned = len(re.findall(r"(?m)^\|\s*\d+\s*\|", _planned_notes_section(plan_text)))
     ratio = planned / gp["planned_note_count"] if gp["planned_note_count"] else 0.0
     sections_present = sum(
         1 for sec in gp["mandatory_plan_sections"]

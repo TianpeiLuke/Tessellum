@@ -35,18 +35,38 @@ private vault.
 
 Full corpora totals: **1,147 raw docs → 174 plans → 1,381 notes.**
 
-## What is vendored here (and what is not)
+## What is vendored here
 
-`~/Tessellum` is a **public** repo. The full golden triples live in a private
-vault (git `59bdae36c`) and are **not** copied here — the raw plans/notes carry
-internal paths, internal skill names, and internal-only cross-reference targets
-that must not land in a public repo.
+Each curated slice is **self-contained** — it vendors the full triple:
 
-Instead, this set vendors **measured, scrubbed golden facts**: per curated slice,
-a `golden_facts.json` capturing the gradeable properties (BB distribution, word /
+```
+<slice>/
+  input_pages/     ← the raw source doc(s) fed to the pipeline (public third-party docs)
+  golden_plan/     ← the plan the four skills produced from those pages
+  golden_notes/    ← the notes the pipeline wrote from that plan
+  golden_facts.json ← measured, machine-readable gradeable reference
+```
+
+**Scrubbing.** `~/Tessellum` is a **public** repo, and the plans/notes were
+produced in a private vault. The vendored copies are **surgically scrubbed** of
+private identifiers: internal vault paths → `vault/…`, the private DB name →
+`vault_unified.db`, the private skill-command names → their public `/tessellum-*`
+equivalents (the same four skills), and a handful of org-specific cross-reference
+lines → generic public equivalents. The scrub touched **only** the
+cross-reference tail and validation-script paths; the note **bodies** (the actual
+digested knowledge) and the plans' **structure** are the real golden output,
+verbatim. Link counts were preserved, so `golden_facts.json` still matches.
+
+The `## Related Notes` blocks still cite the full private vault's note graph (363
+distinct `.md` targets that do not exist inside this folder). Those are **not
+dangling bugs** — they document the real cross-reference graph the golden built,
+and the resolvable-links gate (N7) is scored against a vault DB, not within this
+folder (see `rubric.md § Known golden caveats`). `manifest.json` records the full
+corpora (by path + git SHA `59bdae36c`) for anyone reproducing at full scale.
+
+Per-slice gradeable facts live in `golden_facts.json` (BB distribution, word /
 line / code-block ranges, cross-reference floors, frontmatter schema, per-note
-section lists, planned-note counts). `manifest.json` points at the full corpora
-by path + git SHA for anyone running against the private vault.
+section lists, planned-note counts).
 
 ## Curated slices (one representative sub-plan per source)
 
@@ -58,9 +78,8 @@ by path + git SHA for anyone running against the private vault.
 
 ## How to run
 
-1. **Generate** — point Tessellum's digestion pipeline at a slice's input pages
-   (from the private vault's `inbox/<source>/`, per `manifest.json`), producing a
-   plan and a directory of notes.
+1. **Generate** — point Tessellum's digestion pipeline at a slice's
+   `input_pages/`, producing a plan and a directory of notes.
 2. **Score (Tier 1–2, deterministic)**:
    ```bash
    python eval/digestion_pipeline/score.py \
@@ -85,5 +104,9 @@ digestion_pipeline/
   manifest.json        ← corpora index + slice catalog + scoring config
   rubric.md            ← the 3-tier gradeable rubric (plan / note / fidelity)
   score.py             ← deterministic Tier-1/2 scorer (stdlib only)
-  <slice>/golden_facts.json   ← measured, scrubbed golden reference per slice
+  <slice>/
+    input_pages/       ← raw source doc(s) — the pipeline's input
+    golden_plan/       ← the plan the four skills produced
+    golden_notes/      ← the notes the pipeline wrote
+    golden_facts.json  ← measured, scrubbed golden reference
 ```
