@@ -49,6 +49,7 @@ import jsonschema
 
 from tessellum.composer.compiler import CompiledStep
 from tessellum.composer.context_assembler import ContextAssembler
+from tessellum.composer.contracts import ArtifactIntegrityError, ArtifactRef
 from tessellum.composer.credential_pool import RunBudget
 from tessellum.composer.error_taxonomy import REASON_TO_ERROR_CLASS, classify_reason
 from tessellum.composer.llm import LLMBackend, LLMRequest, LLMResponse
@@ -593,7 +594,17 @@ def _resolve_placeholders(
                 return "" if retry_last_error is None else _sanitise_error_for_prompt(retry_last_error)
             return f"<missing retry.{key}>"
         if namespace == "artifact":
-            return _stringify(artifacts[key]) if key in artifacts else f"<missing artifact.{key}>"
+            if key not in artifacts:
+                return f"<missing artifact.{key}>"
+            val = artifacts[key]
+            # A2 (FZ 20k9c1a1a1b7c2k1a): a durable working-memory artifact
+            # derefs by reading its file — integrity-checked, LOUD on
+            # mismatch (ArtifactIntegrityError -> step error), and
+            # byte-identical to the in-RAM value (the store serialized with
+            # this module's own _stringify).
+            if isinstance(val, ArtifactRef):
+                return val.read_text()
+            return _stringify(val)
         return m.group(0)  # pragma: no cover — regex only matches the four above
 
     return _PLACEHOLDER_RE.sub(_sub, text)
@@ -931,6 +942,33 @@ def execute_step_with_retry(
             )
         except InterruptedError:
             raise
+        except ArtifactIntegrityError as e:
+            # A2 review finding 1+2 (FZ 20k9c1a1a1b7c2k1a): a corrupted
+            # durable-artifact read is DETERMINISTIC — retrying re-reads the
+            # same bytes — and its message carries hex digests that the P18
+            # substring taxonomy could misread as auth/rate_limit, tripping
+            # the P17 breaker as a fake credential wall. Terminal on first
+            # sight, with an explicitly stamped NON-TRIPPING class.
+            err = f"{type(e).__name__}: {e}"
+            return StepResult(
+                section_id=step.section_id,
+                leaf_id=leaf.get("_id"),
+                response=LLMResponse(
+                    content="",
+                    elapsed_ms=0.0,
+                    backend_id=getattr(backend, "backend_id", ""),
+                    metadata={"crashed": True, "error": err},
+                ),
+                materialized=MaterializedOutput(
+                    structured={},
+                    notes=f"artifact integrity failure: {err}",
+                ),
+                elapsed_ms=0.0,
+                error=f"artifact integrity failure (terminal, not retryable): {err}",
+                attempts=attempt_n,
+                retry_kind_history=tuple(kind_history),
+                error_class="validation",
+            )
         except Exception as e:  # noqa: BLE001 — crash path: any backend exception
             # Crash failure (backend.call raised, or some hard executor error).
             crash_recoveries += 1

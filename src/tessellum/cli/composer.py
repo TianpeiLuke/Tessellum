@@ -474,6 +474,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "every phase. Default: off (no traces written).",
     )
     digest_cmd.add_argument(
+        "--durable-artifacts", action="store_true",
+        help="A2: page the {{artifact.X}} working store to disk "
+        "(<runs-dir or runs/<run_id>>/artifacts) — artifacts travel as "
+        "integrity-checked references and survive a crash. Default: in-RAM.",
+    )
+    digest_cmd.add_argument(
         "--max-review-rounds", type=int, default=0,
         help="P15 review-revise rounds: on a plan-quality rejection, re-augment "
         "from the review's failures and re-review, up to N extra rounds "
@@ -1404,6 +1410,18 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
         runs_dir = args.runs_dir.expanduser().resolve()
         runs_dir.mkdir(parents=True, exist_ok=True)
         extra_kwargs["runs_dir"] = runs_dir
+    if args.durable_artifacts:
+        # A2: the durable working store — ALWAYS run-scoped (review finding 4:
+        # a shared <runs-dir>/artifacts would let concurrent digests clobber
+        # each other's refs into spurious integrity failures, and a later run
+        # would destroy a crashed run's artifacts). Traces can share a dir
+        # (timestamped names); fixed-name artifacts cannot.
+        base = (
+            args.runs_dir.expanduser().resolve()
+            if args.runs_dir is not None
+            else Path("runs")
+        )
+        extra_kwargs["durable_artifact_dir"] = base / run_id / "artifacts"
 
     result = run_digestion_pipeline(
         skills_dir=skills_dir,

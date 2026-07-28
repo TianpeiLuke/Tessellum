@@ -28,6 +28,9 @@ way they import the contract types.
 
 from __future__ import annotations
 
+import hashlib
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -56,6 +59,50 @@ _PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
 # the driver's artifact store (``digestion``) and the compiler's re-emission
 # lint (``compiler``); keep them in lockstep from here.
 _ARTIFACT_KEYS: tuple[str, ...] = ("plan_text", "source_excerpt", "planned_notes")
+
+
+class ArtifactIntegrityError(RuntimeError):
+    """A durable artifact's bytes no longer match their recorded sha256 (A2,
+    FZ 20k9c1a1a1b7c2k1a). Raised LOUD at deref — a corrupted or truncated
+    working-memory read must never silently starve a prompt (the P23 fail-loud
+    posture applied to the working tier)."""
+
+
+@dataclass(frozen=True)
+class ArtifactRef:
+    """A by-reference handle to a durable working-memory artifact (A2, FZ
+    20k9c1a1a1b7c2k1a) — the vault-backed form of an ``{{artifact.X}}`` value.
+
+    The store serializes the artifact with the SAME stringifier the executor
+    would apply to the in-RAM value, so a deref inserts byte-identical prompt
+    text. ``size`` is the serialized byte length — the dispatch-time budget
+    input the A3 migration keys on.
+
+    Attributes:
+        path: Where the durable bytes live (``runs/<run_id>/artifacts/<key>``).
+        sha256: Hex digest of the serialized payload; :meth:`read_text`
+            verifies it on every read.
+        size: Serialized payload length in bytes.
+    """
+
+    path: Path
+    sha256: str
+    size: int
+
+    def read_text(self) -> str:
+        data = Path(self.path).read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != self.sha256:
+            # Digests truncated: the full hex (and a run-id path timestamp)
+            # can contain "401"/"403"/"429" substrings that a string-matching
+            # error classifier would misread (A2 review finding 1). The
+            # executor stamps this error's class explicitly; the truncation is
+            # defense-in-depth for any OTHER consumer that string-matches.
+            raise ArtifactIntegrityError(
+                f"artifact {self.path.name!r} failed integrity check: "
+                f"expected sha256 {self.sha256[:8]}.., got {digest[:8]}.."
+            )
+        return data.decode("utf-8")
 
 
 class PlanDoc(BaseModel):

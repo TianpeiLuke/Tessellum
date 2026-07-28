@@ -441,6 +441,7 @@ def compile_skill(
     strict_mcp: bool = False,
     strict_apply: bool = False,
     strict_field_coverage: bool = False,
+    warn_unmodeled_payloads: bool = False,
 ) -> CompiledPipeline:
     """Compile a single-file skill canonical into a typed DAG.
 
@@ -500,6 +501,10 @@ def compile_skill(
 
     # Compile-time context-budget validation.
     budget_warnings = _validate_context_budgets(compiled_steps)
+    if warn_unmodeled_payloads:
+        budget_warnings = list(budget_warnings) + _warn_unmodeled_payloads(
+            compiled_steps
+        )
 
     # P9: the advertised contract-integrity checks (MCP / APPLY / field-coverage).
     # Warn-by-default; each family raises only under its strict_* flag. Runs over
@@ -605,6 +610,46 @@ def _validate_context_budgets(steps: list[CompiledStep]) -> list[str]:
                 f"declaring an explicit per-step max_prompt_chars."
             )
 
+    return warnings
+
+
+# A2.4-lite (FZ 20k9c1a1a1b7c2k1a): the static budget model sums upstream soft
+# caps + template text ONLY — a placeholder for a known-large runtime payload
+# (the whole plan body, the inline source) is invisible to it, so the estimate
+# can be wildly low exactly where the payloads are biggest (the O(plan x N)
+# leaf inlining). OPT-IN (``compile_skill(warn_unmodeled_payloads=True)``) so
+# shipped-skill compiles stay byte-identical — the review-skill's
+# ``{{artifact.plan_text}}`` reads are the PRESCRIBED by-reference pattern and
+# must not warn by default. Leaf keys are the unbounded hazard; artifact keys
+# are restricted to the real ``_ARTIFACT_KEYS`` (anything else renders a
+# ``<missing>`` sentinel, never a payload). The true dispatch-time bound
+# arrives with A3, where ``ArtifactRef.size`` makes payloads knowable.
+_LARGE_LEAF_KEYS: tuple[str, ...] = (
+    "plan_text", "source_excerpt", "source_content", "members", "planned_notes",
+)
+_PAYLOAD_PLACEHOLDER_RE = re.compile(
+    r"\{\{\s*(leaf|artifact)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}"
+)
+
+
+def _warn_unmodeled_payloads(steps: list[CompiledStep]) -> list[str]:
+    warnings: list[str] = []
+    for step in steps:
+        template = step.prompt_section_text or ""
+        found: set[str] = set()
+        for m in _PAYLOAD_PLACEHOLDER_RE.finditer(template):
+            ns, key = m.group(1), m.group(2)
+            if ns == "leaf" and key in _LARGE_LEAF_KEYS:
+                found.add(f"{{{{leaf.{key}}}}}")
+            elif ns == "artifact" and key in _ARTIFACT_KEYS:
+                found.add(f"{{{{artifact.{key}}}}}")
+        if found:
+            warnings.append(
+                f"step {step.section_id!r}: references large runtime "
+                f"payload(s) {', '.join(sorted(found))} not modeled by the "
+                f"static budget estimate — the effective prompt may far "
+                f"exceed it."
+            )
     return warnings
 
 

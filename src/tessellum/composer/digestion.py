@@ -31,7 +31,9 @@ gate engine, and one SkillTool model.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, ContextManager
@@ -42,12 +44,13 @@ from tessellum.composer.compiler import (
     compile_skill,
 )
 from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
-from tessellum.composer.contracts import _ARTIFACT_KEYS, PlanDoc
+from tessellum.composer.contracts import _ARTIFACT_KEYS, ArtifactRef, PlanDoc
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.executor import (
     DEFAULT_TIMEOUT_SECONDS,
     DEFAULT_TRUNCATION_BASE_TOKENS,
     MAX_TRUNCATION_CEILING_TOKENS,
+    _stringify,
     upstream_placeholder_keys,
 )
 from tessellum.composer.gates import build_plan_gate, duplicate_target_predicate
@@ -281,7 +284,9 @@ def _checkpoint_plan_doc(
         pass
 
 
-def _build_artifact_store(plan_doc: dict[str, Any]) -> dict[str, Any]:
+def _build_artifact_store(
+    plan_doc: dict[str, Any], durable_dir: Path | None = None
+) -> dict[str, Any]:
     """The by-reference artifact store the driver injects into each phase's
     prompts (P21-full; FZ 20k9c1a1a1b7c2j). Snapshots the current durable value
     of each allowlisted artifact key (``_ARTIFACT_KEYS``) from the — already
@@ -289,11 +294,47 @@ def _build_artifact_store(plan_doc: dict[str, Any]) -> dict[str, Any]:
     ``{{artifact.plan_text}}`` by reference instead of a prior step re-emitting
     it. Only present, non-empty values are included (an absent key → a
     ``<missing artifact.X>`` sentinel at render, same debug affordance as
-    ``{{leaf.X}}``)."""
+    ``{{leaf.X}}``).
+
+    A2 (FZ 20k9c1a1a1b7c2k1a): with ``durable_dir`` set, each artifact is
+    ALSO paged to disk — serialized with the executor's own stringifier
+    (byte-identical prompt text on deref), written atomically to
+    ``<durable_dir>/<key>``, and the store carries an :class:`ArtifactRef`
+    instead of the value. Latest-write-wins per phase: the file always holds
+    the CURRENT of-record value. Fail-soft per artifact: if the durable write
+    fails, the in-RAM value is kept (correctness preserved, durability
+    degraded) — while a corrupted durable READ stays loud
+    (:class:`ArtifactIntegrityError` at deref)."""
     store: dict[str, Any] = {}
     for key in _ARTIFACT_KEYS:
         val = plan_doc.get(key)
-        if val not in (None, "", [], ()):
+        if val in (None, "", [], ()):
+            continue
+        if durable_dir is None:
+            store[key] = val
+            continue
+        try:
+            payload = _stringify(val).encode("utf-8")
+            durable_dir.mkdir(parents=True, exist_ok=True)
+            target = durable_dir / key
+            # Unique tmp per write (review finding 5): concurrent builders
+            # sharing a dir must never interleave on one tmp path.
+            tmp = durable_dir / f".{key}.{uuid.uuid4().hex[:8]}.tmp"
+            tmp.write_bytes(payload)
+            tmp.replace(target)
+            store[key] = ArtifactRef(
+                path=target,
+                sha256=hashlib.sha256(payload).hexdigest(),
+                size=len(payload),
+            )
+        except Exception:
+            # Fail-soft to the in-RAM value — and best-effort remove any STALE
+            # durable bytes from a prior phase (review finding 7), so the file
+            # never silently misrepresents the of-record value.
+            try:
+                (durable_dir / key).unlink(missing_ok=True)
+            except Exception:
+                pass
             store[key] = val
     return store
 
@@ -999,6 +1040,7 @@ def run_digestion_pipeline(
     stop_after: str | None = None,
     max_review_rounds: int = 0,
     run_id: str | None = None,
+    durable_artifact_dir: Path | None = None,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -1122,7 +1164,8 @@ def run_digestion_pipeline(
             vault_root=vault_root, dry_run=dry_run, budget=budget,
             context_assembler=context_assembler, cancellation_check=cancellation_check,
             effect_guard=effect_guard, effect_recorder=effect_recorder,
-            runs_dir=linear_runs_dir, artifacts=_build_artifact_store(plan_doc),
+            runs_dir=linear_runs_dir,
+            artifacts=_build_artifact_store(plan_doc, durable_artifact_dir),
         )
         phases.append(
             PhaseOutcome(phase=phase, ran=True, error_count=run.error_count, run=run)
@@ -1253,6 +1296,14 @@ def run_digestion_pipeline(
     if cancellation_check is not None and cancellation_check():
         raise InterruptedError("digestion cancelled before execute")
     try:
+        # A2 (FZ 20k9c1a1a1b7c2k1a): page the final of-record artifacts to the
+        # durable working store and hand the wave ArtifactRefs via the existing
+        # execute_kwargs['artifacts'] seam (no-clobber: an explicit caller-
+        # provided store wins).
+        if durable_artifact_dir is not None and "artifacts" not in execute_kwargs:
+            execute_kwargs["artifacts"] = _build_artifact_store(
+                plan_doc, durable_artifact_dir
+            )
         execute_run = run_execute_wave(
             plan_doc,
             skills_dir=skills_dir,
