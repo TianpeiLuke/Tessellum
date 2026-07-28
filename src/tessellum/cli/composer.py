@@ -55,6 +55,7 @@ from tessellum.composer import (
     run_pipeline_dynamic,
     to_dag_json,
 )
+from tessellum.runtime.paths import new_run_id
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> None:
@@ -461,6 +462,17 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "auto-approver only when the review verdict is ready.",
     )
     digest_cmd.add_argument("--dry-run", action="store_true", help="Skip filesystem writes.")
+    digest_cmd.add_argument(
+        "--run-id", default=None,
+        help="Run identity for this invocation (A0): threaded to the execute "
+        "wave's manifest owner-fencing and surfaced in the output. "
+        "Default: minted (run-<utc>-<hex>).",
+    )
+    digest_cmd.add_argument(
+        "--runs-dir", type=Path, default=None,
+        help="Per-step trace/telemetry directory (P20) — passed through to "
+        "every phase. Default: off (no traces written).",
+    )
     digest_cmd.add_argument(
         "--format", dest="output_format", choices=["human", "json"], default="human",
     )
@@ -1377,6 +1389,16 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
         else None
     )
 
+    # A0 (FZ 20k9c1a1a1b7c2k1a): every CLI digest invocation carries a run
+    # identity — supplied via --run-id or minted here. --runs-dir opts into
+    # the P20 per-step traces (created eagerly so the phases can write).
+    run_id = args.run_id or new_run_id()
+    extra_kwargs: dict = {}
+    if args.runs_dir is not None:
+        runs_dir = args.runs_dir.expanduser().resolve()
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        extra_kwargs["runs_dir"] = runs_dir
+
     result = run_digestion_pipeline(
         skills_dir=skills_dir,
         source_leaf=source_leaf,
@@ -1385,10 +1407,13 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         sign_off_policy=policy,
         agent_judge=agent_judge,
+        run_id=run_id,
+        **extra_kwargs,
     )
 
     if args.output_format == "json":
         print(json.dumps({
+            "run_id": result.run_id,
             "completed": result.completed,
             "stopped_at": result.stopped_at,
             "sign_off": (
@@ -1402,6 +1427,7 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
         }, indent=2))
     else:
         print("digestion pipeline: plan → augment → review →[sign-off]→ execute")
+        print(f"  run: {result.run_id}")
         for p in result.phases:
             print(f"  {'OK ' if p.error_count == 0 else 'ERR'}  {p.phase:8s}  errors={p.error_count}")
         if result.sign_off:

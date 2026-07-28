@@ -3,9 +3,28 @@
 from __future__ import annotations
 
 import os
+import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
+
+# Subdirectory names under runs/ that belong to subsystem-owned trees, not
+# per-run roots (runs/runtime/, runs/composer/, runs/dks/, runs/eval/). A run
+# id minted by :func:`new_run_id` can never collide with these (the ``run-``
+# prefix), but ``RuntimePaths.run_dir`` validates caller-supplied ids too.
+_RESERVED_RUNS_SUBDIRS: frozenset[str] = frozenset({"runtime", "composer", "dks", "eval"})
+
+
+def new_run_id() -> str:
+    """Mint a collision-safe composer run identity (A0, FZ 20k9c1a1a1b7c2k1a).
+
+    Shape: ``run-<UTC yyyymmdd-hhmmss>-<8 hex>`` — sortable by mint time,
+    unique via the uuid tail, and prefixed so it can never collide with the
+    reserved subsystem subdirectories under ``runs/``.
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return f"run-{stamp}-{uuid.uuid4().hex[:8]}"
 
 
 @dataclass(frozen=True)
@@ -82,3 +101,22 @@ class RuntimePaths:
 
     def job_artifacts(self, job_id: str) -> Path:
         return self.artifacts / job_id
+
+    def run_dir(self, run_id: str) -> Path:
+        """The per-run root ``runs/<run_id>/`` (A0, FZ 20k9c1a1a1b7c2k1a).
+
+        The future home of run-scoped working artifacts
+        (``runs/<run_id>/artifacts/<key>``) — A0 only establishes the
+        addressing; nothing writes here yet. Validates the id so a
+        caller-supplied value can neither escape ``runs/`` nor collide with
+        the reserved subsystem subdirectories.
+        """
+        if (
+            not run_id
+            or "/" in run_id
+            or "\\" in run_id
+            or run_id in (".", "..")
+            or run_id in _RESERVED_RUNS_SUBDIRS
+        ):
+            raise ValueError(f"invalid run id: {run_id!r}")
+        return self.runs / run_id

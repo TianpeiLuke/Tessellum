@@ -133,6 +133,11 @@ class DigestionResult:
             pass (or ``max_review_rounds=0``); ``N`` = the review rejected N
             times and the plan was re-augmented from the failures before
             converging (or exhausting the round budget).
+        run_id: The run identity this pipeline invocation carried (A0, FZ
+            20k9c1a1a1b7c2k1a) — the ``run_id`` named param, or the
+            pre-existing ``execute_kwargs["run_id"]`` calling convention when
+            that was used instead. ``None`` when the caller supplied neither
+            (byte-identical pre-A0 behaviour).
     """
 
     completed: bool
@@ -142,6 +147,7 @@ class DigestionResult:
     plan_doc: dict = field(default_factory=dict)
     under_produced: bool = False
     review_rounds: int = 0
+    run_id: str | None = None
 
 
 # P12 (FZ 20k9c1a1a1b7c2e): the shared ceiling for a DERIVED response budget.
@@ -945,6 +951,7 @@ def run_digestion_pipeline(
     revision_recorder: Callable[[SignOffResult], None] | None = None,
     stop_after: str | None = None,
     max_review_rounds: int = 0,
+    run_id: str | None = None,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -1002,6 +1009,15 @@ def run_digestion_pipeline(
             f"stop_after must be None or 'review', got {stop_after!r}"
         )
     skills_dir = Path(skills_dir)
+    # A0 (FZ 20k9c1a1a1b7c2k1a): hoist run identity to the pipeline level. The
+    # execute wave already accepted run_id via **execute_kwargs (manifest
+    # owner-fencing; corpus isolation via _RUN_SCOPED_EXECUTE_KWARGS) — the
+    # named param makes it first-class and surfaced on the result. No-clobber:
+    # an explicit execute_kwargs["run_id"] (the pre-A0 calling convention)
+    # wins, and the surfaced identity is whatever the wave actually uses.
+    if run_id is not None:
+        execute_kwargs.setdefault("run_id", run_id)
+    run_id = execute_kwargs.get("run_id")
     policy = sign_off_policy or SignOffPolicy(use_agent=False, use_human=False)
     phases: list[PhaseOutcome] = []
     plan_doc: dict[str, Any] = dict(source_leaf)
@@ -1066,7 +1082,7 @@ def run_digestion_pipeline(
     def _halt(phase: str) -> DigestionResult:
         return DigestionResult(
             completed=False, stopped_at=phase, sign_off=None,
-            phases=tuple(phases), plan_doc=plan_doc, review_rounds=review_rounds,
+            phases=tuple(phases), plan_doc=plan_doc, review_rounds=review_rounds, run_id=run_id,
         )
 
     # plan (once)
@@ -1161,7 +1177,7 @@ def run_digestion_pipeline(
             sign_off=sign_off,
             phases=tuple(phases),
             plan_doc=plan_doc,
-            review_rounds=review_rounds,
+            review_rounds=review_rounds, run_id=run_id,
         )
 
     if stop_after == "review":
@@ -1175,7 +1191,7 @@ def run_digestion_pipeline(
             sign_off=sign_off,
             phases=tuple(phases),
             plan_doc=plan_doc,
-            review_rounds=review_rounds,
+            review_rounds=review_rounds, run_id=run_id,
         )
 
     # ── execute: the fan-out wave (one leaf per planned note) ───────────────
@@ -1210,7 +1226,7 @@ def run_digestion_pipeline(
             phases=tuple(phases),
             plan_doc=plan_doc,
             under_produced=True,
-            review_rounds=review_rounds,
+            review_rounds=review_rounds, run_id=run_id,
         )
     phases.append(
         PhaseOutcome(
@@ -1235,7 +1251,7 @@ def run_digestion_pipeline(
         phases=tuple(phases),
         plan_doc=plan_doc,
         under_produced=under_produced,
-        review_rounds=review_rounds,
+        review_rounds=review_rounds, run_id=run_id,
     )
 
 

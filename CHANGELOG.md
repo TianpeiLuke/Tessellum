@@ -4,6 +4,15 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — run identity plumbing: every digest invocation can carry a `run_id` (A0, FZ 20k9c1a1a1b7c2k1a) — 2026-07-28
+
+The first phase of the vault-backed agent-memory design (FZ 20k9c1a1a1b7c2k1): a first-class run identity, minted once, threaded through the pipeline, surfaced on the result. Identity only — nothing reads the future `runs/<run_id>/` dirs yet. Additive; `run_id=None` (and a CLI without `--run-id`… which now mints one) is byte-identical for library callers.
+
+- **`new_run_id()` + `RuntimePaths.run_dir(run_id)`** (`runtime/paths.py`). The canonical mint (`run-<utc>-<8hex>` — sortable, unique, prefix-safe) and the per-run root addressing (`runs/<run_id>/`, the future home of run-scoped working artifacts). `run_dir` validates the id — no path escape, no collision with the reserved `runtime`/`composer`/`dks`/`eval` subsystem subdirs.
+- **`run_digestion_pipeline(run_id=…)`** (`composer/digestion.py`). Hoists the identity the execute wave already accepted via `**execute_kwargs` (manifest owner-fencing; corpus isolation via `_RUN_SCOPED_EXECUTE_KWARGS` — already listed, now pinned by a named A0 test) into a documented named param, and surfaces it as **`DigestionResult.run_id`** on every return path (including early halts and the P13 pre-flight rejection). No-clobber with the legacy kwargs convention.
+- **`tessellum composer digest --run-id/--runs-dir`** (`cli/composer.py`). Every CLI digest invocation now carries an identity — supplied or minted — printed in both output formats (JSON gains a `run_id` key; additive). `--runs-dir` opts into the P20 per-step traces from the CLI (previously unreachable there). The `composer-ts` bridge does not wrap `digest`, so no parser impact.
+- **Tests** (`tests/smoke/test_composer_run_identity.py`, +16): mint shape/uniqueness; `run_dir` addressing + invalid/reserved-id rejection; identity surfaced on the completed, legacy-kwargs, default-None, and early-halt paths; the corpus-allowlist pin. Full suite 2008 passed, ruff clean.
+
 ### Runtime — the note-level grounding gate is re-enablable, fail-closed (P8/F6) — 2026-07-28
 
 The runtime sliced the per-session close gate to format-only (`_format_only_gate()` → `gates[0]`), structurally DISCARDING the note-level grounding predicate — so a note unfaithful to its source passed the shipped close gate (the F6 gap). P8 wires a policy-gated close-gate selector so the grounding check can be turned back on. Internal/robustness — default OFF, byte-identical to pre-P8.
