@@ -156,6 +156,14 @@ class CompiledStep:
     timeout_seconds: float | None = None
     max_prompt_chars: int | None = None
     max_tokens: int | None = None
+    # P12 (FZ 20k9c1a1a1b7c2e): runtime-scaling coefficients. Pure passthrough
+    # from the loader — the compiler NEVER derives (total_notes is a runtime
+    # plan value, absent when compile_skill builds the one template). The driver
+    # (digestion._derive_step_budgets) reads these AFTER compile, BEFORE dispatch,
+    # to raise max_tokens/timeout_seconds from their static FLOOR by
+    # coeff * declared_notes. None → no scaling (byte-identical to pre-P12).
+    max_tokens_per_note: int | None = None
+    timeout_seconds_per_note: float | None = None
 
 
 @dataclass(frozen=True)
@@ -584,6 +592,8 @@ def _compile_step(step: PipelineStep, skill_path: Path) -> CompiledStep:
         timeout_seconds=step.timeout_seconds,
         max_prompt_chars=step.max_prompt_chars,
         max_tokens=step.max_tokens,
+        max_tokens_per_note=step.max_tokens_per_note,
+        timeout_seconds_per_note=step.timeout_seconds_per_note,
     )
 
 

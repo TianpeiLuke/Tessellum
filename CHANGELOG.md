@@ -4,6 +4,16 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Digestion reliability — per-step budgets derived from declared work (P12) — 2026-07-28
+
+The E14/E17 fix hand-set `max_tokens: 32000` + `timeout_seconds: 900` on the big-output writers — closing the symptom per step but not the class: a plan declaring 200 notes (vs 8), or a NEW large-output step, still inherited a constant tuned for a small plan and truncated/stalled. P12 lets a step declare a per-note coefficient so its budget is DERIVED from the plan's declared work at runtime. Internal/robustness — additive and byte-identical until a step opts in.
+
+- **The coefficient** (`loader.py`, `compiler.py`). `PipelineStep`/`CompiledStep` gain optional `max_tokens_per_note` / `timeout_seconds_per_note` fields — pure passthrough loader→compiler (the compiler never derives; `total_notes` is a runtime plan value absent when it builds the one template).
+- **The runtime derivation** (`digestion._derive_step_budgets`). Applied over the compiled pipeline AFTER `compile_skill`, BEFORE dispatch, in both `_run_phase_linear` (aug/review) and `run_execute_wave` (single-doc + corpus). `effective = min(ceiling, max(static_floor, base + coeff × declared_notes))` — the hand-set value is a **floor** the derivation can only RAISE; clamped to `DERIVED_MAX_TOKENS_CEILING` (= the P16 `MAX_TRUNCATION_CEILING_TOKENS`, so a derived base + P16's escalation share one ceiling) / `DERIVED_TIMEOUT_CEILING_SECONDS`. Identity guard: a step with no coefficient, or `declared_notes <= 0` (the plan phase, whose leaf has no `total_notes` yet), is returned unchanged.
+- **Composes with P16**: the rewritten `max_tokens` becomes P16's escalation base, so the derived value is a right-sized START and P16 stays the last-resort self-heal. Orthogonal to the compiler's `_validate_context_budgets` (which bounds prompt-INPUT chars, not response-OUTPUT tokens).
+- **Skill adoption** (`skill_tessellum_augment_digestion_plan.md`). The three note-count-scaling corpus_wide writers (`add_coverage_and_gates`, `add_crossref_contract`, `write_augmented_plan`) declare a coefficient; the static `32000` stays as the small-plan floor. An 8-note plan stays ~32–36K (floored); an 80-note plan scales to the 64000 ceiling. The `per_leaf` `dispatch_notes` writer declares none (already self-budgeting via fan-out).
+- **Tests** (`tests/smoke/test_composer_derived_budgets.py`, +12). Coefficient passthrough; the formula (scale / floor / ceiling / timeout / default-base); the identity guards (no coeff, 0 notes); mixed-pipeline; metadata preservation; and the shipped augment skill scaling on a large plan while staying at the floor on a small one. Full suite 1964 passed.
+
 ## [1.12.0] — 2026-07-28
 
 ### Digestion hardening — the full P16–P24 design-review remediation is COMPLETE — 2026-07-28

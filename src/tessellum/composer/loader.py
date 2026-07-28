@@ -111,6 +111,17 @@ class PipelineStep(BaseModel):
     cross-reference contract) exceed the global default and truncate mid-JSON;
     they declare a larger per-step cap here rather than raising the global
     (which just moves the truncation threshold for every other step)."""
+    max_tokens_per_note: int | None = None
+    """P12 (FZ 20k9c1a1a1b7c2e): a per-declared-note RESPONSE-token coefficient.
+    A step whose output scales with the plan's note count declares this so the
+    driver DERIVES an effective ``max_tokens`` at runtime (``max_tokens`` becomes
+    a FLOOR, the derived value only raises it) from ``total_notes`` — a NEW large
+    plan is then self-budgeting instead of inheriting a hand-set constant tuned
+    for a small one. None → no scaling (the static ``max_tokens`` alone)."""
+    timeout_seconds_per_note: float | None = None
+    """P12: a per-declared-note WATCHDOG-seconds coefficient, analogous to
+    :attr:`max_tokens_per_note`. None → no scaling (the static
+    ``timeout_seconds`` alone)."""
 
 
 class Pipeline(BaseModel):

@@ -232,6 +232,7 @@ depends_on:
 materializer: no_op
 output_key: coverage_and_gates
 max_tokens: 32000
+max_tokens_per_note: 400
 timeout_seconds: 900
 expected_output_schema:
   type: object
@@ -316,6 +317,7 @@ depends_on:
 materializer: no_op
 output_key: crossref_contract
 max_tokens: 32000
+max_tokens_per_note: 400
 timeout_seconds: 900
 expected_output_schema:
   type: object
@@ -446,6 +448,7 @@ depends_on:
 materializer: body_markdown_to_file
 output_key: augmented_plan
 max_tokens: 32000
+max_tokens_per_note: 500
 timeout_seconds: 900
 expected_output_schema:
   type: object

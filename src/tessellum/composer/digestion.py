@@ -30,14 +30,24 @@ gate engine, and one SkillTool model.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, ContextManager
 
-from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS, compile_skill
+from tessellum.composer.compiler import (
+    HARD_PROMPT_CAP_CHARS,
+    CompiledPipeline,
+    compile_skill,
+)
 from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
 from tessellum.composer.contracts import _ARTIFACT_KEYS, PlanDoc
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
+from tessellum.composer.executor import (
+    DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_TRUNCATION_BASE_TOKENS,
+    MAX_TRUNCATION_CEILING_TOKENS,
+)
 from tessellum.composer.gates import build_plan_gate
 from tessellum.composer.knowledge_plan import (
     NoteIntentGraph,
@@ -129,6 +139,90 @@ class DigestionResult:
     review_rounds: int = 0
 
 
+# P12 (FZ 20k9c1a1a1b7c2e): the shared ceiling for a DERIVED response budget.
+# Aligned to the executor's MAX_TRUNCATION_CEILING_TOKENS so the derived base +
+# P16's 2×-per-round truncation escalation share ONE ceiling (a step derived at
+# the ceiling leaves P16 no headroom → it falls through to the normal terminal
+# path at 64000, exactly as a hand-set 64000 step does today).
+DERIVED_MAX_TOKENS_CEILING: int = MAX_TRUNCATION_CEILING_TOKENS
+# The watchdog ceiling for a derived timeout — generous (a large plan's writer
+# legitimately runs long), but bounded so a runaway note count can't set an
+# effectively-infinite watchdog.
+DERIVED_TIMEOUT_CEILING_SECONDS: float = 1800.0
+
+
+def _derive_step_budgets(
+    compiled: CompiledPipeline, *, declared_notes: int
+) -> CompiledPipeline:
+    """Raise a step's response/watchdog budget from its static FLOOR by the
+    plan's declared work (P12; FZ 20k9c1a1a1b7c2e).
+
+    The E14/E17 fix hand-set ``max_tokens: 32000`` + ``timeout_seconds: 900`` on
+    the big-output writers — which closes the SYMPTOM per step but not the CLASS:
+    a plan declaring 200 notes vs 8, or a NEW large-output step, still inherits a
+    constant tuned for a small plan and truncates/stalls. A step that declares a
+    ``max_tokens_per_note`` / ``timeout_seconds_per_note`` coefficient is instead
+    made self-budgeting here: the driver rewrites its effective budget from
+    ``total_notes`` (a RUNTIME plan value, absent at compile time — which is why
+    this is a driver step over the compiled pipeline, not a compile-time one).
+
+    Invariants:
+    - **Floor, never lower.** ``effective = max(static, base + coeff*notes)`` —
+      a hand-set value is a FLOOR the derivation can only RAISE. A small plan on
+      a ``max_tokens: 32000`` step stays exactly 32000.
+    - **Ceiling.** Clamped to :data:`DERIVED_MAX_TOKENS_CEILING` (shared with
+      P16) / :data:`DERIVED_TIMEOUT_CEILING_SECONDS`.
+    - **Identity guard (byte-identical when unused).** A step declaring NO
+      coefficient, or ``declared_notes <= 0``, is returned UNCHANGED. So the
+      whole pipeline is byte-identical until a skill opts in (and the plan phase,
+      whose leaf has no ``total_notes`` yet, is always a no-op — ``total_notes``
+      is produced BY the plan phase).
+
+    Composes with P16: the rewritten ``max_tokens`` becomes P16's escalation base
+    (``executor`` reads ``step.max_tokens``), so the derived value is a
+    right-sized START and P16 stays the last-resort self-heal. This rewrites only
+    the RESPONSE-output budget — orthogonal to the compiler's
+    ``_validate_context_budgets``, which bounds prompt-INPUT chars.
+    """
+    if declared_notes <= 0:
+        return compiled  # no signal → no-op (byte-identical)
+
+    changed = False
+    new_steps = []
+    for step in compiled.steps:
+        mt_coeff = step.max_tokens_per_note
+        to_coeff = step.timeout_seconds_per_note
+        if mt_coeff is None and to_coeff is None:
+            new_steps.append(step)
+            continue
+        replace_kwargs: dict[str, Any] = {}
+        if mt_coeff is not None:
+            base = step.max_tokens or DEFAULT_TRUNCATION_BASE_TOKENS
+            derived = base + mt_coeff * declared_notes
+            effective = min(DERIVED_MAX_TOKENS_CEILING, max(step.max_tokens or 0, derived))
+            if effective != step.max_tokens:
+                replace_kwargs["max_tokens"] = effective
+        if to_coeff is not None:
+            base_t = step.timeout_seconds or DEFAULT_TIMEOUT_SECONDS
+            derived_t = base_t + to_coeff * declared_notes
+            effective_t = min(
+                DERIVED_TIMEOUT_CEILING_SECONDS, max(step.timeout_seconds or 0.0, derived_t)
+            )
+            if effective_t != step.timeout_seconds:
+                replace_kwargs["timeout_seconds"] = effective_t
+        if replace_kwargs:
+            new_steps.append(dataclasses.replace(step, **replace_kwargs))
+            changed = True
+        else:
+            new_steps.append(step)
+
+    if not changed:
+        return compiled
+    # Rebuild the pipeline replacing ONLY the steps tuple — preserve
+    # budget_warnings / re_emission_warnings / compiled_at / pipeline_version.
+    return dataclasses.replace(compiled, steps=tuple(new_steps))
+
+
 def _build_artifact_store(plan_doc: dict[str, Any]) -> dict[str, Any]:
     """The by-reference artifact store the driver injects into each phase's
     prompts (P21-full; FZ 20k9c1a1a1b7c2j). Snapshots the current durable value
@@ -174,6 +268,10 @@ def _run_phase_linear(
     large durable artifact via ``{{artifact.X}}`` instead of a prior step
     re-emitting it. ``None`` → no artifact substitution (byte-identical)."""
     compiled = compile_skill(skills_dir / f"{skill_name}.md")
+    # P12: raise coefficient-bearing steps' budgets by the plan's declared work.
+    # The leaf carries total_notes for aug/review (leaf = dict(plan_doc)); the
+    # plan phase's leaf has none → declared_notes=0 → no-op.
+    compiled = _derive_step_budgets(compiled, declared_notes=_declared_note_count(leaf))
     return run_pipeline(
         compiled,
         leaves=[leaf],
@@ -594,6 +692,11 @@ def run_execute_wave(
     if context_assembler is None:
         context_assembler = WindowedAssembler(max_chars=HARD_PROMPT_CAP_CHARS - 4_096)
     compiled = compile_skill(Path(skills_dir) / f"{PHASE_SKILLS['execute']}.md")
+    # P12: raise coefficient-bearing execute steps' budgets by the declared note
+    # count (single-doc + corpus waves both route here). The per_leaf
+    # dispatch_notes writer declares no coefficient — it is already self-budgeting
+    # via the fan-out (one note per leaf), so it is never scaled by total_notes.
+    compiled = _derive_step_budgets(compiled, declared_notes=_declared_note_count(plan_doc))
     graph_spec = plan_doc.get("note_intent_graph")
     if graph_spec is not None:
         graph = (
