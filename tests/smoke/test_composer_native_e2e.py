@@ -169,6 +169,31 @@ def test_real_skills_fan_out_planned_notes_natively(tmp_path: Path) -> None:
     )
 
 
+def test_real_execute_wave_preflight_fails_loud_on_under_production(tmp_path: Path) -> None:
+    """P13 (FZ 20k9c1a1a1b7c2e) — over the REAL execute skill, a plan that
+    DECLARES 2 notes but carries no planned_notes / note_intent_graph collapses
+    to the single whole-plan leaf; the pre-flight now RAISES PreflightError
+    before any backend call (closes the by-construction masking — pre-P13 this
+    silently under-produced ~1 note)."""
+    if not _real_skills_present():
+        pytest.skip("real vault skills not present")
+    from tessellum.composer import run_execute_wave
+    from tessellum.composer.digestion import PreflightError
+
+    backend = MockBackend(default=json.dumps(_SUPERSET_RESPONSE))
+    plan_doc = {
+        "plan_path": "plans/plan_digest_demo.md",
+        "plan_text": "# Plan", "total_notes": 2,  # declares 2, enumerates none
+        "note_dir": "resources/documentation/demo",
+    }
+    with pytest.raises(PreflightError) as exc:
+        run_execute_wave(
+            plan_doc, skills_dir=SKILLS, backend=backend, vault_root=tmp_path / "vault",
+        )
+    assert exc.value.result.declared == 2
+    assert exc.value.result.leaf_count == 1
+
+
 def test_real_review_skill_has_no_re_emission_after_migration() -> None:
     """P21-full A7: the migrated review skill reads the plan BY REFERENCE via
     {{artifact.plan_text}} and no longer re-declares plan_text as step_1's

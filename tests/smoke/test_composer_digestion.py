@@ -93,20 +93,26 @@ def _synthetic_pipeline(skills_dir: Path) -> None:
 
 
 def _mock(**overrides) -> MockBackend:
-    """A backend whose default JSON satisfies every synthetic phase schema."""
+    """A backend whose default JSON satisfies every synthetic phase schema.
+
+    Default ``total_notes: 1`` so the whole-plan single-leaf fallback is a
+    COHERENT plan (declares 1, produces 1) and the P13 pre-flight short-circuits
+    — these mechanics tests exercise phase/sign-off flow, not the fan-out. Tests
+    that need a multi-note plan pass ``planned_notes`` explicitly so the wave
+    projects one leaf per note (and P13 sees a coherent declared==produced)."""
     blob = {
         "plan_path": "plans/plan_demo.md",
         "plan_text": "# Plan\n\nbody",
         "ready": True, "failures": [],
         "output_path": "notes/n.md", "body_markdown": "# Note\n\nbody",
-        "total_notes": 2,
+        "total_notes": 1,
     }
     blob.update(overrides)
     return MockBackend(default=json.dumps(blob))
 
 
 _SOURCE = {"id": "demo", "plan_path": "plans/plan_demo.md",
-           "plan_text": "# Plan", "total_notes": 2}
+           "plan_text": "# Plan", "total_notes": 1}
 
 
 # ── The happy path: all 4 phases + approve + complete ───────────────────────
@@ -244,10 +250,19 @@ def test_high_blast_escalates_to_human(tmp_path: Path) -> None:
     sd = tmp_path / "skills"
     sd.mkdir()
     _synthetic_pipeline(sd)
+    # 500 coherent planned_notes → the wave projects 500 leaves (declares 500,
+    # produces 500) so P13 pre-flight passes; the blast_radius (=total_notes 500)
+    # drives the high-blast → human escalation this test asserts. approx_words is
+    # required or the review plan gate rejects (density unverifiable).
+    planned = [
+        {"filename": f"n{i}.md", "description": f"note {i}", "approx_words": 800}
+        for i in range(500)
+    ]
     result = run_digestion_pipeline(
         skills_dir=sd,
-        source_leaf={"id": "x", "plan_path": "plans/p.md", "plan_text": "x", "total_notes": 500},
-        backend=_mock(total_notes=500),
+        source_leaf={"id": "x", "plan_path": "plans/p.md", "plan_text": "x",
+                     "total_notes": 500, "planned_notes": planned},
+        backend=_mock(total_notes=500, planned_notes=planned),
         vault_root=tmp_path / "vault",
         sign_off_policy=SignOffPolicy(use_agent=True, use_human=True,
                                       blast_radius_threshold=50),
@@ -338,23 +353,35 @@ def test_note_intent_graph_projection_drives_execute(tmp_path: Path) -> None:
     assert leaf_paths == {"notes/n1.md", "notes/n2.md"}
 
 
-def test_absent_note_intent_graph_is_shipped_single_leaf(tmp_path: Path) -> None:
-    """Without a note_intent_graph, the shipped whole-plan fallback runs: a
-    single execute leaf (byte-identical to pre-P2b behaviour)."""
+def test_declared_multi_note_plan_with_no_projection_fails_preflight(tmp_path: Path) -> None:
+    """P13 (FZ 20k9c1a1a1b7c2e) — the deliberate contract change: a plan that
+    DECLARES 2 notes but carries no note_intent_graph AND no planned_notes
+    collapses to the single whole-plan fallback leaf (the E11 under-production
+    failure). Pre-P13 this SILENTLY shipped ~1 note (under_produced=True but
+    completed=True); P13 now fails LOUD before dispatch — zero notes written,
+    stopped_at='execute_preflight'."""
     sd = tmp_path / "skills"
     sd.mkdir()
     _synthetic_pipeline(sd)
+    # An incoherent plan: declares 2 notes but enumerates none (no planned_notes,
+    # no note_intent_graph) → the whole-plan fallback → 1 leaf < 2 declared.
+    source = {"id": "demo", "plan_path": "plans/plan_demo.md",
+              "plan_text": "# Plan", "total_notes": 2}
+    mock = MockBackend(default=json.dumps({
+        "plan_path": "plans/plan_demo.md", "plan_text": "# Plan\n\nbody",
+        "ready": True, "failures": [],
+        "output_path": "notes/n.md", "body_markdown": "# Note\n\nbody",
+        "total_notes": 2,  # declares 2, but NO planned_notes → unprojectable
+    }))
     result = run_digestion_pipeline(
-        skills_dir=sd, source_leaf=dict(_SOURCE), backend=_mock(),
+        skills_dir=sd, source_leaf=source, backend=mock,
         vault_root=tmp_path / "vault",
     )
-    assert result.completed
+    assert result.completed is False
+    assert result.stopped_at == "execute_preflight"
+    # The execute phase did NOT run to completion (no notes written).
     execute_phase = [p for p in result.phases if p.phase == "execute"][0]
-    assert len(execute_phase.run.leaves) == 1  # the whole-plan fallback leaf
-    # FZ 20k9c1a1a1b7c2g: the plan declares 2 notes but the wave produced 1 leaf
-    # → the under-production signal must be surfaced on the result so a headless
-    # orchestrator (which never sees the RuntimeWarning) can branch on it.
-    assert result.under_produced is True
+    assert execute_phase.ran is False
 
 
 def test_under_produced_false_when_leaf_count_matches_declared(tmp_path: Path) -> None:

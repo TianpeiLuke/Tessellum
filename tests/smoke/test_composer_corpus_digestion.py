@@ -68,11 +68,15 @@ def _write_phase_skills(skills_dir: Path) -> None:
 
 
 def _mock(ready: bool = True) -> MockBackend:
+    # total_notes: 1 so the whole-plan single-leaf fallback is a COHERENT plan
+    # (declares 1, produces 1) and the P13 pre-flight short-circuits — these
+    # corpus tests exercise sub-plan scheduling/isolation, not the fan-out. Tests
+    # that assert a multi-note fan-out pass planned_notes explicitly.
     return MockBackend(default=json.dumps({
         "plan_path": "plans/p.md", "plan_text": "# Plan",
         "ready": ready, "failures": [] if ready else ["forced reject"],
         "output_path": "notes/n.md", "body_markdown": "# N",
-        "total_notes": 2,
+        "total_notes": 1,
     }))
 
 
@@ -160,13 +164,13 @@ def test_rejected_sub_objective_blocks_only_itself(tmp_path: Path) -> None:
         default=json.dumps({
             "plan_path": "plans/p.md", "plan_text": "# Plan",
             "ready": True, "failures": [],
-            "output_path": "notes/n.md", "body_markdown": "# N", "total_notes": 2,
+            "output_path": "notes/n.md", "body_markdown": "# N", "total_notes": 1,
         }),
         responses={
             "Review sub s2": json.dumps({
                 "plan_path": "plans/p.md", "plan_text": "# Plan",
                 "ready": False, "failures": ["s2 rejected"],
-                "output_path": "notes/n.md", "body_markdown": "# N", "total_notes": 2,
+                "output_path": "notes/n.md", "body_markdown": "# N", "total_notes": 1,
             }),
         },
     )
@@ -369,13 +373,13 @@ def test_corpus_digestion_partial_when_one_sub_blocked_at_planning(tmp_path: Pat
         default=json.dumps({
             "plan_path": "plans/p.md", "plan_text": "# Plan", "ready": True,
             "failures": [], "output_path": "notes/n.md", "body_markdown": "# N",
-            "total_notes": 2,
+            "total_notes": 1,
         }),
         responses={
             "Review sub s2": json.dumps({
                 "plan_path": "plans/p.md", "plan_text": "# Plan", "ready": False,
                 "failures": ["s2 rejected"], "output_path": "notes/n.md",
-                "body_markdown": "# N", "total_notes": 2,
+                "body_markdown": "# N", "total_notes": 1,
             }),
         },
     )
@@ -777,7 +781,7 @@ def test_corpus_execute_error_blocks_only_that_sub_plan(tmp_path: Path) -> None:
         default=json.dumps({
             "plan_path": "plans/p.md", "plan_text": "# Plan", "ready": True,
             "failures": [], "output_path": "notes/n.md", "body_markdown": "# N",
-            "total_notes": 2,
+            "total_notes": 1,
         }),
         responses={
             # s1's execute step: missing required body_markdown → materializer/schema error.

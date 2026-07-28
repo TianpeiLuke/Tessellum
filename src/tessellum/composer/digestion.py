@@ -47,8 +47,9 @@ from tessellum.composer.executor import (
     DEFAULT_TIMEOUT_SECONDS,
     DEFAULT_TRUNCATION_BASE_TOKENS,
     MAX_TRUNCATION_CEILING_TOKENS,
+    upstream_placeholder_keys,
 )
-from tessellum.composer.gates import build_plan_gate
+from tessellum.composer.gates import build_plan_gate, duplicate_target_predicate
 from tessellum.composer.knowledge_plan import (
     NoteIntentGraph,
     project_note_intent_graph,
@@ -108,21 +109,25 @@ class DigestionResult:
             executed, ``"review_accepted"`` = accepted-not-executed.
         stopped_at: Where the pipeline halted: ``"review"`` on a sign-off
             rejection; a phase name on a phase error; ``"review_accepted"`` when
-            ``stop_after="review"`` approved (M3); ``None`` when it fully
+            ``stop_after="review"`` approved (M3); ``"execute_preflight"`` when
+            the P13 pre-flight failed the plan before the execute wave dispatched
+            (FZ 20k9c1a1a1b7c2e — zero notes written); ``None`` when it fully
             executed to completion.
         sign_off: The :class:`SignOffResult` from the review → ready gate
             (``None`` if the pipeline stopped before review completed).
         phases: Ordered per-phase outcomes.
         plan_doc: The final plan artifact threaded through the phases.
-        under_produced: ``True`` iff the execute wave wrote fewer note leaves
-            than the plan declared (FZ 20k9c1a1a1b7c2b / b7c2g) — the
+        under_produced: ``True`` iff the plan declared more notes than the
+            execute wave produced (FZ 20k9c1a1a1b7c2b / b7c2g) — the
             silent-under-production failure mode (an N-note plan producing ~1
-            note). ``run_execute_wave`` also emits a ``RuntimeWarning``, but a
-            headless orchestrator never sees a warning; this is the programmatic
-            signal it can branch on (e.g. fail the run). ``False`` on the full
-            path when leaf-count ≥ declared, and always ``False`` when the plan
-            declares no count or the pipeline stopped before execute (nothing
-            was produced to compare).
+            note). Set on two paths: the full path when leaf-count < declared,
+            AND the P13 ``execute_preflight`` halt (the plan was caught
+            under-producing BEFORE dispatch — zero notes written, but the flag
+            still marks the under-production the pre-flight rejected). This is
+            the programmatic signal a headless orchestrator branches on (it never
+            sees the RuntimeWarning). ``False`` on the full path when leaf-count ≥
+            declared, and when the pipeline stopped before execute for a reason
+            OTHER than the pre-flight (nothing was produced to compare).
         review_rounds: How many EXTRA review-revise rounds ran (FZ
             20k9c1a1a1b7c2h / P15). ``0`` = the plan passed review on the first
             pass (or ``max_review_rounds=0``); ``N`` = the review rejected N
@@ -639,6 +644,153 @@ def _execute_fallback_strategy(skills_dir: Path | str) -> str | None:
     return None
 
 
+# ── P13: static plan pre-flight before the execute wave dispatches ───────────
+
+
+@dataclass(frozen=True)
+class PreflightResult:
+    """The verdict of :func:`preflight_execute_wave` — a static, pre-dispatch
+    coherence check over the accepted plan + its projected leaves (P13;
+    FZ 20k9c1a1a1b7c2e). ``ok`` is ``True`` iff no blocking issue was found."""
+
+    ok: bool
+    issues: tuple[str, ...]
+    declared: int
+    leaf_count: int
+
+    @property
+    def actionable_message(self) -> str:
+        """One string joining the issues — a headless caller branches on
+        ``ok`` and surfaces this rather than parsing a warning stream."""
+        return "; ".join(self.issues)
+
+
+class PreflightError(RuntimeError):
+    """Raised by :func:`run_execute_wave` when the pre-flight fails — the
+    execute wave is aborted BEFORE any backend call. Carries the
+    :class:`PreflightResult`."""
+
+    def __init__(self, result: PreflightResult) -> None:
+        super().__init__(
+            f"execute pre-flight failed ({len(result.issues)} issue(s)): "
+            f"{result.actionable_message}"
+        )
+        self.result = result
+
+
+def preflight_execute_wave(
+    plan_doc: dict,
+    execute_leaves: list[dict],
+    *,
+    compiled: "CompiledPipeline | None" = None,
+) -> PreflightResult:
+    """Statically check an accepted plan + its projected leaves BEFORE the
+    execute wave burns any backend calls (P13; FZ 20k9c1a1a1b7c2e).
+
+    The compile-time / pre-dispatch complement to the shipped P23 (which fails
+    loud at RUNTIME on a missing consumed input). The retrospective
+    (FZ 20k9c1a1a1b7c2i) named a pre-dispatch check as a top prevention: the
+    execute wave's silent under-production (an N-note plan collapsing to the
+    single whole-plan fallback leaf → ~1 note) used to only *warn*; P13 turns it
+    into a fail-loud abort so the defect surfaces before N leaves of wasted work.
+
+    Pure — no backend, no filesystem. Checks (all skipped when ``declared <= 1``,
+    preserving the legitimate corpus-of-one / degenerate whole-plan fallback):
+
+    1. **Fan-out collapse** — ``declared > 1`` but fewer leaves than declared
+       (the E11 single-whole-plan-leaf failure). The promoted warning.
+    2. **Silently-dropped notes** — a ``planned_notes`` row lacking a usable
+       ``filename``/``note`` (the skip in ``_project_planned_notes_to_leaves``),
+       or a projected leaf without a vault-relative ``target_path``.
+    3. **Duplicate target paths** — two leaves writing the same note path
+       (reuses the wave-gate ``duplicate_target_predicate``, pre-dispatch).
+    4. **Dangling ``{{upstream.X}}``** (fail-soft) — a step referencing an
+       output_key no step in the compiled pipeline produces. Best-effort; any
+       introspection error skips ONLY this check.
+
+    Does NOT re-assert plan shape the review plan gate owns (PLAN-002 plan_text,
+    PLAN-003 total_notes>0) — those are checked at the review phase; P13 checks
+    projection/leaf-level facts the plan gate structurally cannot see.
+
+    Scope note: the ``declared`` count comes from ``_declared_note_count``
+    (``total_notes`` / ``planned_notes``), so a typed ``note_intent_graph`` plan
+    that carries NEITHER (its count lives in ``note_intent_graph.intents``) has
+    ``declared == 0`` and short-circuits the fan-out check. That is acceptable —
+    the graph path is the opt-in typed route: ``NoteIntentGraph.model_validate``
+    already fails loud on an invalid graph, and its projection is deterministic
+    (one leaf per intent), so it cannot silently collapse the way an untyped
+    ``planned_notes`` plan can. The duplicate-target / dangling-upstream checks
+    still run on its projected leaves when a positive count is present.
+    """
+    declared = _declared_note_count(plan_doc)
+    leaf_count = len(execute_leaves)
+    issues: list[str] = []
+
+    # The whole-plan fallback (corpus-of-one / degenerate plan) is legitimate.
+    if declared <= 1:
+        return PreflightResult(ok=True, issues=(), declared=declared, leaf_count=leaf_count)
+
+    # CHECK 1 — fan-out collapse (the core E11 case, promoted from a warning).
+    if leaf_count < declared:
+        detail = (
+            f"execute wave projected {leaf_count} leaf(es) but the plan declares "
+            f"{declared} notes"
+        )
+        if leaf_count <= 1 and not plan_doc.get("note_intent_graph"):
+            detail += (
+                " — the whole-plan fallback fired (no note_intent_graph and the "
+                "planned_notes projection yielded too few leaves); the pipeline "
+                "would under-produce ~1 note for an N-note plan"
+            )
+        issues.append(detail)
+
+    # CHECK 2 — silently-dropped planned_notes rows + missing target_path.
+    planned = plan_doc.get("planned_notes")
+    if isinstance(planned, list):
+        dropped = [
+            i for i, pn in enumerate(planned)
+            if not (isinstance(pn, dict)
+                    and str(pn.get("filename") or pn.get("note") or "").strip().strip("/"))
+        ]
+        if dropped:
+            issues.append(
+                f"{len(dropped)} planned note(s) lack a usable filename/note and "
+                f"would be silently dropped (rows {dropped})"
+            )
+    for i, leaf in enumerate(execute_leaves):
+        tp = leaf.get("target_path") if isinstance(leaf, dict) else None
+        # The whole-plan fallback leaf legitimately has no target_path; only flag
+        # a leaf that IS a projected note (carries a typed `note`) but lacks one.
+        if isinstance(leaf, dict) and leaf.get("note") and not (isinstance(tp, str) and tp.strip()):
+            issues.append(f"projected note leaf {i} has no vault-relative target_path")
+
+    # CHECK 3 — duplicate target paths (pre-dispatch reuse of the wave gate).
+    target_paths = [
+        leaf["target_path"] for leaf in execute_leaves
+        if isinstance(leaf, dict) and isinstance(leaf.get("target_path"), str)
+    ]
+    for dup in duplicate_target_predicate(target_paths):
+        issues.append(dup.message)
+
+    # CHECK 4 — dangling {{upstream.X}} (fail-soft; best-effort static surfacing).
+    if compiled is not None:
+        try:
+            produced = {s.output_key for s in compiled.steps if s.output_key}
+            for step in compiled.steps:
+                dangling = sorted(upstream_placeholder_keys(step) - produced)
+                if dangling:
+                    issues.append(
+                        f"step {step.section_id!r} references {{{{upstream.X}}}} "
+                        f"key(s) no step produces: {dangling}"
+                    )
+        except Exception:  # noqa: BLE001 — fail-soft: skip ONLY this check
+            pass
+
+    return PreflightResult(
+        ok=not issues, issues=tuple(issues), declared=declared, leaf_count=leaf_count
+    )
+
+
 def run_execute_wave(
     plan_doc: dict,
     *,
@@ -717,22 +869,15 @@ def run_execute_wave(
         if not isinstance(execute_leaves, list) or not execute_leaves:
             # Last-resort single whole-plan leaf (degenerate/malformed plan).
             execute_leaves = [dict(plan_doc)]
-    # No-silent-under-production backstop (FZ 20k9c1a1a1b7c2b): if the plan
-    # declares N notes but the wave is about to fan out to far fewer leaves, that
-    # is the single-whole-plan-leaf failure mode — surface it loudly rather than
-    # silently writing ~1 note for an N-note plan.
-    declared = _declared_note_count(plan_doc)
-    if isinstance(declared, int) and declared > 1 and len(execute_leaves) < declared:
-        import warnings
-
-        warnings.warn(
-            f"execute wave fanned out to {len(execute_leaves)} leaf(es) but the "
-            f"plan declares {declared} notes — the pipeline may under-produce. "
-            f"Expected one writer leaf per planned note "
-            f"(planned_notes projection / note_intent_graph).",
-            RuntimeWarning,
-            stacklevel=2,
-        )
+    # P13 (FZ 20k9c1a1a1b7c2e): static pre-flight BEFORE any backend call —
+    # promotes the old no-silent-under-production WARNING to a fail-loud abort.
+    # If the plan declares N notes but the wave collapsed to far fewer leaves (the
+    # E11 single-whole-plan-leaf failure), or a planned note is unprojectable, or
+    # two leaves target the same path, raise PreflightError so the defect surfaces
+    # before N leaves of wasted work instead of silently under-producing.
+    preflight = preflight_execute_wave(plan_doc, execute_leaves, compiled=compiled)
+    if not preflight.ok:
+        raise PreflightError(preflight)
     # FZ 20k9d2: enrich each note leaf with per-note relevance-ranked related
     # notes → the writer renders them into ## References → note_links edges.
     # No-op when related_notes_db is None (byte-identical to pre-fix).
@@ -1036,22 +1181,37 @@ def run_digestion_pipeline(
     # ── execute: the fan-out wave (one leaf per planned note) ───────────────
     if cancellation_check is not None and cancellation_check():
         raise InterruptedError("digestion cancelled before execute")
-    execute_run = run_execute_wave(
-        plan_doc,
-        skills_dir=skills_dir,
-        backend=backend,
-        vault_root=vault_root,
-        dry_run=dry_run,
-        execute_max_workers=execute_max_workers,
-        budget=budget,
-        breaker=breaker,
-        context_assembler=context_assembler,
-        related_notes_db=related_notes_db,
-        cancellation_check=cancellation_check,
-        effect_guard=effect_guard,
-        effect_recorder=effect_recorder,
-        **execute_kwargs,
-    )
+    try:
+        execute_run = run_execute_wave(
+            plan_doc,
+            skills_dir=skills_dir,
+            backend=backend,
+            vault_root=vault_root,
+            dry_run=dry_run,
+            execute_max_workers=execute_max_workers,
+            budget=budget,
+            breaker=breaker,
+            context_assembler=context_assembler,
+            related_notes_db=related_notes_db,
+            cancellation_check=cancellation_check,
+            effect_guard=effect_guard,
+            effect_recorder=effect_recorder,
+            **execute_kwargs,
+        )
+    except PreflightError:
+        # P13: the plan failed the pre-dispatch coherence check — abort loud with
+        # ZERO notes written, preserving the always-returns-a-DigestionResult
+        # contract (a headless caller branches on stopped_at + the message).
+        phases.append(PhaseOutcome(phase="execute", ran=False, error_count=1))
+        return DigestionResult(
+            completed=False,
+            stopped_at="execute_preflight",
+            sign_off=sign_off,
+            phases=tuple(phases),
+            plan_doc=plan_doc,
+            under_produced=True,
+            review_rounds=review_rounds,
+        )
     phases.append(
         PhaseOutcome(
             phase="execute",
@@ -1083,6 +1243,9 @@ __all__ = [
     "PHASE_SKILLS",
     "PhaseOutcome",
     "DigestionResult",
+    "PreflightResult",
+    "PreflightError",
+    "preflight_execute_wave",
     "run_execute_wave",
     "run_digestion_pipeline",
 ]

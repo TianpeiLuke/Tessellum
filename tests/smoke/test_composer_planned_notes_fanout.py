@@ -17,6 +17,7 @@ from tessellum.composer.digestion import (
     _declared_note_count,
     _normalize_plan_doc_keys,
     _project_planned_notes_to_leaves,
+    preflight_execute_wave,
 )
 
 
@@ -185,3 +186,77 @@ def test_normalize_sets_total_notes_when_missing():
     plan = {"planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}, {"filename": "c.md"}]}
     _normalize_plan_doc_keys(plan)
     assert plan["total_notes"] == 3
+
+
+# ── P13 (FZ 20k9c1a1a1b7c2e): preflight_execute_wave — static pre-dispatch ────
+
+
+def _leaf(filename: str, note_dir: str = "resources/documentation") -> dict:
+    """A well-formed projected note leaf (the shape _project_… produces)."""
+    return {
+        "note": {"filename": filename, "thesis": "t"},
+        "target_path": f"{note_dir}/{filename}",
+        "source_ref": [],
+    }
+
+
+def test_preflight_ok_when_declared_le_1():
+    """A corpus-of-one / degenerate whole-plan fallback (declared <= 1) is
+    legitimate — preflight short-circuits ok=True."""
+    pf = preflight_execute_wave({"total_notes": 1}, [{"plan_text": "whole plan"}])
+    assert pf.ok
+    pf0 = preflight_execute_wave({}, [{"plan_text": "whole plan"}])
+    assert pf0.ok
+
+
+def test_preflight_fails_on_fan_out_collapse():
+    """The E11 case: declares N>1 but collapsed to the single whole-plan leaf."""
+    plan = {"total_notes": 3}  # no planned_notes, no note_intent_graph
+    pf = preflight_execute_wave(plan, [{"plan_text": "whole plan"}])  # 1 leaf
+    assert not pf.ok
+    assert pf.declared == 3 and pf.leaf_count == 1
+    assert any("whole-plan fallback" in i or "under-produce" in i for i in pf.issues)
+
+
+def test_preflight_ok_on_matching_fan_out():
+    """N well-formed planned notes → N leaves → coherent, ok=True."""
+    plan = {"total_notes": 3, "planned_notes": [{"filename": f"n{i}.md"} for i in range(3)]}
+    leaves = [_leaf(f"n{i}.md") for i in range(3)]
+    pf = preflight_execute_wave(plan, leaves)
+    assert pf.ok, pf.issues
+
+
+def test_preflight_flags_dropped_planned_notes():
+    """A planned_notes row lacking a usable filename would be silently dropped."""
+    plan = {
+        "total_notes": 2,
+        "planned_notes": [{"filename": "a.md"}, {"description": "no filename"}],
+    }
+    # projection dropped the second → only 1 leaf
+    pf = preflight_execute_wave(plan, [_leaf("a.md")])
+    assert not pf.ok
+    assert any("silently dropped" in i or "lack a usable filename" in i for i in pf.issues)
+
+
+def test_preflight_flags_duplicate_target_paths():
+    plan = {"total_notes": 2, "planned_notes": [{"filename": "dup.md"}, {"filename": "dup.md"}]}
+    leaves = [_leaf("dup.md"), _leaf("dup.md")]
+    pf = preflight_execute_wave(plan, leaves)
+    assert not pf.ok
+    assert any("duplicate" in i.lower() for i in pf.issues)
+
+
+def test_preflight_flags_leaf_without_target_path():
+    plan = {"total_notes": 2, "planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}]}
+    bad = {"note": {"filename": "b.md"}}  # a projected note leaf missing target_path
+    pf = preflight_execute_wave(plan, [_leaf("a.md"), bad])
+    assert not pf.ok
+    assert any("target_path" in i for i in pf.issues)
+
+
+def test_preflight_dangling_upstream_failsoft_without_compiled():
+    """CHECK 4 is skipped (no error) when no compiled pipeline is threaded."""
+    plan = {"total_notes": 2, "planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}]}
+    leaves = [_leaf("a.md"), _leaf("b.md")]
+    pf = preflight_execute_wave(plan, leaves, compiled=None)
+    assert pf.ok  # no dangling check without compiled, others pass
