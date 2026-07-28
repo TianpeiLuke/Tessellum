@@ -31,6 +31,7 @@ gate engine, and one SkillTool model.
 from __future__ import annotations
 
 import dataclasses
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, ContextManager
@@ -232,6 +233,52 @@ def _derive_step_budgets(
     # Rebuild the pipeline replacing ONLY the steps tuple — preserve
     # budget_warnings / re_emission_warnings / compiled_at / pipeline_version.
     return dataclasses.replace(compiled, steps=tuple(new_steps))
+
+
+def slim_plan_doc(plan_doc: dict[str, Any]) -> dict[str, Any]:
+    """A shallow, dump-friendly copy of ``plan_doc`` without the bulky inline
+    source bytes (A1.2/A1.5, FZ 20k9c1a1a1b7c2k1a).
+
+    Drops ``source_content`` and each ``members[].excerpt`` — the source bytes
+    are already durable elsewhere (the runtime's ``source_leaf.json`` / spool;
+    the CLI's ``--source`` file), so re-serializing them into every checkpoint
+    and ``plan.json`` just multiplies durable copies of the same payload (the
+    dedup smell the vault-memory design removes). Every other key passes
+    through by reference; member dicts keep their metadata (``source_id``,
+    ``source_url``, …). Pure — never mutates the input.
+    """
+    slim = {k: v for k, v in plan_doc.items() if k != "source_content"}
+    members = slim.get("members")
+    if isinstance(members, list):
+        slim["members"] = [
+            {k: v for k, v in m.items() if k != "excerpt"} if isinstance(m, dict) else m
+            for m in members
+        ]
+    return slim
+
+
+def _checkpoint_plan_doc(
+    runs_dir: Path | str, seq: int, phase: str, plan_doc: dict[str, Any]
+) -> None:
+    """A1.2 (FZ 20k9c1a1a1b7c2k1a): durably snapshot the plan-of-record after a
+    phase fold — ``<runs_dir>/checkpoints/<NN>_<phase>.json``, atomic
+    (tmp+rename), slimmed via :func:`slim_plan_doc`. Fail-soft: checkpointing
+    is episodic recording and must never fail the run. Opt-in via the existing
+    ``runs_dir`` seam (P20) — no ``runs_dir``, no checkpoints, byte-identical.
+    """
+    try:
+        cp_dir = Path(runs_dir) / "checkpoints"
+        cp_dir.mkdir(parents=True, exist_ok=True)
+        name = f"{seq:02d}_{phase}.json"
+        tmp = cp_dir / (name + ".tmp")
+        tmp.write_text(
+            json.dumps(slim_plan_doc(plan_doc), indent=2, sort_keys=True, default=str)
+            + "\n",
+            encoding="utf-8",
+        )
+        tmp.replace(cp_dir / name)
+    except Exception:
+        pass
 
 
 def _build_artifact_store(plan_doc: dict[str, Any]) -> dict[str, Any]:
@@ -1054,10 +1101,15 @@ def run_digestion_pipeline(
     # P20: if the caller set a runs_dir for the execute wave, use it for the
     # linear phases too so all four phases emit the same per-step trace.
     linear_runs_dir = execute_kwargs.get("runs_dir")
+    # A1.2 (FZ 20k9c1a1a1b7c2k1a): monotonic checkpoint counter — one durable
+    # plan-of-record snapshot per phase fold (revise rounds included), so a
+    # crash mid-run resumes from the last accepted fold instead of restarting.
+    checkpoint_seq = 0
 
     def _run_one_phase(phase: str, leaf: dict) -> RunResult | None:
         """Run one linear phase; append its outcome; merge + normalize. Returns
         the RunResult, or None if it errored (caller returns a halt result)."""
+        nonlocal checkpoint_seq
         if cancellation_check is not None and cancellation_check():
             raise InterruptedError(f"digestion cancelled before {phase}")
         # P21-full: inject the durable artifacts (plan_text / source_excerpt /
@@ -1077,6 +1129,9 @@ def run_digestion_pipeline(
         )
         plan_doc.update(_collect_structured(run))
         _normalize_plan_doc_keys(plan_doc)
+        if linear_runs_dir is not None:
+            checkpoint_seq += 1
+            _checkpoint_plan_doc(linear_runs_dir, checkpoint_seq, phase, plan_doc)
         return None if run.error_count else run
 
     def _halt(phase: str) -> DigestionResult:

@@ -765,6 +765,29 @@ def run_pipeline_dynamic(
     results: dict[tuple[int, int], StepResult] = {}
     manifest_tasks: dict[tuple[int, int], tuple[str, str]] = {}
     events: list[dict] = []
+    # A1.1 (FZ 20k9c1a1a1b7c2k1a): stream each lifecycle event to events_path
+    # AT RECORD TIME (append-mode JSONL) so a crashed/cancelled wave leaves the
+    # events of every completed leaf on disk — the end-of-run write below
+    # rewrites the identical full set on the happy path (byte-identical final
+    # state). The stream file starts empty here so a re-run never appends to a
+    # stale stream. Fail-soft: streaming must never fail the wave.
+    if events_path is not None:
+        try:
+            events_path.parent.mkdir(parents=True, exist_ok=True)
+            events_path.write_text("", encoding="utf-8")
+        except Exception:
+            pass
+
+    def _record_event(ev: dict) -> None:
+        events.append(ev)
+        if events_path is None:
+            return
+        try:
+            with events_path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(ev) + "\n")
+        except Exception:
+            pass
+
     lock = threading.Lock()
 
     def _save_manifest() -> None:
@@ -884,7 +907,7 @@ def run_pipeline_dynamic(
                 # counted in step_results either way).
                 if events_path is not None:
                     outcome = classify_outcome(breaker_result)
-                    events.append(
+                    _record_event(
                         {
                             "section_id": step.section_id,
                             "leaf_id": leaf.get("_id"),
@@ -1011,7 +1034,7 @@ def run_pipeline_dynamic(
             results[(topo_index[step.section_id], leaf_index)] = result
             if events_path is not None:
                 outcome = classify_outcome(result)
-                events.append(
+                _record_event(
                     {
                         "section_id": step.section_id,
                         "leaf_id": leaf.get("_id"),

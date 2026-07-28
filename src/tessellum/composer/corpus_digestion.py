@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+import json
 from pathlib import Path
 from typing import Any, Callable, ContextManager
 
@@ -46,6 +47,7 @@ from tessellum.composer.digestion import (
     DigestionResult,
     run_digestion_pipeline,
     run_execute_wave,
+    slim_plan_doc,
 )
 from tessellum.composer.knowledge_plan import (
     BundleMember,
@@ -191,6 +193,7 @@ def run_corpus_planning_wave(
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     shared_cross_refs: tuple[SharedCrossRef, ...] | None = None,
+    runs_dir: Path | None = None,
 ) -> CorpusPlanningResult:
     """Plan every sub-objective of a corpus into an accepted sub-plan (M3).
 
@@ -215,6 +218,13 @@ def run_corpus_planning_wave(
         skills_dir / backend / vault_root / dry_run / budget /
         context_assembler / cancellation_check / effect_guard: Threaded into
             each sub-objective's ``run_digestion_pipeline`` call.
+        runs_dir: A1.3 (FZ 20k9c1a1a1b7c2k1a) — when set, each sub-objective
+            plans under its OWN ``<runs_dir>/corpus/<sub_id>/`` (P20 traces +
+            A1.2 checkpoints, isolated by construction so sibling sub-plans
+            never collide), every ACCEPTED sub-plan's ``plan_doc`` is persisted
+            there at acceptance (closing the crash-between-M3-and-M4 total-loss
+            window), and a ``planning_result.json`` wave summary is written at
+            the end. ``None`` → byte-identical (nothing persisted).
 
     Returns:
         A :class:`CorpusPlanningResult` with one :class:`SubPlanOutcome` per
@@ -264,6 +274,12 @@ def run_corpus_planning_wave(
                 cancellation_check=cancellation_check,
                 effect_guard=effect_guard,
                 stop_after="review",
+                # A1.3: per-sub-plan telemetry root — isolated by construction
+                # so sibling sub-plans' traces/checkpoints never collide.
+                **(
+                    {"runs_dir": Path(runs_dir) / "corpus" / sub.sub_id}
+                    if runs_dir is not None else {}
+                ),
             )
         except InterruptedError:
             raise
@@ -288,8 +304,36 @@ def run_corpus_planning_wave(
                 reason=None if accepted else _blocked_reason(result),
             )
         )
+        # A1.3 (FZ 20k9c1a1a1b7c2k1a): persist the ACCEPTED plan_doc at
+        # acceptance — before this, every accepted sub-plan lived only in RAM
+        # until M4, so a crash between planning and execution lost them all.
+        if runs_dir is not None and accepted:
+            _persist_json(
+                Path(runs_dir) / "corpus" / sub.sub_id / "plan_doc.json",
+                slim_plan_doc(result.plan_doc),
+            )
     accepted_count = sum(1 for o in outcomes if o.accepted)
     blocked_count = len(outcomes) - accepted_count
+    if runs_dir is not None:
+        _persist_json(
+            Path(runs_dir) / "corpus" / "planning_result.json",
+            {
+                "bundle_id": bundle.bundle_id,
+                "objective": corpus_plan.objective,
+                "accepted_count": accepted_count,
+                "blocked_count": blocked_count,
+                "sub_plans": [
+                    {
+                        "sub_id": o.sub_id,
+                        "priority": o.priority,
+                        "accepted": o.accepted,
+                        "status": o.status,
+                        "reason": o.reason,
+                    }
+                    for o in outcomes
+                ],
+            },
+        )
     return CorpusPlanningResult(
         bundle_id=bundle.bundle_id,
         objective=corpus_plan.objective,
@@ -315,6 +359,21 @@ def _blocked_reason(result: DigestionResult) -> str:
 # keys corrupt a sibling's committed record; shared run_id defeats owner-
 # fencing; a shared events_path/stats_path is write_text-overwritten by the
 # next sub-plan). Uniquified by sub_id in :func:`_isolate_execute_kwargs`.
+def _persist_json(path: Path, payload: dict) -> None:
+    """A1.3 (FZ 20k9c1a1a1b7c2k1a): atomically persist an episodic record —
+    tmp+rename, fail-soft (episodic recording must never fail the wave)."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(
+            json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n",
+            encoding="utf-8",
+        )
+        tmp.replace(path)
+    except Exception:
+        pass
+
+
 _RUN_SCOPED_EXECUTE_KWARGS: tuple[str, ...] = (
     "manifest", "run_id", "events_path", "stats_path",
 )
@@ -617,6 +676,10 @@ def run_corpus_digestion(
         dry_run=dry_run, budget=budget, context_assembler=context_assembler,
         cancellation_check=cancellation_check, effect_guard=effect_guard,
         shared_cross_refs=shared_resolution.resolved,
+        # A1.3: reuse the caller's runs_dir (if any) so accepted sub-plans are
+        # persisted at acceptance — the M4 execute waves already receive the
+        # same runs_dir via execute_kwargs.
+        runs_dir=execute_kwargs.get("runs_dir"),
     )
     accepted = [o for o in planning.sub_plans if o.accepted]
 

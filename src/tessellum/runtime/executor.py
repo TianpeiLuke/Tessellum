@@ -21,7 +21,11 @@ from tessellum.composer import (
 )
 from tessellum.composer.context_assembler import get_assembler
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
-from tessellum.composer.digestion import DigestionResult, run_digestion_pipeline
+from tessellum.composer.digestion import (
+    DigestionResult,
+    run_digestion_pipeline,
+    slim_plan_doc,
+)
 from tessellum.composer.fix import make_llm_fixer
 from tessellum.composer.gates import GateSuite, build_close_gate, build_wave_gate
 from tessellum.composer.llm import LLMBackend
@@ -685,8 +689,13 @@ class DigestionExecutor:
             raise
         if not result.completed:
             self.rollback_uncommitted()
+        # A1.5 (FZ 20k9c1a1a1b7c2k1a): plan.json is the plan-of-record dump,
+        # not another copy of the source — slim_plan_doc drops source_content +
+        # members[].excerpt (already durable in source_leaf.json / the spool),
+        # so the same source bytes are no longer serialized a third time.
         (artifact_dir / "plan.json").write_text(
-            json.dumps(result.plan_doc, indent=2, sort_keys=True, default=str) + "\n",
+            json.dumps(slim_plan_doc(result.plan_doc), indent=2, sort_keys=True, default=str)
+            + "\n",
             encoding="utf-8",
         )
         return result
