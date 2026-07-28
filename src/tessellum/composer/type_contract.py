@@ -207,24 +207,40 @@ def render_type_contract(
     """Render the COMPACT per-type contract block for the writer.
 
     Deliberately compact — it shares the writer prompt's ``WindowedAssembler``
-    budget with the ``## References`` block (``related_references_md``), so it
+    budget with the related-notes block (``related_references_md``), so it
     names the flavor + second_category + the required-section checklist + one
-    reference-rule line, NOT a full template dump. When ``required_sections`` is
+    graph-edge-rule line, NOT a full template dump. When ``required_sections`` is
     empty (a divergent flavor whose template couldn't be read) it tells the
     writer to follow the plan's per-flavor format instead of a fixed list.
+
+    The terminal graph-edge section is ``## Related Notes`` (INTERNAL relative
+    markdown links — the vault convention the golden encodes, and what the
+    indexer turns into ``note_links`` edges); ``## References`` is reserved for
+    external-URL citations. Emitting internal links under ``## References`` (the
+    prior wording) contradicted the execute skill's own outbound-reference rule
+    and the golden's ``cross_ref_block_header`` — the R1 skill fix's blind spot.
     """
+    edge_rule = (
+        "End with a `## Related Notes` section of INTERNAL relative markdown "
+        "links (the knowledge-graph edges); do NOT put internal links under "
+        "`## References` (that is external-URL-only)."
+    )
     if required_sections:
-        sections = ", ".join(f"`## {s}`" for s in required_sections)
+        # Drop a trailing "References" the flavor's template may carry — the
+        # terminal graph-edge section is `## Related Notes`, stated explicitly
+        # by edge_rule (avoids instructing both, which the golden forbids).
+        secs = [s for s in required_sections if s.strip().lower() != "references"]
+        sections = ", ".join(f"`## {s}`" for s in secs)
         return (
             f"Type: `{flavor}` (second_category: {second_category}). "
             f"Your written note MUST include these H2 sections: {sections}. "
-            f"End with a `## References` section of relative markdown links."
+            f"{edge_rule}"
         )
     return (
         f"Type: `{flavor}` (second_category: {second_category}). "
         f"This type uses its own per-flavor template shape — follow the plan's "
         f"format definition and the pilot worked example, not a fixed section "
-        f"list. End with a `## References` section of relative markdown links."
+        f"list. {edge_rule}"
     )
 
 
