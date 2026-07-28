@@ -658,6 +658,21 @@ def run_composer_compile(args: argparse.Namespace) -> int:
             f"[{step.role}/{step.aggregation}]"
             f"  ⇒ {materializer}{flag_str}{deps}"
         )
+    # Surface the compile-time warning channels (P9: contract_warnings joins the
+    # pre-existing budget + re-emission lints) so a `compile` run makes the
+    # advertised integrity checks visible — a warning nobody prints is inert.
+    warning_groups = (
+        ("budget", compiled.budget_warnings),
+        ("re-emission", compiled.re_emission_warnings),
+        ("contract", compiled.contract_warnings),
+    )
+    total_warnings = sum(len(w) for _, w in warning_groups)
+    if total_warnings:
+        print()
+        print(f"  {total_warnings} warning(s):")
+        for label, group in warning_groups:
+            for w in group:
+                print(f"    [{label}] {w}")
     return 0
 
 

@@ -3,15 +3,20 @@
 Three contract families:
 
 - **MaterializerContract** — declares wire_format + operation_verb +
-  required_output_fields per materializer. The compiler walks each step's
-  canonical against the materializer's contract and refuses to compile on
-  drift.
+  required_output_fields per materializer. The compiler resolves each step's
+  materializer against this and refuses to compile on a hard drift (unknown
+  materializer, schema missing a required output field, a step's wire_format /
+  operation_verb OVERRIDE contradicting the contract). APPLY ground-truth +
+  prompt-field coverage are checked WARN-by-default (P9; hard behind
+  ``compile_skill(strict_apply=…, strict_field_coverage=…)``).
 - **LLMBackendContract** — declares an LLM backend's capabilities (tool
-  surface, max user-message size, batching support). Catches D4-a tool
-  leakage and argv-overflow at compile time.
+  surface, max user-message size, batching support). The ``requires_tool_free_backend``
+  / argv-overflow checks are enforced at DISPATCH (the backend is unknown at
+  compile time), not by ``compile_skill``.
 - **MCPContract** — declares an MCP server's exposed tools, auth posture,
-  rate limit. The compiler asserts every step's declared `mcp_dependencies`
-  resolves against the registry.
+  rate limit. The compiler resolves every step's declared `mcp_dependencies`
+  against the registry (P9) — WARN-by-default (the registry is
+  user-extensible), hard behind ``compile_skill(strict_mcp=True)``.
 
 Each is a frozen Pydantic V2 model. Concrete instances live in module-level
 registries (`MATERIALIZER_CONTRACTS`, `BACKEND_CONTRACTS`, `MCP_CONTRACTS`).
@@ -345,6 +350,7 @@ class ContractViolation(Exception):
 
     KIND_UNKNOWN_MATERIALIZER = "UNKNOWN_MATERIALIZER"
     KIND_WIRE_FORMAT_MISMATCH = "WIRE_FORMAT_MISMATCH"
+    KIND_OPERATION_VERB_MISMATCH = "OPERATION_VERB_MISMATCH"  # P9: step override ≠ contract
     KIND_MISSING_REQUIRED_OUTPUT_FIELD = "MISSING_REQUIRED_OUTPUT_FIELD"
     KIND_MISSING_APPLY_DIRECTIVE = "MISSING_APPLY_DIRECTIVE"
     KIND_APPLY_WITHOUT_GROUND_TRUTH = "APPLY_WITHOUT_GROUND_TRUTH"

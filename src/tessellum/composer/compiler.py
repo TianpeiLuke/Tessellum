@@ -22,9 +22,17 @@ Out of scope (handled elsewhere or deliberately omitted):
       pipeline template; the scheduler executes against concrete leaves.
     - APPLY-mode pre-fetching of ``applies_to_files`` — the
       materializer reads existing files at write time when needed.
-    - LLMBackendContract / MCPContract validation — the contracts ship
-      as data; the compiler can grow these checks when the runtime
-      needs them.
+    - ``LLMBackendContract`` validation (``requires_tool_free_backend`` /
+      argv overflow) — the backend is unknown at compile time; these are
+      enforced at dispatch, not here.
+
+Since P9 (FZ 20k9c1a1a1b7c2e) the compiler DOES run the previously-advertised
+integrity checks that only need compile-time data: the wire_format /
+operation_verb OVERRIDE-mismatch check (HARD — a step override that contradicts
+its materializer contract), and — WARN-by-default, hard behind ``strict_mcp`` /
+``strict_apply`` / ``strict_field_coverage`` — MCP-dependency resolution, APPLY
+ground-truth + directive, and prompt-content ⊇ required-fields. See
+:func:`_contract_integrity_checks`.
 """
 
 from __future__ import annotations
@@ -38,6 +46,7 @@ from typing import Any
 from tessellum.composer.contracts import (
     _ARTIFACT_KEYS,
     MATERIALIZER_CONTRACTS,
+    MCP_CONTRACTS,
     ContractViolation,
     MaterializerContract,
 )
@@ -194,6 +203,16 @@ class CompiledPipeline:
             flagged (they legitimately write the artifact). ``compile_skill``
             appends here by default; ``strict_re_emission=True`` raises a
             ``ContractViolation`` instead.
+        contract_warnings: Compile-time warnings (P9; FZ 20k9c1a1a1b7c2e) from
+            the advertised-but-previously-unimplemented integrity checks —
+            MCP-dependency resolution (``strict_mcp``), APPLY ground-truth +
+            directive (``strict_apply``), and prompt-content ⊇ required-fields
+            (``strict_field_coverage``). These ship WARN-by-default (many are
+            heuristic or contradict the user-extensible MCP registry / the
+            trivial-prompt test corpus); the matching ``strict_*`` flag turns a
+            given family into a hard ``ContractViolation``. The wire_format /
+            operation_verb OVERRIDE-mismatch check is HARD unconditionally (it
+            is structural and inert — no shipped skill declares an override).
     """
 
     skill_path: Path
@@ -203,6 +222,7 @@ class CompiledPipeline:
     compiled_at: str = field(default_factory=lambda: dt.datetime.now(dt.UTC).isoformat())
     budget_warnings: tuple[str, ...] = ()
     re_emission_warnings: tuple[str, ...] = ()
+    contract_warnings: tuple[str, ...] = ()
 
     @property
     def step_count(self) -> int:
@@ -278,11 +298,149 @@ def _detect_re_emission(step: CompiledStep) -> str | None:
     )
 
 
+# ── P9: advertised contract-integrity checks (warn-by-default) ───────────────
+
+
+def _field_mentioned_in_prompt(field: str, prompt: str) -> bool:
+    """True if ``field`` (a snake_case output-field name) is mentioned in the
+    prompt prose, tolerant of separators (``source_type`` ↔ ``source type`` /
+    ``Source-Type``) but WORD-BOUNDARY anchored so a short field does not
+    spuriously match a longer unrelated word (``edits`` must NOT match
+    ``credits``; ``note`` must NOT match ``footnote``). Builds a regex that
+    matches the field's ``_``/``-``-split tokens in order with flexible
+    separators between them, bounded by ``\\b`` on each end."""
+    tokens = [re.escape(t) for t in re.split(r"[_\-]+", field.lower()) if t]
+    if not tokens:
+        return False
+    pattern = r"\b" + r"[\s_\-]*".join(tokens) + r"\b"
+    return re.search(pattern, prompt.lower()) is not None
+
+
+def _contract_integrity_checks(
+    step: PipelineStep,
+    compiled: CompiledStep,
+    *,
+    strict_mcp: bool,
+    strict_apply: bool,
+    strict_field_coverage: bool,
+) -> list[str]:
+    """The P9 advertised integrity checks the compiler previously documented but
+    did not enforce (FZ 20k9c1a1a1b7c2e). Returns a list of warning strings;
+    raises :class:`ContractViolation` for a family only when its ``strict_*``
+    flag is set. Warn-by-default because these are either heuristic
+    (field-coverage prose match), contradict the intentionally user-extensible
+    MCP registry, or surface latent real-skill mis-declarations that must be
+    fixed before a hard flip. (The structural wire_format / operation_verb
+    OVERRIDE check is HARD and lives in ``_compile_step``.)"""
+    warnings: list[str] = []
+    contract = compiled.materializer_contract
+    prompt = compiled.prompt_section_text or ""
+
+    def _emit(kind: str, message: str, suggested_fix: str, strict: bool) -> None:
+        if strict:
+            raise ContractViolation(
+                step_id=step.section_id, kind=kind, message=message,
+                suggested_fix=suggested_fix,
+            )
+        warnings.append(f"[{kind}] {step.section_id}: {message}")
+
+    # Check 5 — MCP resolution: every declared mcp_dependency name resolves in
+    # the registry, and every declared call is one of its available_tools.
+    for dep in step.mcp_dependencies:
+        if dep.name not in MCP_CONTRACTS:
+            _emit(
+                ContractViolation.KIND_UNKNOWN_MCP,
+                f"declares mcp_dependency {dep.name!r} not in the MCP registry "
+                f"(known: {sorted(MCP_CONTRACTS)})",
+                "Register the MCP in MCP_CONTRACTS, or correct the dependency name.",
+                strict_mcp,
+            )
+            continue
+        available = set(MCP_CONTRACTS[dep.name].available_tools)
+        unknown_calls = [c for c in dep.calls if c not in available]
+        if unknown_calls:
+            _emit(
+                ContractViolation.KIND_UNKNOWN_MCP_TOOL,
+                f"mcp_dependency {dep.name!r} declares call(s) "
+                f"{sorted(unknown_calls)} not in its available_tools "
+                f"({sorted(available)})",
+                "Correct the call name(s) or extend the MCP contract's available_tools.",
+                strict_mcp,
+            )
+
+    if contract is not None:
+        # Check 6/7 — APPLY ground-truth + directive, for a materializer that
+        # edits EXISTING files (requires_existing_files).
+        if getattr(contract, "requires_existing_files", False):
+            has_literals = bool(step.applies_to_files)
+            has_query = step.applies_to_files_query is not None
+            if not has_literals and not has_query:
+                _emit(
+                    ContractViolation.KIND_APPLY_WITHOUT_GROUND_TRUTH,
+                    f"materializer {step.materializer!r} edits existing files but "
+                    f"the step declares neither applies_to_files nor "
+                    f"applies_to_files_query",
+                    "Declare applies_to_files (literal paths) or "
+                    "applies_to_files_query so the ground-truth is resolvable.",
+                    strict_apply,
+                )
+            # A LITERAL applies_to_files entry must be referenced in the prompt
+            # via {{existing.<path>}}. A QUERY-declared step is satisfied by any
+            # {{existing...}} block (the query resolves to a set at run time), so
+            # we only demand per-path refs for literal entries.
+            for path in step.applies_to_files:
+                if f"{{{{existing.{path}}}}}" not in prompt:
+                    _emit(
+                        ContractViolation.KIND_EXISTING_PATH_NOT_REFERENCED,
+                        f"applies_to_files declares {path!r} but the prompt does "
+                        f"not reference {{{{existing.{path}}}}}",
+                        f"Add {{{{existing.{path}}}}} to the prompt so the "
+                        f"existing file content is injected before the edit.",
+                        strict_apply,
+                    )
+        if getattr(contract, "apply_mode_directive_required", False):
+            if "APPLY mode" not in prompt:
+                _emit(
+                    ContractViolation.KIND_MISSING_APPLY_DIRECTIVE,
+                    f"materializer {step.materializer!r} requires the literal "
+                    f"phrase 'APPLY mode' in the prompt (it edits files in place)",
+                    "Add an 'APPLY mode' directive to the prompt so the agent "
+                    "emits an edit, not a full-file rewrite.",
+                    strict_apply,
+                )
+
+        # Check 1 — prompt ⊇ required-fields (PROSE side). The schema-side check
+        # already runs in _compile_step; this warns when the prose ALSO fails to
+        # instruct a required field. Heuristic (normalized substring), so
+        # warn-by-default only. The runtime _render_output_schema_instruction
+        # additionally injects the field names, so a warning here means neither
+        # the authored prose NOR an obvious mention covers it — a prompt-quality
+        # signal, not a hard defect.
+        if step.role in ("CORE", "DEFERRED") and contract.required_output_fields:
+            for f in contract.required_output_fields:
+                if not _field_mentioned_in_prompt(f, prompt):
+                    _emit(
+                        ContractViolation.KIND_MISSING_REQUIRED_OUTPUT_FIELD,
+                        f"required output field {f!r} is declared in the schema "
+                        f"but not mentioned in the prompt prose",
+                        f"Reference {f!r} in the prompt so the agent is instructed "
+                        f"to emit it.",
+                        strict_field_coverage,
+                    )
+
+    return warnings
+
+
 # ── Public entry points ────────────────────────────────────────────────────
 
 
 def compile_skill(
-    skill_path: Path | str, *, strict_re_emission: bool = False
+    skill_path: Path | str,
+    *,
+    strict_re_emission: bool = False,
+    strict_mcp: bool = False,
+    strict_apply: bool = False,
+    strict_field_coverage: bool = False,
 ) -> CompiledPipeline:
     """Compile a single-file skill canonical into a typed DAG.
 
@@ -297,6 +455,17 @@ def compile_skill(
             to ``re_emission_warnings``. Default ``False`` (warn only) — the
             design mandate: a lint, not a ban, so a legitimate ``no_op``
             consumer the heuristic misreads is never false-rejected.
+        strict_mcp / strict_apply / strict_field_coverage: P9
+            (FZ 20k9c1a1a1b7c2e) — turn the corresponding advertised
+            integrity-check family (MCP-dependency resolution / APPLY
+            ground-truth + directive / prompt-content ⊇ required-fields) from a
+            ``contract_warnings`` entry into a hard ``ContractViolation``.
+            Default ``False`` (warn) so the checks are truthful on the shipped
+            corpus without breaking it (the MCP registry is user-extensible, the
+            field-coverage match is heuristic, and two shipped skills carry
+            latent APPLY mis-declarations to fix first). The structural
+            wire_format / operation_verb OVERRIDE-mismatch check is HARD
+            regardless (it is inert — no shipped skill declares an override).
 
     Returns:
         CompiledPipeline with steps in topological order.
@@ -332,6 +501,21 @@ def compile_skill(
     # Compile-time context-budget validation.
     budget_warnings = _validate_context_budgets(compiled_steps)
 
+    # P9: the advertised contract-integrity checks (MCP / APPLY / field-coverage).
+    # Warn-by-default; each family raises only under its strict_* flag. Runs over
+    # the loader step (mcp_dependencies / applies_to_files) zipped with the
+    # compiled step (prompt_section_text / materializer_contract).
+    contract_warnings: list[str] = []
+    for step, cs in zip(sorted_steps, compiled_steps, strict=True):
+        contract_warnings.extend(
+            _contract_integrity_checks(
+                step, cs,
+                strict_mcp=strict_mcp,
+                strict_apply=strict_apply,
+                strict_field_coverage=strict_field_coverage,
+            )
+        )
+
     # P21-full: re-emission lint. Warn by default; raise only in strict mode.
     re_emission_warnings: list[str] = []
     for cs in compiled_steps:
@@ -358,6 +542,7 @@ def compile_skill(
         steps=tuple(compiled_steps),
         budget_warnings=tuple(budget_warnings),
         re_emission_warnings=tuple(re_emission_warnings),
+        contract_warnings=tuple(contract_warnings),
     )
 
 
@@ -539,6 +724,44 @@ def _compile_step(step: PipelineStep, skill_path: Path) -> CompiledStep:
                 ),
             )
         materializer_contract = MATERIALIZER_CONTRACTS[step.materializer]
+
+        # P9 (FZ 20k9c1a1a1b7c2e): a step may DECLARE a wire_format / operation_verb
+        # OVERRIDE (loader.PipelineStep.wire_format / .operation_verb; the schema
+        # documents them as "optional override, the contract is authoritative").
+        # An override that CONTRADICTS the materializer's contract is a latent
+        # E9-class defect (the exact drift executor.py fixed at runtime) — fail it
+        # at compile. HARD (not warn): it is structural, not heuristic, and no
+        # shipped skill declares an override, so the check is inert until real
+        # drift appears.
+        if step.wire_format is not None and step.wire_format != materializer_contract.wire_format:
+            raise ContractViolation(
+                step_id=step.section_id,
+                kind=ContractViolation.KIND_WIRE_FORMAT_MISMATCH,
+                message=(
+                    f"step declares wire_format={step.wire_format!r} but its "
+                    f"materializer {step.materializer!r} contract is "
+                    f"{materializer_contract.wire_format!r}."
+                ),
+                suggested_fix=(
+                    f"Drop the wire_format override (the contract is "
+                    f"authoritative) or use a materializer whose wire_format is "
+                    f"{step.wire_format!r}."
+                ),
+            )
+        if step.operation_verb is not None and step.operation_verb != materializer_contract.operation_verb:
+            raise ContractViolation(
+                step_id=step.section_id,
+                kind=ContractViolation.KIND_OPERATION_VERB_MISMATCH,
+                message=(
+                    f"step declares operation_verb={step.operation_verb!r} but its "
+                    f"materializer {step.materializer!r} contract is "
+                    f"{materializer_contract.operation_verb!r}."
+                ),
+                suggested_fix=(
+                    f"Drop the operation_verb override or use a materializer whose "
+                    f"operation_verb is {step.operation_verb!r}."
+                ),
+            )
 
         # Verify expected_output_schema's `required` includes the
         # materializer's required_output_fields. CORE / DEFERRED only —

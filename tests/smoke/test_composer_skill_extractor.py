@@ -234,3 +234,57 @@ def test_extractor_works_against_real_skill_canonical():
     for sid in ids:
         body = load_skill_section(skill, sid)
         assert body, f"section {sid} is empty"
+
+
+def test_load_section_boundary_is_fence_aware():
+    """P9 review (FZ 20k9c1a1a1b7c2e): a ``## `` heading that is literal example
+    content INSIDE a fenced code block must NOT end the section — otherwise the
+    step's real trailing prompt (after the fence) is silently truncated, and
+    that truncated text is what the executor dispatches at runtime."""
+    skill = textwrap.dedent(
+        """\
+        ---
+        tags: [resource, skill]
+        keywords: [a, b, c]
+        topics: [X, Y]
+        language: markdown
+        date of note: 2026-07-28
+        status: active
+        building_block: procedure
+        ---
+
+        # Demo
+
+        ## Step write <!-- :: section_id = step_write :: -->
+
+        Author a note whose body looks like:
+
+        ```markdown
+        # Title
+
+        ## Purpose
+
+        body here
+
+        ## Related Notes
+        ```
+
+        OUTPUT FORMAT: emit output_path and body_markdown. APPLY mode not used.
+
+        ## Step next <!-- :: section_id = step_next :: -->
+
+        The real next section.
+        """
+    )
+    import tempfile
+    d = Path(tempfile.mkdtemp())
+    f = d / "skill_fence.md"
+    f.write_text(skill, encoding="utf-8")
+    body = load_skill_section(f, "step_write")
+    # The section must extend PAST the fenced ``## Purpose`` / ``## Related Notes``
+    # to the trailing OUTPUT FORMAT directive — not truncate at the fence.
+    assert "OUTPUT FORMAT" in body
+    assert "output_path" in body
+    assert "APPLY mode" in body
+    # And it must STOP at the real next anchored section.
+    assert "The real next section" not in body

@@ -53,6 +53,31 @@ _SECTION_ANCHOR_RE = re.compile(
 # H2 (or EOF) so we can extract the body in between.
 _NEXT_H2_RE = re.compile(r"^##\s+", re.MULTILINE)
 
+# A fenced-code-block delimiter line (``` or ~~~, optionally indented + with an
+# info string). Used to make the next-H2 boundary scan fence-aware: a ``## ``
+# line that is literal example content INSIDE a fenced block (e.g. a note-body
+# template that embeds ``## Purpose``) must NOT end the section — otherwise the
+# step's real trailing prompt (OUTPUT FORMAT / APPLY-mode / frontmatter
+# directives after the fence) is silently truncated, and that truncated text is
+# what the executor dispatches at runtime.
+_FENCE_RE = re.compile(r"^[ \t]*(?:```|~~~)", re.MULTILINE)
+
+
+def _next_h2_outside_fence(body: str, start: int) -> int:
+    """Index of the next top-level ``## `` heading at/after ``start`` that is
+    NOT inside a fenced code block, or ``len(body)`` if none. Tracks fence
+    open/close (```` ``` ````/``~~~``) line-by-line so an ``## `` appearing as
+    example content within a fence is skipped."""
+    # Collect fence-delimiter line offsets from `start` onward; toggle in/out.
+    fence_starts = [m.start() for m in _FENCE_RE.finditer(body, pos=start)]
+    for m in _NEXT_H2_RE.finditer(body, pos=start):
+        # A heading is inside a fence iff an odd number of fence delimiters
+        # precede it (counting from `start`).
+        depth = sum(1 for fs in fence_starts if fs < m.start())
+        if depth % 2 == 0:
+            return m.start()
+    return len(body)
+
 # A leading fenced ``yaml`` block — the step's typed contract. Anchored to the
 # start of the (stripped) section body so only a *leading* block counts as the
 # contract; ```yaml examples further down in prompt prose are left untouched.
@@ -126,8 +151,9 @@ def load_skill_section(skill_path: Path | str, section_id: str) -> str:
         )
 
     section_start = target_match.end()
-    next_h2 = _NEXT_H2_RE.search(body, pos=section_start)
-    section_end = next_h2.start() if next_h2 else len(body)
+    # Fence-aware boundary: a ``## `` heading inside a fenced code block (a note
+    # template embedding ``## Purpose`` etc.) must not truncate the section.
+    section_end = _next_h2_outside_fence(body, section_start)
 
     return body[section_start:section_end].strip()
 
