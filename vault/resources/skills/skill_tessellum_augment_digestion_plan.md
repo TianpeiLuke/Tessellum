@@ -207,9 +207,13 @@ DRAFT ASSESSMENT (from step 1)
 SOURCE REFS (from leaf metadata)
 {{leaf.source_refs}}
 
+MEASURED SOURCE LEDGER (identify_source's measured pages[] — the ground truth for every figure below; verify against THIS, never from memory and never by claiming to fetch):
+
+{{leaf.pages}}
+
 Follow this procedure:
 
-This is the most important step. You MUST re-read the original source document(s) — do NOT work from memory or from the plan's summary. Read EVERY page listed in the plan's Source section and record ACTUAL measured values: word count, code-block count, and H2/H3 heading count per page.
+This is the most important step. Verify the plan's figures against the MEASURED SOURCE LEDGER above — do NOT work from memory or from the plan's summary, and do NOT re-estimate: the ledger's `measured_words` / `code_blocks` / `headings` per page ARE the actual measured values. Every word-count, code-block, and heading figure in the plan MUST match the ledger verbatim.
 
 Compare the measured values against the plan's estimates. If any page's measured words exceed the plan's estimate by more than 50%, the plan has a density-estimation failure and its notes must be re-split. For each planned note, decide whether to SPLIT: combine >1800 words of source → split at an H2/H3 boundary; >6 code blocks → split overview from examples; a mix of step-by-step commands and conceptual explanation (>500w each) → split into a concept note plus a procedure note. Flag any source section that is OMITTED or COMPRESSED, and mark source warnings/callouts as must-preserve.
 
@@ -297,7 +301,13 @@ Using the density re-assessment from the prior step, assemble the structural-int
 
 Build the **Section Coverage Map** as the `section_coverage_tree` field (a human-facing ASCII tree mapping every source H2/H3 heading to a planned note, or to an explicit SKIP with a documented reason). Emit it under the key `section_coverage_tree` — NOT `section_coverage_map` — so it does not overwrite the plan phase's machine-readable `section_coverage_map` LIST that the deterministic PLAN-006 coverage gate reads at sign-off (FZ 20k9d4). No source heading may be silently orphaned. Record the **Split Decisions** table — for every note split beyond the initial grouping, capture the original, what it split into, and the rationale (BB mixing, >1800-word threshold, >6 code blocks).
 
-Add the **Validation Scripts** (format + density, cross-link resolution, prerequisite-duplication, and a ghost-reference/target-exists check that verifies every internal link resolves to a real vault note), the **Pacing Rules** (one phase at a time, re-read source before each note, ≤400 lines per note, verbatim code, split-when-dense), and a **per-phase GATE table** for each execution phase. Each gate table must cover the full contiguous G1–G8 set: G1-Format, G2-Grounding, G3-Density, G3-Coverage, G4-CrossRef, G5-Ghost (every reference exists in the vault), G6-Broken (zero broken links after the batch lands), G7-Discoverability (every new note RECEIVES ≥1 inbound link from an existing note outside the digest folder — the Inlinks mapping executed), and G8-Discoverability-verified (DB in-degree ≥1 confirmed for every note at finalization). Never collapse G7/G8 into one row — the review FAILS a non-contiguous gate sequence. Emit these sections as `{{upstream.coverage_and_gates}}` for the writer step. Build the Section Coverage Map
+Add the **Validation Scripts** (format + density, cross-link resolution, prerequisite-duplication, and a ghost-reference/target-exists check that verifies every internal link resolves to a real vault note), the **Pacing Rules** (one phase at a time, re-read source before each note, ≤400 lines per note, verbatim code, split-when-dense), and a **per-phase GATE table** for each execution phase. Each gate table must cover the full contiguous G1–G8 set: G1-Format, G2-Grounding, G3-Density, G3-Coverage, G4-CrossRef, G5-Ghost (every reference exists in the vault), G6-Broken (zero broken links after the batch lands), G7-Discoverability (every new note RECEIVES ≥1 inbound link from an existing note outside the digest folder — the Inlinks mapping executed), and G8-Discoverability-verified (DB in-degree ≥1 confirmed for every note at finalization). Never collapse G7/G8 into one row — the review FAILS a non-contiguous gate sequence. Emit these sections as `{{upstream.coverage_and_gates}}` for the writer step.
+
+MEASURED SOURCE LEDGER (the coverage map's ground truth — EVERY heading listed here must appear in the Section Coverage Map, mapped to exactly one note; an unmapped ledger heading is an orphan and fails review CP7):
+
+{{leaf.pages}}
+
+Build the Section Coverage Map
 with zero orphaned source headings, the Split Decisions table, the
 Validation Scripts, the Pacing Rules, and a per-phase GATE table that
 covers G1-Format, G2-Grounding, G3-Density, G3-Coverage, G4-CrossRef,

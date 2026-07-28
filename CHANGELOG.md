@@ -4,6 +4,15 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Skills — the PRODUCERS get the measured ledger: augment verifies/maps from `{{leaf.pages}}`, the plan writers copy figures verbatim (B1 issues 7+8, FZ 20k9c1a1a1b7c2k1a1) — 2026-07-28
+
+The r3 eval run proved the gap live: the CHECKER had the measured ledger (the CP7 fix) but the PRODUCERS did not — so the revise loop corrected the totals the failure text quoted, then asserted "zero orphaned headings" while ~30 stayed unmapped (it cannot enumerate headings it has never been shown), and exhausted both revise rounds on the same failure. The failure channel is a lossy projection of the ledger; every consumer of source metrics must read the measured source directly.
+
+- **Augment step 2 (`reread_source`)**: "you MUST re-read the source pages" — the interactive-context assumption again, impossible for the single-shot backend — becomes verification against the injected MEASURED SOURCE LEDGER (`{{leaf.pages}}`); every figure must match the ledger verbatim.
+- **Augment step 3 (`add_coverage_and_gates`)**: the ledger is injected at the coverage-map builder with the mandate that EVERY ledger heading appears in the map (an unmapped heading is an orphan that fails CP7) — so a revise maps all 45 headings from the source of truth, not from the ~10 examples a failure message happened to quote.
+- **Plan `decompose` + `write_plan` (prevention, issue 8)**: `identify_source` measured correctly all along (5,900/42/45 in the ledger) while the downstream writers re-stated ~2,850/14/18 from memory. Both steps now COPY the measured figures verbatim (`pages[].measured_words`/`code_blocks`/headings; per-note `approx_words` must sum to the mapped share of the measured total) — making round 0 correct so the revise rounds become residual-only.
+- r3's terminal evidence recorded: Tier-1 **GREEN 2/3 held** with **P6 restored to PASS** (8 gates — the G1–G8 re-alignment working) and P1 PASS (10-vs-8); the only residual is the coverage-map completeness this change grounds. Suite 2022 passed; native-e2e + golden-contract guards green.
+
 ### Skills — the review runs offline/bootstrap-aware + the gate vocabulary re-aligns to G1–G8 (B1/B7, FZ 20k9c1a1a1b7c2k1a) — 2026-07-28
 
 The first live P15 revise-loop run (B1-r2, API backend: 7→3 failures over 2 rounds, note count converging 17→16→8 = exactly the golden) terminated on THREE review criteria that were wrong for the composer's context, not on plan quality. All three are skill↔context divergences of the R1/R2 class, now fixed at the source:
