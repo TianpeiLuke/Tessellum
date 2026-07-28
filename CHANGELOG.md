@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-07-28
+
 ### Digestion hardening — the full P16–P24 design-review remediation is COMPLETE — 2026-07-28
 
 The golden-eval run (E1–E18) exposed the digestion pipeline's design gaps; the [deeper-root design review](https://github.com/TianpeiLuke/Tessellum) distilled them into the P16–P24 phases. All are now shipped and adversarially reviewed. Every change is additive with no-op defaults (byte-identical when disabled), verified against the P11 native end-to-end safety net; the full suite grew from 1764 → **1952 passing**. The phases, most-leverage first:

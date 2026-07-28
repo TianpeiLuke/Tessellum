@@ -1,11 +1,12 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.11.0"
+__version__ = "1.12.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
-    "track, multi-document corpus digestion, the v5 automatic runtime, and the "
-    "DKS P1-P7 self-driving reasoning arc.\n"
+    "track, multi-document corpus digestion, the v5 automatic runtime, the "
+    "DKS P1-P7 self-driving reasoning arc, and a golden-eval-hardened digestion "
+    "pipeline (the P16-P24 reliability remediation).\n"
     "\n"
     "Tessellum provides typed Composer pipelines, durable verified resume, the "
     "P0-P9 snapshot-pinned knowledge-transaction track (typed intents, staging "
@@ -29,7 +30,13 @@ __status__ = (
     "atomicity (density / one building block / full coverage) is enforced by a hard "
     "plan gate, and the runtime commit re-indexes only changed notes (incremental, "
     "proven equal to a full rebuild), and each digestion writer is handed its "
-    "note-type's required-section contract, resolved by flavor. Suite: 1762 passing.\n"
+    "note-type's required-section contract, resolved by flavor. A golden-set "
+    "end-to-end eval of the digestion pipeline drove the P16-P24 reliability "
+    "remediation: class-driven retry that self-heals truncation, one canonical "
+    "error taxonomy, a run-level error-class circuit breaker, faithful execution "
+    "traces, a thin typed PlanDoc plan-of-record envelope, and a by-reference "
+    "{{artifact.X}} channel that ends the lossy re-emission chain. Suite: 1953 "
+    "passing.\n"
     "\n"
     "See CHANGELOG.md and docs/ for release details and engineering reference."
 )
