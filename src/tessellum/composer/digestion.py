@@ -33,6 +33,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import re
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -236,6 +237,40 @@ def _derive_step_budgets(
     # Rebuild the pipeline replacing ONLY the steps tuple — preserve
     # budget_warnings / re_emission_warnings / compiled_at / pipeline_version.
     return dataclasses.replace(compiled, steps=tuple(new_steps))
+
+
+_HEADING_RE = re.compile(r"^#{1,3} +(.+?)\s*$", re.MULTILINE)
+_FENCE_RE = re.compile(r"^```", re.MULTILINE)
+
+
+def compute_source_ledger(members: list) -> list[dict[str, Any]]:
+    """The CODE-COMPUTED source ledger (issue 11, FZ 20k9c1a1a1b7c2k1a1b).
+
+    The eval runs proved the model-"measured" ``pages[]`` is an estimate that
+    varies run to run (r3 said 3,150 words where ``wc -w`` says 2,919), so
+    every downstream consumer inherited a guess. This computes the ledger
+    deterministically from the members' inline text — one code-owned
+    convention: ``measured_words`` = whitespace-token count,
+    ``code_blocks`` = fence-pair count, ``headings`` = H1–H3 lines in order.
+    Members without inline text contribute no ledger row (fail-soft — a
+    URL-only member cannot be measured here and must not be guessed at).
+    """
+    ledger: list[dict[str, Any]] = []
+    for m in members or []:
+        if not isinstance(m, dict):
+            continue
+        text = m.get("excerpt") or m.get("source_content") or ""
+        if not isinstance(text, str) or not text.strip():
+            continue
+        fences = len(_FENCE_RE.findall(text))
+        ledger.append({
+            "url": m.get("source_url") or m.get("url") or m.get("source_id") or "",
+            "source_id": m.get("source_id") or m.get("name") or "",
+            "measured_words": len(text.split()),
+            "code_blocks": fences // 2,
+            "headings": _HEADING_RE.findall(text),
+        })
+    return ledger
 
 
 def slim_plan_doc(plan_doc: dict[str, Any]) -> dict[str, Any]:
@@ -448,6 +483,80 @@ def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
             plan_doc[key] = new_val
 
 
+_ORPHAN_CLAIM_RE = re.compile(
+    r"orphan|unmapped|absent from the (coverage )?map|missing from the (coverage )?map"
+    r"|not (mapped|covered)|coverage map is (materially )?incomplete",
+    re.IGNORECASE,
+)
+
+
+def _norm_heading(s: object) -> str:
+    return " ".join(str(s).lower().split())
+
+
+def compute_coverage_orphans(plan_doc: dict) -> list[str] | None:
+    """The deterministic coverage set-difference (issue 9, FZ
+    20k9c1a1a1b7c2k1a1b): ledger headings (``pages[].headings``) MINUS the
+    sections the ``section_coverage_map`` names — normalized exact OR
+    substring-either-way match (the same leniency an honest reviewer applies).
+    Returns ``None`` when either side is absent/non-list (nothing computable —
+    callers must not treat that as "zero orphans")."""
+    pages = plan_doc.get("pages")
+    cmap = plan_doc.get("section_coverage_map")
+    if not isinstance(pages, list) or not isinstance(cmap, list):
+        return None
+    ledger = [
+        str(h).strip()
+        for pg in pages if isinstance(pg, dict)
+        for h in (pg.get("headings") or []) if str(h).strip()
+    ]
+    if not ledger:
+        return None
+    mapped = {
+        _norm_heading(r.get("source_section", ""))
+        for r in cmap if isinstance(r, dict)
+    }
+    mapped.discard("")
+    orphans = []
+    for h in ledger:
+        n = _norm_heading(h)
+        if n in mapped or any(n in m or m in n for m in mapped):
+            continue
+        orphans.append(h)
+    return orphans
+
+
+def compute_review_exhibits(plan_doc: dict) -> str:
+    """Render the deterministic review EXHIBITS (issue 9 / mechanism 1 of FZ
+    20k9c1a1a1b7c2k1a1b): quantities the driver computes exactly, injected so
+    the reviewer JUDGES over them instead of re-counting (an LLM re-count of a
+    long text confabulates — the r3 false rejection). Empty string when
+    nothing is computable (byte-identical prompts for ledger-less runs)."""
+    parts: list[str] = []
+    orphans = compute_coverage_orphans(plan_doc)
+    if orphans is not None:
+        pages = [pg for pg in plan_doc.get("pages", []) if isinstance(pg, dict)]
+        total_headings = sum(len(pg.get("headings") or []) for pg in pages)
+        rows = plan_doc.get("section_coverage_map") or []
+        parts.append(
+            f"COVERAGE (computed): ledger headings={total_headings}, "
+            f"coverage-map rows={len(rows)}, UNMAPPED={len(orphans)}"
+            + (f" -> {orphans}" if orphans else " (every ledger heading is mapped)")
+        )
+        plan_text = plan_doc.get("plan_text") or ""
+        fig = []
+        for pg in pages:
+            mw = pg.get("measured_words")
+            if isinstance(mw, int):
+                fig.append(
+                    f"{pg.get('source_id') or pg.get('url') or '?'}: measured_words={mw} "
+                    f"{'PRESENT' if str(mw) in plan_text else 'NOT FOUND'} in plan_text"
+                )
+        if fig:
+            parts.append("FIGURES (computed): " + "; ".join(fig))
+    return "\n".join(parts)
+
+
 def _review_verdict(plan_doc: dict) -> tuple[bool, list]:
     """Extract the review phase's typed ``(ready, failures)`` verdict from
     ``plan_doc`` — the single reader used by both the sign-off program gate and
@@ -456,8 +565,30 @@ def _review_verdict(plan_doc: dict) -> tuple[bool, list]:
     failures}`` at the top level; a nested ``verdict`` dict is also honoured."""
     verdict = plan_doc.get("verdict")
     if isinstance(verdict, dict):
-        return bool(verdict.get("ready")), list(verdict.get("failures") or [])
-    return bool(plan_doc.get("ready")), list(plan_doc.get("failures") or [])
+        ready, failures = bool(verdict.get("ready")), list(verdict.get("failures") or [])
+    else:
+        ready, failures = bool(plan_doc.get("ready")), list(plan_doc.get("failures") or [])
+    # Issue 9 loop guard (FZ 20k9c1a1a1b7c2k1a1b, mechanism 3): DROP a failure
+    # the deterministic evidence contradicts. The r3 run burned both revise
+    # rounds on a fabricated "~30 headings unmapped" claim while the computed
+    # set-difference was ZERO in every round — a loop amplifies its gate's
+    # errors, so a coverage-orphan claim only stands when the computed
+    # set-difference is non-empty. Dropped claims are preserved on
+    # ``plan_doc["contradicted_failures"]`` (surfaced, never silently lost).
+    # Scoped to the coverage-orphan domain — the one empirically observed
+    # fabrication class; other failure text passes through untouched.
+    if failures:
+        orphans = compute_coverage_orphans(plan_doc)
+        if orphans is not None and len(orphans) == 0:
+            kept, dropped = [], []
+            for f in failures:
+                (dropped if _ORPHAN_CLAIM_RE.search(str(f)) else kept).append(f)
+            if dropped:
+                plan_doc["contradicted_failures"] = [str(d) for d in dropped]
+                failures = kept
+                if not failures:
+                    ready = True
+    return ready, failures
 
 
 def _declared_note_count(plan_doc: dict) -> int:
@@ -1117,6 +1248,13 @@ def run_digestion_pipeline(
     # the keys are already present → byte-identical prompts for those callers.
     plan_doc.setdefault("member_count", 1)
     plan_doc.setdefault("members", [])
+    # Issue 11 (FZ 20k9c1a1a1b7c2k1a1b): the source ledger is CODE-COMPUTED
+    # from the members' inline text — the model may not author measurements.
+    # Computed once here; re-asserted after every phase fold so an LLM
+    # re-emission of pages[] never survives (measured-by-code, k1a1a).
+    code_ledger = compute_source_ledger(plan_doc.get("members") or [])
+    if code_ledger:
+        plan_doc["pages"] = code_ledger
     # M0 review (medium): a corpus_wide {{leaf.X}} that now resolves (the
     # _corpus_leaf fix) can render a large value — e.g. {{leaf.members}} /
     # {{leaf.source_refs}} — that, with NO assembler, trips the executor's
@@ -1172,6 +1310,8 @@ def run_digestion_pipeline(
         )
         plan_doc.update(_collect_structured(run))
         _normalize_plan_doc_keys(plan_doc)
+        if code_ledger:
+            plan_doc["pages"] = code_ledger
         if linear_runs_dir is not None:
             checkpoint_seq += 1
             _checkpoint_plan_doc(linear_runs_dir, checkpoint_seq, phase, plan_doc)
@@ -1208,7 +1348,11 @@ def run_digestion_pipeline(
             aug_leaf["review_failures"] = "\n".join(f"- {f}" for f in review_failures)
         if _run_one_phase("augment", aug_leaf) is None:
             return _halt("augment")
-        if _run_one_phase("review", dict(plan_doc)) is None:
+        review_leaf = dict(plan_doc)
+        exhibits = compute_review_exhibits(plan_doc)
+        if exhibits:
+            review_leaf["review_exhibits"] = exhibits
+        if _run_one_phase("review", review_leaf) is None:
             return _halt("review")
 
         ready, failures = _review_verdict(plan_doc)

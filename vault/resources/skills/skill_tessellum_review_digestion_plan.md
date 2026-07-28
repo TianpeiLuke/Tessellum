@@ -298,9 +298,13 @@ Read the full augmented plan **directly from `{{artifact.plan_text}}`** (the dur
 
 - **CP8 — Undigested Terms Plan + Term-Note Authoring Requirements.** Confirm the augmented plan carries both the `## Undigested Terms Plan` section (every row with a defined Capture Phase and best-fit glossary) and the `## Term-Note Authoring Requirements` section (YAML spec, required H1/H2 order, multi-source research mandate stated in MUST-language, the full-term-note mandate of enriched notes with the required related-terms floor plus external references, and per-term invocation of the term-note capture skill rather than inline authoring). Also confirm a term-slug specificity and all-notes collision/dedup audit was performed (renamed too-general slugs, removed duplicates that existing substantive notes already cover). FAIL if any section is missing, uses soft-language, ships thin stubs as final, or skipped the dedup audit — return to augmentation with the specific gap.
 
-MEASURED SOURCE LEDGER (identify_source's measured pages[] — verify CP7 against THIS, never a live fetch):
+MEASURED SOURCE LEDGER (the code-computed pages[] — verify CP7 against THIS, never a live fetch):
 
 {{leaf.pages}}
+
+COMPUTED EXHIBITS (deterministic checks the driver already ran — CITE these; do NOT re-count. An LLM re-count of a long text confabulates, so if your impression contradicts an exhibit, THE EXHIBIT WINS and your checkpoint must say so):
+
+{{leaf.review_exhibits}}
 
 ## Step 4: Report Verdict <!-- :: section_id = step_4_report_verdict :: -->
 
