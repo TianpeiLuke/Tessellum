@@ -4,6 +4,14 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Runtime — the note-level grounding gate is re-enablable, fail-closed (P8/F6) — 2026-07-28
+
+The runtime sliced the per-session close gate to format-only (`_format_only_gate()` → `gates[0]`), structurally DISCARDING the note-level grounding predicate — so a note unfaithful to its source passed the shipped close gate (the F6 gap). P8 wires a policy-gated close-gate selector so the grounding check can be turned back on. Internal/robustness — default OFF, byte-identical to pre-P8.
+
+- **`RuntimePolicy.grounding_gate`** (`runtime/policy.py`, default `False`) + **`_close_gate_for(policy)`** (`runtime/executor.py`) — off → format-only (pre-P8 behaviour); on → the FULL close gate (format + grounding). The runtime now builds the close gate via this selector instead of hardcoding `_format_only_gate()`.
+- **Default OFF, and correctly fail-closed when ON.** The shipped grounding certificate (`semantic_certificate.certify`) is fail-closed until calibrated on a real model + labelled corpus (the A7.5 prereq): an uncalibrated certificate abstains on EVERY note. So enabling the gate without a calibrated verifier fails closed (blocks) rather than silently admitting — which is why it defaults off. A deployment with a calibrated certificate (via `certificate_verifier.make_certificate_verifier`, already the `grounding_verifier` seam shape) turns it on to close F6.
+- **Tests** (`tests/smoke/test_runtime_grounding_gate.py`, +4). Default = format-only; `grounding_gate=True` = format + grounding; `close_gate=False` = None; and the safety invariant — the grounding predicate fails closed with no verdict. Full suite 1991 passed.
+
 ### Compiler — implement the advertised contract-integrity checks + a fence-aware extractor fix (P9) — 2026-07-28
 
 The compiler *documented* integrity checks it never ran — 8 of 11 `ContractViolation.KIND_*` were dead, and `LLMBackendContract`/`MCPContract` were read nowhere. The retrospective (FZ 20k9c1a1a1b7c2i) named compile-time contract checking the single highest-leverage prevention (it would have caught the E2/E9/E10/E13 class at build time). P9 lights up the checks that only need compile-time data. Internal/robustness — warn-by-default, so it breaks nothing.

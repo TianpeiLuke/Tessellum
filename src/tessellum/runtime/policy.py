@@ -15,6 +15,15 @@ class RuntimePolicy:
     context_max_chars: int = 120_000
     close_gate: bool = True
     wave_gate: bool = True
+    # P8/F6 (FZ 20k9c1a1a1b7c2e): run the note-level GROUNDING check at close, not
+    # just the format check. Default OFF: the shipped grounding certificate is
+    # fail-closed until it is calibrated on a real model + labelled corpus (the
+    # semantic-certificate A7.5 prereq) — an uncalibrated certificate abstains on
+    # EVERY note (blocks the whole pipeline). A deployment with a calibrated
+    # certificate sets this True to close the F6 gap (a source-unfaithful note
+    # passing the format-only close gate). When True + no calibration, the gate
+    # correctly fails closed (blocks) rather than silently admitting.
+    grounding_gate: bool = False
     tools_enabled: bool = False
     max_attempts: int = 3
     lease_ttl: float = 120.0

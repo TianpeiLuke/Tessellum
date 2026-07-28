@@ -508,6 +508,23 @@ def _format_only_gate() -> GateSuite:
     return GateSuite(gates=(suite.gates[0],))
 
 
+def _close_gate_for(policy: RuntimePolicy) -> GateSuite | None:
+    """The per-session close gate for a policy (P8/F6; FZ 20k9c1a1a1b7c2e).
+
+    - ``close_gate`` off → ``None`` (no gating).
+    - ``grounding_gate`` off (default) → format-only (the pre-P8 behaviour):
+      the note-level GROUNDING predicate is NOT run.
+    - ``grounding_gate`` on → the FULL close gate (format + grounding). With no
+      injected ``grounding_verifier`` the grounding predicate fails CLOSED (a
+      note without a grounding verdict is blocked, never silently admitted) —
+      which is why the flag defaults off until a calibrated certificate exists.
+      This is the F6 fix: the grounding check is no longer structurally sliced
+      away; a deployment with a calibrated certificate turns it on."""
+    if not policy.close_gate:
+        return None
+    return build_close_gate() if policy.grounding_gate else _format_only_gate()
+
+
 @dataclass
 class DigestionExecutor:
     paths: RuntimePaths
@@ -603,7 +620,7 @@ class DigestionExecutor:
             )
             else None
         )
-        close_gate = _format_only_gate() if policy.close_gate else None
+        close_gate = _close_gate_for(policy)
         journal = VaultEffectJournal(
             self.paths.vault,
             effect_guard=self.effect_guard,
