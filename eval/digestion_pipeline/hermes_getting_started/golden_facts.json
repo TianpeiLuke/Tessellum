@@ -79,17 +79,13 @@
       "access_control_group"
     ],
     "frontmatter_forbidden_keys": [
-      "title",
       "category",
       "created",
-      "updated",
-      "source",
-      "parent",
-      "author",
-      "related_wiki",
       "note_second_category",
-      "last_updated",
-      "folgezettel"
+      "parent",
+      "source",
+      "title",
+      "updated"
     ],
     "required_h2": [
       "Overview",

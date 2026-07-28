@@ -109,3 +109,72 @@ def test_execute_skill_uses_related_notes_not_references_for_edges():
         "the RELATED NOTES instruction must point at `## Related Notes` "
         "(the vault graph-edge convention), not `## References`"
     )
+
+
+# ── P19 (FZ 20k9c1a1a1b7c2g): golden facts derive from the ONE vault contract ──
+# frontmatter_spec is the single source of truth (authoritative: DEVELOPING.md).
+# These bind the eval golden facts to it so the scorer and the shipped validator
+# can never again return opposite verdicts on the same note (the pre-P19 state:
+# the golden wrongly forbade `folgezettel`/`last_updated`/`author`/`related_wiki`,
+# all legitimate vault fields, and the validator permitted them).
+
+from tessellum.format.frontmatter_spec import (  # noqa: E402
+    FORBIDDEN_FIELDS,
+    OPTIONAL_COMMON_FIELDS,
+    REQUIRED_FIELDS,
+    required_fields_for,
+)
+
+
+def test_golden_forbidden_matches_single_source():
+    """Each slice's golden forbidden set must equal the vault contract's
+    FORBIDDEN_FIELDS — not a hand-drifted superset. This is the test that would
+    have caught the `folgezettel` contradiction (golden forbade it; the validator
+    + DEVELOPING.md permit it as a legitimate trail field)."""
+    slices = _slice_golden_facts()
+    if not slices:
+        pytest.skip(f"no golden slices found under {EVAL_DIR}")
+    for slice_name, facts in slices:
+        golden_forbidden = set(facts["golden_output"]["frontmatter_forbidden_keys"])
+        assert golden_forbidden == set(FORBIDDEN_FIELDS), (
+            f"[{slice_name}] golden forbidden set drifted from the single-source "
+            f"frontmatter_spec.FORBIDDEN_FIELDS. "
+            f"extra={sorted(golden_forbidden - set(FORBIDDEN_FIELDS))} "
+            f"missing={sorted(set(FORBIDDEN_FIELDS) - golden_forbidden)}"
+        )
+
+
+def test_golden_never_forbids_a_legitimate_optional_field():
+    """The golden must never forbid a field the vault contract permits — a
+    forbidden ∩ (required ∪ optional-common) intersection means the scorer would
+    reject a note the validator accepts (the pre-P19 opposite-verdict hazard)."""
+    slices = _slice_golden_facts()
+    if not slices:
+        pytest.skip("no golden slices")
+    legit = set(REQUIRED_FIELDS) | set(OPTIONAL_COMMON_FIELDS) | {"folgezettel", "folgezettel_parent"}
+    for slice_name, facts in slices:
+        forbidden = set(facts["golden_output"]["frontmatter_forbidden_keys"])
+        clash = forbidden & legit
+        assert not clash, (
+            f"[{slice_name}] golden forbids legitimate vault field(s) {sorted(clash)} "
+            f"— the scorer would reject a note the validator accepts"
+        )
+
+
+def test_golden_required_is_contract_required_for_its_note_type():
+    """A slice's golden required keys = the vault contract's required set for that
+    slice's note type (universal 7 + type-specific). The doc slices are
+    `documentation`, so they legitimately add `source_url`; `access_control_group`
+    is the recommended access tag. Guards that the required set stays derived, not
+    a hand-typed list that can drift from `required_fields_for`."""
+    slices = _slice_golden_facts()
+    if not slices:
+        pytest.skip("no golden slices")
+    for slice_name, facts in slices:
+        golden_req = set(facts["golden_output"]["frontmatter_required_keys"])
+        # doc slices → documentation second-category
+        expected = set(required_fields_for("documentation")) | {"access_control_group"}
+        assert golden_req == expected, (
+            f"[{slice_name}] golden required {sorted(golden_req)} != "
+            f"contract-derived {sorted(expected)} for a documentation note"
+        )
