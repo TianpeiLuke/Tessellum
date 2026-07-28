@@ -385,3 +385,130 @@ def test_under_produced_false_when_stopped_before_execute(tmp_path: Path) -> Non
     )
     assert result.stopped_at == "review_accepted"
     assert result.under_produced is False
+
+
+# ── P15 (FZ 20k9c1a1a1b7c2h): the review-revise loop ─────────────────────────
+
+def _write_marked_phase_skill(skills_dir: Path, name: str, *, output_key: str,
+                              required: list[str], marker: str,
+                              materializer: str = "no_op",
+                              aggregation: str = "corpus_wide") -> None:
+    """Like _write_phase_skill but with a distinct prompt `marker` (so a backend
+    can tell which phase called it) and a `{{leaf.review_failures}}` echo in the
+    augment prompt (so we can detect a revise round)."""
+    canonical = (
+        "---\ntags:\n  - resource\n  - skill\n"
+        "keywords:\n  - alpha\n  - beta\n  - gamma\ntopics:\n  - Digestion\n"
+        "language: markdown\ndate of note: 2026-07-27\nstatus: active\n"
+        "building_block: procedure\naccess_control_group: [\"general\"]\n---\n\n"
+        f"# {name}\n\n## Do it <!-- :: section_id = step_1 :: -->\n\n"
+        "```yaml\nrole: CORE\n"
+        f"aggregation: {aggregation}\nbatchable: false\ndepends_on: []\n"
+        f"materializer: {materializer}\noutput_key: {output_key}\n"
+        "expected_output_schema:\n  type: object\n"
+        f"  required: [{', '.join(required)}]\n```\n\n"
+        f"{marker}\nPRIOR REVIEW FAILURES: {{{{leaf.review_failures}}}}\n"
+    )
+    (skills_dir / f"{name}.md").write_text(canonical, encoding="utf-8")
+
+
+def _marked_pipeline(skills_dir: Path) -> None:
+    _write_marked_phase_skill(skills_dir, "skill_tessellum_plan_digestion",
+                              output_key="plan_out", required=["plan_path"], marker="PLANMARK")
+    _write_marked_phase_skill(skills_dir, "skill_tessellum_augment_digestion_plan",
+                              output_key="augment_out", required=["plan_text"], marker="AUGMENTMARK")
+    _write_marked_phase_skill(skills_dir, "skill_tessellum_review_digestion_plan",
+                              output_key="verdict", required=["ready"], marker="REVIEWMARK")
+    _write_marked_phase_skill(skills_dir, "skill_tessellum_execute_digestion_plan",
+                              output_key="exec_out", required=["output_path", "body_markdown"],
+                              marker="EXECMARK", materializer="body_markdown_to_file",
+                              aggregation="per_leaf")
+
+
+class _RevisingBackend:
+    """Review returns `ready:false` (shrinking failure set) for the first
+    `reject_rounds` reviews, then `ready:true` — so P15 must re-augment and
+    converge. Records review calls + whether each augment saw injected failures."""
+
+    backend_id = "revising"
+
+    def __init__(self, *, reject_rounds: int, shrink: bool = True) -> None:
+        self.reject_rounds = reject_rounds
+        self.shrink = shrink
+        self.review_calls = 0
+        self.augment_calls = 0
+        self.augment_saw_failures: list[bool] = []
+
+    def call(self, request):  # noqa: ANN001
+        import json as _json
+        from tessellum.composer import LLMResponse
+        p = request.user_prompt
+        blob = {
+            "plan_path": "plans/plan_demo.md", "plan_text": "# Plan\n\nbody",
+            "output_path": "notes/n.md", "body_markdown": "# Note\n\nbody",
+            "total_notes": 2, "ready": True, "failures": [],
+        }
+        if "AUGMENTMARK" in p:
+            self.augment_calls += 1
+            tail = p.split("PRIOR REVIEW FAILURES:", 1)[1] if "PRIOR REVIEW FAILURES:" in p else ""
+            self.augment_saw_failures.append("CP" in tail)
+        if "REVIEWMARK" in p:
+            self.review_calls += 1
+            if self.review_calls <= self.reject_rounds:
+                n = (self.reject_rounds - self.review_calls + 2) if self.shrink else 2
+                blob = {**blob, "ready": False,
+                        "failures": [f"CP{i} FAIL – gap {i}" for i in range(n)]}
+        return LLMResponse(content=_json.dumps(blob), elapsed_ms=1.0, backend_id=self.backend_id)
+
+
+def test_review_revise_loop_converges(tmp_path: Path) -> None:
+    """P15: review rejects round 1 (with failures), the loop re-augments with
+    those failures injected, review accepts round 2 → converged + executed."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _marked_pipeline(sd)
+    be = _RevisingBackend(reject_rounds=1)
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=be,
+        vault_root=tmp_path / "vault", max_review_rounds=2, stop_after="review",
+    )
+    assert result.stopped_at == "review_accepted", "loop should converge to accepted"
+    assert result.review_rounds == 1, "exactly one extra revise round"
+    assert be.review_calls == 2, "review ran twice (reject then accept)"
+    assert be.augment_calls == 2, "augment ran twice (initial + revise)"
+    # the SECOND augment must have seen the injected review failures
+    assert be.augment_saw_failures == [False, True]
+
+
+def test_review_revise_loop_default_is_single_pass(tmp_path: Path) -> None:
+    """max_review_rounds=0 (default) → the original single pass; a rejection
+    halts at review with review_rounds=0 (byte-identical prior behaviour)."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _marked_pipeline(sd)
+    be = _RevisingBackend(reject_rounds=1)  # rejects round 1
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=be,
+        vault_root=tmp_path / "vault",  # max_review_rounds defaults to 0
+    )
+    assert result.stopped_at == "review"
+    assert result.review_rounds == 0
+    assert be.review_calls == 1 and be.augment_calls == 1, "no revise round"
+
+
+def test_review_revise_loop_escalates_when_not_converging(tmp_path: Path) -> None:
+    """A review that keeps rejecting with a non-shrinking failure set stops after
+    the budget (or the same-failure short-circuit) and escalates the residual —
+    it does NOT loop forever or force-execute."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _marked_pipeline(sd)
+    be = _RevisingBackend(reject_rounds=99, shrink=False)  # never converges, flat 2 failures
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=be,
+        vault_root=tmp_path / "vault", max_review_rounds=3,
+    )
+    assert result.stopped_at == "review", "non-converging → escalate, not execute"
+    # same-failure short-circuit fires after round 1 (round-2 failures not smaller)
+    assert result.review_rounds <= 3
+    assert be.review_calls <= 4  # bounded, never unbounded

@@ -112,6 +112,11 @@ class DigestionResult:
             path when leaf-count ≥ declared, and always ``False`` when the plan
             declares no count or the pipeline stopped before execute (nothing
             was produced to compare).
+        review_rounds: How many EXTRA review-revise rounds ran (FZ
+            20k9c1a1a1b7c2h / P15). ``0`` = the plan passed review on the first
+            pass (or ``max_review_rounds=0``); ``N`` = the review rejected N
+            times and the plan was re-augmented from the failures before
+            converging (or exhausting the round budget).
     """
 
     completed: bool
@@ -120,6 +125,7 @@ class DigestionResult:
     phases: tuple[PhaseOutcome, ...]
     plan_doc: dict = field(default_factory=dict)
     under_produced: bool = False
+    review_rounds: int = 0
 
 
 def _run_phase_linear(
@@ -209,6 +215,18 @@ def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
     ptext = plan_doc.get("plan_text")
     if isinstance(body, str) and isinstance(ptext, str) and len(body) > len(ptext):
         plan_doc["plan_text"] = body
+
+
+def _review_verdict(plan_doc: dict) -> tuple[bool, list]:
+    """Extract the review phase's typed ``(ready, failures)`` verdict from
+    ``plan_doc`` — the single reader used by both the sign-off program gate and
+    the P15 revise loop (FZ 20k9c1a1a1b7c2h), so the two agree on what "ready"
+    means. The review skill's ``step_4_report_verdict`` merges ``{ready,
+    failures}`` at the top level; a nested ``verdict`` dict is also honoured."""
+    verdict = plan_doc.get("verdict")
+    if isinstance(verdict, dict):
+        return bool(verdict.get("ready")), list(verdict.get("failures") or [])
+    return bool(plan_doc.get("ready")), list(plan_doc.get("failures") or [])
 
 
 def _declared_note_count(plan_doc: dict) -> int:
@@ -587,6 +605,7 @@ def run_digestion_pipeline(
     effect_recorder: Callable[[Path], None] | None = None,
     revision_recorder: Callable[[SignOffResult], None] | None = None,
     stop_after: str | None = None,
+    max_review_rounds: int = 0,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -619,6 +638,16 @@ def run_digestion_pipeline(
             sub-objective to an accepted plan_doc here, then M4 executes them as
             separate transactions. ``None`` (default) → the shipped
             plan→augment→review→execute behavior is byte-identical.
+        max_review_rounds: **P15 (FZ 20k9c1a1a1b7c2h)** — the review-revise loop
+            budget. When ``>0``, a review that returns ``not ready`` re-runs
+            ``augment → review`` with the review's ``failures`` injected as
+            ``leaf["review_failures"]``, up to this many extra rounds, so a
+            plan-quality rejection IMPROVES the plan instead of halting. Stops
+            early on ``ready`` or when a round fails to shrink the failure set
+            (non-convergence → escalate the residual to sign-off). ``0``
+            (default) → the original single plan→augment→review pass
+            (byte-identical). A framework error in any phase always halts,
+            regardless of this budget.
         **execute_kwargs: Forwarded to :func:`run_pipeline_dynamic` for the
             execute phase (e.g. ``close_gate``, ``manifest``, ``budget``,
             ``wave_gate``, ``informed_fixer``).
@@ -655,37 +684,67 @@ def run_digestion_pipeline(
     if context_assembler is None:
         context_assembler = WindowedAssembler(max_chars=HARD_PROMPT_CAP_CHARS - 4_096)
 
-    # ── Linear phases: plan → augment → review ──────────────────────────────
-    for phase in ("plan", "augment", "review"):
+    # ── Linear phases: plan → (augment → review)[×revise] ───────────────────
+    # P15 (FZ 20k9c1a1a1b7c2h): the review is a plan-quality IMPROVER, not just a
+    # gate. `plan` runs once; then `augment → review` repeats while the review
+    # verdict is `not ready` and rounds remain, each re-augment pass conditioned
+    # on the prior review's `failures` (injected as leaf["review_failures"]) so
+    # the LLM fixes exactly the flagged gaps. A framework error in any phase still
+    # halts immediately (that is a bug, not a plan-quality signal). Same-failure
+    # short-circuit: if a round doesn't shrink the failure set, stop (the LLM
+    # isn't converging) and let sign-off escalate the residual. `max_review_rounds
+    # =0` → the original single-pass behaviour (byte-identical).
+    review_rounds = 0
+    review_failures: list = []
+
+    def _run_one_phase(phase: str, leaf: dict) -> RunResult | None:
+        """Run one linear phase; append its outcome; merge + normalize. Returns
+        the RunResult, or None if it errored (caller returns a halt result)."""
         if cancellation_check is not None and cancellation_check():
             raise InterruptedError(f"digestion cancelled before {phase}")
         run = _run_phase_linear(
-            PHASE_SKILLS[phase],
-            skills_dir=skills_dir,
-            leaf=dict(plan_doc),
-            backend=backend,
-            vault_root=vault_root,
-            dry_run=dry_run,
-            budget=budget,
-            context_assembler=context_assembler,
-            cancellation_check=cancellation_check,
-            effect_guard=effect_guard,
-            effect_recorder=effect_recorder,
+            PHASE_SKILLS[phase], skills_dir=skills_dir, leaf=leaf, backend=backend,
+            vault_root=vault_root, dry_run=dry_run, budget=budget,
+            context_assembler=context_assembler, cancellation_check=cancellation_check,
+            effect_guard=effect_guard, effect_recorder=effect_recorder,
         )
         phases.append(
             PhaseOutcome(phase=phase, ran=True, error_count=run.error_count, run=run)
         )
         plan_doc.update(_collect_structured(run))
         _normalize_plan_doc_keys(plan_doc)
-        if run.error_count:
-            # A broken linear phase halts the pipeline before the wave.
-            return DigestionResult(
-                completed=False,
-                stopped_at=phase,
-                sign_off=None,
-                phases=tuple(phases),
-                plan_doc=plan_doc,
-            )
+        return None if run.error_count else run
+
+    def _halt(phase: str) -> DigestionResult:
+        return DigestionResult(
+            completed=False, stopped_at=phase, sign_off=None,
+            phases=tuple(phases), plan_doc=plan_doc, review_rounds=review_rounds,
+        )
+
+    # plan (once)
+    if _run_one_phase("plan", dict(plan_doc)) is None:
+        return _halt("plan")
+
+    # augment → review, with the P15 revise loop
+    while True:
+        aug_leaf = dict(plan_doc)
+        if review_failures:
+            # P15.2: condition the re-augment on the prior review's specific gaps.
+            aug_leaf["review_failures"] = "\n".join(f"- {f}" for f in review_failures)
+        if _run_one_phase("augment", aug_leaf) is None:
+            return _halt("augment")
+        if _run_one_phase("review", dict(plan_doc)) is None:
+            return _halt("review")
+
+        ready, failures = _review_verdict(plan_doc)
+        if ready or review_rounds >= max_review_rounds:
+            break
+        # Same-failure short-circuit: a round that doesn't shrink the failure set
+        # (the LLM isn't converging) stops the loop and lets sign-off escalate.
+        if review_failures and len(failures) >= len(review_failures):
+            break
+        review_failures = failures
+        review_rounds += 1
 
     # ── review → ready sign-off gate ────────────────────────────────────────
     # Program rung = plan-structure pre-filter AND the review skill's typed
@@ -696,16 +755,11 @@ def run_digestion_pipeline(
         composite = plan_gate.evaluate(plan_doc)
         if not composite.passed:
             return False, composite.first_failure_cause or "plan_structure"
-        # The review phase's typed verdict merged into plan_doc at top level
-        # (its step output_key carries {ready, failures}); a nested "verdict"
-        # dict is also honoured if a skill emits one that way.
-        verdict = plan_doc.get("verdict")
-        if isinstance(verdict, dict):
-            ready = bool(verdict.get("ready"))
-            failures = verdict.get("failures") or []
-        else:
-            ready = bool(plan_doc.get("ready"))
-            failures = plan_doc.get("failures") or []
+        # The review phase's typed {ready, failures} verdict (shared reader so the
+        # gate and the P15 revise loop agree). After the loop, this is the FINAL
+        # round's verdict — still not-ready only if the loop exhausted its rounds
+        # or couldn't converge, in which case sign-off escalates the residual.
+        ready, failures = _review_verdict(plan_doc)
         if not ready:
             msg = "; ".join(map(str, failures)) if failures else "review verdict not ready"
             return False, f"review: {msg[:200]}"
@@ -723,13 +777,16 @@ def run_digestion_pipeline(
         revision_recorder=revision_recorder,
     )
     if sign_off.decision != "approved":
-        # Rejected / needs_human → do NOT spend the execution wave.
+        # Rejected / needs_human → do NOT spend the execution wave. If the P15
+        # revise loop ran (review_rounds>0), this is the residual after the round
+        # budget was exhausted / convergence stalled — escalated, not ignored.
         return DigestionResult(
             completed=False,
             stopped_at="review",
             sign_off=sign_off,
             phases=tuple(phases),
             plan_doc=plan_doc,
+            review_rounds=review_rounds,
         )
 
     if stop_after == "review":
@@ -743,6 +800,7 @@ def run_digestion_pipeline(
             sign_off=sign_off,
             phases=tuple(phases),
             plan_doc=plan_doc,
+            review_rounds=review_rounds,
         )
 
     # ── execute: the fan-out wave (one leaf per planned note) ───────────────
@@ -786,6 +844,7 @@ def run_digestion_pipeline(
         phases=tuple(phases),
         plan_doc=plan_doc,
         under_produced=under_produced,
+        review_rounds=review_rounds,
     )
 
 

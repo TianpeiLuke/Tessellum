@@ -106,7 +106,12 @@ LEAF METADATA
 - plan_path: {{leaf.plan_path}}
 - source_refs: {{leaf.source_refs}}
 
+PRIOR REVIEW FAILURES (P15 revise round — empty on the first augment pass)
+{{leaf.review_failures}}
+
 Follow this procedure:
+
+**If PRIOR REVIEW FAILURES above is non-empty, this is a REVISE round:** a prior review REJECTED the augmented plan for those specific, checkable gaps. Your job is to REVISE the plan to resolve EACH listed failure while PRESERVING everything already correct — do not drop or rewrite sections the review did not flag, and do not shrink the plan. Treat each failure as a concrete instruction (e.g. "gate G7 absent" → add the G7 row to every phase gate table; "Related Notes uses bare wikilinks" → add a description + relevancy statement to each mapped link; "Note Format not derived from an existing note" → read a real target-dir note and cite it). If the block is empty, this is the first augment pass — proceed normally.
 
 Read the draft plan file at `$PLANS_DIR/plan_digest_<topic>.md`. First detect the plan's structure: a **single plan** has a Planned Notes table with concrete filenames and is augmented directly; a **master plan** has a Sub-Plans Index Table linking to sub-plan files and is NOT augmented itself (its sub-plans are augmented independently).
 
