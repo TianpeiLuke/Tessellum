@@ -4,6 +4,23 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Digestion hardening — the full P16–P24 design-review remediation is COMPLETE — 2026-07-28
+
+The golden-eval run (E1–E18) exposed the digestion pipeline's design gaps; the [deeper-root design review](https://github.com/TianpeiLuke/Tessellum) distilled them into the P16–P24 phases. All are now shipped and adversarially reviewed. Every change is additive with no-op defaults (byte-identical when disabled), verified against the P11 native end-to-end safety net; the full suite grew from 1764 → **1952 passing**. The phases, most-leverage first:
+
+- **P19** — one `NoteFormatContract` (single frontmatter source; fixed the golden's `folgezettel` contradiction).
+- **P16** — class-driven retry: a `truncated` result self-heals via `max_tokens` escalation on its own budget.
+- **P18** — one canonical error taxonomy the three classifiers project from (fixed the `AccessDenied` auth/crash/not-auth disagreement).
+- **P17** — run-level error-class circuit breaker: a wave short-circuits on a systemic wall (auth/rate_limit) instead of burning its whole scope; makes `fallback_strategy` load-bearing.
+- **P20** — faithful execution trace derived from `StepResult` (persists `error_class` + metadata; all four phases trace).
+- **P24-core** — the review-revise loop reverts to the BEST plan on a regressing round.
+- **P23-core** — the scheduler fails loud on a missing required consumed input.
+- **P21-core** — the plan-of-record guard extends to `total_notes`.
+- **P22** — a thin typed `PlanDoc` envelope folds the three plan-of-record guards into one validated construction (NOT a rigid spine).
+- **P21-full** — the `{{artifact.X}}` by-reference channel + a compiler re-emission lint + the review-skill migration (below).
+
+The single deferred item is the `NoteIntentGraph` native-path deletion (still live substrate on the DKS/corpus paths — a separate hygiene step, deliberately kept out of P22). The adversarial-review discipline earned its keep on the deepest refactors (P17, P22, P21-full each shipped a first cut with a latent defect the multi-lens review caught before commit).
+
 ### Digestion dataflow — {{artifact.X}} by-reference channel + re-emission lint + review-skill migration (P21-full) — 2026-07-28
 
 Large durable artifacts (plan_text, source_excerpt, planned_notes) now travel between digestion phases BY REFERENCE — the driver injects them into a consumer's prompt via a `{{artifact.X}}` namespace — instead of a prior step re-emitting them through the LLM (the E12/E16/E18 lossy re-emission chain). A compiler LINT flags the smell (warn-default, strict opt-in). The review skill is migrated: `step_1_read_plan` no longer re-emits `plan_text`, and all checkpoints read `{{artifact.plan_text}}` from the driver-managed artifact store. Internal/robustness — every new param defaults to a no-op (byte-identical when disabled).
