@@ -64,20 +64,24 @@ expected_output_schema:
       description: The COMPLETE augmented plan body, copied VERBATIM — every section, table, and gate. Do NOT summarize, abridge, or truncate; the CP1–CP8 checkpoints inspect this text to decide what the plan contains, so any omission here is read as a MISSING layer and falsely fails the plan.
 ```
 
-Step 1 of tessellum-review-digestion-plan: Read the Plan.
+Step 1 of tessellum-review-digestion-plan: Read the Plan (identity + status gate).
 
-Load the augmented digestion plan file. Confirm status is `pending`
-(if `ready`/`completed`, report "Plan already reviewed" and stop).
-Emit the plan's identity plus full text as the through-line artifact
-that every checkpoint reads via {{upstream.plan_doc}}.
+Confirm status is `pending` (if `ready`/`completed`, report "Plan already
+reviewed" and stop). Record the plan's identity (path, status, total planned
+notes) for the downstream size/entry-point checks. **The CP1–CP8 checkpoints
+read the full plan DIRECTLY from `{{leaf.plan_text}}` — the durable
+plan-of-record the driver injects into the leaf — so this step does NOT need to
+re-emit the plan body (removing that lossy LLM re-emission is the E16/E18 cure).**
+Echo `plan_text` from `{{leaf.plan_text}}` for continuity, but it is no longer
+the through-line the checkpoints depend on.
 
 Follow this procedure:
 
-Read the augmented plan file that augmentation produced. This step establishes the through-line artifact — the `plan_doc` — that every later checkpoint reads via `{{upstream.plan_doc}}`.
+Read the augmented plan's identity from the leaf. Confirm `status: pending` and record the plan path + declared total-note count for the downstream size and entry-point checks. **The later checkpoints (CP1–CP8) read the full plan text DIRECTLY from `{{leaf.plan_text}}` (the durable plan-of-record the driver injects), so this step is now just the identity/status gate — it does not re-emit the plan body.**
 
 Confirm the plan carries `status: pending` (not already `ready`, `in-progress`, or `completed`). If it is already `ready` or `completed`, report "Plan already reviewed" and skip the remaining checkpoints. Record the plan path and its declared total-note count so downstream size and entry-point checks have the number they need.
 
-This is a read-only load — no file is written. Emit the plan's identity (path, status, total planned notes) plus the full plan text so the structure and density passes can inspect it without re-reading from disk. **Emit `plan_text` VERBATIM — the entire augmented plan body, every section/table/gate, with NO summarization, abridgement, or truncation.** The CP1–CP8 checkpoints read only this `{{upstream.plan_doc}}` text (not the file on disk), so anything you drop here is read as ABSENT from the plan and falsely fails it — a large plan (tens of thousands of characters) must still be copied in full. This is read-only — write no file.
+This is a read-only load — no file is written. Emit the plan's identity (path, status, total planned notes). **The CP1–CP8 checkpoints read the full plan directly from `{{leaf.plan_text}}` (the durable plan-of-record the driver injects into the review leaf), NOT from a re-emission by this step — so removing the lossy re-emission here is the E16/E18 root cure (an LLM re-typing of a tens-of-thousands-of-character plan drops sections and causes false rejections).** Echo `plan_text` from `{{leaf.plan_text}}` for schema continuity if needed, but the checkpoints do not depend on it. This is read-only — write no file.
 
 Return ONLY the JSON object specified by expected_output_schema;
 no prose, no code fences.
@@ -149,7 +153,7 @@ expected_output_schema:
 
 Step 2 of tessellum-review-digestion-plan: Check Structure & Gates.
 
-Read the plan via {{upstream.plan_doc}} and run the structural
+Read the plan via {{leaf.plan_text}} and run the structural
 checkpoints per section "step_2_check_structure_and_gates":
   - CP1: a Related Notes step exists with per-note link mapping.
   - CP2: every execution phase has all 7 GATEs (G1-G6 incl. coverage).
@@ -165,7 +169,7 @@ no prose, no code fences.
 
 ---
 
-Read the `plan_doc` from `{{upstream.plan_doc}}` and run the three structural checkpoints. This step verifies the plan is wired for connectivity, validation, and discoverability. Report each checkpoint as PASS or FAIL with the specific gap.
+Read the full augmented plan **directly from `{{leaf.plan_text}}`** (the durable plan-of-record the driver injects into the leaf — NOT a re-emitted copy) and run the three structural checkpoints. Reading the of-record text avoids the lossy-re-emission failure (E16/E18): the plan can be tens of thousands of characters and must be judged in full. This step verifies the plan is wired for connectivity, validation, and discoverability. Report each checkpoint as PASS or FAIL with the specific gap.
 
 - **CP1 — Related Notes step.** Confirm the plan includes an explicit step to add a `## Related Notes` section to every captured note. Floor: each note links to at least the required number of relevancy-selected `term_dictionary/` term notes plus one entry-point back-link, each written as an indexed markdown link with a term description AND a relevancy statement (a bare link with no relevancy note FAILs). Well-documented topics should carry more references for better graph connectivity. FAIL if there is no per-note link mapping.
 
@@ -269,7 +273,7 @@ expected_output_schema:
 
 Step 3 of tessellum-review-digestion-plan: Check Density & Terms.
 
-Read the plan via {{upstream.plan_doc}} and the structural findings via
+Read the plan via {{leaf.plan_text}} and the structural findings via
 {{upstream.structure_checks}}, then run the checkpoints per section
 "step_3_check_density_and_terms":
   - CP4: plan size within ceiling (or sub-plans defined).
@@ -288,7 +292,7 @@ no prose, no code fences.
 
 ---
 
-Read the `plan_doc` from `{{upstream.plan_doc}}` and the structural findings from `{{upstream.structure_checks}}`, then run the density and term-coverage checkpoints. Report each as PASS or FAIL with the specific gap.
+Read the full augmented plan **directly from `{{leaf.plan_text}}`** (the durable plan-of-record, not a re-emitted copy) and the structural findings from `{{upstream.structure_checks}}`, then run the density and term-coverage checkpoints. Report each as PASS or FAIL with the specific gap.
 
 - **CP4 — Plan size manageable.** Count total planned notes. If it exceeds the single-plan ceiling, the plan MUST split into independently executable sub-plans with cross-references documented. PASS when within the ceiling or when sub-plans are defined; FAIL when oversized with no split strategy.
 
