@@ -36,7 +36,7 @@ from typing import Any, Callable, ContextManager
 
 from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS, compile_skill
 from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
-from tessellum.composer.credential_pool import RunBudget
+from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.gates import build_plan_gate
 from tessellum.composer.knowledge_plan import (
     NoteIntentGraph,
@@ -494,6 +494,42 @@ def _enrich_leaves_with_type_contract(
     return enriched
 
 
+def _execute_fallback_strategy(skills_dir: Path | str) -> str | None:
+    """The most-tolerant ``fallback_strategy`` declared by any MCP the execute
+    skill depends on (P17). The compiler drops ``mcp_dependencies``, so — like
+    :func:`~tessellum.composer.skill_tool.build_skill_tool` — re-read them from
+    the loader and map each dep name → ``MCP_CONTRACTS[name].fallback_strategy``.
+
+    Returns ``"degrade"`` if ANY declared MCP is ``degrade`` (the most-tolerant
+    posture wins — one degradable dependency means the wave is designed to
+    proceed through a soft failure); ``"fail_fast"``/``"retry_then_fail"`` when
+    those are the only postures; ``None`` when no MCP is declared (the common
+    case → the caller keeps the default tripping classes). Fail-soft: any load
+    error → ``None`` (default posture), never raises into the execute path."""
+    from tessellum.composer.contracts import MCP_CONTRACTS
+    from tessellum.composer.loader import load_pipeline
+
+    try:
+        pipeline = load_pipeline(Path(skills_dir) / f"{PHASE_SKILLS['execute']}.md")
+    except Exception:  # noqa: BLE001 — fail-soft to the default posture
+        return None
+    if pipeline is None:
+        return None
+    postures: set[str] = set()
+    for step in pipeline.pipeline:
+        for dep in step.mcp_dependencies:
+            contract = MCP_CONTRACTS.get(dep.name)
+            if contract is not None:
+                postures.add(contract.fallback_strategy)
+    if not postures:
+        return None
+    # Most-tolerant wins: degrade > retry_then_fail > fail_fast.
+    for posture in ("degrade", "retry_then_fail", "fail_fast"):
+        if posture in postures:
+            return posture
+    return None
+
+
 def run_execute_wave(
     plan_doc: dict,
     *,
@@ -503,6 +539,7 @@ def run_execute_wave(
     dry_run: bool = False,
     execute_max_workers: int = 4,
     budget: RunBudget | None = None,
+    breaker: "ErrorClassBreaker | None" = None,
     context_assembler: ContextAssembler | None = None,
     related_notes_db: Path | str | None = None,
     cancellation_check: Callable[[], bool] | None = None,
@@ -593,6 +630,17 @@ def run_execute_wave(
     # writer renders {{leaf.type_contract_md}}. No-op ("" stamp) for a leaf whose
     # type can't be resolved; passthrough for the whole-plan fallback leaf.
     execute_leaves = _enrich_leaves_with_type_contract(execute_leaves)
+    # P17: consult the execute skill's declared fallback_strategy — the field's
+    # first live consumer. A `degrade` posture (the skill declares it tolerates
+    # a degraded MCP result) NARROWS the breaker to abort only on a hard `auth`
+    # wall, letting a soft rate_limit ride; `fail_fast`/`retry_then_fail`/no MCP
+    # keep the default {auth, rate_limit}. The breaker is never disabled here —
+    # a credential wall always aborts. No-op when no breaker is passed.
+    effective_breaker = breaker
+    if breaker is not None:
+        posture = _execute_fallback_strategy(skills_dir)
+        if posture == "degrade":
+            effective_breaker = breaker.with_tripping_classes(frozenset({"auth"}))
     return run_pipeline_dynamic(
         compiled,
         leaves=execute_leaves,
@@ -601,6 +649,7 @@ def run_execute_wave(
         dry_run=dry_run,
         max_workers=execute_max_workers,
         budget=budget,
+        breaker=effective_breaker,
         context_assembler=context_assembler,
         cancellation_check=cancellation_check,
         effect_guard=effect_guard,
@@ -621,6 +670,7 @@ def run_digestion_pipeline(
     human_prompt: HumanPrompt | None = None,
     execute_max_workers: int = 4,
     budget: RunBudget | None = None,
+    breaker: ErrorClassBreaker | None = None,
     context_assembler: ContextAssembler | None = None,
     related_notes_db: Path | str | None = None,
     cancellation_check: Callable[[], bool] | None = None,
@@ -868,6 +918,7 @@ def run_digestion_pipeline(
         dry_run=dry_run,
         execute_max_workers=execute_max_workers,
         budget=budget,
+        breaker=breaker,
         context_assembler=context_assembler,
         related_notes_db=related_notes_db,
         cancellation_check=cancellation_check,

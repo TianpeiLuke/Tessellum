@@ -274,6 +274,147 @@ class RunBudget:
         return False
 
 
+# ── Run-level error-class circuit breaker (P17; FZ 20k9c1a1a1b7c2f) ──────────
+
+
+# The error classes that indicate a SYSTEMIC wall worth aborting the whole wave
+# for — an expired key pool or a marketplace-wide throttle makes EVERY leaf fail
+# the same way, so retrying more leaves just burns budget against the same wall.
+# Keyed on the executor's ``error_class`` vocabulary (P18 unified taxonomy);
+# ``quota`` folds into ``rate_limit`` at that layer, so both are covered by
+# ``rate_limit``. ``validation``/``truncated``/``crash``/``missing_consumed`` are
+# per-leaf logic/size faults, NOT systemic — they must never trip the breaker.
+DEFAULT_TRIPPING_CLASSES: frozenset[str] = frozenset({"auth", "rate_limit"})
+
+# Conservative defaults (the operator's call): only abort once a MAJORITY of a
+# non-trivial number of dispatched leaves have failed the same systemic way. A
+# healthy wave with scattered transient/validation failures never trips.
+DEFAULT_BREAKER_MIN_DISPATCHED: int = 3
+DEFAULT_BREAKER_PROPORTION: float = 0.8
+
+
+@dataclass
+class ErrorClassBreaker:
+    """A run-level circuit breaker that aborts a wave when a *proportional*
+    share of its dispatched leaves fail with the same systemic error class.
+
+    Where :class:`RunBudget` caps *how much* a run may spend, this caps *how
+    long a run keeps trying against a wall it cannot get past*. It aggregates
+    the per-leaf ``error_class`` verdicts (which nothing did before P17): once
+    ``min_dispatched`` leaves have run AND at least ``proportion`` of them failed
+    with a class in ``tripping_classes`` (default ``{auth, rate_limit}``), it
+    latches tripped and the scheduler short-circuits the remaining leaves with a
+    typed ``BREAKER_TRIPPED`` outcome — mirroring the ``BUDGET_EXHAUSTED`` seam.
+
+    ``None`` / disabled reproduces today's behaviour exactly (never aborts), so
+    the param is safe to default off on every dispatch path (IDENT).
+
+    Args:
+        proportion: Trip when ``tripping_failures / dispatched >= proportion``
+            (once ``min_dispatched`` is met). ``None`` disables the proportional
+            rule (then only ``error_threshold`` can trip).
+        error_threshold: Absolute count of tripping-class failures that trips
+            regardless of proportion. ``None`` disables the absolute rule.
+        min_dispatched: Floor on dispatched leaves before the proportional rule
+            can trip — stops a 1-of-1 unlucky failure from aborting a wave.
+        tripping_classes: The error classes that count toward tripping.
+
+    A breaker with both ``proportion`` and ``error_threshold`` ``None`` is
+    inert (never trips) — the disabled state.
+    """
+
+    proportion: float | None = DEFAULT_BREAKER_PROPORTION
+    error_threshold: int | None = None
+    min_dispatched: int = DEFAULT_BREAKER_MIN_DISPATCHED
+    tripping_classes: frozenset[str] = DEFAULT_TRIPPING_CLASSES
+    _dispatched: int = 0
+    _class_counts: dict[str, int] = field(default_factory=dict)
+    _tripped: bool = False
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
+    @property
+    def dispatched(self) -> int:
+        return self._dispatched
+
+    @property
+    def tripping_total(self) -> int:
+        """Total failures across all tripping classes seen so far."""
+        return sum(self._class_counts.get(c, 0) for c in self.tripping_classes)
+
+    def record(self, error_class: str | None) -> None:
+        """Record one completed leaf. ``error_class`` is the leaf's
+        :attr:`StepResult.error_class` (``None`` on success). Counts every
+        dispatched leaf (successes included) so ``proportion`` is measured
+        against the whole wave, not just its failures."""
+        with self._lock:
+            self._dispatched += 1
+            if error_class in self.tripping_classes:
+                self._class_counts[error_class] = self._class_counts.get(error_class, 0) + 1
+
+    def should_abort(self) -> bool:
+        """True once a systemic wall is confirmed — latches, so a later success
+        cannot un-trip a wave already being torn down."""
+        with self._lock:
+            if self._tripped:
+                return True
+            if self.proportion is None and self.error_threshold is None:
+                return False  # inert / disabled
+            tripping = sum(self._class_counts.get(c, 0) for c in self.tripping_classes)
+            if self.error_threshold is not None and tripping >= self.error_threshold:
+                self._tripped = True
+                return True
+            if (
+                self.proportion is not None
+                and self._dispatched >= self.min_dispatched
+                and tripping / self._dispatched >= self.proportion
+            ):
+                self._tripped = True
+                return True
+            return False
+
+    def with_tripping_classes(self, classes: frozenset[str]) -> "ErrorClassBreaker":
+        """Return a FRESH breaker with the same threshold config but a different
+        set of tripping classes (fresh counts + fresh lock — no shared mutable
+        state with ``self``). Used to apply an execute skill's declared
+        ``fallback_strategy`` posture at wave start (P17): a ``degrade`` posture
+        narrows the set to ``{auth}`` so a soft throttle is tolerated while a
+        hard credential wall still aborts."""
+        return ErrorClassBreaker(
+            proportion=self.proportion,
+            error_threshold=self.error_threshold,
+            min_dispatched=self.min_dispatched,
+            tripping_classes=classes,
+        )
+
+    def dominant_class(self) -> str | None:
+        """The tripping class with the most failures (ties broken by sorted
+        order for determinism); ``None`` if no tripping failure seen."""
+        with self._lock:
+            counts = {
+                c: n for c, n in self._class_counts.items()
+                if c in self.tripping_classes and n > 0
+            }
+        if not counts:
+            return None
+        return max(sorted(counts), key=lambda c: counts[c])
+
+    def terminal_cause(self) -> str:
+        """An actionable terminal-cause message. Contains the substring
+        ``"circuit breaker"`` — the marker ``classify_outcome`` matches on to
+        map it to the ``BREAKER_TRIPPED`` outcome kind (mirrors the
+        ``"run budget exhausted"`` convention)."""
+        dom = self.dominant_class() or "systemic"
+        with self._lock:
+            tripping = sum(self._class_counts.get(c, 0) for c in self.tripping_classes)
+            dispatched = self._dispatched
+        return (
+            f"error-class circuit breaker tripped: {tripping}/{dispatched} dispatched "
+            f"leaves failed with a systemic class (dominant: {dom}). Aborting the wave "
+            f"instead of burning budget against the same wall — check credentials / "
+            f"rate limits and re-run."
+        )
+
+
 # ── Per-stage effort ────────────────────────────────────────────────────────
 
 
@@ -307,6 +448,10 @@ __all__ = [
     "CredentialPool",
     "BudgetExhausted",
     "RunBudget",
+    "ErrorClassBreaker",
+    "DEFAULT_TRIPPING_CLASSES",
+    "DEFAULT_BREAKER_MIN_DISPATCHED",
+    "DEFAULT_BREAKER_PROPORTION",
     "EffortLevel",
     "DEFAULT_STAGE_EFFORT",
     "effort_for_stage",

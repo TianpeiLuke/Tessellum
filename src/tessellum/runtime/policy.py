@@ -18,6 +18,22 @@ class RuntimePolicy:
     tools_enabled: bool = False
     max_attempts: int = 3
     lease_ttl: float = 120.0
+    # P17 — run-level error-class circuit breaker. The execute wave aborts once
+    # this proportion of its dispatched leaves have failed with the same
+    # systemic class (auth / rate_limit), instead of burning the whole
+    # invocation budget against the same wall. ``None`` disables the breaker
+    # (a healthy wave with scattered transient failures never trips regardless).
+    breaker_proportion: float | None = 0.8
+    breaker_min_dispatched: int = 3
+    # Absolute backstop: abort after this many terminal systemic (auth /
+    # rate_limit) failures REGARDLESS of proportion. The proportional rule alone
+    # is defeated by a mid-wave credential-pool death — early successes inflate
+    # the denominator so the ratio may never reach ``breaker_proportion`` (a
+    # 100-leaf wave that succeeds 40× then dies never trips at 0.8). A healthy
+    # wave has ~0 TERMINAL systemic failures (auth/rate_limit that survived the
+    # retry ladder are a real wall, not per-leaf flakiness), so a modest
+    # absolute count is safe. ``None`` disables the backstop.
+    breaker_error_threshold: int | None = 10
 
     @classmethod
     def for_profile(cls, profile: str) -> "RuntimePolicy":

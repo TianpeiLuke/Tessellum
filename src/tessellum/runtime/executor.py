@@ -20,7 +20,7 @@ from tessellum.composer import (
     MockBackend,
 )
 from tessellum.composer.context_assembler import get_assembler
-from tessellum.composer.credential_pool import RunBudget
+from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.digestion import DigestionResult, run_digestion_pipeline
 from tessellum.composer.fix import make_llm_fixer
 from tessellum.composer.gates import GateSuite, build_close_gate, build_wave_gate
@@ -586,6 +586,23 @@ class DigestionExecutor:
             max_invocations=policy.max_invocations,
             max_cost=policy.max_cost,
         )
+        # P17: the run-level error-class breaker. Disabled only when BOTH the
+        # proportional rule and the absolute backstop are off (parity with
+        # pre-P17); otherwise the two rules together catch both a wave that is
+        # mostly-failing (proportion) and a mid-wave credential death that
+        # dilutes the ratio (absolute backstop).
+        breaker = (
+            ErrorClassBreaker(
+                proportion=policy.breaker_proportion,
+                error_threshold=policy.breaker_error_threshold,
+                min_dispatched=policy.breaker_min_dispatched,
+            )
+            if (
+                policy.breaker_proportion is not None
+                or policy.breaker_error_threshold is not None
+            )
+            else None
+        )
         close_gate = _format_only_gate() if policy.close_gate else None
         journal = VaultEffectJournal(
             self.paths.vault,
@@ -621,6 +638,7 @@ class DigestionExecutor:
                 ),
                 max_fix_rounds=policy.max_fix_rounds,
                 budget=budget,
+                breaker=breaker,
                 wave_gate=build_wave_gate() if policy.wave_gate else None,
                 context_assembler=get_assembler(
                     policy.context_strategy,

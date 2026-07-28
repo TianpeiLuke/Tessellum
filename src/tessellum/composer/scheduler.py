@@ -50,7 +50,7 @@ from tessellum.composer.executor import (
     upstream_placeholder_keys,
 )
 from tessellum.composer.context_assembler import ContextAssembler
-from tessellum.composer.credential_pool import RunBudget
+from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.fix import FixContext, run_fix_loop
 from tessellum.composer.gates import GateSuite, GroundingVerdict
 from tessellum.composer.llm import LLMBackend, LLMResponse
@@ -133,6 +133,7 @@ def run_pipeline(
     max_crash_recoveries: int = MAX_CRASH_RECOVERIES,
     progress: bool = False,
     budget: RunBudget | None = None,
+    breaker: ErrorClassBreaker | None = None,
     context_assembler: ContextAssembler | None = None,
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
@@ -252,6 +253,24 @@ def run_pipeline(
                 step_results.append(result)
                 error_count += 1
                 continue
+            # P17: if the run-level breaker has latched, short-circuit the
+            # remaining leaves WITHOUT calling the backend (mirrors a refused
+            # budget spend) — the serial parity of the dynamic path's abort.
+            if breaker is not None and breaker.should_abort():
+                result = StepResult(
+                    section_id=step.section_id,
+                    leaf_id=leaf.get("_id"),
+                    response=LLMResponse(content="", elapsed_ms=0.0,
+                                         backend_id=getattr(backend, "backend_id", ""),
+                                         metadata={"breaker_tripped": True}),
+                    materialized=MaterializedOutput(structured={}, notes=breaker.terminal_cause()),
+                    elapsed_ms=0.0,
+                    error=breaker.terminal_cause(),
+                    error_class=breaker.dominant_class() or "crash",
+                )
+                step_results.append(result)
+                error_count += 1
+                continue
             # Use the retry-budgeted executor. Budgets default to
             # MAX_LOGIC_RETRIES + MAX_CRASH_RECOVERIES; callers that
             # explicitly want the no-retry behaviour can pass
@@ -272,6 +291,8 @@ def run_pipeline(
                 effect_recorder=effect_recorder,
             )
             step_results.append(result)
+            if breaker is not None:
+                breaker.record(None if result.error is None else result.error_class)
             if result.error is not None:
                 error_count += 1
             else:
@@ -335,6 +356,7 @@ StepOutcomeKind = Literal[
     "SAME_ERROR_LOOP",
     "CONTRACT_VIOLATION",
     "BUDGET_EXHAUSTED",
+    "BREAKER_TRIPPED",
 ]
 """The closed set of terminal outcomes for a single (step × leaf) run.
 
@@ -348,6 +370,12 @@ StepOutcomeKind = Literal[
   halted the run. Never produced by :func:`classify_outcome` (a single
   ``StepResult`` can't see the global budget); emitted by the Phase 5
   budget layer. Present here so the union is closed up-front.
+- ``BREAKER_TRIPPED`` — the run-level :class:`ErrorClassBreaker` (P17)
+  short-circuited the wave: a proportional share of dispatched leaves
+  failed with the same systemic class (auth / rate_limit), so the
+  remaining leaves were aborted instead of burning budget against the
+  same wall. Mapped by :func:`classify_outcome` from the breaker's
+  terminal-cause marker.
 """
 
 
@@ -436,10 +464,15 @@ def classify_outcome(result: StepResult) -> StepOutcome:
         )
 
     e = result.error.lower()
-    if "run budget exhausted" in e:
+    if "circuit breaker" in e:
+        # The run-level error-class breaker (P17) aborted this leaf — a wave
+        # short-circuit, checked first because it, like the budget halt, is a
+        # run-level decision that preempts this leaf's own would-be cause.
+        kind: StepOutcomeKind = "BREAKER_TRIPPED"
+    elif "run budget exhausted" in e:
         # The global run-level budget halted this leaf before dispatch —
         # distinct from a per-step retry budget (below).
-        kind: StepOutcomeKind = "BUDGET_EXHAUSTED"
+        kind = "BUDGET_EXHAUSTED"
     elif "same-error loop" in e:
         kind = "SAME_ERROR_LOOP"
     elif "stalled after" in e:
@@ -578,6 +611,7 @@ def run_pipeline_dynamic(
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None" = None,
     informed_fixer: "Callable[[FixContext], object] | None" = None,
     budget: RunBudget | None = None,
+    breaker: "ErrorClassBreaker | None" = None,
     wave_gate: GateSuite | None = None,
     context_assembler: "ContextAssembler | None" = None,
     cancellation_check: "Callable[[], bool] | None" = None,
@@ -666,6 +700,15 @@ def run_pipeline_dynamic(
             invocation (+ cost); a refused spend halts that leaf with a typed
             ``BUDGET_EXHAUSTED`` outcome (and a ``blocked`` manifest row)
             without calling the backend. ``None`` = unbounded (parity).
+        breaker: Optional run-level :class:`ErrorClassBreaker` (P17). When
+            set, each completed leaf's ``error_class`` is recorded; once a
+            proportional share of dispatched leaves have failed with the same
+            systemic class (auth / rate_limit), the breaker latches and every
+            not-yet-dispatched leaf short-circuits to a typed
+            ``BREAKER_TRIPPED`` outcome (and a ``blocked`` manifest row)
+            *without* calling the backend — mirroring the ``budget`` seam so
+            the wave stops burning budget against the same wall. ``None`` =
+            never trips (parity).
         wave_gate: Optional per-wave post-batch :class:`GateSuite`. When
             set, runs once after the whole wave over every written note
             path — cross-set checks (e.g. duplicate target paths) a
@@ -803,6 +846,52 @@ def run_pipeline_dynamic(
         key = f"{step.section_id}::{leaf.get('_id')}"
         if cancellation_check is not None and cancellation_check():
             raise InterruptedError("pipeline cancelled before leaf dispatch")
+        # P17: if the run-level error-class breaker has already latched (a
+        # proportional share of earlier leaves failed the same systemic way),
+        # short-circuit this leaf WITHOUT calling the backend — mirroring a
+        # refused RunBudget spend. The wave stops burning budget against the
+        # same wall; the leaf surfaces a typed BREAKER_TRIPPED outcome and, with
+        # a manifest, is marked blocked (not released for retry — retrying into
+        # the same auth/rate wall is the bug this prevents).
+        if breaker is not None and breaker.should_abort():
+            breaker_result = StepResult(
+                section_id=step.section_id,
+                leaf_id=leaf.get("_id"),
+                response=LLMResponse(
+                    content="",
+                    elapsed_ms=0.0,
+                    backend_id=getattr(backend, "backend_id", ""),
+                    metadata={"breaker_tripped": True},
+                ),
+                materialized=MaterializedOutput(
+                    structured={},
+                    notes=breaker.terminal_cause(),
+                ),
+                elapsed_ms=0.0,
+                error=breaker.terminal_cause(),
+                error_class=breaker.dominant_class() or "crash",
+            )
+            with lock:
+                if manifest is not None:
+                    manifest.mark_blocked(key, blocked_by=())
+                    _save_manifest()
+                results[(topo_index[step.section_id], leaf_index)] = breaker_result
+                # Emit the per-leaf lifecycle event so events.jsonl and
+                # statistics.json agree on the breaker-aborted leaves (they are
+                # counted in step_results either way).
+                if events_path is not None:
+                    outcome = classify_outcome(breaker_result)
+                    events.append(
+                        {
+                            "section_id": step.section_id,
+                            "leaf_id": leaf.get("_id"),
+                            "outcome": outcome.kind,
+                            "attempts": outcome.attempts,
+                            "elapsed_ms": outcome.elapsed_ms,
+                            "error_class": outcome.error_class,
+                        }
+                    )
+            return
         if manifest is not None:
             with lock:
                 claimed = manifest.claim(
@@ -908,6 +997,13 @@ def run_pipeline_dynamic(
                         generation=generation,
                     )
                 _save_manifest()
+            # P17: record this leaf's class into the run-level breaker at the
+            # single results-write choke point (under the existing lock). A
+            # later leaf's should_abort() reads the accumulated verdicts. A
+            # leaf we ourselves short-circuited (breaker_tripped) is NOT re-run
+            # through here — it returned early above — so we never double-count.
+            if breaker is not None:
+                breaker.record(None if result.error is None else result.error_class)
             results[(topo_index[step.section_id], leaf_index)] = result
             if events_path is not None:
                 outcome = classify_outcome(result)

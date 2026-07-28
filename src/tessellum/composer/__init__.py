@@ -124,6 +124,7 @@ from tessellum.composer.credential_pool import (
     BudgetExhausted,
     CredentialPool,
     CredentialPoolError,
+    ErrorClassBreaker,
     RunBudget,
     classify_rotation_cause,
     effort_for_stage,
@@ -434,6 +435,7 @@ __all__ = [
     "classify_rotation_cause",
     "RunBudget",
     "BudgetExhausted",
+    "ErrorClassBreaker",
     "effort_for_stage",
     "DEFAULT_STAGE_EFFORT",
     # Context assembler + sign-off approver (Phase 6)
