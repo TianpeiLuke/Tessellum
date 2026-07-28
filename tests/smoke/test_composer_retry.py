@@ -320,15 +320,18 @@ _TWO_STEP_CANONICAL = textwrap.dedent(
 )
 
 
-def test_scheduler_failed_step_does_not_crash_downstream(tmp_path: Path) -> None:
-    """When step_1 exhausts its retry budget (all same-error → short-circuit
-    at attempt 3), step_2 still runs but its {{upstream.produced}} resolves
-    to the missing-sentinel. Pipeline returns with error_count >= 1, not a
-    crash."""
+def test_scheduler_failed_producer_fails_consumer_loud_not_sentinel(tmp_path: Path) -> None:
+    """P23 (FZ 20k9c1a1a1b7c2h/g): when step_1 (a depends_on producer of
+    `produced`) exhausts its budget, step_2's required {{upstream.produced}} is
+    absent — step_2 now FAILS LOUD with error_class=`missing_consumed` instead of
+    silently dispatching a `<missing upstream.produced>` sentinel into its prompt
+    (which produced garbage that looked like a model failure). The pipeline does
+    NOT crash. Supersedes the pre-P23 sentinel-passthrough behaviour."""
     skill = tmp_path / "skill_chained.md"
     skill.write_text(_TWO_STEP_CANONICAL, encoding="utf-8")
     compiled = compile_skill(skill)
-    # step_1 always returns invalid JSON; step_2 returns ok.
+    # step_1 always returns invalid JSON (fails to produce `produced`); step_2
+    # would return ok but must never be dispatched with a missing required input.
     backend = MockBackend(
         responses={
             "Produce": "{}",  # always fails schema for produced
@@ -341,15 +344,15 @@ def test_scheduler_failed_step_does_not_crash_downstream(tmp_path: Path) -> None
         backend=backend,
         vault_root=tmp_path,
     )
-    # Pipeline did NOT crash.
-    assert result.error_count >= 1
-    # step_2 still ran (downstream sees missing sentinel but doesn't crash).
-    section_ids = [r.section_id for r in result.step_results]
-    assert "step_2" in section_ids
-    # step_1's result has the same-error-loop error
-    step_1_results = [r for r in result.step_results if r.section_id == "step_1"]
-    assert step_1_results
-    assert step_1_results[0].error is not None
+    assert result.error_count >= 2  # step_1 (logic) + step_2 (missing_consumed)
+    by_id = {r.section_id: r for r in result.step_results}
+    assert "step_1" in by_id and by_id["step_1"].error is not None
+    # P23: step_2 fails loud on the missing required consumed input.
+    assert "step_2" in by_id
+    assert by_id["step_2"].error_class == "missing_consumed"
+    assert "produced" in (by_id["step_2"].error or "")
+    # It did NOT dispatch a sentinel to the backend (Consume never called).
+    assert not any("Consume" in c.user_prompt for c in backend.calls)
 
 
 # ── P16 (FZ 20k9c1a1a1b7c2g): truncation self-heals by escalating max_tokens ──

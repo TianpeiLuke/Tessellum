@@ -118,7 +118,10 @@ still truncating at this size is a genuine plan-quality problem (split the note)
 not a budget one, so it falls through to the normal terminal path."""
 
 
-ErrorClass = Literal["transient", "validation", "rate_limit", "auth", "crash", "truncated"]
+ErrorClass = Literal[
+    "transient", "validation", "rate_limit", "auth", "crash", "truncated",
+    "missing_consumed",
+]
 """Phase 1.4 (v4) — fine-grained error class returned by
 :func:`classify_error`. Orthogonal to the coarse logic/crash/stall split
 that :func:`execute_step_with_retry` uses for budget accounting; this is
@@ -510,6 +513,18 @@ def execute_step(
 # ── Internals ──────────────────────────────────────────────────────────────
 
 
+def upstream_placeholder_keys(step: "CompiledStep") -> frozenset[str]:
+    """The ``{{upstream.X}}`` keys a step's prompt references (P23,
+    FZ 20k9c1a1a1b7c2h/g). Used by the scheduler to detect a MISSING REQUIRED
+    consumed input — a producer that errored/emitted nothing leaves its
+    ``output_key`` absent from ``upstream``, and the step then renders a
+    ``<missing upstream.X>`` sentinel INTO its prompt and produces garbage that
+    looks like a model failure. Surfacing it as a first-class
+    ``missing_consumed`` error is fail-loud at the contract boundary."""
+    text = step.prompt_section_text or ""
+    return frozenset(m.group(1) for m in _UPSTREAM_PLACEHOLDER_RE.finditer(text))
+
+
 def _resolve_placeholders(
     text: str,
     *,
@@ -739,6 +754,12 @@ def classify_error(error_msg: str) -> ErrorClass:
     # 1. Stall marker → transient (infra-level, retry may clear it).
     if "stalled after" in msg:
         return "transient"
+
+    # 1a. Missing required consumed input (P23) — an upstream producer errored/
+    # emitted nothing, so a required {{upstream.X}} is absent. Not retryable at
+    # this step (the fix is upstream), so it's its own class above validation.
+    if "missing required consumed input" in msg:
+        return "missing_consumed"
 
     # 1b. Output truncated at the token cap — an output-SIZE condition. Ranked
     # ABOVE validation because a truncated payload ALSO fails json parse; we want

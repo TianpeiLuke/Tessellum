@@ -47,6 +47,7 @@ from tessellum.composer.executor import (
     StepResult,
     execute_step_with_retry,
     step_result_trace_dict,
+    upstream_placeholder_keys,
 )
 from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.credential_pool import RunBudget
@@ -170,6 +171,25 @@ def run_pipeline(
     step_results: list[StepResult] = []
     error_count = 0
 
+    # P23 (FZ 20k9c1a1a1b7c2h/g): map each step to the output_keys produced by
+    # its DECLARED `depends_on` predecessors — the REQUIRED consumed inputs of a
+    # real intra-pipeline producer→consumer edge. A {{upstream.X}} where X is a
+    # depends_on-predecessor's output_key that is absent from `upstream` means
+    # that predecessor errored/emitted nothing, so the step would render a
+    # `<missing upstream.X>` sentinel and produce garbage — we fail loud instead.
+    # Scoped to depends_on predecessors (NOT all pipeline output_keys) so it never
+    # fires on a step's OWN key, a later step's key, or a cross-phase value that
+    # arrives via the leaf rather than this pipeline's `upstream` — those are not
+    # broken edges. (An {{upstream.X}} whose X is not a predecessor output_key is
+    # treated as optional.)
+    _out_key = {s.section_id: s.output_key for s in pipeline.steps if s.output_key}
+    _required_upstream: dict[str, frozenset[str]] = {
+        s.section_id: frozenset(
+            _out_key[dep] for dep in s.depends_on if dep in _out_key
+        )
+        for s in pipeline.steps
+    }
+
     # Count non-INFRA steps for progress lines.
     runnable_steps = [s for s in pipeline.steps if s.role != "INFRA"]
     total_runnable = len(runnable_steps)
@@ -200,7 +220,38 @@ def run_pipeline(
         # if they need to). For corpus_wide steps, expose the single dict.
         per_step_outputs: list[dict] = []
 
+        # P23: a required consumed input — a {{upstream.X}} whose X is a
+        # depends_on-predecessor's output_key — that is absent from `upstream`
+        # means that predecessor failed — fail loud with `missing_consumed`
+        # instead of dispatching a sentinel-in-prompt. Not retryable here (the fix
+        # is upstream). Scoped to depends_on predecessors so a step's own key /
+        # cross-phase leaf values never false-trip it.
+        required_consumed = (
+            upstream_placeholder_keys(step) & _required_upstream.get(step.section_id, frozenset())
+        )
+        missing_consumed = sorted(k for k in required_consumed if k not in upstream)
+
         for leaf in scope_leaves:
+            if missing_consumed:
+                err = (
+                    "missing required consumed input(s) "
+                    f"{missing_consumed}: an upstream producer errored or emitted "
+                    "nothing, so these {{upstream.X}} fields are absent"
+                )
+                result = StepResult(
+                    section_id=step.section_id,
+                    leaf_id=leaf.get("_id"),
+                    response=LLMResponse(content="", elapsed_ms=0.0,
+                                         backend_id=getattr(backend, "backend_id", ""),
+                                         metadata={"missing_consumed": missing_consumed}),
+                    materialized=MaterializedOutput(structured={}, notes=err),
+                    elapsed_ms=0.0,
+                    error=err,
+                    error_class="missing_consumed",
+                )
+                step_results.append(result)
+                error_count += 1
+                continue
             # Use the retry-budgeted executor. Budgets default to
             # MAX_LOGIC_RETRIES + MAX_CRASH_RECOVERIES; callers that
             # explicitly want the no-retry behaviour can pass
