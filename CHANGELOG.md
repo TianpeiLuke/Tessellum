@@ -4,6 +4,15 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Digestion reliability — one canonical error taxonomy (P18) — 2026-07-27
+
+The three composer error classifiers hand-mirrored overlapping token lists and **disagreed**, so retries mis-routed. New leaf module `composer/error_taxonomy.py` is the single token-heuristic source all three project from; the three now agree by construction. Internal/robustness — no public API change (the three public functions keep their signatures and vocabularies).
+
+- **The bug.** `executor.classify_error` (the diagnostic `error_class`), `credential_pool.classify_rotation_cause` (key cooldown), and `llm._is_auth_error` (whether the P1 credential-refresh fires) each classified independently. A bare `AccessDenied` was `crash` in the executor, `auth` in the pool, and **not-auth** for the refresh — so the credential-refresh never fired on the exact failure it targets, while the pool correctly benched the key. An "invalid security token" string was auth in one, crash in another, transient in the third.
+- **`error_taxonomy.classify_reason`** — one precedence-ordered classifier into a canonical `Reason` (`stall`/`missing_consumed`/`truncated`/`validation`/`quota`/`rate_limit`/`auth`/`unknown`). Each consumer projects that reason into its own vocabulary via `REASON_TO_ERROR_CLASS` / `REASON_TO_ROTATION_CAUSE` / `is_auth`, so no consumer carries independent token logic.
+- **Behaviour preserved + one fix.** Every mapping the three consumers previously asserted is reproduced (verified by parametrized legacy-contract tests); the only intended change is that `AccessDenied`/`access denied`/`permission denied`/`not authorized` now classify as `auth` everywhere (so the refresh fires). The **bare** `"auth"` substring token is deliberately dropped — it matched `"non-auth failure"` and would have fired the refresh on a non-auth error (regression guard test added).
+- **Agreement invariant test** (`tests/smoke/test_composer_error_taxonomy.py`). Over a shared error-string corpus the three consumers project the same canonical reason, and their three auth verdicts move as one — the contradiction the review found is now structurally impossible. +93 tests; full suite 1899 passed.
+
 ### Digestion pipeline — end-to-end evaluation harness (golden docs → plan → notes) — 2026-07-26
 
 A golden-set benchmark for the digestion pipeline under `eval/digestion_pipeline/`: three real documentation corpora (`claude_code_mcp`, `hermes_getting_started`, `openclaw_concepts`), each pairing scrubbed `input_pages/` with the reference output — a `golden_plan/`, `golden_notes/`, and a `golden_facts.json` — plus a `rubric.md`, a `manifest.json`, and `score.py` to grade an actual run against the golden set. The slices are self-contained (vendored input + plan + notes) so the eval runs without external fetches. Not packaged (outside the sdist include).

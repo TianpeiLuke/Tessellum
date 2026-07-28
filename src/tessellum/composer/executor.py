@@ -50,6 +50,7 @@ import jsonschema
 from tessellum.composer.compiler import CompiledStep
 from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.credential_pool import RunBudget
+from tessellum.composer.error_taxonomy import REASON_TO_ERROR_CLASS, classify_reason
 from tessellum.composer.llm import LLMBackend, LLMRequest, LLMResponse
 from tessellum.composer.materializer import (
     MaterializedOutput,
@@ -723,20 +724,13 @@ def classify_error(error_msg: str) -> ErrorClass:
     ``rate_limit`` one is worth slowing down, a ``validation`` one is a
     logic/prompt defect).
 
-    Precedence, checked against the lower-cased message:
-
-    1. ``transient`` — the watchdog stall marker (``"stalled after"``).
-    1b. ``truncated`` — response cut off at the token cap
-       (``"truncated at max_tokens"``); ranked above ``validation`` because a
-       truncated payload also fails JSON parse, and the size diagnosis is the
-       actionable one.
-    2. ``validation`` — schema / materializer / contract failures.
-    3. ``rate_limit`` — ``"429"`` / ``"rate limit"`` / ``"quota"`` /
-       ``"too many requests"`` / ``"throttl"``.
-    4. ``auth`` — ``"401"`` / ``"403"`` / ``"auth"`` / ``"login"`` /
-       ``"expired"`` / ``"credential"`` / ``"forbidden"`` /
-       ``"unauthorized"``.
-    5. ``crash`` — anything else (backend raised / unclassified).
+    P18 (FZ 20k9c1a1a1b7c2f): thin projection of the canonical
+    :func:`~tessellum.composer.error_taxonomy.classify_reason` — the single
+    token-heuristic source the executor, credential pool, and llm auth-retry
+    all share, so the three can no longer disagree (a bare ``AccessDenied`` is
+    now ``auth`` here, ``auth`` in the pool, and auth for the P1 refresh).
+    ``quota`` folds into this class's coarser ``rate_limit``; the unclassified
+    reason maps to ``crash``.
 
     Args:
         error_msg: The error string (typically ``StepResult.error`` or a
@@ -745,63 +739,9 @@ def classify_error(error_msg: str) -> ErrorClass:
 
     Returns:
         One of ``"transient"``, ``"validation"``, ``"rate_limit"``,
-        ``"auth"``, ``"crash"``.
+        ``"auth"``, ``"crash"``, ``"truncated"``, ``"missing_consumed"``.
     """
-    if not error_msg:
-        return "crash"
-    msg = error_msg.lower()
-
-    # 1. Stall marker → transient (infra-level, retry may clear it).
-    if "stalled after" in msg:
-        return "transient"
-
-    # 1a. Missing required consumed input (P23) — an upstream producer errored/
-    # emitted nothing, so a required {{upstream.X}} is absent. Not retryable at
-    # this step (the fix is upstream), so it's its own class above validation.
-    if "missing required consumed input" in msg:
-        return "missing_consumed"
-
-    # 1b. Output truncated at the token cap — an output-SIZE condition. Ranked
-    # ABOVE validation because a truncated payload ALSO fails json parse; we want
-    # the size diagnosis ("raise max_tokens"), not "not valid json".
-    if "truncated at max_tokens" in msg:
-        return "truncated"
-
-    # 2. Logic-class validation failures.
-    if (
-        "schema" in msg
-        or "materializer" in msg
-        or "contract" in msg
-        or "not valid json" in msg
-    ):
-        return "validation"
-
-    # 3. Rate limiting / throttling / quota.
-    if (
-        "429" in msg
-        or "rate limit" in msg
-        or "ratelimit" in msg
-        or "quota" in msg
-        or "too many requests" in msg
-        or "throttl" in msg
-    ):
-        return "rate_limit"
-
-    # 4. Auth / credential failures.
-    if (
-        "401" in msg
-        or "403" in msg
-        or "auth" in msg
-        or "login" in msg
-        or "expired" in msg
-        or "credential" in msg
-        or "forbidden" in msg
-        or "unauthorized" in msg
-    ):
-        return "auth"
-
-    # 5. Everything else — treat as crash.
-    return "crash"
+    return REASON_TO_ERROR_CLASS[classify_reason(error_msg)]  # type: ignore[return-value]
 
 
 def full_jitter_backoff(

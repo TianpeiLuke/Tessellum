@@ -29,6 +29,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
+from tessellum.composer.error_taxonomy import is_auth as _is_auth
+
 
 @dataclass(frozen=True)
 class LLMRequest:
@@ -531,20 +533,17 @@ def _messages_create_or_stream(
 
 def _is_auth_error(exc: Exception) -> bool:
     """True if an exception is an auth/credential failure (expired token, 403,
-    unauthorized) — the class the P1 credential-refresh retry targets. String
-    heuristic over the rendered exception, mirroring
-    ``executor.classify_error``'s auth precedence so the two agree."""
-    msg = f"{type(exc).__name__}: {exc}".lower()
-    return (
-        "401" in msg
-        or "403" in msg
-        or "expired" in msg
-        or "credential" in msg
-        or "forbidden" in msg
-        or "unauthorized" in msg
-        or "permissiondenied" in msg
-        or "security token" in msg
-    )
+    unauthorized, access/permission denied) — the class the P1 credential-refresh
+    retry targets.
+
+    P18 (FZ 20k9c1a1a1b7c2f): defers to the canonical
+    :func:`~tessellum.composer.error_taxonomy.is_auth`, the SAME token heuristic
+    ``executor.classify_error`` and ``credential_pool.classify_rotation_cause``
+    project their ``auth`` class from — so the three agree by construction. This
+    previously hand-mirrored a subset that OMITTED ``accessdenied``, so a bare
+    ``AccessDenied`` (auth in the pool) was not-auth here and the refresh never
+    fired on the exact failure it exists to catch."""
+    return _is_auth(f"{type(exc).__name__}: {exc}")
 
 
 def _extract_text(response: object) -> str:

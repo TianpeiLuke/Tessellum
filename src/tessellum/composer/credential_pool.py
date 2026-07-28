@@ -28,6 +28,11 @@ import threading
 from dataclasses import dataclass, field
 from typing import Literal
 
+from tessellum.composer.error_taxonomy import (
+    REASON_TO_ROTATION_CAUSE,
+    classify_reason,
+)
+
 # Cooldown lengths, in seconds. A soft 429 benches a key for an hour; a
 # hard quota/billing (402) benches it for a day.
 COOLDOWN_RATE_LIMIT_SECS: float = 3600.0
@@ -41,47 +46,19 @@ error classes; ``quota`` is the hard 402 variant of ``rate_limit``)."""
 def classify_rotation_cause(error_msg: str) -> RotationCause:
     """Classify a backend error message into a key-rotation cause.
 
-    Pure, deterministic string heuristic — no I/O (lives here rather than
-    in ``executor`` to keep ``llm``/``credential_pool`` free of an executor
-    import cycle). Precedence, checked against the lower-cased message:
+    P18 (FZ 20k9c1a1a1b7c2f): thin projection of the canonical
+    :func:`~tessellum.composer.error_taxonomy.classify_reason` — the single
+    token-heuristic source the executor, this pool, and the llm auth-retry all
+    share, so the three no longer disagree. The pool cares only about the three
+    key-affecting causes; every non-key reason (stall/validation/truncated/…)
+    projects to ``transient`` (keep the key, let the retry ladder retry it).
 
-    1. ``quota`` — a hard billing/quota exhaustion (``"402"`` /
-       ``"quota"`` / ``"insufficient"`` / ``"billing"``): bench the key a
-       long time.
-    2. ``rate_limit`` — a persistent throttle (``"429"`` / ``"rate limit"``
-       / ``"too many requests"`` / ``"throttl"``): bench the key briefly.
-    3. ``auth`` — a bad/expired credential (``"401"`` / ``"403"`` /
-       ``"expired"`` / ``"credential"`` / ``"forbidden"`` /
-       ``"unauthorized"`` / ``"accessdenied"``): bench (won't recover soon).
-    4. ``transient`` — anything else (a soft/first blip): keep the key,
-       let the retry ladder retry it.
-
+    Causes and their cooldowns: ``quota`` (hard billing/quota → long bench),
+    ``rate_limit`` (soft throttle → brief bench), ``auth`` (bad/expired
+    credential → bench, won't recover soon), ``transient`` (keep the key).
     A ``None``/empty message is ``transient`` (a blip, not a key fault).
     """
-    if not error_msg:
-        return "transient"
-    msg = error_msg.lower()
-    if "402" in msg or "quota" in msg or "insufficient" in msg or "billing" in msg:
-        return "quota"
-    if (
-        "429" in msg
-        or "rate limit" in msg
-        or "ratelimit" in msg
-        or "too many requests" in msg
-        or "throttl" in msg
-    ):
-        return "rate_limit"
-    if (
-        "401" in msg
-        or "403" in msg
-        or "expired" in msg
-        or "credential" in msg
-        or "forbidden" in msg
-        or "unauthorized" in msg
-        or "accessdenied" in msg
-    ):
-        return "auth"
-    return "transient"
+    return REASON_TO_ROTATION_CAUSE[classify_reason(error_msg)]  # type: ignore[return-value]
 
 
 class CredentialPoolError(Exception):
