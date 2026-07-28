@@ -474,6 +474,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "every phase. Default: off (no traces written).",
     )
     digest_cmd.add_argument(
+        "--max-review-rounds", type=int, default=0,
+        help="P15 review-revise rounds: on a plan-quality rejection, re-augment "
+        "from the review's failures and re-review, up to N extra rounds "
+        "(revert-to-BEST on regression). Default 0 = single pass.",
+    )
+    digest_cmd.add_argument(
         "--format", dest="output_format", choices=["human", "json"], default="human",
     )
     digest_cmd.set_defaults(func=run_composer_digest_cli)
@@ -1408,6 +1414,7 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
         sign_off_policy=policy,
         agent_judge=agent_judge,
         run_id=run_id,
+        max_review_rounds=args.max_review_rounds,
         **extra_kwargs,
     )
 
@@ -1416,8 +1423,15 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
             "run_id": result.run_id,
             "completed": result.completed,
             "stopped_at": result.stopped_at,
+            "review_rounds": result.review_rounds,
             "sign_off": (
-                {"decision": result.sign_off.decision, "rung": result.sign_off.deciding_rung}
+                {
+                    "decision": result.sign_off.decision,
+                    "rung": result.sign_off.deciding_rung,
+                    # The terminal rationale — on a rejection this carries the
+                    # review's failure summary, the operator's repair spec.
+                    "reason": result.sign_off.reason,
+                }
                 if result.sign_off else None
             ),
             "phases": [
@@ -1432,6 +1446,10 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
             print(f"  {'OK ' if p.error_count == 0 else 'ERR'}  {p.phase:8s}  errors={p.error_count}")
         if result.sign_off:
             print(f"  sign-off: {result.sign_off.decision} (via {result.sign_off.deciding_rung})")
+            if result.sign_off.decision != "approved" and result.sign_off.reason:
+                print(f"  reason: {result.sign_off.reason}")
+        if result.review_rounds:
+            print(f"  revise rounds: {result.review_rounds}")
         print(f"  → completed={result.completed}"
               + (f"  stopped_at={result.stopped_at}" if result.stopped_at else ""))
     return 0 if result.completed else 1

@@ -4,6 +4,25 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — episodic hardening: checkpoints, streamed events, corpus persistence, slim dumps (A1, FZ 20k9c1a1a1b7c2k1a) — 2026-07-28
+
+The second agent-memory phase: the pipeline's episodic record becomes crash-durable and stops re-serializing the source bytes. All opt-in via existing seams (`runs_dir` / `events_path`) — byte-identical when unset.
+
+- **A1.2 — per-phase plan-of-record checkpoints** (`digestion.py`). After every linear-phase fold (revise rounds included), the normalized `plan_doc` is snapshotted to `<runs_dir>/checkpoints/<NN>_<phase>.json` — atomic (tmp+rename), fail-soft, slimmed. A crash mid-run now leaves the last accepted fold on disk instead of losing the whole run (the P24 revert-to-BEST snapshots were RAM-only).
+- **`slim_plan_doc()`** (`digestion.py`, public). The dump-friendly copy without the bulky inline source (`source_content`, `members[].excerpt`) — those bytes are already durable in `source_leaf.json`/the spool, so checkpoints and dumps stop multiplying copies of the same payload (the dedup smell the vault-memory design removes). Pure; member metadata passes through.
+- **A1.1 — lifecycle events stream at record time** (`scheduler.py`). Each per-leaf event is appended to `events_path` as JSONL the moment it is recorded (under the results lock, fail-soft), so a crashed/cancelled wave keeps the events of every completed leaf; the end-of-run writer rewrites the identical set on the happy path (byte-identical final state). `statistics.json` + the trace stay end-of-run — their content is reconstructible from the streamed events.
+- **A1.3 — corpus planning persistence** (`corpus_digestion.py`). `run_corpus_planning_wave(runs_dir=…)`: each sub-objective plans under its own `<runs_dir>/corpus/<sub_id>/` (isolated traces + checkpoints by construction), every ACCEPTED sub-plan's `plan_doc` is persisted at acceptance — closing the crash-between-M3-and-M4 window that lost every accepted plan — and a `planning_result.json` wave summary lands at the end. `run_corpus_digestion` forwards its `execute_kwargs["runs_dir"]`.
+- **A1.5 — `plan.json` stops re-inlining the source** (`runtime/executor.py`). The runtime's post-run dump now writes `slim_plan_doc(result.plan_doc)` — the plan-of-record, not a third durable copy of the source bytes.
+- **A1.4 (deferred, deliberately).** Wiring `plan_revisions` needs the accepted-intent identity (`plan_revision_hash` over the merged effect SET, i.e. the `merge_proposals` seam) — a post-hoc hash of `plan_doc` would mint a second identity domain, the exact two-sources-of-truth smell. Moves behind the typed-proposals/C1 decision.
+- **Tests** (`tests/smoke/test_composer_episodic_hardening.py`, +5): `slim_plan_doc` purity/coverage; checkpoints per phase + slimmed + absent-without-runs_dir; streamed JSONL on the wave; `_persist_json` atomic/fail-soft. Full suite 2013 passed, ruff clean.
+
+### CLI — the P15 revise loop is now reachable from `tessellum composer digest` (+ the rejection reason is printed) — 2026-07-28
+
+The first API-backend eval run (B1, FZ 20k9c1a1a1b7c2k1a) ran plan+augment+review clean and scored the first-ever GREEN Tier-1 — but review sign-off rejected on a genuine residual, and the CLI could neither invoke the P15 revise loop (`max_review_rounds` was not exposed — the run halted where the library would have self-repaired) nor show WHY (the sign-off `reason` was dropped from both output formats).
+
+- **`--max-review-rounds N`** (`cli/composer.py`, default 0 = the prior single pass). Threads to `run_digestion_pipeline(max_review_rounds=…)`; the JSON output gains `review_rounds`, the human format prints the rounds when any ran.
+- **The rejection reason is surfaced**: JSON `sign_off` gains `reason` (the review's failure summary — the operator's repair spec); the human format prints it on any non-approved decision.
+
 ### Composer — run identity plumbing: every digest invocation can carry a `run_id` (A0, FZ 20k9c1a1a1b7c2k1a) — 2026-07-28
 
 The first phase of the vault-backed agent-memory design (FZ 20k9c1a1a1b7c2k1): a first-class run identity, minted once, threaded through the pipeline, surfaced on the result. Identity only — nothing reads the future `runs/<run_id>/` dirs yet. Additive; `run_id=None` (and a CLI without `--run-id`… which now mints one) is byte-identical for library callers.
