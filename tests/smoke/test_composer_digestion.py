@@ -512,3 +512,59 @@ def test_review_revise_loop_escalates_when_not_converging(tmp_path: Path) -> Non
     # same-failure short-circuit fires after round 1 (round-2 failures not smaller)
     assert result.review_rounds <= 3
     assert be.review_calls <= 4  # bounded, never unbounded
+
+
+class _ScriptedReviewBackend:
+    """Review returns a scripted per-round failure COUNT (never ready), and each
+    augment stamps a round-identifying marker into plan_text. Lets a test assert
+    which round's plan_doc survives (P24 revert-to-BEST)."""
+
+    backend_id = "scripted-review"
+
+    def __init__(self, failure_counts: list[int]) -> None:
+        self.failure_counts = failure_counts
+        self.review_calls = 0
+        self.augment_calls = 0
+
+    def call(self, request):  # noqa: ANN001
+        import json as _json
+        from tessellum.composer import LLMResponse
+        p = request.user_prompt
+        blob = {
+            "plan_path": "plans/plan_demo.md",
+            "output_path": "notes/n.md", "body_markdown": "# Note\n\nbody",
+            "total_notes": 2, "ready": True, "failures": [],
+        }
+        if "AUGMENTMARK" in p:
+            self.augment_calls += 1
+            # stamp the round into the plan body so we can tell which survived
+            blob["plan_text"] = f"# Plan round {self.augment_calls}\n\nbody"
+            blob["body_markdown"] = blob["plan_text"]
+        if "REVIEWMARK" in p:
+            self.review_calls += 1
+            n = self.failure_counts[min(self.review_calls - 1, len(self.failure_counts) - 1)]
+            blob = {**blob, "ready": n == 0,
+                    "failures": [f"CP{i} FAIL" for i in range(n)]}
+        return LLMResponse(content=_json.dumps(blob), elapsed_ms=1.0, backend_id=self.backend_id)
+
+
+def test_review_revise_loop_reverts_to_best_on_regression(tmp_path: Path) -> None:
+    """P24: round 1 yields 2 failures, round 2 REGRESSES to 3 (short-circuit
+    fires). The final plan_doc must be the BETTER round-1 plan, not the regressed
+    round-2 one — the revert-to-BEST that fix.py has and P15 originally lacked."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _marked_pipeline(sd)
+    be = _ScriptedReviewBackend(failure_counts=[2, 3])  # round1=2 fails, round2=3 (worse)
+    result = run_digestion_pipeline(
+        skills_dir=sd, source_leaf=dict(_SOURCE), backend=be,
+        vault_root=tmp_path / "vault", max_review_rounds=2,
+    )
+    assert result.stopped_at == "review"  # never converged → escalated
+    # the surviving plan-of-record is round 1's (2 failures), NOT round 2's (3)
+    assert "round 1" in result.plan_doc.get("plan_text", ""), (
+        f"revert-to-BEST failed: plan_doc holds the regressed round, "
+        f"plan_text={result.plan_doc.get('plan_text')!r}"
+    )
+    # and the verdict/failures reflect the best round (2), not the worse (3)
+    assert len(result.plan_doc.get("failures") or []) == 2

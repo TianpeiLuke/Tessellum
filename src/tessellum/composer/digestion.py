@@ -738,6 +738,19 @@ def run_digestion_pipeline(
         return _halt("plan")
 
     # augment → review, with the P15 revise loop
+    # P24 (FZ 20k9c1a1a1b7c2h/g): revert-to-BEST — the same safety property
+    # fix.py's run_fix_loop has and P15 originally lacked. The loop mutates
+    # plan_doc in place each round; without this, a REGRESSING re-augment (round N
+    # yields MORE failures than N-1) would leave the worse plan as the final state
+    # sent to sign-off. We snapshot the best (fewest-failures) plan_doc across
+    # rounds and restore it if the final round regressed. "Best" score = failure
+    # count (0 = ready); lower is better.
+    best_plan_doc: dict | None = None
+    best_failure_count: int | None = None
+
+    def _score(failures: list) -> int:
+        return len(failures)
+
     while True:
         aug_leaf = dict(plan_doc)
         if review_failures:
@@ -749,6 +762,10 @@ def run_digestion_pipeline(
             return _halt("review")
 
         ready, failures = _review_verdict(plan_doc)
+        # P24 revert-to-BEST: remember the best plan_doc seen so far.
+        if best_failure_count is None or _score(failures) < best_failure_count:
+            best_failure_count = _score(failures)
+            best_plan_doc = dict(plan_doc)
         if ready or review_rounds >= max_review_rounds:
             break
         # Same-failure short-circuit: a round that doesn't shrink the failure set
@@ -757,6 +774,16 @@ def run_digestion_pipeline(
             break
         review_failures = failures
         review_rounds += 1
+
+    # P24: if the final round regressed below the best seen, restore BEST so a
+    # worse plan is never what sign-off (and any downstream execute) judges.
+    if (
+        best_plan_doc is not None
+        and best_failure_count is not None
+        and _score(_review_verdict(plan_doc)[1]) > best_failure_count
+    ):
+        plan_doc.clear()
+        plan_doc.update(best_plan_doc)
 
     # ── review → ready sign-off gate ────────────────────────────────────────
     # Program rung = plan-structure pre-filter AND the review skill's typed
