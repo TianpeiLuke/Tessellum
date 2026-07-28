@@ -29,6 +29,8 @@ from tessellum.composer import (
 from tessellum.composer.executor import (
     MAX_CRASH_RECOVERIES,
     MAX_LOGIC_RETRIES,
+    MAX_TRUNCATION_CEILING_TOKENS,
+    MAX_TRUNCATION_RETRIES,
 )
 from tessellum.composer.llm import LLMRequest, LLMResponse
 
@@ -350,9 +352,74 @@ def test_scheduler_failed_step_does_not_crash_downstream(tmp_path: Path) -> None
     assert step_1_results[0].error is not None
 
 
+# ── P16 (FZ 20k9c1a1a1b7c2g): truncation self-heals by escalating max_tokens ──
+
+class _TruncateUntilBudgetBackend:
+    """Returns a truncated response (stop_reason==max_tokens, unparseable body)
+    until the request's max_tokens reaches ``succeed_at``, then a valid payload.
+    Records the max_tokens of every call so the test can assert escalation."""
+
+    backend_id = "truncate-until-budget"
+
+    def __init__(self, succeed_at: int) -> None:
+        self.succeed_at = succeed_at
+        self.calls: list[LLMRequest] = []
+
+    def call(self, request: LLMRequest) -> LLMResponse:
+        self.calls.append(request)
+        mt = request.max_tokens
+        if mt is not None and mt >= self.succeed_at:
+            return LLMResponse(
+                content=json.dumps({"facets": ["ok"]}), elapsed_ms=0.0,
+                backend_id=self.backend_id, metadata={"stop_reason": "end_turn"},
+            )
+        return LLMResponse(
+            content='{"facets": ["cut off mid-',  # truncated JSON
+            elapsed_ms=0.0, backend_id=self.backend_id,
+            metadata={"stop_reason": "max_tokens", "output_tokens": mt},
+        )
+
+
+def test_truncation_escalates_max_tokens_and_converges(compiled, tmp_path: Path) -> None:
+    """P16: a truncated response escalates max_tokens (16000→32000) and retries
+    on its OWN budget, converging — NOT replaying the same cap through the logic
+    path until the 3-strike loop / logic-budget exhaustion."""
+    backend = _TruncateUntilBudgetBackend(succeed_at=32000)  # succeeds once escalated once (16000→32000)
+    result = execute_step_with_retry(
+        compiled.steps[0], leaf={"_id": "leaf_0", "id": "x"}, upstream={},
+        backend=backend, vault_root=tmp_path,
+    )
+    assert result.error is None, f"should converge, got {result.error}"
+    # first call inherits the 16000 default, the retry escalates to 32000
+    caps = [c.max_tokens for c in backend.calls]
+    assert caps[0] in (None, 16000)
+    assert 32000 in caps, f"retry must escalate max_tokens; saw {caps}"
+    assert "truncated" in result.retry_kind_history
+    assert result.retry_kind_history[-1] == "success"
+
+
+def test_truncation_does_not_burn_logic_budget(compiled, tmp_path: Path) -> None:
+    """A step that keeps truncating past the ceiling terminates cleanly as
+    `truncated` (its own bounded budget) — it must NOT be a logic-budget
+    exhaustion (truncation is capacity, not a prompt defect)."""
+    backend = _TruncateUntilBudgetBackend(succeed_at=10**9)  # never enough → always truncates
+    result = execute_step_with_retry(
+        compiled.steps[0], leaf={"_id": "leaf_0", "id": "x"}, upstream={},
+        backend=backend, vault_root=tmp_path,
+    )
+    assert result.error is not None
+    # bounded: 1 initial + MAX_TRUNCATION_RETRIES escalations, then it falls
+    # through to the logic path once (which terminates) — never an unbounded loop
+    assert result.error_class in ("truncated", "validation")
+    assert result.retry_kind_history.count("truncated") == MAX_TRUNCATION_RETRIES
+    # escalation is bounded by the ceiling, never unbounded
+    assert max(c.max_tokens or 0 for c in backend.calls) <= MAX_TRUNCATION_CEILING_TOKENS
+
+
 # ── Defaults ───────────────────────────────────────────────────────────────
 
 
 def test_executor_module_constants_present():
     assert MAX_LOGIC_RETRIES == 3
     assert MAX_CRASH_RECOVERIES == 2
+    assert MAX_TRUNCATION_RETRIES == 2

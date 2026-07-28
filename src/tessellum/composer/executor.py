@@ -101,6 +101,22 @@ deadline even though the synchronous backend protocol has no portable
 cancellation primitive. A late result is discarded.
 """
 
+# ── P16 (FZ 20k9c1a1a1b7c2g): truncation self-heals by escalating max_tokens ──
+# A `truncated` result (stop_reason==max_tokens) is an output-SIZE condition, not
+# a prompt/schema defect. The retry ladder escalates max_tokens (2× per round,
+# capped) on its OWN budget instead of replaying the same cap through the logic
+# path (which would re-truncate identically until the 3-strike loop fires).
+MAX_TRUNCATION_RETRIES: int = 2
+"""Max times a `truncated` step escalates its max_tokens and retries. Separate
+from MAX_LOGIC_RETRIES — truncation is capacity, not a logic defect."""
+DEFAULT_TRUNCATION_BASE_TOKENS: int = 16000
+"""Base to escalate from when a truncating step declared no explicit max_tokens
+(the LLMRequest default)."""
+MAX_TRUNCATION_CEILING_TOKENS: int = 64000
+"""Ceiling for truncation escalation — within the model's output limit; a step
+still truncating at this size is a genuine plan-quality problem (split the note),
+not a budget one, so it falls through to the normal terminal path."""
+
 
 ErrorClass = Literal["transient", "validation", "rate_limit", "auth", "crash", "truncated"]
 """Phase 1.4 (v4) — fine-grained error class returned by
@@ -173,6 +189,7 @@ def execute_step(
     retry_attempt: int = 1,
     retry_last_error: str | None = None,
     timeout_seconds: float | None = None,
+    max_tokens_override: int | None = None,
     budget: RunBudget | None = None,
     context_assembler: ContextAssembler | None = None,
     cancellation_check: Callable[[], bool] | None = None,
@@ -313,11 +330,17 @@ def execute_step(
     # Per-step response budget: a step may declare a larger max_tokens than the
     # global default (the big-output writers — full plan body / augmented plan
     # with coverage map + gate tables + per-note cross-ref contract — exceed
-    # 16000 and truncate mid-JSON). None → inherit the LLMRequest default.
+    # 16000 and truncate mid-JSON). ``max_tokens_override`` (P16) takes precedence
+    # — the retry ladder escalates it when a prior attempt truncated, so a
+    # truncation self-heals instead of replaying the same too-small cap.
+    # None on both → inherit the LLMRequest default.
+    effective_max_tokens = (
+        max_tokens_override if max_tokens_override is not None else step.max_tokens
+    )
     request = LLMRequest(
         system_prompt=system_prompt,
         user_prompt=prompt,
-        **({"max_tokens": step.max_tokens} if step.max_tokens is not None else {}),
+        **({"max_tokens": effective_max_tokens} if effective_max_tokens is not None else {}),
     )
 
     # Watchdog. Wrap backend.call in a thread with a timeout. If the
@@ -844,6 +867,11 @@ def execute_step_with_retry(
     history: list[str] = []  # error-message hashes, in attempt order
     kind_history: list[str] = []
     logic_attempts = 0
+    # P16: escalated response budget for a truncation-retry. None until a
+    # `truncated` failure bumps it; then threaded into execute_step so the retry
+    # asks for more tokens instead of replaying the same too-small cap.
+    truncation_max_tokens: int | None = None
+    truncation_retries = 0
     crash_recoveries = 0
     last_error: str | None = None
     # Captured-but-unused on success path; populated on each retry.
@@ -876,6 +904,7 @@ def execute_step_with_retry(
                 dry_run=dry_run,
                 retry_attempt=attempt_n,
                 retry_last_error=last_error,
+                max_tokens_override=truncation_max_tokens,
                 budget=budget,
                 context_assembler=context_assembler,
                 cancellation_check=cancellation_check,
@@ -999,6 +1028,23 @@ def execute_step_with_retry(
                     retry_kind_history=tuple(kind_history),
                     error_class=classify_error(err),
                 )
+            continue
+
+        # P16 — TRUNCATION is an output-SIZE condition, not a logic/prompt
+        # defect: retrying with the same cap just re-truncates identically. So a
+        # `truncated` result escalates max_tokens (2×, capped) and retries on its
+        # OWN budget (MAX_TRUNCATION_RETRIES) — NOT the logic budget, which is for
+        # prompt/schema defects. When the ceiling is hit, fall through to the
+        # normal logic path so it terminates cleanly rather than looping.
+        if result.error_class == "truncated" and truncation_retries < MAX_TRUNCATION_RETRIES:
+            truncation_retries += 1
+            kind_history.append("truncated")
+            last_error = result.error
+            last_response = result.response
+            last_materialized = result.materialized
+            last_elapsed_ms = result.elapsed_ms
+            current = truncation_max_tokens or step.max_tokens or DEFAULT_TRUNCATION_BASE_TOKENS
+            truncation_max_tokens = min(current * 2, MAX_TRUNCATION_CEILING_TOKENS)
             continue
 
         # Logic failure (schema / materializer / contract).
