@@ -280,6 +280,39 @@ def test_run_pipeline_writes_trace(tmp_path: Path) -> None:
     assert "step_results" in payload
     # Trace path is filesystem-safe (no colons).
     assert ":" not in run.trace_path.name
+    # P20 (FZ 20k9c1a1a1b7c2g): the per-step trace record now carries the
+    # diagnostics the fixes added and _write_trace previously DROPPED —
+    # error_class + the backend response.metadata (stop_reason / output_tokens /
+    # context_warnings). A trace missing these forces reactive discovery.
+    sr0 = payload["step_results"][0]
+    assert "error_class" in sr0, "trace must persist error_class (P20)"
+    assert "metadata" in sr0, "trace must persist response.metadata (P20)"
+
+
+def test_step_result_trace_dict_carries_all_diagnostics() -> None:
+    """P20: the trace record is DERIVED from StepResult via one builder, so it
+    can't silently desync. Assert every diagnostic field is present — this is the
+    test that stops a future StepResult field-add from being dropped (as
+    error_class was)."""
+    from tessellum.composer.executor import StepResult, step_result_trace_dict
+    from tessellum.composer.llm import LLMResponse
+    from tessellum.composer.materializer import MaterializedOutput
+
+    r = StepResult(
+        section_id="s1", leaf_id="leaf_0",
+        response=LLMResponse(content="body", elapsed_ms=1.0, backend_id="mock",
+                             metadata={"stop_reason": "max_tokens", "output_tokens": 32000}),
+        materialized=MaterializedOutput(structured={}, notes="n"),
+        elapsed_ms=1.0, error="response truncated at max_tokens",
+        error_class="truncated", attempts=2, retry_kind_history=("truncated", "success"),
+    )
+    d = step_result_trace_dict(r)
+    for field in ("section_id", "leaf_id", "elapsed_ms", "error", "error_class",
+                  "metadata", "attempts", "retry_kind_history"):
+        assert field in d, f"trace record must carry {field}"
+    assert d["error_class"] == "truncated"
+    assert d["metadata"]["stop_reason"] == "max_tokens"
+    assert d["metadata"]["output_tokens"] == 32000
 
 
 def test_run_pipeline_no_trace_when_runs_dir_none(tmp_path: Path) -> None:

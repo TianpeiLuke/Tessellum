@@ -141,8 +141,15 @@ def _run_phase_linear(
     cancellation_check: Callable[[], bool] | None,
     effect_guard: Callable[[], ContextManager[None]] | None,
     effect_recorder: Callable[[Path], None] | None,
+    runs_dir: Path | None = None,
 ) -> RunResult:
-    """Compile + run one skill as a single linear phase over ``leaf``."""
+    """Compile + run one skill as a single linear phase over ``leaf``.
+
+    P20 (FZ 20k9c1a1a1b7c2g): forwards ``runs_dir`` so the linear phases
+    (plan / augment / review) emit the SAME per-step trace as the execute wave.
+    Before P20 they passed no ``runs_dir`` and were dark — yet they hosted the
+    worst blockers (E4/E5/E15's `write_plan`), so the phases that most needed
+    telemetry had none. ``None`` → no trace (byte-identical to pre-P20)."""
     compiled = compile_skill(skills_dir / f"{skill_name}.md")
     return run_pipeline(
         compiled,
@@ -155,6 +162,7 @@ def _run_phase_linear(
         cancellation_check=cancellation_check,
         effect_guard=effect_guard,
         effect_recorder=effect_recorder,
+        runs_dir=runs_dir,
     )
 
 
@@ -696,6 +704,9 @@ def run_digestion_pipeline(
     # =0` → the original single-pass behaviour (byte-identical).
     review_rounds = 0
     review_failures: list = []
+    # P20: if the caller set a runs_dir for the execute wave, use it for the
+    # linear phases too so all four phases emit the same per-step trace.
+    linear_runs_dir = execute_kwargs.get("runs_dir")
 
     def _run_one_phase(phase: str, leaf: dict) -> RunResult | None:
         """Run one linear phase; append its outcome; merge + normalize. Returns
@@ -707,6 +718,7 @@ def run_digestion_pipeline(
             vault_root=vault_root, dry_run=dry_run, budget=budget,
             context_assembler=context_assembler, cancellation_check=cancellation_check,
             effect_guard=effect_guard, effect_recorder=effect_recorder,
+            runs_dir=linear_runs_dir,
         )
         phases.append(
             PhaseOutcome(phase=phase, ran=True, error_count=run.error_count, run=run)

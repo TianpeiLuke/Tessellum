@@ -171,6 +171,35 @@ class StepResult:
     error_class: ErrorClass | None = None
 
 
+def step_result_trace_dict(r: StepResult) -> dict[str, Any]:
+    """The trace/telemetry record for one step — DERIVED from ``StepResult`` so
+    the trace can't silently desync from the fields the executor computes (P20,
+    FZ 20k9c1a1a1b7c2g). Before P20, ``_write_trace`` hand-picked 11 fields and
+    dropped exactly the diagnostics the fixes added — ``error_class`` and the
+    backend ``response.metadata`` (``stop_reason`` / ``output_tokens`` /
+    ``context_warnings``) — so a ~25-min run's most useful signals never reached
+    disk. This single builder is the one place the record is shaped; a test
+    asserts every diagnostic field is present."""
+    return {
+        "section_id": r.section_id,
+        "leaf_id": r.leaf_id,
+        "elapsed_ms": r.elapsed_ms,
+        "error": r.error,
+        "error_class": r.error_class,  # P20 — was dropped
+        "response_chars": len(r.response.content),
+        "backend_id": r.response.backend_id,
+        # P20 — the backend diagnostics (stop_reason / output_tokens /
+        # input_tokens / context_warnings / prompt_exceeded_cap / stalled / …);
+        # these were computed and stamped but never serialized.
+        "metadata": dict(r.response.metadata),
+        "files_written": [str(p) for p in r.materialized.files_written],
+        "files_applied": [str(p) for p in r.materialized.files_applied],
+        "notes": r.materialized.notes,
+        "attempts": r.attempts,
+        "retry_kind_history": list(r.retry_kind_history),
+    }
+
+
 _LEAF_PLACEHOLDER_RE = re.compile(r"\{\{\s*leaf\.([a-z0-9_]+)\s*\}\}")
 _UPSTREAM_PLACEHOLDER_RE = re.compile(r"\{\{\s*upstream\.([a-z0-9_]+)\s*\}\}")
 # Retry-aware placeholders — substituted with the previous attempt's

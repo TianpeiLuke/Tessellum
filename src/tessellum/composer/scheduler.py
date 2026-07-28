@@ -46,6 +46,7 @@ from tessellum.composer.executor import (
     MAX_LOGIC_RETRIES,
     StepResult,
     execute_step_with_retry,
+    step_result_trace_dict,
 )
 from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.credential_pool import RunBudget
@@ -1319,23 +1320,11 @@ def _write_trace(
         "step_invocation_count": len(step_results),
         "error_count": error_count,
         "leaves": [{"_id": leaf.get("_id"), **{k: v for k, v in leaf.items() if k != "_id"}} for leaf in leaves],
-        "step_results": [
-            {
-                "section_id": r.section_id,
-                "leaf_id": r.leaf_id,
-                "elapsed_ms": r.elapsed_ms,
-                "error": r.error,
-                "response_chars": len(r.response.content),
-                "backend_id": r.response.backend_id,
-                "files_written": [str(p) for p in r.materialized.files_written],
-                "files_applied": [str(p) for p in r.materialized.files_applied],
-                "notes": r.materialized.notes,
-                # Retry telemetry
-                "attempts": r.attempts,
-                "retry_kind_history": list(r.retry_kind_history),
-            }
-            for r in step_results
-        ],
+        # P20 (FZ 20k9c1a1a1b7c2g): the per-step record is DERIVED from StepResult
+        # via step_result_trace_dict, so it carries error_class + response.metadata
+        # (stop_reason / output_tokens / context_warnings) — previously dropped —
+        # and can't silently desync from the fields the executor computes.
+        "step_results": [step_result_trace_dict(r) for r in step_results],
     }
     target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return target
