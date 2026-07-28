@@ -167,3 +167,25 @@ def test_real_skills_fan_out_planned_notes_natively(tmp_path: Path) -> None:
         f"native execute wave over the REAL execute skill fanned out to "
         f"{len(run.leaves)} leaf(es), expected 2 (E11 regression)"
     )
+
+
+def test_real_review_skill_has_no_re_emission_after_migration() -> None:
+    """P21-full A7: the migrated review skill reads the plan BY REFERENCE via
+    {{artifact.plan_text}} and no longer re-declares plan_text as step_1's
+    output, so the compiler's re-emission LINT is clean — and strict mode
+    compiles without raising. This is the target the lint was built to flag;
+    it documents that the migration actually removed the re-emission."""
+    if not _real_skills_present():
+        pytest.skip("real vault skills not present")
+    from tessellum.composer import compile_skill
+
+    compiled = compile_skill(SKILLS / "skill_tessellum_review_digestion_plan.md")
+    assert compiled.re_emission_warnings == (), (
+        "the migrated review skill should have zero re-emission warnings; got: "
+        + "; ".join(compiled.re_emission_warnings)
+    )
+    # Strict mode must not raise on the migrated skill.
+    compile_skill(
+        SKILLS / "skill_tessellum_review_digestion_plan.md",
+        strict_re_emission=True,
+    )

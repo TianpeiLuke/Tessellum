@@ -209,6 +209,18 @@ _UPSTREAM_PLACEHOLDER_RE = re.compile(r"\{\{\s*upstream\.([a-z0-9_]+)\s*\}\}")
 # Retry-aware placeholders — substituted with the previous attempt's
 # response and error when execute_step_with_retry retries.
 _RETRY_PLACEHOLDER_RE = re.compile(r"\{\{\s*retry\.([a-z0-9_]+)\s*\}\}")
+# Artifact-by-reference placeholders (P21-full; FZ 20k9c1a1a1b7c2j) —
+# substituted with the driver's durable artifact store so a step reads a large
+# artifact (plan_text, source_excerpt, planned_notes) BY REFERENCE instead of a
+# prior step re-emitting it through the LLM. Generalizes P3's {{leaf.plan_text}}.
+_ARTIFACT_PLACEHOLDER_RE = re.compile(r"\{\{\s*artifact\.([a-z0-9_]+)\s*\}\}")
+# Combined single-pass placeholder regex over all four namespaces. Used by
+# _resolve_placeholders so every placeholder in the ORIGINAL template resolves
+# exactly once — a token appearing inside a substituted VALUE is never
+# re-scanned (no second-order substitution). Group 1 = namespace, group 2 = key.
+_PLACEHOLDER_RE = re.compile(
+    r"\{\{\s*(leaf|upstream|retry|artifact)\.([a-z0-9_]+)\s*\}\}"
+)
 
 
 def execute_step(
@@ -224,6 +236,7 @@ def execute_step(
     timeout_seconds: float | None = None,
     max_tokens_override: int | None = None,
     budget: RunBudget | None = None,
+    artifacts: dict[str, Any] | None = None,
     context_assembler: ContextAssembler | None = None,
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
@@ -261,6 +274,11 @@ def execute_step(
         budget: Shared run budget charged immediately before the backend
             call. A refused charge returns ``run budget exhausted`` without
             dispatching.
+        artifacts: The driver's durable artifact store (P21-full) —
+            ``{{artifact.X}}`` placeholders resolve against it, so a step reads
+            a large artifact BY REFERENCE. ``None`` (default) → an empty store,
+            byte-identical to the pre-P21 render for a prompt with no
+            ``{{artifact.X}}``.
 
     Returns:
         StepResult.
@@ -281,6 +299,7 @@ def execute_step(
         upstream=upstream,
         retry_attempt=retry_attempt,
         retry_last_error=retry_last_error,
+        artifacts=artifacts,
     )
 
     # Deliver the output schema to the model. The compiler strips the step's
@@ -533,9 +552,10 @@ def _resolve_placeholders(
     upstream: dict[str, Any],
     retry_attempt: int = 1,
     retry_last_error: str | None = None,
+    artifacts: dict[str, Any] | None = None,
 ) -> str:
-    """Substitute ``{{leaf.X}}``, ``{{upstream.Y}}``, and
-    ``{{retry.X}}`` placeholders.
+    """Substitute ``{{leaf.X}}``, ``{{upstream.Y}}``, ``{{retry.X}}``, and
+    ``{{artifact.X}}`` placeholders.
 
     Missing leaf/upstream keys leave a clearly-marked sentinel rather
     than silently inserting empty string — easier to debug a malformed
@@ -543,34 +563,40 @@ def _resolve_placeholders(
     placeholders resolve to ``retry_attempt`` (int) and
     ``retry_last_error`` (string, sanitised); unknown ``retry.X``
     keys produce a sentinel.
+
+    ``{{artifact.X}}`` (P21-full; FZ 20k9c1a1a1b7c2j) resolves against the
+    driver's durable artifact store — a large artifact read BY REFERENCE
+    instead of a prior step re-emitting it. ``artifacts=None`` (the default)
+    is treated as an empty store, so a prompt with no ``{{artifact.X}}`` is
+    byte-identical to the pre-P21 render (the sub simply matches nothing).
+
+    SINGLE-PASS: all four namespaces resolve in ONE pass over the ORIGINAL
+    template (a combined regex), so a placeholder appearing INSIDE a substituted
+    value is never re-scanned. This closes a second-order-substitution hazard:
+    if a leaf/upstream value (e.g. digested source content) literally contains
+    ``{{artifact.X}}`` / ``{{upstream.Y}}``, that token is inserted VERBATIM, not
+    recursively expanded (which could inline a whole artifact into a note body).
     """
+    if artifacts is None:
+        artifacts = {}
 
-    def leaf_sub(m: re.Match) -> str:
-        key = m.group(1)
-        if key in leaf:
-            return _stringify(leaf[key])
-        return f"<missing leaf.{key}>"
+    def _sub(m: re.Match) -> str:
+        namespace, key = m.group(1), m.group(2)
+        if namespace == "leaf":
+            return _stringify(leaf[key]) if key in leaf else f"<missing leaf.{key}>"
+        if namespace == "upstream":
+            return _stringify(upstream[key]) if key in upstream else f"<missing upstream.{key}>"
+        if namespace == "retry":
+            if key == "attempt":
+                return str(retry_attempt)
+            if key == "error":
+                return "" if retry_last_error is None else _sanitise_error_for_prompt(retry_last_error)
+            return f"<missing retry.{key}>"
+        if namespace == "artifact":
+            return _stringify(artifacts[key]) if key in artifacts else f"<missing artifact.{key}>"
+        return m.group(0)  # pragma: no cover — regex only matches the four above
 
-    def upstream_sub(m: re.Match) -> str:
-        key = m.group(1)
-        if key in upstream:
-            return _stringify(upstream[key])
-        return f"<missing upstream.{key}>"
-
-    def retry_sub(m: re.Match) -> str:
-        key = m.group(1)
-        if key == "attempt":
-            return str(retry_attempt)
-        if key == "error":
-            if retry_last_error is None:
-                return ""
-            return _sanitise_error_for_prompt(retry_last_error)
-        return f"<missing retry.{key}>"
-
-    text = _LEAF_PLACEHOLDER_RE.sub(leaf_sub, text)
-    text = _UPSTREAM_PLACEHOLDER_RE.sub(upstream_sub, text)
-    text = _RETRY_PLACEHOLDER_RE.sub(retry_sub, text)
-    return text
+    return _PLACEHOLDER_RE.sub(_sub, text)
 
 
 def _sanitise_error_for_prompt(error_message: str) -> str:
@@ -802,6 +828,7 @@ def execute_step_with_retry(
     backoff_cap: float = 30.0,
     backoff_rng: random.Random | None = None,
     budget: RunBudget | None = None,
+    artifacts: dict[str, Any] | None = None,
     context_assembler: ContextAssembler | None = None,
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
@@ -896,6 +923,7 @@ def execute_step_with_retry(
                 retry_last_error=last_error,
                 max_tokens_override=truncation_max_tokens,
                 budget=budget,
+                artifacts=artifacts,
                 context_assembler=context_assembler,
                 cancellation_check=cancellation_check,
                 effect_guard=effect_guard,

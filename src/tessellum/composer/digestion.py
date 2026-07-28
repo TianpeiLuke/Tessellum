@@ -36,7 +36,7 @@ from typing import Any, Callable, ContextManager
 
 from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS, compile_skill
 from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
-from tessellum.composer.contracts import PlanDoc
+from tessellum.composer.contracts import _ARTIFACT_KEYS, PlanDoc
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.gates import build_plan_gate
 from tessellum.composer.knowledge_plan import (
@@ -129,6 +129,23 @@ class DigestionResult:
     review_rounds: int = 0
 
 
+def _build_artifact_store(plan_doc: dict[str, Any]) -> dict[str, Any]:
+    """The by-reference artifact store the driver injects into each phase's
+    prompts (P21-full; FZ 20k9c1a1a1b7c2j). Snapshots the current durable value
+    of each allowlisted artifact key (``_ARTIFACT_KEYS``) from the — already
+    ``_normalize_plan_doc_keys``-normalized — ``plan_doc``, so a consumer reads
+    ``{{artifact.plan_text}}`` by reference instead of a prior step re-emitting
+    it. Only present, non-empty values are included (an absent key → a
+    ``<missing artifact.X>`` sentinel at render, same debug affordance as
+    ``{{leaf.X}}``)."""
+    store: dict[str, Any] = {}
+    for key in _ARTIFACT_KEYS:
+        val = plan_doc.get(key)
+        if val not in (None, "", [], ()):
+            store[key] = val
+    return store
+
+
 def _run_phase_linear(
     skill_name: str,
     *,
@@ -143,6 +160,7 @@ def _run_phase_linear(
     effect_guard: Callable[[], ContextManager[None]] | None,
     effect_recorder: Callable[[Path], None] | None,
     runs_dir: Path | None = None,
+    artifacts: dict[str, Any] | None = None,
 ) -> RunResult:
     """Compile + run one skill as a single linear phase over ``leaf``.
 
@@ -150,7 +168,11 @@ def _run_phase_linear(
     (plan / augment / review) emit the SAME per-step trace as the execute wave.
     Before P20 they passed no ``runs_dir`` and were dark — yet they hosted the
     worst blockers (E4/E5/E15's `write_plan`), so the phases that most needed
-    telemetry had none. ``None`` → no trace (byte-identical to pre-P20)."""
+    telemetry had none. ``None`` → no trace (byte-identical to pre-P20).
+
+    P21-full: forwards the by-reference ``artifacts`` store so a phase can read a
+    large durable artifact via ``{{artifact.X}}`` instead of a prior step
+    re-emitting it. ``None`` → no artifact substitution (byte-identical)."""
     compiled = compile_skill(skills_dir / f"{skill_name}.md")
     return run_pipeline(
         compiled,
@@ -159,6 +181,7 @@ def _run_phase_linear(
         vault_root=vault_root,
         dry_run=dry_run,
         budget=budget,
+        artifacts=artifacts,
         context_assembler=context_assembler,
         cancellation_check=cancellation_check,
         effect_guard=effect_guard,
@@ -629,6 +652,12 @@ def run_execute_wave(
         posture = _execute_fallback_strategy(skills_dir)
         if posture == "degrade":
             effective_breaker = breaker.with_tripping_classes(frozenset({"auth"}))
+    # P21-full: expose the plan's durable artifacts BY REFERENCE to the writer
+    # leaves ({{artifact.plan_text}} etc.). The per-leaf projection already
+    # inlines plan_text/source_excerpt into each leaf (the single-shot backend
+    # has no file tool); the artifact channel is the additive by-reference path
+    # a migrated skill can read from instead. Empty store → byte-identical.
+    artifacts = execute_kwargs.pop("artifacts", None) or _build_artifact_store(plan_doc)
     return run_pipeline_dynamic(
         compiled,
         leaves=execute_leaves,
@@ -638,6 +667,7 @@ def run_execute_wave(
         max_workers=execute_max_workers,
         budget=budget,
         breaker=effective_breaker,
+        artifacts=artifacts,
         context_assembler=context_assembler,
         cancellation_check=cancellation_check,
         effect_guard=effect_guard,
@@ -766,12 +796,17 @@ def run_digestion_pipeline(
         the RunResult, or None if it errored (caller returns a halt result)."""
         if cancellation_check is not None and cancellation_check():
             raise InterruptedError(f"digestion cancelled before {phase}")
+        # P21-full: inject the durable artifacts (plan_text / source_excerpt /
+        # planned_notes) accumulated so far BY REFERENCE, so a phase reads
+        # {{artifact.plan_text}} instead of a prior step re-emitting the body.
+        # Built from the already-normalized plan_doc; empty on the first (plan)
+        # phase → byte-identical to pre-P21 for a prompt with no {{artifact.X}}.
         run = _run_phase_linear(
             PHASE_SKILLS[phase], skills_dir=skills_dir, leaf=leaf, backend=backend,
             vault_root=vault_root, dry_run=dry_run, budget=budget,
             context_assembler=context_assembler, cancellation_check=cancellation_check,
             effect_guard=effect_guard, effect_recorder=effect_recorder,
-            runs_dir=linear_runs_dir,
+            runs_dir=linear_runs_dir, artifacts=_build_artifact_store(plan_doc),
         )
         phases.append(
             PhaseOutcome(phase=phase, ran=True, error_count=run.error_count, run=run)

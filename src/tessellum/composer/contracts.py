@@ -44,6 +44,14 @@ _PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
     "total_notes": ("planned_note_count", "estimated_note_count"),
 }
 
+# The large, durable artifacts that travel between digestion phases BY REFERENCE
+# (P21-full; FZ 20k9c1a1a1b7c2j) — the driver injects them into a consumer's
+# prompt via the ``{{artifact.X}}`` namespace instead of a step re-emitting them
+# through the LLM (lossy by construction). The SINGLE source of truth shared by
+# the driver's artifact store (``digestion``) and the compiler's re-emission
+# lint (``compiler``); keep them in lockstep from here.
+_ARTIFACT_KEYS: tuple[str, ...] = ("plan_text", "source_excerpt", "planned_notes")
+
 
 class PlanDoc(BaseModel):
     """A thin typed envelope over the digestion ``plan_doc`` dataflow.
@@ -345,6 +353,7 @@ class ContractViolation(Exception):
     KIND_ARGV_OVERFLOW_EXPECTED = "ARGV_OVERFLOW_EXPECTED"
     KIND_UNKNOWN_MCP = "UNKNOWN_MCP"
     KIND_UNKNOWN_MCP_TOOL = "UNKNOWN_MCP_TOOL"
+    KIND_RE_EMISSION = "RE_EMISSION"  # P21-full: a no_op step re-emits an artifact
 
     def __init__(
         self,

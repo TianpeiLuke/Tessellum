@@ -30,11 +30,13 @@ Out of scope (handled elsewhere or deliberately omitted):
 from __future__ import annotations
 
 import datetime as dt
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from tessellum.composer.contracts import (
+    _ARTIFACT_KEYS,
     MATERIALIZER_CONTRACTS,
     ContractViolation,
     MaterializerContract,
@@ -173,6 +175,17 @@ class CompiledPipeline:
             (70%) of the hard cap. Each entry is a one-line
             description. Empty when no warnings; the compiler does
             not fail on warnings.
+        re_emission_warnings: Compile-time warnings (P21-full;
+            FZ 20k9c1a1a1b7c2j) about a ``no_op`` (DESCRIBE) step that
+            CONSUMES a durable artifact (``{{...X}}`` where X is in
+            :data:`~tessellum.composer.contracts._ARTIFACT_KEYS`) AND
+            re-declares that same artifact as its own output — the
+            E12/E16/E18 pass-through re-emission smell (it should read the
+            artifact BY REFERENCE, not re-emit it through the LLM). A LINT,
+            not a hard error: materializing *authors* (PRODUCE/APPLY) are never
+            flagged (they legitimately write the artifact). ``compile_skill``
+            appends here by default; ``strict_re_emission=True`` raises a
+            ``ContractViolation`` instead.
     """
 
     skill_path: Path
@@ -181,16 +194,88 @@ class CompiledPipeline:
     steps: tuple[CompiledStep, ...]
     compiled_at: str = field(default_factory=lambda: dt.datetime.now(dt.UTC).isoformat())
     budget_warnings: tuple[str, ...] = ()
+    re_emission_warnings: tuple[str, ...] = ()
 
     @property
     def step_count(self) -> int:
         return len(self.steps)
 
 
+# ── Re-emission lint (P21-full; FZ 20k9c1a1a1b7c2j) ──────────────────────────
+
+# Any-namespace placeholder: {{leaf.X}} / {{upstream.X}} / {{artifact.X}}. The
+# lint cares that the step CONSUMES artifact X, regardless of which channel.
+# Local (not imported from executor) to avoid an import cycle — executor imports
+# compiler.CompiledStep, so compiler must not import executor.
+_CONSUMED_PLACEHOLDER_RE = re.compile(
+    r"\{\{\s*(?:leaf|upstream|artifact)\.([a-z0-9_]+)\s*\}\}"
+)
+
+
+def _declared_output_keys(step: CompiledStep) -> set[str]:
+    """The keys a step DECLARES as its own output — its ``output_key`` plus the
+    top-level field names of its ``expected_output_schema`` (BOTH ``properties``
+    AND ``required``). ``required`` is the sub-key that actually forces the LLM
+    to emit a field (the schema-instruction + jsonschema.validate both key on
+    it), so a step re-declaring an artifact ONLY under ``required`` (omitting
+    ``properties``) still re-emits it — reading only ``properties`` would let
+    that defeat the lint. This mirrors the materializer required-field check in
+    ``_compile_step``, which reads ``required``."""
+    keys: set[str] = set()
+    if step.output_key:
+        keys.add(step.output_key)
+    schema = step.expected_output_schema or {}
+    props = schema.get("properties")
+    if isinstance(props, dict):
+        keys.update(props.keys())
+    required = schema.get("required")
+    if isinstance(required, list):
+        keys.update(k for k in required if isinstance(k, str))
+    return keys
+
+
+def _detect_re_emission(step: CompiledStep) -> str | None:
+    """Return a lint message iff ``step`` is a pass-through re-emission of a
+    durable artifact, else ``None``.
+
+    The smell (E12/E16/E18): a ``no_op`` step CONSUMES an artifact key (in
+    :data:`~tessellum.composer.contracts._ARTIFACT_KEYS`) via a ``{{...X}}``
+    placeholder AND re-declares that same key as its own output — i.e. its job
+    is "read X and hand it on", which it should do BY REFERENCE, not by
+    re-emitting X through the LLM (lossy).
+
+    Author-may-emit, pass-through-must-reference: a *materializing* step
+    (``operation_verb`` PRODUCE / APPLY — ``body_markdown_to_file`` etc.) is the
+    legitimate AUTHOR of the artifact and is NEVER flagged; only a ``no_op``
+    (DESCRIBE) consumer-and-re-declarer is."""
+    contract = step.materializer_contract
+    # Only a no_op / DESCRIBE step can be a pass-through; a PRODUCE/APPLY author
+    # legitimately emits the artifact. No contract (INFRA) → not a re-emitter.
+    if contract is None or contract.operation_verb != "DESCRIBE":
+        return None
+    prompt = step.prompt_section_text or ""
+    consumed = set(_CONSUMED_PLACEHOLDER_RE.findall(prompt))
+    declared = _declared_output_keys(step)
+    # The offending artifacts: consumed AND re-declared AND durable.
+    offenders = sorted(set(_ARTIFACT_KEYS) & consumed & declared)
+    if not offenders:
+        return None
+    return (
+        f"step {step.section_id!r} (no_op/DESCRIBE) consumes and re-declares "
+        f"artifact(s) {offenders} — a pass-through re-emission. Read the artifact "
+        f"by reference (via the channel that already carries it — e.g. "
+        f"{{{{artifact.X}}}} or the {{{{leaf.X}}}} it arrived on) and drop it from "
+        f"this step's expected_output_schema/output_key; do not re-emit a large "
+        f"artifact through the LLM. Only a materializing author may emit it."
+    )
+
+
 # ── Public entry points ────────────────────────────────────────────────────
 
 
-def compile_skill(skill_path: Path | str) -> CompiledPipeline:
+def compile_skill(
+    skill_path: Path | str, *, strict_re_emission: bool = False
+) -> CompiledPipeline:
     """Compile a single-file skill canonical into a typed DAG.
 
     Args:
@@ -199,6 +284,11 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
             ``<!-- :: section_id = X :: -->`` anchor and a leading
             ``​```yaml`` contract block; the prose after the block is the
             step's prompt. No separate ``.pipeline.yaml`` sidecar.
+        strict_re_emission: When ``True``, a detected pass-through re-emission
+            (P21-full) raises a ``ContractViolation`` instead of being appended
+            to ``re_emission_warnings``. Default ``False`` (warn only) — the
+            design mandate: a lint, not a ban, so a legitimate ``no_op``
+            consumer the heuristic misreads is never false-rejected.
 
     Returns:
         CompiledPipeline with steps in topological order.
@@ -206,7 +296,8 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
     Raises:
         ContractViolation: An individual step's contract declarations
             don't match its materializer (unknown key, missing required
-            output field, etc.).
+            output field, etc.); or, with ``strict_re_emission=True``, a
+            pass-through re-emission.
         CompilerError: DAG-level errors — cycles, forward references,
             missing prompt-section text.
         PipelineValidationError: A contract block is schema-invalid or
@@ -233,12 +324,32 @@ def compile_skill(skill_path: Path | str) -> CompiledPipeline:
     # Compile-time context-budget validation.
     budget_warnings = _validate_context_budgets(compiled_steps)
 
+    # P21-full: re-emission lint. Warn by default; raise only in strict mode.
+    re_emission_warnings: list[str] = []
+    for cs in compiled_steps:
+        msg = _detect_re_emission(cs)
+        if msg is None:
+            continue
+        if strict_re_emission:
+            raise ContractViolation(
+                step_id=cs.section_id,
+                kind=ContractViolation.KIND_RE_EMISSION,
+                message=msg,
+                suggested_fix=(
+                    "Consume the artifact by reference ({{artifact.X}}) and "
+                    "remove it from this step's expected_output_schema / "
+                    "output_key; only a materializing author may emit it."
+                ),
+            )
+        re_emission_warnings.append(msg)
+
     return CompiledPipeline(
         skill_path=skill,
         skill_name=skill.stem,
         pipeline_version=pipeline.version,
         steps=tuple(compiled_steps),
         budget_warnings=tuple(budget_warnings),
+        re_emission_warnings=tuple(re_emission_warnings),
     )
 
 
