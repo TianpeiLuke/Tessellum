@@ -23,14 +23,148 @@ way they import the contract types.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # ── Enums (Literal types) ──────────────────────────────────────────────────
 
 WireFormat = Literal["json", "markdown_with_frontmatter", "xml_tag_list", "none"]
 OperationVerb = Literal["PRODUCE", "APPLY", "DESCRIBE"]
+
+
+# ── PlanDoc — the thin typed dataflow envelope (P22; FZ 20k9c1a1a1b7c2f) ─────
+
+# The plan-skill output keys the gate + downstream steps read under canonical
+# names, mapped from the write-plan materializer's aliases. The SINGLE source of
+# truth for the E6 bridge — previously a private dict in digestion.py.
+_PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
+    "plan_path": ("output_path",),
+    "plan_text": ("body_markdown",),
+    "total_notes": ("planned_note_count", "estimated_note_count"),
+}
+
+
+class PlanDoc(BaseModel):
+    """A thin typed envelope over the digestion ``plan_doc`` dataflow.
+
+    **NOT** a rigid plan spine (the demoted P6/P7 ``NoteIntentGraph`` is a
+    separate, still-dead-on-the-native-path thing). This is the *light dataflow
+    type* the design review (FZ 20k9c1a1a1b7c2f) called for: it folds the three
+    scattered plan-of-record guards that lived as imperative code in
+    ``digestion._normalize_plan_doc_keys`` into one validated construction —
+
+    1. the **E6 alias bridge** (``output_path``→``plan_path``,
+       ``body_markdown``→``plan_text``, ``planned_note_count`` /
+       ``estimated_note_count``→``total_notes``),
+    2. the **longest-of ``plan_text`` guard** (a lossy re-emission can't shrink
+       the plan of record below the authoritative ``body_markdown``), and
+    3. the **P21-core ``total_notes`` floor** (you cannot declare fewer notes
+       than you enumerated in ``planned_notes``).
+
+    ``extra="allow"`` (the ``loader.PipelineStep`` precedent) so the ~dozen
+    non-envelope keys a real plan carries (``members``, ``routing_decision``,
+    ``note_intent_graph``, ``execute_leaves``, ``section_coverage_map``, …)
+    round-trip untouched. It is adopted ONLY at the ``_normalize_plan_doc_keys``
+    boundary as a validating constructor: :meth:`from_dict` runs the folds,
+    :meth:`to_normalized_dict` writes the canonical values back; ``plan_doc``
+    stays a plain mutable ``dict`` everywhere else (so the ~15 ``setdefault`` /
+    ``clear`` / ``update`` / ``[]=`` sites — incl. the P24 snapshot-restore —
+    are unchanged). Frozen: a constructed envelope is a value, not live state.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="allow")
+
+    # Every envelope field is deliberately ``Any``, not a strict type. The
+    # pre-P22 imperative ``_normalize_plan_doc_keys`` NEVER validated or coerced
+    # a value's type — it only *conditionally* wrote a value it had already
+    # type-checked (``plan_text`` only when ``isinstance(str)``, ``total_notes``
+    # only the enumerated ``len``). A strict ``str``/``int`` field would raise a
+    # ``ValidationError`` on a garbage/``None``/non-str value that the old code
+    # left UNTOUCHED (then rejected cleanly by the fail-closed plan gate), so
+    # strict typing would break P22's byte-identity invariant and abort the
+    # phase instead of returning an orderly gate rejection. ``Any`` makes the
+    # envelope a faithful value-carrier over the untyped dict; the FOLD (below)
+    # is where the type checks live, exactly mirroring the old code.
+    plan_path: Any = ""
+    plan_text: Any = ""
+    total_notes: Any = 0
+    planned_notes: tuple[Any, ...] = ()
+    ready: Any = False
+    failures: Any = ()
+    verdict: dict | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fold_plan_of_record(cls, data: Any) -> Any:
+        """Run the three folds on the raw dict BEFORE field validation.
+
+        BYTE-IDENTICAL to the pre-P22 imperative ``_normalize_plan_doc_keys``:
+        each fill only touches an absent/empty canonical key; the longest-of +
+        floor are monotonic; a non-list ``planned_notes`` or a garbage
+        ``total_notes`` is left exactly as-is. Idempotent. Mutates a COPY —
+        never the caller's dict (the digestion adapter writes back in place)."""
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)  # copy: don't mutate the caller's dict during validation
+
+        # 1. Alias fold — fill an absent/empty canonical from its first present
+        #    alias (never clobber a value the plan already set canonically).
+        for canonical, aliases in _PLAN_DOC_KEY_ALIASES.items():
+            if d.get(canonical) not in (None, "", 0):
+                continue
+            for alias in aliases:
+                val = d.get(alias)
+                if val not in (None, "", 0):
+                    d[canonical] = val
+                    break
+
+        # 2. plan_text of record = the longest of {plan_text, body_markdown}
+        #    (a downstream re-emission summarizes; the longest copy is truth).
+        body = d.get("body_markdown")
+        ptext = d.get("plan_text")
+        if isinstance(body, str) and isinstance(ptext, str) and len(body) > len(ptext):
+            d["plan_text"] = body
+
+        # 3. total_notes floor = the enumerated planned_notes count (you cannot
+        #    declare fewer notes than you enumerated). A LARGER declared total (a
+        #    master plan enumerating a subset) is preserved. Guarded on ``list``
+        #    only — and a non-int total is left untouched when there is no floor
+        #    — to match the pre-P22 imperative behaviour exactly (nothing
+        #    downstream reads a non-int total as a count).
+        planned = d.get("planned_notes")
+        if isinstance(planned, list) and planned:
+            total = d.get("total_notes")
+            if not isinstance(total, int) or total < len(planned):
+                d["total_notes"] = len(planned)
+        return d
+
+    @classmethod
+    def from_dict(cls, plan_doc: dict[str, Any]) -> "PlanDoc":
+        """Build a normalized envelope from a raw ``plan_doc`` dict."""
+        return cls.model_validate(plan_doc)
+
+    def to_normalized_dict(self) -> dict[str, Any]:
+        """The full dict: the validated envelope fields merged with every extra
+        key the plan carried (losslessly). ``planned_notes``/``failures`` are
+        emitted as ``list`` (their common dict shape) when they are the
+        tuple the field coerced them to; a non-tuple value is passed verbatim.
+
+        NB the digestion adapter does NOT use this — it writes the canonical
+        envelope attributes back into the live dict in place. This method exists
+        for tests / debugging / a future by-value consumer."""
+        out = dict(self.__pydantic_extra__ or {})
+        out.update(
+            plan_path=self.plan_path,
+            plan_text=self.plan_text,
+            total_notes=self.total_notes,
+            planned_notes=list(self.planned_notes) if isinstance(self.planned_notes, tuple) else self.planned_notes,
+            ready=self.ready,
+            failures=list(self.failures) if isinstance(self.failures, tuple) else self.failures,
+        )
+        if self.verdict is not None:
+            out["verdict"] = self.verdict
+        return out
 
 
 # ── MaterializerContract + concrete subclasses ─────────────────────────────

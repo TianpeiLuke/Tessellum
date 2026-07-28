@@ -36,6 +36,7 @@ from typing import Any, Callable, ContextManager
 
 from tessellum.composer.compiler import HARD_PROMPT_CAP_CHARS, compile_skill
 from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
+from tessellum.composer.contracts import PlanDoc
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.gates import build_plan_gate
 from tessellum.composer.knowledge_plan import (
@@ -180,64 +181,51 @@ def _collect_structured(run: RunResult) -> dict[str, Any]:
     return merged
 
 
-# The plan-structure gate (gates.plan_structure_predicate) and the augment/review
-# skill prompts read the canonical keys ``plan_path`` / ``plan_text`` /
-# ``total_notes``, but the plan skill's steps emit the write-plan materializer's
-# ``output_path`` / ``body_markdown`` and a note count under
-# ``planned_note_count`` / ``estimated_note_count``. Without bridging, the gate
-# reads ``total_notes=0`` + ``plan_path=<missing>`` and rejects every plan, and
-# the augment/review prompts render a ``<missing leaf.plan_path>`` sentinel. This
-# maps the produced keys to the canonical names the gate + downstream steps read,
-# in-place, never clobbering a value the plan already set under the canonical key.
-_PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
-    "plan_path": ("output_path",),
-    "plan_text": ("body_markdown",),
-    "total_notes": ("planned_note_count", "estimated_note_count"),
-}
+# The three plan-of-record guards (E6 alias bridge, longest-of plan_text, P21
+# total_notes floor) now live as the validators of the typed :class:`PlanDoc`
+# envelope (P22, FZ 20k9c1a1a1b7c2f). ``_normalize_plan_doc_keys`` is the thin
+# in-place ADAPTER over it — it keeps ``plan_doc`` a plain mutable dict for the
+# ~15 setdefault/clear/update/[]= sites (incl. the P24 snapshot-restore) while
+# folding the guards through one validated construction. The alias map is the
+# ``PlanDoc._PLAN_DOC_KEY_ALIASES`` classvar (single source of truth).
 
 
 def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
     """Bridge plan-skill output keys to the canonical names the gate + augment/
-    review steps consume. Mutates ``plan_doc`` in place; idempotent; only fills a
-    canonical key that is absent or empty, from the first present alias.
+    review steps consume, and protect the plan of record. Mutates ``plan_doc``
+    in place; idempotent.
 
-    Also PROTECTS the authoritative full plan body (FZ 20k9c1a1a1b7c2c): the
-    review step ``step_1_read_plan`` re-emits ``plan_text``, and the model tends
-    to return a lossy SUMMARY (e.g. 3.9 KB for a 43 KB plan). Under
-    last-writer-wins that shrunken copy clobbers the real plan, so the gate +
-    reviewer then judge an incomplete plan and falsely reject a good one. The
-    write-plan/augment ``body_markdown`` is the complete artifact; if it is
-    longer than the current ``plan_text``, restore it as ``plan_text`` so a
-    downstream re-emission can never shrink the plan of record."""
-    for canonical, aliases in _PLAN_DOC_KEY_ALIASES.items():
-        cur = plan_doc.get(canonical)
-        if cur not in (None, "", 0):
-            continue
-        for alias in aliases:
-            val = plan_doc.get(alias)
-            if val not in (None, "", 0):
-                plan_doc[canonical] = val
-                break
-    # plan_text of record = the longest of {current plan_text, body_markdown}.
-    body = plan_doc.get("body_markdown")
-    ptext = plan_doc.get("plan_text")
-    if isinstance(body, str) and isinstance(ptext, str) and len(body) > len(ptext):
-        plan_doc["plan_text"] = body
+    Delegates the actual folding to :class:`PlanDoc` (P22) — which folds three
+    guards into one validated construction:
 
-    # P21 core (FZ 20k9c1a1a1b7c2h): the plan-of-record protection above covered
-    # ONLY plan_text — the review found planned_notes/total_notes had NO clobber
-    # guard, yet review step_1 RE-EMITS total_notes (it is in its schema), so a
-    # summarized/wrong re-emission can shrink the count that PLAN-003 + the
-    # blast_radius escalation read. planned_notes is authoritative (only decompose
-    # produces it; nothing re-emits it), so it is a reliable floor.
-    planned = plan_doc.get("planned_notes")
-    if isinstance(planned, list) and planned:
-        total = plan_doc.get("total_notes")
-        # INVARIANT (not a heuristic): you cannot declare FEWER notes than you
-        # enumerated. If a re-emission shrank total_notes below the enumerated
-        # count, restore it to at least len(planned_notes).
-        if not isinstance(total, int) or total < len(planned):
-            plan_doc["total_notes"] = len(planned)
+    1. **E6 alias bridge** — fill an absent/empty canonical key (``plan_path`` /
+       ``plan_text`` / ``total_notes``) from the write-plan materializer's alias
+       (``output_path`` / ``body_markdown`` / ``planned_note_count`` /
+       ``estimated_note_count``); without it the gate reads ``total_notes=0`` +
+       ``plan_path=<missing>`` and rejects every plan.
+    2. **Longest-of ``plan_text`` guard** (FZ 20k9c1a1a1b7c2c) — the review
+       ``step_1_read_plan`` re-emits ``plan_text`` and the model returns a lossy
+       SUMMARY; the authoritative ``body_markdown`` (if longer) is restored so a
+       re-emission can never shrink the plan of record under last-writer-wins.
+    3. **``total_notes`` floor** (P21 core, FZ 20k9c1a1a1b7c2h) — you cannot
+       declare fewer notes than you enumerated in ``planned_notes``.
+
+    In-place: only the canonical envelope keys are written back (from the
+    validated envelope); every extra key the plan carries is untouched, and no
+    key is removed — byte-identical to the prior imperative implementation."""
+    envelope = PlanDoc.from_dict(plan_doc)
+    # Write back only the canonical envelope keys, in place — never drop the
+    # ~dozen extra keys (members, routing_decision, note_intent_graph, …) the
+    # plan carries, and never rebind plan_doc to a new object (the ~15 dict
+    # call-sites hold the same reference). Byte-identical to the prior imperative
+    # version: a canonical key is written ONLY when the fold produced a real
+    # value or the key already existed — an unfillable key stays ABSENT (so the
+    # `<missing leaf.X>` sentinel + `in` checks behave exactly as before), never
+    # created as an empty "" / 0 default.
+    for key in ("plan_path", "plan_text", "total_notes"):
+        new_val = getattr(envelope, key)
+        if key in plan_doc or new_val not in ("", 0):
+            plan_doc[key] = new_val
 
 
 def _review_verdict(plan_doc: dict) -> tuple[bool, list]:

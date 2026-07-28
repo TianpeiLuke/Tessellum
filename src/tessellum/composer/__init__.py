@@ -49,6 +49,7 @@ from tessellum.composer.contracts import (
     MCPContract,
     MaterializerContract,
     NoOpContract,
+    PlanDoc,
 )
 from tessellum.composer.executor import (
     MAX_CRASH_RECOVERIES,
@@ -355,6 +356,7 @@ __all__ = [
     "MCPContract",
     "MCP_CONTRACTS",
     "ContractViolation",
+    "PlanDoc",
     # Pipeline models + loader
     "Pipeline",
     "PipelineStep",

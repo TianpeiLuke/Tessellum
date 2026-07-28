@@ -17,6 +17,7 @@ from tessellum.composer.contracts import (
     MCPContract,
     MaterializerContract,
     NoOpContract,
+    PlanDoc,
 )
 
 
@@ -156,3 +157,163 @@ def test_concrete_contracts_round_trip_through_dict(klass):
     # Reconstruct
     rebuilt = klass(**data)
     assert rebuilt == contract
+
+
+# ── PlanDoc — the thin typed dataflow envelope (P22; FZ 20k9c1a1a1b7c2f) ─────
+
+
+def test_plan_doc_alias_fold_fills_canonical_from_aliases():
+    """The E6 bridge: write-plan materializer aliases fill the canonical keys
+    the gate + downstream read."""
+    pd = PlanDoc.from_dict(
+        {"output_path": "/p", "body_markdown": "# Body", "planned_note_count": 5}
+    )
+    assert pd.plan_path == "/p"
+    assert pd.plan_text == "# Body"
+    assert pd.total_notes == 5
+
+
+def test_plan_doc_alias_fold_does_not_clobber_canonical():
+    """A value already set under the canonical key is NOT overwritten by an alias."""
+    pd = PlanDoc.from_dict(
+        {"plan_path": "/canonical", "output_path": "/alias"}
+    )
+    assert pd.plan_path == "/canonical"
+
+
+def test_plan_doc_estimated_note_count_alias():
+    pd = PlanDoc.from_dict({"estimated_note_count": 7})
+    assert pd.total_notes == 7
+
+
+def test_plan_doc_longest_of_plan_text_restores_body():
+    """A lossy re-emission (short plan_text) is overridden by the longer
+    authoritative body_markdown."""
+    pd = PlanDoc.from_dict(
+        {"plan_text": "short", "body_markdown": "a much longer authoritative body"}
+    )
+    assert pd.plan_text == "a much longer authoritative body"
+
+
+def test_plan_doc_longest_of_keeps_longer_plan_text():
+    """A plan_text already longer than body_markdown is not shrunk."""
+    pd = PlanDoc.from_dict(
+        {"plan_text": "the full and complete plan text", "body_markdown": "tiny"}
+    )
+    assert pd.plan_text == "the full and complete plan text"
+
+
+def test_plan_doc_total_notes_floor_restores_shrunk_count():
+    """P21 core: total_notes below the enumerated planned_notes count is
+    restored to the enumerated floor — you can't declare fewer than enumerated."""
+    pd = PlanDoc.from_dict(
+        {"planned_notes": [{"f": i} for i in range(5)], "total_notes": 2}
+    )
+    assert pd.total_notes == 5
+
+
+def test_plan_doc_total_notes_keeps_larger_declared():
+    """A legitimately-larger declared total (a master plan enumerating a
+    subset) is preserved, not shrunk to the enumerated count."""
+    pd = PlanDoc.from_dict(
+        {"planned_notes": [{"f": "a"}, {"f": "b"}], "total_notes": 29}
+    )
+    assert pd.total_notes == 29
+
+
+def test_plan_doc_total_notes_set_from_planned_when_missing():
+    pd = PlanDoc.from_dict(
+        {"planned_notes": [{"f": "a"}, {"f": "b"}, {"f": "c"}]}
+    )
+    assert pd.total_notes == 3
+
+
+def test_plan_doc_empty_total_notes_zero_so_plan003_fires():
+    """No count anywhere → total_notes 0 (the silent-reject fix must NOT mask a
+    genuinely empty plan; PLAN-003 still sees 0)."""
+    assert PlanDoc.from_dict({}).total_notes == 0
+
+
+def test_plan_doc_non_int_total_notes_preserved_verbatim():
+    """A garbage non-int total_notes is left UNTOUCHED (byte-identical to the
+    pre-P22 imperative code, which never coerced it) — total_notes is an ``Any``
+    field, not a strict int, so validation never raises. Nothing downstream
+    reads a non-int total as a count (``_declared_note_count`` treats it as 0)."""
+    assert PlanDoc.from_dict({"total_notes": "two"}).total_notes == "two"
+    # With planned_notes present, the floor overrides it (a non-int total < the
+    # enumerated count, so the floor applies) → the enumerated len.
+    pd = PlanDoc.from_dict({"total_notes": "two", "planned_notes": [{"a": 1}]})
+    assert pd.total_notes == 1
+
+
+def test_plan_doc_non_str_plan_text_does_not_raise():
+    """Byte-identity: a non-str / None plan_text or plan_path must NOT raise a
+    ValidationError (the fields are ``Any``, not strict ``str``) — the pre-P22
+    code left such a value untouched and the fail-closed plan gate rejected it
+    cleanly. A strict ``str`` field would abort the phase instead."""
+    for bad in (
+        {"plan_text": None},
+        {"plan_path": None},
+        {"plan_text": 123},
+        {"plan_text": []},
+        {"plan_path": 123, "body_markdown": "B"},
+    ):
+        pd = PlanDoc.from_dict(bad)  # must not raise
+        # The value is preserved verbatim (only a str body longer than a str
+        # plan_text triggers the longest-of restore; a non-str plan_text is not
+        # a str so the guard is skipped — untouched, exactly like the old code).
+        if "plan_text" in bad:
+            assert pd.plan_text == bad["plan_text"]
+        if "plan_path" in bad:
+            assert pd.plan_path == bad["plan_path"]
+
+
+def test_plan_doc_tuple_planned_notes_not_floored():
+    """Byte-identity: the floor guards on ``list`` only (like the old code), so
+    a tuple planned_notes does NOT trigger the floor (a real plan_doc always
+    carries a list; this pins the exact pre-P22 behaviour)."""
+    pd = PlanDoc.from_dict({"planned_notes": ({"a": 1}, {"b": 2})})
+    assert pd.total_notes == 0  # not floored (tuple, not list)
+
+
+def test_plan_doc_preserves_extra_keys_losslessly():
+    """The ~dozen non-envelope keys a real plan carries round-trip untouched
+    (extra='allow')."""
+    raw = {
+        "body_markdown": "B",
+        "members": [1, 2, 3],
+        "routing_decision": {"target_directory": "d"},
+        "note_intent_graph": {"nodes": []},
+        "section_coverage_map": {"h2": "note"},
+        "file_prefix": "cc_",
+    }
+    out = PlanDoc.from_dict(raw).to_normalized_dict()
+    assert out["members"] == [1, 2, 3]
+    assert out["routing_decision"] == {"target_directory": "d"}
+    assert out["note_intent_graph"] == {"nodes": []}
+    assert out["section_coverage_map"] == {"h2": "note"}
+    assert out["file_prefix"] == "cc_"
+    # And the canonical fold still ran.
+    assert out["plan_text"] == "B"
+
+
+def test_plan_doc_is_idempotent():
+    """Re-folding an already-normalized envelope is a no-op."""
+    raw = {"planned_notes": [{"f": "a"}], "body_markdown": "B", "plan_text": "B"}
+    once = PlanDoc.from_dict(raw).to_normalized_dict()
+    twice = PlanDoc.from_dict(once).to_normalized_dict()
+    assert once == twice
+
+
+def test_plan_doc_frozen():
+    """The envelope is a value, not live state — frozen."""
+    pd = PlanDoc.from_dict({"plan_text": "x"})
+    with pytest.raises((ValueError, TypeError)):
+        pd.plan_text = "mutated"  # type: ignore[misc]
+
+
+def test_plan_doc_verdict_and_ready_fields():
+    pd = PlanDoc.from_dict({"ready": True, "failures": ["a", "b"], "verdict": {"ok": 1}})
+    assert pd.ready is True
+    assert list(pd.failures) == ["a", "b"]
+    assert pd.verdict == {"ok": 1}
