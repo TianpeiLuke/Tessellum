@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from tessellum.composer.digestion import (
     _declared_note_count,
+    _normalize_plan_doc_keys,
     _project_planned_notes_to_leaves,
 )
 
@@ -154,3 +155,33 @@ def test_declared_count_ignores_nonpositive_total_and_uses_planned():
     """A non-positive ``total_notes`` is not authoritative; fall back to the
     planned-notes length rather than trusting a 0/negative scalar."""
     assert _declared_note_count({"total_notes": 0, "planned_notes": [{}, {}]}) == 2
+
+
+# ── P21 core (FZ 20k9c1a1a1b7c2h): plan-of-record guard covers total_notes ────
+
+def test_normalize_restores_total_notes_shrunk_below_planned():
+    """P21 core: a re-emission (e.g. review step_1) that shrinks `total_notes`
+    below the enumerated `planned_notes` count is corrected — you cannot declare
+    fewer notes than you enumerated. Previously only `plan_text` was protected;
+    `total_notes` had no clobber guard."""
+    plan = {"planned_notes": [{"filename": f"n{i}.md"} for i in range(5)],
+            "total_notes": 2}  # a lossy re-emission shrank the count
+    _normalize_plan_doc_keys(plan)
+    assert plan["total_notes"] == 5, "total_notes restored to the enumerated floor"
+
+
+def test_normalize_keeps_total_notes_above_planned():
+    """A legitimately-larger total_notes (planned enumerates a subset — e.g. a
+    master plan) is NOT shrunk to the enumerated count."""
+    plan = {"planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}],
+            "total_notes": 29}  # run-9 shape: total > enumerated
+    _normalize_plan_doc_keys(plan)
+    assert plan["total_notes"] == 29, "a larger declared total is preserved"
+
+
+def test_normalize_sets_total_notes_when_missing():
+    """No `total_notes` at all → set to the enumerated floor (not left absent,
+    which PLAN-003 would read as 0)."""
+    plan = {"planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}, {"filename": "c.md"}]}
+    _normalize_plan_doc_keys(plan)
+    assert plan["total_notes"] == 3

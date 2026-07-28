@@ -224,6 +224,21 @@ def _normalize_plan_doc_keys(plan_doc: dict[str, Any]) -> None:
     if isinstance(body, str) and isinstance(ptext, str) and len(body) > len(ptext):
         plan_doc["plan_text"] = body
 
+    # P21 core (FZ 20k9c1a1a1b7c2h): the plan-of-record protection above covered
+    # ONLY plan_text — the review found planned_notes/total_notes had NO clobber
+    # guard, yet review step_1 RE-EMITS total_notes (it is in its schema), so a
+    # summarized/wrong re-emission can shrink the count that PLAN-003 + the
+    # blast_radius escalation read. planned_notes is authoritative (only decompose
+    # produces it; nothing re-emits it), so it is a reliable floor.
+    planned = plan_doc.get("planned_notes")
+    if isinstance(planned, list) and planned:
+        total = plan_doc.get("total_notes")
+        # INVARIANT (not a heuristic): you cannot declare FEWER notes than you
+        # enumerated. If a re-emission shrank total_notes below the enumerated
+        # count, restore it to at least len(planned_notes).
+        if not isinstance(total, int) or total < len(planned):
+            plan_doc["total_notes"] = len(planned)
+
 
 def _review_verdict(plan_doc: dict) -> tuple[bool, list]:
     """Extract the review phase's typed ``(ready, failures)`` verdict from
