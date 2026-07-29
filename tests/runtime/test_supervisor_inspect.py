@@ -338,3 +338,24 @@ def test_verify_noop_without_refs(tmp_path) -> None:
     plan_doc = {"plan_text": "# pre-J2 plan"}
     _verify_plan_artifacts(plan_doc, tmp_path)  # no _artifact_refs → no-op
     assert plan_doc == {"plan_text": "# pre-J2 plan"}
+
+
+def test_heartbeat_context_releases_with_profile_ttl_immediately(tmp_path) -> None:
+    """J3 finding 7: the claim lease uses the DEFAULT TTL; the heartbeat
+    context must re-lease with the PROFILE TTL on entry, else a long-profile
+    cadence (ttl/3) first fires after the short claim lease expired."""
+    import time as _time
+
+    paths, store, source = _runtime(tmp_path)
+    admitted, _ = admit_path(source, paths=paths, store=store, policy_profile="converge")
+    job = store.claim_next("w", lease_ttl=120.0, max_attempts=3)
+    assert job is not None and job.lease is not None
+    sup = Supervisor(
+        store=store, paths=paths, executor=_InspectExecutor(paths),  # type: ignore[arg-type]
+        owner_id="w", rebuild_index=False,
+    )
+    with sup._heartbeat(job.job_id, job.lease, 900.0):
+        row = store.get(job.job_id)
+        assert row.lease is not None
+        # extended to ~now+900 immediately, not left at the 120s claim window
+        assert row.lease.expires_at - _time.time() > 600.0

@@ -255,6 +255,15 @@ class Supervisor:
             name=f"runtime-heartbeat-{job_id[:8]}",
             daemon=True,
         )
+        # J3 finding 7 (FZ 20k9c1a1a1b7c2k2): claim_next leases with the
+        # DEFAULT policy TTL (the job's profile isn't known until it is read),
+        # while this context renews on the PROFILE's cadence (ttl/3). With a
+        # long profile TTL (converge: 900s) the first renewal would come AFTER
+        # the short claim lease expired — the run dies at the first heartbeat
+        # tick. Re-lease synchronously NOW so the lease lifetime and the
+        # renewal cadence come from the same number; a lease already lost at
+        # entry fails fast here instead of mid-phase.
+        self.store.heartbeat(job_id, lease, lease_ttl=ttl)
         thread.start()
         try:
             yield _assert_healthy

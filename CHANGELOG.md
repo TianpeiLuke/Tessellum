@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Runtime — the heartbeat context re-leases with the profile TTL on entry (J3 finding 7, FZ 20k9c1a1a1b7c2k2) — 2026-07-29
+
+Finding 6's fix exposed the next seam: `claim_next` leases with the DEFAULT policy TTL (the job's profile isn't known until the job is read), while `_heartbeat` renews on the PROFILE's cadence (ttl/3) — so converge's 900s TTL meant the first renewal fired at +300s against a lease that died at +120s (`LeaseLostError` at the first tick, surfacing as crash-class step errors mid-plan). Runs 2–5 survived only because both numbers were 120. The context now re-leases synchronously with the profile TTL on entry — lifetime and cadence from the same number; a lease already lost at entry fails fast instead of mid-phase. Suite 2101.
+
 ### Runtime — converge profile lease_ttl=900s: the TTL must cover the longest blocked call (J3 finding 6, FZ 20k9c1a1a1b7c2k2) — 2026-07-29
 
 Run 6 proved finding 5's fix (the stalled `decompose` stream raised `ReadTimeout` at 300s instead of wedging forever) and exposed the next constraint in the chain: no heartbeat can renew INSIDE a blocked call, so the 300s read consumed the default 120s lease and the retry was fenced out (`LeaseLostError` → worker exit `lease_lost`). A capture-workload TTL is wrong for digestion, whose single legitimate calls are multi-minute: the `converge` profile now sets `lease_ttl=900.0` (covers the read timeout + ladder backoff). The T4 reaper story is intact — a truly dead digestion worker reaps at 15 min. Handoff note for the T-track: a background heartbeat thread would decouple TTL from call length; until then the TTL bound is the contract.
