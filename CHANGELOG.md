@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Deps/CI — `mcp` bounded to `<2` + the seed vault's forbidden `source` keys fixed — 2026-07-28
+
+Two CI reds, both environmental: (1) the freshly-released **mcp 2.0.0** removed the `Server.list_tools` decorator API `mcp/server.py` builds on — CI's unpinned `mcp>=1.0` resolved to it and both test jobs failed on import; bounded to `mcp>=1.0,<2` (the ruff-pin determinism precedent) until a deliberate 2.x port. (2) The 553-note vault port predated P19's `FORBIDDEN_FIELDS`, leaving 19 `lit_*` literature notes with the forbidden `source:` key (TESS-003) — the seed-vault format-check job had been red since; renamed per the spec's own mapping (`source`→`source_url`, arXiv IDs expanded to real URLs). `tessellum format check vault/` exits 0.
+
 ### Composer — r5's three issues fixed: empty-response triage, the attempts journal, the computed note-count band (issues 13/14/15, FZ 20k9c1a1a1b7c2k1a1b1a) — 2026-07-28
 
 The r5 validation run's post-mortem, fixed at the class level. Issue 13's root cause was determined by REPRODUCTION before coding: the identical revise-round prompt succeeds cleanly on both the raw and full-executor paths — the empty responses were a transient API window, which the same-error short-circuit then hard-terminated INSIDE the blip (3 identical attempts in seconds).

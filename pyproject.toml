@@ -66,7 +66,7 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = [
-    "mcp>=1.0",                   # MCP stdio server SDK
+    "mcp>=1.0,<2",                # MCP stdio server SDK (2.0 removed Server.list_tools — the decorator API mcp/server.py builds on)
     "fastapi>=0.115",
     "uvicorn>=0.32",
 ]
