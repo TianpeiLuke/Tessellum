@@ -23,7 +23,9 @@ from tessellum.composer.context_assembler import get_assembler
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.digestion import (
     DigestionResult,
+    PhaseOutcome,
     run_digestion_pipeline,
+    run_execute_wave,
     slim_plan_doc,
 )
 from tessellum.composer.fix import make_llm_fixer
@@ -683,6 +685,11 @@ class DigestionExecutor:
                 ),
                 events_path=artifact_dir / "composer-events.jsonl",
                 stats_path=artifact_dir / "statistics.json",
+                # T3 (FZ 20k9d6a): inspect-before-execute. None (default) → the
+                # full plan→…→execute path (byte-identical). "review" → stop at
+                # an accepted plan; the supervisor parks the job PAUSED for human
+                # promote/reject.
+                stop_after=policy.stop_after,
             )
         except BaseException:
             self.rollback_uncommitted()
@@ -699,3 +706,100 @@ class DigestionExecutor:
             encoding="utf-8",
         )
         return result
+
+    def resume_execute(
+        self,
+        job: Job,
+        lease: Lease,
+        route: DigestionRoute,
+        policy: RuntimePolicy,
+    ) -> DigestionResult:
+        """Run ONLY the execute wave over the ALREADY-ACCEPTED plan a prior
+        ``stop_after="review"`` run parked (T3 promote, FZ 20k9d6a).
+
+        The human approved a SPECIFIC plan; promote must execute THAT plan, not
+        re-plan (which could drift). Reconstructs the accepted ``plan_doc`` from
+        the durable ``plan.json`` (the slimmed plan-of-record) re-hydrated with
+        the source bytes from ``source_leaf.json`` (slim dropped them), then
+        calls :func:`run_execute_wave` — the same M4 seam the corpus path uses
+        to promote an accepted sub-plan. Mirrors :meth:`execute`'s manifest /
+        journal / breaker / gate wiring so the executed wave is identical to a
+        never-paused run's execute half. Returns a :class:`DigestionResult`
+        (execute-only) so the supervisor's completeness check is uniform."""
+        if self.cancellation_check is not None and self.cancellation_check():
+            raise InterruptedError("job cancelled before promote")
+        artifact_dir = self.paths.job_artifacts(job.job_id)
+        plan_path = artifact_dir / "plan.json"
+        source_leaf_path = artifact_dir / "source_leaf.json"
+        if not plan_path.is_file() or not source_leaf_path.is_file():
+            raise DigestionIncompleteError(
+                f"promote: no accepted plan for job {job.job_id} "
+                f"(plan.json / source_leaf.json missing) — was it inspected?"
+            )
+        plan_doc = json.loads(plan_path.read_text(encoding="utf-8"))
+        source_leaf = json.loads(source_leaf_path.read_text(encoding="utf-8"))
+        # Re-hydrate the source bytes slim_plan_doc dropped, so execute has the
+        # full leaf context (source_content + members[].excerpt) it needs.
+        if "source_content" not in plan_doc and "source_content" in source_leaf:
+            plan_doc["source_content"] = source_leaf["source_content"]
+
+        manifest = Manifest.load(artifact_dir / "manifest.json")
+        budget = RunBudget(
+            max_invocations=policy.max_invocations,
+            max_cost=policy.max_cost,
+        )
+        breaker = (
+            ErrorClassBreaker(
+                proportion=policy.breaker_proportion,
+                error_threshold=policy.breaker_error_threshold,
+                min_dispatched=policy.breaker_min_dispatched,
+            )
+            if (
+                policy.breaker_proportion is not None
+                or policy.breaker_error_threshold is not None
+            )
+            else None
+        )
+        journal = VaultEffectJournal(
+            self.paths.vault,
+            effect_guard=self.effect_guard,
+            journal_dir=artifact_dir / "vault-effects" / str(lease.generation),
+        )
+        self._journal = journal
+        try:
+            execute_run = run_execute_wave(
+                plan_doc,
+                skills_dir=self.paths.skills,
+                backend=self.backend,
+                vault_root=self.paths.vault,
+                execute_max_workers=policy.max_workers,
+                cancellation_check=self.cancellation_check,
+                effect_guard=self.effect_guard,
+                effect_recorder=journal,
+                manifest=manifest,
+                run_id=f"{job.job_id}:{lease.generation}",
+                generation=job.execution_generation,
+                manifest_stale_secs=0.0,
+                close_gate=_close_gate_for(policy),
+                budget=budget,
+                breaker=breaker,
+                related_notes_db=(
+                    self.paths.index_db if self.paths.index_db.exists() else None
+                ),
+            )
+        except BaseException:
+            self.rollback_uncommitted()
+            raise
+        if execute_run.error_count:
+            self.rollback_uncommitted()
+        return DigestionResult(
+            completed=execute_run.error_count == 0,
+            stopped_at=None if execute_run.error_count == 0 else "execute",
+            sign_off=None,
+            phases=(PhaseOutcome(
+                phase="execute", ran=True,
+                error_count=execute_run.error_count, run=execute_run,
+            ),),
+            plan_doc=plan_doc,
+            run_id=f"{job.job_id}:{lease.generation}",
+        )

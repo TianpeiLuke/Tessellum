@@ -290,6 +290,160 @@ class RuntimeStore:
         assert updated is not None
         return self._row_to_job(updated)
 
+    def reap_expired_leases(
+        self, *, now: float | None = None, max_attempts: int = 3
+    ) -> int:
+        """Actively reclaim every stranded lease NOW, independent of a claim
+        (T4 liveness, FZ 20k9d6a). Runs the same reclaim the claim path does
+        lazily — finalize cancel-requested stale-lease jobs, and requeue (or
+        dead-letter at ``max_attempts``) expired-lease ``in_progress`` jobs — but
+        as its OWN sweep, so a dead worker's leaf can't sit stranded when no new
+        work arrives to trigger :meth:`claim_next`. Returns the number of jobs
+        reaped. The serve loop calls this each idle cycle."""
+        timestamp = time.time() if now is None else now
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            reaped = self._reap_stale_leases(conn, timestamp, max_attempts)
+        return reaped
+
+    def _reap_stale_leases(
+        self, conn: sqlite3.Connection, timestamp: float, max_attempts: int
+    ) -> int:
+        """The shared reclaim body (single source of truth for lease liveness):
+        (1) finalize cancel-requested jobs whose lease is stale/absent, and
+        (2) requeue or dead-letter expired-lease jobs. Operates on an OPEN
+        transaction ``conn``; called by both :meth:`claim_next` (lazy, before a
+        claim) and :meth:`reap_expired_leases` (active sweep). Returns the count
+        of jobs whose state changed."""
+        reaped = 0
+        cancelled = conn.execute(
+            """
+            SELECT job_id FROM jobs
+            WHERE cancel_requested = 1
+              AND state NOT IN (?, ?, ?)
+              AND state != ?
+              AND (
+                lease_owner IS NULL
+                OR lease_expires_at IS NULL
+                OR lease_expires_at <= ?
+              )
+            """,
+            (
+                JobState.COMPLETE.value,
+                JobState.CANCELLED.value,
+                JobState.DEAD_LETTER.value,
+                JobState.COMMITTING.value,
+                timestamp,
+            ),
+        ).fetchall()
+        for cancelled_row in cancelled:
+            conn.execute(
+                """
+                UPDATE jobs SET state = ?, not_before = NULL,
+                    lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (
+                    JobState.CANCELLED.value,
+                    timestamp,
+                    cancelled_row["job_id"],
+                ),
+            )
+            self._append_event(
+                conn,
+                cancelled_row["job_id"],
+                "state:cancelled",
+                timestamp,
+                {"reason": "cancel_requested"},
+            )
+            reaped += 1
+        stale = conn.execute(
+            """
+            SELECT job_id, state, capability, skill_digest, attempts,
+                   commit_attempts
+            FROM jobs
+            WHERE state IN (?, ?, ?, ?, ?)
+              AND lease_expires_at IS NOT NULL
+              AND lease_expires_at <= ?
+              AND cancel_requested = 0
+            """,
+            (
+                JobState.ROUTED.value,
+                JobState.PLANNING.value,
+                JobState.RUNNING.value,
+                JobState.VALIDATING.value,
+                JobState.COMMITTING.value,
+                timestamp,
+            ),
+        ).fetchall()
+        for stale_row in stale:
+            stale_state = JobState(stale_row["state"])
+            attempt_count = (
+                stale_row["commit_attempts"]
+                if stale_state == JobState.COMMITTING
+                else stale_row["attempts"]
+            )
+            if attempt_count >= max_attempts:
+                conn.execute(
+                    """
+                    UPDATE jobs SET state = ?, not_before = NULL,
+                        lease_owner = NULL, lease_expires_at = NULL,
+                        last_error = ?, updated_at = ?
+                    WHERE job_id = ?
+                    """,
+                    (
+                        JobState.DEAD_LETTER.value,
+                        (
+                            "commit lease expired after maximum attempts"
+                            if stale_state == JobState.COMMITTING
+                            else "lease expired after maximum attempts"
+                        ),
+                        timestamp,
+                        stale_row["job_id"],
+                    ),
+                )
+                self._append_event(
+                    conn,
+                    stale_row["job_id"],
+                    "state:dead_letter",
+                    timestamp,
+                    {
+                        "reason": "lease_expired",
+                        "attempts": attempt_count,
+                        "phase": (
+                            "commit"
+                            if stale_state == JobState.COMMITTING
+                            else "execute"
+                        ),
+                    },
+                )
+                reaped += 1
+                continue
+            target = stale_state
+            if stale_state != JobState.COMMITTING:
+                target = (
+                    JobState.READY
+                    if stale_row["capability"] and stale_row["skill_digest"]
+                    else JobState.ADMITTED
+                )
+            conn.execute(
+                """
+                UPDATE jobs SET state = ?, lease_owner = NULL,
+                    lease_expires_at = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (target.value, timestamp, stale_row["job_id"]),
+            )
+            self._append_event(
+                conn,
+                stale_row["job_id"],
+                "lease_reclaimed",
+                timestamp,
+                {"target": target.value},
+            )
+            reaped += 1
+        return reaped
+
     def claim_next(
         self,
         owner_id: str,
@@ -301,129 +455,7 @@ class RuntimeStore:
         timestamp = time.time() if now is None else now
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
-            cancelled = conn.execute(
-                """
-                SELECT job_id FROM jobs
-                WHERE cancel_requested = 1
-                  AND state NOT IN (?, ?, ?)
-                  AND state != ?
-                  AND (
-                    lease_owner IS NULL
-                    OR lease_expires_at IS NULL
-                    OR lease_expires_at <= ?
-                  )
-                """,
-                (
-                    JobState.COMPLETE.value,
-                    JobState.CANCELLED.value,
-                    JobState.DEAD_LETTER.value,
-                    JobState.COMMITTING.value,
-                    timestamp,
-                ),
-            ).fetchall()
-            for cancelled_row in cancelled:
-                conn.execute(
-                    """
-                    UPDATE jobs SET state = ?, not_before = NULL,
-                        lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
-                    WHERE job_id = ?
-                    """,
-                    (
-                        JobState.CANCELLED.value,
-                        timestamp,
-                        cancelled_row["job_id"],
-                    ),
-                )
-                self._append_event(
-                    conn,
-                    cancelled_row["job_id"],
-                    "state:cancelled",
-                    timestamp,
-                    {"reason": "cancel_requested"},
-                )
-            stale = conn.execute(
-                """
-                SELECT job_id, state, capability, skill_digest, attempts,
-                       commit_attempts
-                FROM jobs
-                WHERE state IN (?, ?, ?, ?, ?)
-                  AND lease_expires_at IS NOT NULL
-                  AND lease_expires_at <= ?
-                  AND cancel_requested = 0
-                """,
-                (
-                    JobState.ROUTED.value,
-                    JobState.PLANNING.value,
-                    JobState.RUNNING.value,
-                    JobState.VALIDATING.value,
-                    JobState.COMMITTING.value,
-                    timestamp,
-                ),
-            ).fetchall()
-            for stale_row in stale:
-                stale_state = JobState(stale_row["state"])
-                attempt_count = (
-                    stale_row["commit_attempts"]
-                    if stale_state == JobState.COMMITTING
-                    else stale_row["attempts"]
-                )
-                if attempt_count >= max_attempts:
-                    conn.execute(
-                        """
-                        UPDATE jobs SET state = ?, not_before = NULL,
-                            lease_owner = NULL, lease_expires_at = NULL,
-                            last_error = ?, updated_at = ?
-                        WHERE job_id = ?
-                        """,
-                        (
-                            JobState.DEAD_LETTER.value,
-                            (
-                                "commit lease expired after maximum attempts"
-                                if stale_state == JobState.COMMITTING
-                                else "lease expired after maximum attempts"
-                            ),
-                            timestamp,
-                            stale_row["job_id"],
-                        ),
-                    )
-                    self._append_event(
-                        conn,
-                        stale_row["job_id"],
-                        "state:dead_letter",
-                        timestamp,
-                        {
-                            "reason": "lease_expired",
-                            "attempts": attempt_count,
-                            "phase": (
-                                "commit"
-                                if stale_state == JobState.COMMITTING
-                                else "execute"
-                            ),
-                        },
-                    )
-                    continue
-                target = stale_state
-                if stale_state != JobState.COMMITTING:
-                    target = (
-                        JobState.READY
-                        if stale_row["capability"] and stale_row["skill_digest"]
-                        else JobState.ADMITTED
-                    )
-                conn.execute(
-                    """
-                    UPDATE jobs SET state = ?, lease_owner = NULL,
-                        lease_expires_at = NULL, updated_at = ?
-                    WHERE job_id = ?
-                    """,
-                    (target.value, timestamp, stale_row["job_id"]),
-                )
-                self._append_event(
-                    conn,
-                    stale_row["job_id"],
-                    "lease_reclaimed",
-                    timestamp,
-                    {"target": target.value},
-                )
+            self._reap_stale_leases(conn, timestamp, max_attempts)
             row = conn.execute(
                 """
                 SELECT * FROM jobs
@@ -545,6 +577,113 @@ class RuntimeStore:
                     (timestamp, job_id),
                 )
                 self._append_event(conn, job_id, "cancel_requested", timestamp, {})
+            updated = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+        assert updated is not None
+        return self._row_to_job(updated)
+
+    def force_cancel(self, job_id: str, *, now: float | None = None) -> Job:
+        """Force-kill a job by FENCING its worker out, then marking it cancelled
+        (T2, FZ 20k9d6a) — the escalation past :meth:`request_cancel` for a job
+        whose worker is ignoring the cooperative signal (or is dead but still
+        holds a live lease).
+
+        The fence: bump ``lease_generation`` and null the lease owner. Any
+        in-flight worker still holding the OLD ``(owner, generation)`` lease
+        fails :meth:`_check_lease` on its next ``transition`` (generation
+        mismatch AND owner-now-null → ``LeaseLostError``), so it can neither
+        commit nor advance the job — the OS "SIGKILL" after cooperative
+        "SIGTERM". Idempotent on a terminal job (returned unchanged). Uses the
+        same fenced, single-writer UPDATE path as every other state change, so
+        it cannot corrupt run state."""
+        timestamp = time.time() if now is None else now
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if row is None:
+                raise KeyError(job_id)
+            if JobState(row["state"]) in TERMINAL_STATES:
+                return self._row_to_job(row)
+            new_generation = row["lease_generation"] + 1
+            conn.execute(
+                """
+                UPDATE jobs SET state = ?, cancel_requested = 1,
+                    lease_generation = ?, lease_owner = NULL,
+                    lease_expires_at = NULL, not_before = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (JobState.CANCELLED.value, new_generation, timestamp, job_id),
+            )
+            self._append_event(
+                conn, job_id, "state:cancelled", timestamp,
+                {"reason": "force_cancel", "fenced_generation": new_generation},
+            )
+            updated = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+        assert updated is not None
+        return self._row_to_job(updated)
+
+    def promote_paused(self, job_id: str, *, now: float | None = None) -> Job:
+        """Promote an INSPECTED, PAUSED job back into the work queue (T3
+        `promote`, FZ 20k9d6a): PAUSED → READY, clearing any stale lease so
+        :meth:`claim_next` re-claims it fresh. The next claim resumes the
+        execute wave over the accepted plan (the supervisor routes a job whose
+        plan.json exists through ``resume_execute``). Raises if the job is not
+        PAUSED (only a parked-for-inspection job is promotable)."""
+        timestamp = time.time() if now is None else now
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if row is None:
+                raise KeyError(job_id)
+            state = JobState(row["state"])
+            if state != JobState.PAUSED:
+                raise TransitionError(
+                    f"job {job_id} is {state.value}, expected paused to promote"
+                )
+            conn.execute(
+                """
+                UPDATE jobs SET state = ?, lease_owner = NULL,
+                    lease_expires_at = NULL, not_before = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (JobState.READY.value, timestamp, job_id),
+            )
+            self._append_event(
+                conn, job_id, f"state:{JobState.READY.value}", timestamp,
+                {"reason": "promote_after_inspect", "from": state.value},
+            )
+            updated = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+        assert updated is not None
+        return self._row_to_job(updated)
+
+    def reject_paused(self, job_id: str, *, now: float | None = None) -> Job:
+        """Reject an INSPECTED, PAUSED job (T3 `reject`, FZ 20k9d6a): PAUSED →
+        CANCELLED, discarding the accepted-but-unexecuted plan. Idempotent on a
+        terminal job; raises if the job is neither PAUSED nor terminal."""
+        timestamp = time.time() if now is None else now
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+            if row is None:
+                raise KeyError(job_id)
+            state = JobState(row["state"])
+            if state in TERMINAL_STATES:
+                return self._row_to_job(row)
+            if state != JobState.PAUSED:
+                raise TransitionError(
+                    f"job {job_id} is {state.value}, expected paused to reject"
+                )
+            conn.execute(
+                """
+                UPDATE jobs SET state = ?, cancel_requested = 1, lease_owner = NULL,
+                    lease_expires_at = NULL, not_before = NULL, updated_at = ?
+                WHERE job_id = ?
+                """,
+                (JobState.CANCELLED.value, timestamp, job_id),
+            )
+            self._append_event(
+                conn, job_id, "state:cancelled", timestamp,
+                {"reason": "reject_after_inspect"},
+            )
             updated = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
         assert updated is not None
         return self._row_to_job(updated)

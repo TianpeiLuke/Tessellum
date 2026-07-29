@@ -6,13 +6,15 @@ import argparse
 import json
 import os
 import sys
+import time
 from dataclasses import asdict
 from pathlib import Path
 
+from tessellum.composer.manifest import Manifest
 from tessellum.runtime.admission import AdmissionError, admit_path
 from tessellum.runtime.executor import BackendConfig, DigestionExecutor, build_backend
 from tessellum.runtime.inbox import InboxScanner
-from tessellum.runtime.models import Job, JobState
+from tessellum.runtime.models import Job, JobState, TERMINAL_STATES
 from tessellum.runtime.paths import RuntimePaths
 from tessellum.runtime.routing import LANE_HINTS
 from tessellum.runtime.service import RuntimeService
@@ -76,10 +78,52 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     _add_common_paths(list_cmd)
     list_cmd.set_defaults(func=run_runtime_list)
 
+    status = sub.add_parser(
+        "status",
+        help="Live task-manager view: per-job phase + per-leaf digestion status.",
+    )
+    status.add_argument(
+        "--job", help="Drill into ONE job: its phase, per-leaf manifest rows, event tail."
+    )
+    status.add_argument(
+        "--watch", action="store_true", help="Re-poll and redraw every --interval seconds."
+    )
+    status.add_argument("--interval", type=float, default=2.0)
+    status.add_argument("--limit", type=int, default=100)
+    status.add_argument("--json", action="store_true", help="Emit JSON (implies no --watch redraw loop).")
+    _add_common_paths(status)
+    status.set_defaults(func=run_runtime_status)
+
     cancel = sub.add_parser("cancel", help="Request cooperative job cancellation.")
     cancel.add_argument("job_id")
+    cancel.add_argument(
+        "--force", action="store_true",
+        help="Fence the worker out (bump lease generation) + mark cancelled — "
+             "the escalation when a worker ignores the cooperative signal.",
+    )
     _add_common_paths(cancel)
     cancel.set_defaults(func=run_runtime_cancel)
+
+    plan = sub.add_parser(
+        "plan", help="Show the accepted plan of an inspected (paused) job."
+    )
+    plan.add_argument("job_id")
+    _add_common_paths(plan)
+    plan.set_defaults(func=run_runtime_plan)
+
+    promote = sub.add_parser(
+        "promote", help="Promote an inspected (paused) job into its execute wave."
+    )
+    promote.add_argument("job_id")
+    _add_common_paths(promote)
+    promote.set_defaults(func=run_runtime_promote)
+
+    reject = sub.add_parser(
+        "reject", help="Reject an inspected (paused) job — discard its plan, cancel."
+    )
+    reject.add_argument("job_id")
+    _add_common_paths(reject)
+    reject.set_defaults(func=run_runtime_reject)
 
     retry = sub.add_parser(
         "retry",
@@ -239,12 +283,185 @@ def run_runtime_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _leaf_status_for_job(paths: RuntimePaths, job_id: str) -> dict | None:
+    """The per-leaf digestion status for a job, from its durable manifest
+    (``runs/artifacts/<job_id>/manifest.json``) — the surface the execute wave
+    delta-patches. Returns ``None`` when no manifest exists yet (a job still in
+    the plan/augment/review phases hasn't fanned out to leaves). Read-only:
+    loads a COPY, never writes (T1, FZ 20k9d6a)."""
+    manifest_path = paths.job_artifacts(job_id) / "manifest.json"
+    if not manifest_path.is_file():
+        return None
+    manifest = Manifest.load(manifest_path)
+    now = time.time()
+    leaves = []
+    for leaf_id, entry in sorted(manifest.entries.items()):
+        leaves.append({
+            "leaf_id": leaf_id,
+            "status": entry.status,
+            "attempts": len(entry.attempts),
+            "heartbeat_age": (round(now - entry.heartbeat, 1)
+                              if entry.heartbeat is not None else None),
+            "run_id": entry.run_id,
+            "blocked_by": list(entry.blocked_by),
+        })
+    return {"counts": manifest.status_counts(), "leaves": leaves}
+
+
+def _status_row(job: Job, now: float) -> dict:
+    """A compact per-job status row: phase (state), age, lease + expiry flag."""
+    lease = job.lease
+    expired = lease is not None and lease.expires_at < now
+    return {
+        "job_id": job.job_id,
+        "phase": job.state.value,
+        "lane": job.request.lane,
+        "attempts": job.attempts,
+        "cancel_requested": job.cancel_requested,
+        "lease_owner": None if lease is None else lease.owner_id,
+        "lease_expires_in": (None if lease is None else round(lease.expires_at - now, 1)),
+        "lease_expired": expired,
+        "generation": job.execution_generation,
+        "last_error": job.last_error,
+    }
+
+
+def _render_status(paths: RuntimePaths, store: RuntimeStore, args: argparse.Namespace) -> dict:
+    now = time.time()
+    if args.job:
+        job = store.get(args.job)
+        if job is None:
+            return {"error": f"job not found: {args.job}"}
+        row = _status_row(job, now)
+        row["leaves"] = _leaf_status_for_job(paths, job.job_id)
+        row["events"] = [
+            {"seq": e.sequence, "type": e.event_type, "at": e.at, "detail": e.detail}
+            for e in store.events(job.job_id, limit=args.limit)
+        ]
+        return row
+    # Aggregate: active (non-terminal) jobs first, most-recent first.
+    jobs = store.list(limit=args.limit)
+    active = [j for j in jobs if j.state not in TERMINAL_STATES]
+    terminal = [j for j in jobs if j.state in TERMINAL_STATES]
+    return {
+        "now": now,
+        "active": [_status_row(j, now) for j in active],
+        "terminal_recent": [_status_row(j, now) for j in terminal[:10]],
+        "counts": {"active": len(active), "terminal": len(terminal)},
+    }
+
+
+def _print_status_human(snapshot: dict) -> None:
+    if "error" in snapshot:
+        print(snapshot["error"], file=sys.stderr)
+        return
+    if "phase" in snapshot:  # single-job drill-down
+        print(f"job {snapshot['job_id']}  phase={snapshot['phase']}  "
+              f"attempts={snapshot['attempts']}  gen={snapshot['generation']}"
+              + ("  CANCEL-REQUESTED" if snapshot["cancel_requested"] else ""))
+        lease_owner = snapshot["lease_owner"]
+        if lease_owner is not None:
+            flag = "  EXPIRED" if snapshot["lease_expired"] else ""
+            print(f"  lease: {lease_owner}  expires_in={snapshot['lease_expires_in']}s{flag}")
+        leaves = snapshot.get("leaves")
+        if leaves is None:
+            print("  leaves: (none yet — job is pre-execute)")
+        else:
+            print(f"  leaves: {leaves['counts']}")
+            for lf in leaves["leaves"]:
+                hb = f" hb={lf['heartbeat_age']}s" if lf["heartbeat_age"] is not None else ""
+                print(f"    [{lf['status']:11}] {lf['leaf_id']}  attempts={lf['attempts']}{hb}")
+        evs = snapshot.get("events") or []
+        if evs:
+            print(f"  recent events (last {min(5, len(evs))}):")
+            for e in evs[-5:]:
+                print(f"    #{e['seq']} {e['type']}")
+        return
+    # aggregate
+    c = snapshot["counts"]
+    print(f"jobs: {c['active']} active, {c['terminal']} terminal")
+    for r in snapshot["active"]:
+        flag = "  EXPIRED-LEASE" if r["lease_expired"] else ""
+        cr = "  CANCEL-REQ" if r["cancel_requested"] else ""
+        print(f"  {r['phase']:11} {r['job_id']}  lane={r['lane']}  "
+              f"attempts={r['attempts']}{flag}{cr}")
+    if not snapshot["active"]:
+        print("  (no active jobs)")
+
+
+def run_runtime_status(args: argparse.Namespace) -> int:
+    paths, store = _store(args)
+    if args.json or not args.watch:
+        snapshot = _render_status(paths, store, args)
+        if args.json:
+            print(json.dumps(snapshot, indent=2))
+        else:
+            _print_status_human(snapshot)
+        return 1 if "error" in snapshot else 0
+    # --watch: redraw until interrupted (read-only polling never perturbs a run).
+    try:
+        while True:
+            snapshot = _render_status(paths, store, args)
+            print("\033[2J\033[H", end="")  # clear + home
+            print(f"tessellum runtime status  (watch, every {args.interval}s — Ctrl-C to stop)\n")
+            _print_status_human(snapshot)
+            time.sleep(args.interval)
+    except KeyboardInterrupt:
+        return 0
+
+
 def run_runtime_cancel(args: argparse.Namespace) -> int:
     _paths_value, store = _store(args)
     try:
-        job = store.request_cancel(args.job_id)
+        if getattr(args, "force", False):
+            job = store.force_cancel(args.job_id)
+        else:
+            job = store.request_cancel(args.job_id)
     except KeyError:
         print(f"job not found: {args.job_id}", file=sys.stderr)
+        return 1
+    print(json.dumps(_job_payload(job), indent=2))
+    return 0
+
+
+def run_runtime_plan(args: argparse.Namespace) -> int:
+    paths, store = _store(args)
+    job = store.get(args.job_id)
+    if job is None:
+        print(f"job not found: {args.job_id}", file=sys.stderr)
+        return 1
+    plan_path = paths.job_artifacts(job.job_id) / "plan.json"
+    if not plan_path.is_file():
+        print(f"no accepted plan for job {args.job_id} (not inspected/paused yet)",
+              file=sys.stderr)
+        return 1
+    print(plan_path.read_text(encoding="utf-8"))
+    return 0
+
+
+def run_runtime_promote(args: argparse.Namespace) -> int:
+    _paths_value, store = _store(args)
+    try:
+        job = store.promote_paused(args.job_id)
+    except KeyError:
+        print(f"job not found: {args.job_id}", file=sys.stderr)
+        return 1
+    except TransitionError as exc:
+        print(f"tessellum runtime promote: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(_job_payload(job), indent=2))
+    return 0
+
+
+def run_runtime_reject(args: argparse.Namespace) -> int:
+    _paths_value, store = _store(args)
+    try:
+        job = store.reject_paused(args.job_id)
+    except KeyError:
+        print(f"job not found: {args.job_id}", file=sys.stderr)
+        return 1
+    except TransitionError as exc:
+        print(f"tessellum runtime reject: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(_job_payload(job), indent=2))
     return 0

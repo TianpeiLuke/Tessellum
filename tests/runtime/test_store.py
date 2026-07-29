@@ -118,6 +118,92 @@ def test_stale_leased_cancellation_becomes_cancelled(tmp_path: Path) -> None:
     assert cancelled.lease is None
 
 
+def test_reap_expired_leases_requeues_stranded_running_job(tmp_path: Path) -> None:
+    """T4 (FZ 20k9d6a): an active sweep reclaims an expired-lease in-flight job
+    even when NO claim happens (a dead worker's leaf would otherwise strand)."""
+    store = RuntimeStore.open(tmp_path / "runtime.db")
+    store.admit(_request(), now=10.0)
+    claimed = store.claim_next("worker-a", now=11.0, lease_ttl=5.0)  # expires 16.0
+    assert claimed is not None and claimed.state == JobState.ROUTED
+
+    # No new claim; sweep AFTER the lease expires.
+    reaped = store.reap_expired_leases(now=100.0)
+    assert reaped == 1
+    job = store.get(claimed.job_id)
+    # capability/skill not yet set (never routed to READY) → back to ADMITTED, claimable.
+    assert job.state in {JobState.ADMITTED, JobState.READY}
+    assert job.lease is None
+    assert "lease_reclaimed" in {e.event_type for e in store.events(claimed.job_id)}
+
+
+def test_reap_expired_leases_dead_letters_at_max_attempts(tmp_path: Path) -> None:
+    store = RuntimeStore.open(tmp_path / "runtime.db")
+    store.admit(_request(), now=10.0)
+    # burn the attempts so the next reap dead-letters instead of requeuing
+    for i in range(3):
+        c = store.claim_next("w", now=11.0 + i, lease_ttl=1.0, max_attempts=99)
+        assert c is not None
+    reaped = store.reap_expired_leases(now=1000.0, max_attempts=1)
+    assert reaped == 1
+    job = store.get(c.job_id)
+    assert job.state == JobState.DEAD_LETTER
+    assert "state:dead_letter" in {e.event_type for e in store.events(c.job_id)}
+
+
+def test_reap_expired_leases_noop_when_lease_live(tmp_path: Path) -> None:
+    store = RuntimeStore.open(tmp_path / "runtime.db")
+    store.admit(_request(), now=10.0)
+    claimed = store.claim_next("worker-a", now=11.0, lease_ttl=100.0)  # LIVE
+    assert claimed is not None
+    reaped = store.reap_expired_leases(now=12.0)  # lease not yet expired
+    assert reaped == 0
+    assert store.get(claimed.job_id).state == JobState.ROUTED
+
+
+def test_force_cancel_fences_live_worker_and_cancels(tmp_path: Path) -> None:
+    """T2 (FZ 20k9d6a): force_cancel on a job with a LIVE lease bumps the lease
+    generation + nulls the owner, so the in-flight worker's next transition
+    fails _check_lease (the SIGKILL fence), and the job lands CANCELLED."""
+    store = RuntimeStore.open(tmp_path / "runtime.db")
+    job, _ = store.admit(_request(), now=10.0)
+    claimed = store.claim_next("worker-a", now=11.0, lease_ttl=100.0)  # lease still LIVE
+    assert claimed is not None and claimed.lease is not None
+    stale_lease = claimed.lease  # the worker holds this
+
+    forced = store.force_cancel(job.job_id, now=12.0)
+    assert forced.state == JobState.CANCELLED
+    assert forced.lease is None  # the fence: owner nulled + generation bumped
+    assert forced.cancel_requested is True
+
+    # The fenced worker can no longer advance the job — its transition is
+    # rejected (the state is now `cancelled`, not the `routed` it expects, AND
+    # its lease no longer matches). Either rejection proves the SIGKILL held.
+    with pytest.raises((TransitionError, LeaseLostError)):
+        store.transition(
+            job.job_id,
+            expected=JobState.ROUTED,
+            target=JobState.PLANNING,
+            lease=stale_lease,
+            now=13.0,
+        )
+    assert "state:cancelled" in {e.event_type for e in store.events(job.job_id)}
+
+
+def test_force_cancel_is_idempotent_on_terminal(tmp_path: Path) -> None:
+    store = RuntimeStore.open(tmp_path / "runtime.db")
+    job, _ = store.admit(_request(), now=10.0)
+    store.claim_next("worker-a", now=11.0, lease_ttl=100.0)
+    store.force_cancel(job.job_id, now=12.0)
+    again = store.force_cancel(job.job_id, now=13.0)  # no error, unchanged
+    assert again.state == JobState.CANCELLED
+
+
+def test_force_cancel_unknown_job_raises(tmp_path: Path) -> None:
+    store = RuntimeStore.open(tmp_path / "runtime.db")
+    with pytest.raises(KeyError):
+        store.force_cancel("nope", now=10.0)
+
+
 def test_cancelled_failure_is_not_scheduled_for_retry(tmp_path: Path) -> None:
     store = RuntimeStore.open(tmp_path / "runtime.db")
     job, _ = store.admit(_request(), now=10.0)

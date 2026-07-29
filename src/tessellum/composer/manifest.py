@@ -336,6 +336,16 @@ class Manifest:
             heartbeat=None,
         )
 
+    def status_counts(self) -> dict[str, int]:
+        """A ``{status: count}`` tally over every entry — the per-leaf progress
+        summary the runtime task manager's status surface renders (T1, FZ
+        20k9d6a). Read-only; never perturbs the ledger. Keys are drawn from
+        :data:`VALID_STATUSES`; an absent status simply doesn't appear."""
+        counts: dict[str, int] = {}
+        for entry in self.entries.values():
+            counts[entry.status] = counts.get(entry.status, 0) + 1
+        return counts
+
     def _clear_for_retry(self, leaf_id: str) -> ManifestEntry:
         """Clear ownership and stale commit data while retaining attempts."""
         return self._patch(

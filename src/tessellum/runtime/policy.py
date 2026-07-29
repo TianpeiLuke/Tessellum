@@ -43,11 +43,20 @@ class RuntimePolicy:
     # retry ladder are a real wall, not per-leaf flakiness), so a modest
     # absolute count is safe. ``None`` disables the backstop.
     breaker_error_threshold: int | None = 10
+    # T3 (FZ 20k9d6a) — inspect-before-execute. When ``"review"``, the digestion
+    # runs plan→augment→review and STOPS at an accepted plan WITHOUT dispatching
+    # the execute wave (the supervisor parks the job in PAUSED). A human then
+    # inspects the plan and `promote`s (resume into the execute wave) or
+    # `reject`s. ``None`` (default) → the full plan→…→execute path, byte-identical
+    # to pre-T3. The ``inspect`` profile sets it.
+    stop_after: str | None = None
 
     @classmethod
     def for_profile(cls, profile: str) -> "RuntimePolicy":
         if profile == "fast":
             return cls(max_workers=2, max_invocations=30, max_fix_rounds=0)
+        if profile == "inspect":
+            return cls(stop_after="review")
         if profile != "default":
             raise ValueError(f"unknown runtime policy profile: {profile!r}")
         return cls()

@@ -133,7 +133,17 @@ class Supervisor:
                     if cancellation_check():
                         self._cancel(job, lease)
                         return WorkOutcome(job.job_id, "cancelled")
-                    result = self.executor.execute(job, lease, route, policy)
+                    # T3 (FZ 20k9d6a): a PROMOTED job (one a prior
+                    # stop_after=review run parked PAUSED, then `promote`
+                    # moved back to READY) has a durable accepted plan.json —
+                    # resume ONLY the execute wave over THAT plan (never
+                    # re-plan, which could drift from what the human approved).
+                    # A fresh job has no plan.json yet, so it takes the full
+                    # execute path (byte-identical to pre-T3).
+                    if self._has_accepted_plan(job.job_id):
+                        result = self.executor.resume_execute(job, lease, route, policy)
+                    else:
+                        result = self.executor.execute(job, lease, route, policy)
                     if cancellation_check():
                         rollback = getattr(
                             self.executor, "rollback_uncommitted", None
@@ -143,6 +153,23 @@ class Supervisor:
                         current = self.store.get(job.job_id) or job
                         self._cancel(current, lease)
                         return WorkOutcome(job.job_id, "cancelled")
+                    # T3 (FZ 20k9d6a): inspect-before-execute. A stop_after=review
+                    # run reaches an ACCEPTED plan without executing — park the
+                    # job PAUSED (its plan.json is already persisted by the
+                    # executor) for a human to `promote` (resume into execute) or
+                    # `reject`. This is NOT an incomplete failure; it is the
+                    # designed pause point, so it must precede the completeness
+                    # check below.
+                    if result.stopped_at == "review_accepted":
+                        self.store.transition(
+                            job.job_id,
+                            expected=JobState.RUNNING,
+                            target=JobState.PAUSED,
+                            lease=lease,
+                            detail={"reason": "inspect_before_execute",
+                                    "stopped_at": result.stopped_at},
+                        )
+                        return WorkOutcome(job.job_id, "paused")
                     if not result.completed:
                         raise DigestionIncompleteError.from_result(result)
                     job = self.store.transition(
@@ -293,6 +320,14 @@ class Supervisor:
             JobState.COMMITTING,
             JobState.COMPLETE,
         }
+
+    def _has_accepted_plan(self, job_id: str) -> bool:
+        """True iff a prior stop_after=review run persisted an accepted plan for
+        this job (T3, FZ 20k9d6a) — the signal that a re-claimed RUNNING job was
+        inspected + promoted and must resume execute-only, not re-plan. A fresh
+        job has not written plan.json yet (the executor writes it at the end of
+        a full run), so this is False on the first claim."""
+        return (self.paths.job_artifacts(job_id) / "plan.json").is_file()
 
     def _resume_commit(self, job: Job, lease: Lease) -> WorkOutcome:
         """Resume only the idempotent commit tail for accepted output."""

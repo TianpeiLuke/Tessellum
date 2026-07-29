@@ -15,6 +15,12 @@ class RuntimeService:
     scanner: InboxScanner
     supervisor: Supervisor
     scan_seconds: float = 2.0
+    # T4 (FZ 20k9d6a) liveness: actively reap stranded leases on idle cycles.
+    # claim_next reclaims lazily (before each claim), but with no incoming work
+    # a dead worker's in_progress leaf would sit stranded — so on an idle cycle
+    # (nothing to claim) we sweep expired leases so they requeue/dead-letter
+    # instead of deadlocking. 0 disables the active sweep (lazy reclaim only).
+    reap_seconds: float = 30.0
 
     def run(self) -> None:
         stopped = threading.Event()
@@ -29,6 +35,10 @@ class RuntimeService:
                 self.scanner.scan_once()
                 outcome = self.supervisor.work_once()
                 if outcome.status == "idle":
+                    # No claimable work → this is exactly when a stranded lease
+                    # would otherwise sit unreclaimed. Sweep, then wait.
+                    if self.reap_seconds > 0:
+                        self.supervisor.store.reap_expired_leases()
                     stopped.wait(self.scan_seconds)
         finally:
             signal.signal(signal.SIGTERM, prior_term)
