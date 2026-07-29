@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — the AgentMemory facade (A5.3, FZ 20k9c1a1a1b7c2k1a) — 2026-07-29
+
+The naming pass the vault-as-memory design deferred until the tiers stabilized (A0–A4 have): `composer/agent_memory.py` — WORKING (`working_put/get` → the durable artifact store), EPISODIC (`episodic_append/read` → timestamped JSONL streams under the run dir, fail-soft like every journal), SEMANTIC (`semantic_search` → hybrid retrieval, empty in the bootstrap posture — the CP5 lesson as a default), PROCEDURAL (`procedural_load` → `compile_skill`). NO new behavior — every method delegates to the seam that owns its tier. +4 tests (suite 2150).
+
 ### MCP — the capture write path journaled (A5.2, FZ 20k9c1a1a1b7c2k1a) — 2026-07-29
 
 The MCP `_tool_capture` was the last UNJOURNALED direct write into the vault-of-record. `capture()` gains an optional `effect_recorder` (called with the destination pre-write; `None` byte-identical), and the MCP server wraps the call in a `VaultEffectJournal` under `<vault>/runs/mcp-effects/` — pre-image recorded, journal accepted on success (accepted journals sweep, per the runtime's own semantics), rolled back on failure; a crash in between leaves an open journal `recover_pending` handles. capture stays create-only. +1 test (suite 2146).
