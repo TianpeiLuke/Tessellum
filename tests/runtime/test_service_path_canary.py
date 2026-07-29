@@ -183,3 +183,32 @@ def test_service_path_canary_full_digestion(tmp_path: Path) -> None:
     # the attempts journal is timestamped (the run-6 forensics gap)
     first = json.loads((art / "runs" / "attempts.jsonl").read_text().splitlines()[0])
     assert "at" in first
+
+
+def test_mcp_capture_write_is_journaled(tmp_path: Path) -> None:
+    """A5.2 (FZ 20k9c1a1a1b7c2k1a): the MCP capture — the last unjournaled
+    direct vault write — records its effect through VaultEffectJournal and
+    accepts on success (create-only stays create-only; the journal dir holds
+    the accepted record)."""
+    from tessellum.mcp.server import _tool_capture
+
+    vault = tmp_path / "vault"
+    (vault / "resources" / "templates").mkdir(parents=True)
+    (vault / "resources" / "term_dictionary").mkdir(parents=True)
+    (vault / "resources" / "templates" / "template_concept.md").write_text(
+        "---\ndate of note: 2020-01-01\nstatus: active\n---\n\n# T\n",
+        encoding="utf-8",
+    )
+    out = _tool_capture("concept", "demo_term", vault_root=str(vault))
+    assert "error" not in out
+    assert Path(out["path"]).is_file()
+    # accepted journals are SWEPT (crash-recovery scaffolding, not archive):
+    # success leaves no pending journal behind.
+    effects = vault / "runs" / "mcp-effects"
+    assert not effects.exists() or list(effects.iterdir()) == []
+
+    # failure path: a second capture of the same slug hits create-only
+    # (FileExistsError) — the journal rolls back and nothing pends either.
+    with pytest.raises(FileExistsError):
+        _tool_capture("concept", "demo_term", vault_root=str(vault))
+    assert not effects.exists() or list(effects.iterdir()) == []

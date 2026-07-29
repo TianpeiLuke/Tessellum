@@ -450,18 +450,39 @@ def _tool_capture(
     destination: str | None = None,
     filename_prefix: str | None = None,
 ) -> dict:
+    import uuid as _uuid
+
     from tessellum.capture import capture
+    from tessellum.runtime.executor import VaultEffectJournal
 
     root = Path(vault_root).expanduser().resolve()
     if not root.is_dir():
         return {"error": f"Vault root not found at {root}."}
-    result = capture(
-        flavor=flavor,
-        slug=slug,
-        vault_root=root,
-        destination=destination,
-        filename_prefix=filename_prefix,
+    # A5.2 (FZ 20k9c1a1a1b7c2k1a): the MCP capture was the last UNJOURNALED
+    # direct write into the vault-of-record. capture() is create-only
+    # (FileExistsError on collision; force is never passed here), so the
+    # journal's role is the uniform effect record + crash recovery: pre-image
+    # recorded before the write, journal ACCEPTED right after success — a
+    # crash in between leaves an open journal recover_pending can roll back,
+    # the same semantics every runtime vault write already has.
+    journal = VaultEffectJournal(
+        root,
+        effect_guard=None,
+        journal_dir=root / "runs" / "mcp-effects" / _uuid.uuid4().hex[:12],
     )
+    try:
+        result = capture(
+            flavor=flavor,
+            slug=slug,
+            vault_root=root,
+            destination=destination,
+            filename_prefix=filename_prefix,
+            effect_recorder=journal.record,
+        )
+    except Exception:
+        journal.rollback()
+        raise
+    journal.accept()
     return {
         "path": str(result.path),
         "flavor": result.flavor,

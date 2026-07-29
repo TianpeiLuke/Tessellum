@@ -28,6 +28,7 @@ frontmatter spec — closed enums match, required fields present, format clean.
 from __future__ import annotations
 
 import datetime as dt
+from typing import Callable
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -354,6 +355,7 @@ def capture(
     today: dt.date | None = None,
     destination: str | None = None,
     filename_prefix: str | None = None,
+    effect_recorder: "Callable[[Path], None] | None" = None,
 ) -> CaptureResult:
     """Create a new vault note from a typed template.
 
@@ -429,6 +431,12 @@ def capture(
     sidecar_path: Path | None = None
 
     text = _TRIPLE_NEWLINE_RE.sub("\n\n", text)
+    # A5.2 (FZ 20k9c1a1a1b7c2k1a): record the effect BEFORE the write when a
+    # journal is supplied (the MCP server passes VaultEffectJournal.record) —
+    # the last direct vault write gains the same pre-image/rollback semantics
+    # as every runtime write. None → byte-identical to the unjournaled path.
+    if effect_recorder is not None:
+        effect_recorder(dest)
     dest.write_text(text, encoding="utf-8")
     return CaptureResult(
         path=dest, flavor=flavor, slug=slug, sidecar_path=sidecar_path

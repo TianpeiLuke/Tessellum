@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### MCP — the capture write path journaled (A5.2, FZ 20k9c1a1a1b7c2k1a) — 2026-07-29
+
+The MCP `_tool_capture` was the last UNJOURNALED direct write into the vault-of-record. `capture()` gains an optional `effect_recorder` (called with the destination pre-write; `None` byte-identical), and the MCP server wraps the call in a `VaultEffectJournal` under `<vault>/runs/mcp-effects/` — pre-image recorded, journal accepted on success (accepted journals sweep, per the runtime's own semantics), rolled back on failure; a crash in between leaves an open journal `recover_pending` handles. capture stays create-only. +1 test (suite 2146).
+
 ### Runtime/Tests — R2.4 detector rollback + R3.5 the F1/F2/F4 regressions (FZ 20k9c1a1a1b7c2k2a1b/c) — 2026-07-29
 
 **R2.4**: converge's interim `lease_ttl=900` rolled back to the detector default — a TTL answers "how fast do we declare a worker dead", never "how long may work take"; the hardened renewal actor (R2.1) owns liveness now, and the schedule test proves a blocked call 2.5× the TTL survives under it. Dead-worker detection returns to ~2 minutes from ~15. EVERY shipped profile now passes the timing table clean; the INV-2 arithmetic guard stays armed via a hypothetical-long-TTL test. **R3.5**: `test_j3_regressions.py` — the three prose-only J3 fixes get failing-then-passing pins that render the REAL steps' prompts exactly as the executor does: F1 (identify_source on the M0 shape carries the ledger + inline source + the no-tools mandate, no sentinels), F2 (read_draft carries the of-record draft), F4 (write_augmented_plan receives the revise directives + draft + ledger with the concrete-edit mandate). "Patched, not fixed" retired. +5 tests (suite 2145).
