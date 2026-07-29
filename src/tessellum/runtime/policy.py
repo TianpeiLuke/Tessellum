@@ -67,8 +67,13 @@ class RuntimePolicy:
             # J3 (FZ 20k9c1a1a1b7c2k2): the convergence posture — the P15
             # revise loop ON so an over-split round-0 plan is driven toward
             # the gates' note-count band before sign-off (the API runs'
-            # demonstrated 17→16→8 cure).
-            return cls(max_review_rounds=2)
+            # demonstrated 17→16→8 cure). lease_ttl covers the longest
+            # single backend call (the 300s stalled-stream read timeout,
+            # finding 5) plus ladder backoff — no heartbeat can renew INSIDE
+            # a blocked call, so a 120s capture-workload TTL fences out a
+            # digestion worker mid-legitimate-step (finding 6: run 6's
+            # ReadTimeout at 300s → LeaseLostError on the retry).
+            return cls(max_review_rounds=2, lease_ttl=900.0)
         if profile != "default":
             raise ValueError(f"unknown runtime policy profile: {profile!r}")
         return cls()

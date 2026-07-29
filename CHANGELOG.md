@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Runtime — converge profile lease_ttl=900s: the TTL must cover the longest blocked call (J3 finding 6, FZ 20k9c1a1a1b7c2k2) — 2026-07-29
+
+Run 6 proved finding 5's fix (the stalled `decompose` stream raised `ReadTimeout` at 300s instead of wedging forever) and exposed the next constraint in the chain: no heartbeat can renew INSIDE a blocked call, so the 300s read consumed the default 120s lease and the retry was fenced out (`LeaseLostError` → worker exit `lease_lost`). A capture-workload TTL is wrong for digestion, whose single legitimate calls are multi-minute: the `converge` profile now sets `lease_ttl=900.0` (covers the read timeout + ladder backoff). The T4 reaper story is intact — a truly dead digestion worker reaps at 15 min. Handoff note for the T-track: a background heartbeat thread would decouple TTL from call length; until then the TTL bound is the contract.
+
 ### Composer — bounded client timeouts + SDK retries off: a stalled stream can no longer wedge a wave (J3 finding 5, FZ 20k9c1a1a1b7c2k2) — 2026-07-29
 
 Run 5's execute wave — after a FIRST-PASS review approval on the fully-grounded plan — wedged for 60+ minutes with zero CPU: `lsof` showed FOUR silent ESTABLISHED HTTPS streams (one per wave worker), no data flowing, the default-configured `anthropic.Anthropic` client never timing out, every thread parked. E7's API-side sibling: an unattended run must never be able to hang unboundedly on one request. The client now carries explicit `httpx.Timeout(connect=30, read=300, write=60, pool=60)` — read is per chunk gap, so a healthy multi-minute streamed generation is unaffected while a silent stream raises within 300s for the retry ladder to classify — and `max_retries=0` (the ladder owns ALL retry semantics; the SDK's hidden internal retries would double the blip-rider's budget). Diagnosed live via the J1 status surface (stale heartbeats + expired lease) → T2 force-kill → linked retry: the task-manager loop the b7c4 wedge motivated, executed end-to-end. Suite 2100.
