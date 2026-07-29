@@ -28,7 +28,7 @@ authors:
   - Sizhe Zhou
   - Yu Su
 year: 2025
-source: "arXiv:2502.14802"
+source_url: "https://arxiv.org/abs/2502.14802"
 venue: "International Conference on Machine Learning (ICML)"
 DOI: "10.48550/arXiv.2502.14802"
 arXiv: "2502.14802"

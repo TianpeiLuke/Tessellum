@@ -39,7 +39,7 @@ authors:
   - Robert Osazuwa Ness
   - Jonathan Larson
 year: 2024
-source: "arXiv:2404.16130"
+source_url: "https://arxiv.org/abs/2404.16130"
 venue: "arXiv (preprint)"
 DOI: ""
 arXiv: "2404.16130"

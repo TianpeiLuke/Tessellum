@@ -28,7 +28,7 @@ authors:
   - Julien Chaumond
   - Thomas Wolf
 year: 2019
-source: "arXiv:1910.01108"
+source_url: "https://arxiv.org/abs/1910.01108"
 venue: "NeurIPS 2019 Workshop (EMC²)"
 arXiv: "1910.01108"
 semantic_scholar_id: "a54b56af24bb4873ed0163b77df63b92bd018ddc"

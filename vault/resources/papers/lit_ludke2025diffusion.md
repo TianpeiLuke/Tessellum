@@ -33,7 +33,7 @@ authors:
   - Stephan Günnemann
   - Leo Schwinn
 year: 2025
-source: "arXiv:2511.00203"
+source_url: "https://arxiv.org/abs/2511.00203"
 venue: "arXiv (preprint)"
 DOI: "10.48550/arXiv.2511.00203"
 arXiv: "2511.00203"

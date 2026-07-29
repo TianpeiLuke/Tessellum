@@ -24,7 +24,7 @@ date of note: 2026-03-10
 paper_title: "Agent-as-a-Judge"
 authors: "Runyang You, Hongru Cai, Caiqi Zhang, Qiancheng Xu, Meng Liu, Tiezheng Yu, Yongqing Li, Wenjie Li"
 year: 2026
-source: "arXiv"
+source_url: "arXiv"
 venue: "arXiv preprint"
 DOI: "10.48550/arXiv.2601.05111"
 arXiv: "2601.05111"

@@ -41,7 +41,7 @@ authors:
   - Mohamad Abou Ali
   - Fadi Dornaika
 year: 2025
-source: "arXiv:2510.25445"
+source_url: "https://arxiv.org/abs/2510.25445"
 venue: "Artificial Intelligence Review"
 DOI: "10.1007/s10462-025-11422-4"
 arXiv: "2510.25445"

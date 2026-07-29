@@ -38,7 +38,7 @@ authors:
   - Jiawei Han
   - C. Zhai
 year: 2026
-source: "arXiv:2603.03296"
+source_url: "https://arxiv.org/abs/2603.03296"
 venue: "arXiv (preprint)"
 arXiv: "2603.03296"
 semantic_scholar_id: "6ae3fb18300289acc53af5535508500992aa185c"

@@ -34,7 +34,7 @@ authors:
   - Atri Rudra
   - Christopher Ré
 year: 2022
-source: "arXiv:2205.14135"
+source_url: "https://arxiv.org/abs/2205.14135"
 venue: "NeurIPS 2022"
 DOI: "10.52202/068431-1189"
 arXiv: "2205.14135"

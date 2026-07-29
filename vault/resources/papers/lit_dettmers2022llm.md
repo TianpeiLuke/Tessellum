@@ -30,7 +30,7 @@ authors:
   - Younes Belkada
   - Luke Zettlemoyer
 year: 2022
-source: "arXiv:2208.07339"
+source_url: "https://arxiv.org/abs/2208.07339"
 venue: "NeurIPS 2022"
 doi: "10.48550/arXiv.2208.07339"
 arXiv: "2208.07339"

@@ -30,7 +30,7 @@ authors:
   - Samuel Schmidgall
   - Michael Moor
 year: 2025
-source: "arXiv:2503.18102"
+source_url: "https://arxiv.org/abs/2503.18102"
 venue: "arXiv.org"
 arXiv: "2503.18102"
 doi: "10.48550/arXiv.2503.18102"

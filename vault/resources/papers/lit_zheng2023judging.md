@@ -39,7 +39,7 @@ authors:
   - Joseph E. Gonzalez
   - Ion Stoica
 year: 2023
-source: "arXiv:2306.05685"
+source_url: "https://arxiv.org/abs/2306.05685"
 venue: "NeurIPS 2023"
 DOI: "10.52202/075280-2020"
 arXiv: "2306.05685"

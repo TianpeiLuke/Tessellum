@@ -43,7 +43,7 @@ authors:
   - Sebastian Riedel
   - Douwe Kiela
 year: 2020
-source: "arXiv:2005.11401"
+source_url: "https://arxiv.org/abs/2005.11401"
 venue: "NeurIPS 2020"
 DOI: ""
 arXiv: "2005.11401"

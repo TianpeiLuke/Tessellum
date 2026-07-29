@@ -83,7 +83,7 @@ authors:
   - Tom Brown
   - Jared Kaplan
 year: 2022
-source: "arXiv:2212.08073"
+source_url: "https://arxiv.org/abs/2212.08073"
 venue: "arXiv preprint"
 DOI: "10.48550/arXiv.2212.08073"
 arXiv: "2212.08073"

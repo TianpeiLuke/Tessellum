@@ -25,7 +25,7 @@ topics:
 paper_title: "LLMs Corrupt Your Documents When You Delegate"
 authors: "Philippe Laban, Tobias Schnabel, Jennifer Neville"
 year: "2026"
-source: "arXiv preprint"
+source_url: "arXiv preprint"
 venue: "arXiv"
 DOI: ""
 arXiv: "2604.15597"

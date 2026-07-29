@@ -28,7 +28,7 @@ domain: "Agentic AI"
 paper_title: "A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve on the Path to Artificial Super Intelligence"
 authors: Huan-ang Gao, Jiayi Geng, Wenyue Hua, Mengkang Hu, Xinzhe Juan, Hongzhang Liu, Shilong Liu, Jiahao Qiu, Xuan Qi, Qihan Ren, Yiran Wu, Hongru Wang, Han Xiao, Yuhang Zhou, Shaokun Zhang, Jiayi Zhang, et al. (27 authors)
 year: 2025
-source: arXiv
+source_url: "arXiv"
 venue: preprint
 DOI: null
 arXiv: "2507.21046"

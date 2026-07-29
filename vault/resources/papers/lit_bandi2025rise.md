@@ -30,7 +30,7 @@ domain: Agentic AI
 paper_title: "The Rise of Agentic AI: A Review of Definitions, Frameworks, Architectures, Applications, Evaluation Metrics, and Challenges"
 authors: "Ajay Bandi, Bhavani Kongari, Roshini Naguru, Sahitya Pasnoor, Sri Vidya Vilipala"
 year: 2025
-source: MDPI
+source_url: "MDPI"
 venue: "Future Internet"
 DOI: "10.3390/fi17090404"
 arXiv: ""

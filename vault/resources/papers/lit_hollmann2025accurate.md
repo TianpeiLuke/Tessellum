@@ -34,7 +34,7 @@ authors:
   - R. Schirrmeister
   - Frank Hutter
 year: 2025
-source: Nature
+source_url: "Nature"
 venue: "Nature"
 DOI: "10.1038/s41586-024-08328-6"
 arXiv: ""

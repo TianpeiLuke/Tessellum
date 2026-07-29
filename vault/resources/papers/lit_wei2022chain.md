@@ -32,7 +32,7 @@ authors:
   - Quoc Le
   - Denny Zhou
 year: 2022
-source: "arXiv:2201.11903"
+source_url: "https://arxiv.org/abs/2201.11903"
 venue: "NeurIPS 2022"
 DOI: "10.52202/068431-1800"
 arXiv: "2201.11903"
