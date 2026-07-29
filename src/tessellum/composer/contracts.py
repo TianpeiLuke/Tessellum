@@ -197,6 +197,20 @@ class PlanDoc(BaseModel):
             total = d.get("total_notes")
             if not isinstance(total, int) or total < len(planned):
                 d["total_notes"] = len(planned)
+            # 3b. Fix 2 (FZ 20k9c1a1a1b7c3) — count-consistency for a FLAT plan.
+            #     A single (non-master) plan has no sub-plans, so EVERY declared
+            #     note must be enumerated: total_notes must EQUAL len(planned),
+            #     not merely be floored by it. Eval run 3 produced
+            #     total_notes=16 with only 13 enumerated planned_notes (a
+            #     `single_plan_phased` shape) — a memory-stated scalar diverging
+            #     from the grounded enumeration, which trips the P13 pre-flight
+            #     (16 declared vs 13 projectable). The master-plan case (a pure
+            #     index enumerating a SUBSET, total > enumerated) is preserved:
+            #     only a flat shape is clamped DOWN to the enumerated count.
+            elif isinstance(total, int) and total > len(planned):
+                shape = d.get("plan_shape")
+                if shape in ("single_plan", "single_plan_phased"):
+                    d["total_notes"] = len(planned)
         return d
 
     @classmethod

@@ -214,11 +214,47 @@ def test_plan_doc_total_notes_floor_restores_shrunk_count():
 
 def test_plan_doc_total_notes_keeps_larger_declared():
     """A legitimately-larger declared total (a master plan enumerating a
-    subset) is preserved, not shrunk to the enumerated count."""
+    subset) is preserved, not shrunk to the enumerated count. NB: no
+    ``plan_shape`` here → the Fix-2 clamp-down does NOT apply (unknown shape is
+    conservatively preserved, byte-identical to the pre-Fix-2 behaviour)."""
     pd = PlanDoc.from_dict(
         {"planned_notes": [{"f": "a"}, {"f": "b"}], "total_notes": 29}
     )
     assert pd.total_notes == 29
+
+
+def test_plan_doc_flat_plan_clamps_total_down_to_enumerated():
+    """Fix 2 (FZ 20k9c1a1a1b7c3): a FLAT plan (single_plan / single_plan_phased)
+    has no sub-plans, so total_notes must EQUAL the enumerated planned_notes
+    count — a memory-stated larger scalar is clamped DOWN (eval run 3 declared
+    16 with only 13 enumerated, tripping the P13 pre-flight)."""
+    for shape in ("single_plan", "single_plan_phased"):
+        pd = PlanDoc.from_dict(
+            {"planned_notes": [{"f": i} for i in range(13)],
+             "total_notes": 16, "plan_shape": shape}
+        )
+        assert pd.total_notes == 13, f"{shape}: expected clamp 16→13"
+
+
+def test_plan_doc_master_plan_larger_total_preserved_with_shape():
+    """The master-plan case (a pure index enumerating a SUBSET) keeps its larger
+    declared total even with the shape set — only FLAT shapes clamp down."""
+    pd = PlanDoc.from_dict(
+        {"planned_notes": [{"f": "a"}, {"f": "b"}], "total_notes": 29,
+         "plan_shape": "master_plus_subplans"}
+    )
+    assert pd.total_notes == 29
+
+
+def test_plan_doc_flat_plan_floor_still_raises_shrunk_count():
+    """The P21 floor is unaffected by Fix 2: a flat plan declaring FEWER than
+    enumerated is still raised UP to the enumerated count (you can't declare
+    fewer than you enumerated), independent of the clamp-down branch."""
+    pd = PlanDoc.from_dict(
+        {"planned_notes": [{"f": i} for i in range(5)], "total_notes": 2,
+         "plan_shape": "single_plan_phased"}
+    )
+    assert pd.total_notes == 5
 
 
 def test_plan_doc_total_notes_set_from_planned_when_missing():

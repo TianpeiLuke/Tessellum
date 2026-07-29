@@ -4,6 +4,13 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — a flat plan's `total_notes` is clamped to the enumerated `planned_notes` count (Fix 2, FZ 20k9c1a1a1b7c3) — 2026-07-28
+
+The second Bedrock eval run (FZ 20k9c1a1a1b7c3) and its re-run on the ledger-fixed HEAD both produced a plan whose count fields disagree: `planned_notes`=13 enumerated but `total_notes`=16 (plus dangling `planned_note_count`=18 / `estimated_note_count`=26 re-stated from memory by different steps). Because `_declared_note_count` prefers the `total_notes` scalar (16) while the fan-out projects the 13 enumerated leaves, the P13 execute pre-flight aborts on 16≠13 — a real defect the ledger fix (`2d19ee9`) grounded the *content* of but did not reconcile the *count of*.
+
+- **`PlanDoc._fold_plan_of_record`** (`contracts.py`) gains a shape-aware clamp: for a FLAT plan (`plan_shape` ∈ {`single_plan`, `single_plan_phased`}) there are no sub-plans, so every declared note must be enumerated → `total_notes` is set to EXACTLY `len(planned_notes)` (clamped DOWN from a larger memory-stated scalar, not merely floored up). The master-plan case (a pure index enumerating a SUBSET, `total > enumerated`) and any plan with no/unknown `plan_shape` are PRESERVED verbatim — byte-identical to the pre-Fix-2 P21 floor. The existing P21 raise-to-floor (declaring FEWER than enumerated) is untouched.
+- +3 tests (`test_composer_contracts.py`): flat-plan clamp-down (both flat shapes), master-plan-with-shape preserved, flat-plan floor still raises. Full suite 2037 passed; ruff clean.
+
 ### Composer — deterministic evidence for the review loop: code-computed ledger, cited exhibits, contradiction guard (issues 9/10/11/12, FZ 20k9c1a1a1b7c2k1a1b) — 2026-07-28
 
 The point-fix batch from the API eval runs' post-mortem. The code checks that closed the arc found the "measured" ledger was itself an LLM estimate (r3 said 3,150 words where `wc -w` says 2,919), the reviewer fabricated counts the deterministic gate contradicted (r3's terminal rejection was a false negative — the coverage map was complete in every round), and the revise loop amplified the fabrication for two rounds. One invariant, four fixes: quantities flow from code, judgements from models, and only verified quantities drive control flow.
