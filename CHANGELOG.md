@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Skills — `write_augmented_plan` grounded: the draft, the ledger, and the revise failures reach the step that rewrites the plan (J3 finding 4, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
+
+Runs 3 and 4 both exhausted their revise rounds on the same shape: the review demanded the exact measured figure and the re-augment kept writing ranges — because the P15 conditioning was STRUCTURALLY lossy: `{{leaf.review_failures}}` rendered only in `read_draft`, whose output schema (`sections_present/missing`, `routing_ok`) cannot carry figure-level directives, so the writer step revised blind. Worse, `write_augmented_plan` rewrote the plan from step SUMMARIES without ever seeing the draft text or the ledger. The step now receives all three grounding channels directly — `{{artifact.plan_text}}` (the of-record draft it preserves-and-augments), `{{artifact.pages}}` (with the bare-digits + exact-heading-tally mandate on the Source section), and `{{leaf.review_failures}}` ("concrete edit instructions for THIS step") — the API runs' loop converged only because their failures happened to be section-shaped, the one thing `read_draft`'s schema could carry.
+
 ### Composer — figure matching absorbs thousands separators; plan skill writes bare digits (J3 finding 3, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
 
 Run 3's revise loop exhausted its rounds on a brittleness defect in the evidence code itself: the plan reconciled to the measured total but wrote it the human way (`12,813`), and both the FIGURES exhibit (`str(mw) in plan_text` — bare substring) and the guard's digit-boundary regex only recognize `12813` — so the exhibit reported the figure NOT FOUND and the reviewer, correctly obeying the citation contract, rejected. The code side must absorb rendering, never the reviewer: new `_figure_present` (boundary-guarded, optional comma between digit groups) backs both the exhibit and `_figures_all_present`; the plan skill's verbatim-figures mandate now also says bare digits (belt at the generator, braces at the matcher). Suite 2099.

@@ -491,7 +491,18 @@ COVERAGE + GATES (from step 3)
 CROSS-REF CONTRACT + UNDIGESTED TERMS (from step 4)
 {{upstream.crossref_contract}}
 
+THE DRAFT PLAN (the of-record text you are rewriting, by reference from the run's working store — preserve-and-augment THIS text, not a reconstruction from memory):
+{{artifact.plan_text}}
+
+MEASURED SOURCE LEDGER (code-computed ground truth — the Source section of the rewritten plan MUST state each page's `measured_words` verbatim as BARE DIGITS, e.g. 12813 not 12,813, and every heading tally MUST match the ledger's heading count exactly):
+{{artifact.pages}}
+
+PRIOR REVIEW FAILURES (P15 revise round — empty on the first augment pass):
+{{leaf.review_failures}}
+
 Follow this procedure:
+
+**If PRIOR REVIEW FAILURES is non-empty, this is a REVISE round: resolve EACH listed failure IN the rewritten plan text itself** — if a failure demands an exact figure, write that exact figure (bare digits); if it names a missing heading or row, add it — then preserve everything the review did not flag. The failures are concrete edit instructions for THIS step, not background.
 
 Rewrite the plan file in place, weaving in the sections assembled by the prior steps. The plan_doc is both input and output: preserve every original section (Objective, Routing, Source, Content Strategy, Planned Notes table, Summary Statistics) and add or replace the augmentation sections — Section Coverage Map, Split Decisions, Density Re-Assessment, Validation Scripts, Pacing Rules, per-phase GATE tables, Per-Note Related Notes Mapping, Inlinks, Undigested Terms Plan, Term-Note Authoring Requirements, Documentation-Note Authoring Spec, Entry Point Decision, and Follow-up Recommendations.
 
