@@ -63,6 +63,12 @@ class RuntimePolicy:
             return cls(max_workers=2, max_invocations=30, max_fix_rounds=0)
         if profile == "inspect":
             return cls(stop_after="review")
+        if profile == "converge":
+            # J3 (FZ 20k9c1a1a1b7c2k2): the convergence posture — the P15
+            # revise loop ON so an over-split round-0 plan is driven toward
+            # the gates' note-count band before sign-off (the API runs'
+            # demonstrated 17→16→8 cure).
+            return cls(max_review_rounds=2)
         if profile != "default":
             raise ValueError(f"unknown runtime policy profile: {profile!r}")
         return cls()

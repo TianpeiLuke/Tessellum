@@ -49,6 +49,10 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     submit = sub.add_parser("submit", help="Durably submit one existing inbox file.")
     submit.add_argument("path", type=Path)
     submit.add_argument("--settle-seconds", type=float, default=0.0)
+    submit.add_argument(
+        "--profile", default=None,
+        help="Runtime policy profile for this job (default/fast/inspect/converge).",
+    )
     _add_common_paths(submit)
     submit.set_defaults(func=run_runtime_submit)
 
@@ -212,6 +216,7 @@ def run_runtime_submit(args: argparse.Namespace) -> int:
             paths=paths,
             store=store,
             settle_seconds=args.settle_seconds,
+            policy_profile=getattr(args, "profile", None),
         )
     except (AdmissionError, OSError) as exc:
         print(f"tessellum runtime submit: {exc}", file=sys.stderr)

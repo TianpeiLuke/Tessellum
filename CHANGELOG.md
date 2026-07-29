@@ -6,7 +6,7 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ### Runtime — `max_review_rounds` policy-gated on the service path (J3 plumbing, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
 
-`RuntimePolicy.max_review_rounds` (default 0 = single-pass, byte-identical) now threads into the executor's pipeline call — before this the P15 review-revise loop, the demonstrated cure for plan over-splitting (the API runs' 17→16→8 convergence), was unreachable under the supervisor. The J3 convergence run is the first consumer. +1 assertion in the executor capture test.
+`RuntimePolicy.max_review_rounds` (default 0 = single-pass, byte-identical) now threads into the executor's pipeline call — before this the P15 review-revise loop, the demonstrated cure for plan over-splitting (the API runs' 17→16→8 convergence), was unreachable under the supervisor. The J3 convergence run is the first consumer. +1 assertion in the executor capture test. Follow-up in the same batch: the `converge` policy profile (`max_review_rounds=2`) and `runtime submit --profile`, so a convergence job is one CLI submit away on any backend.
 
 ### Composer/Runtime — the A3/A4 memory migration: metadata-only leaves, the source in the store, thin manifest, GC-at-commit (FZ 20k9c1a1a1b7c2k1a) — 2026-07-28
 

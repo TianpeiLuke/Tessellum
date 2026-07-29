@@ -322,6 +322,15 @@ def test_verify_restores_missing_inline_from_store(tmp_path) -> None:
     assert reloaded["plan_text"] == plan_doc["plan_text"]  # store is of-record
 
 
+def test_converge_profile_enables_revise_loop() -> None:
+    from tessellum.runtime.policy import RuntimePolicy
+
+    policy = RuntimePolicy.for_profile("converge")
+    assert policy.max_review_rounds == 2
+    assert policy.stop_after is None
+    assert RuntimePolicy.for_profile("default").max_review_rounds == 0
+
+
 def test_verify_noop_without_refs(tmp_path) -> None:
     from tessellum.runtime.executor import _verify_plan_artifacts
 
