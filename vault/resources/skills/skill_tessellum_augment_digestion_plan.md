@@ -209,7 +209,7 @@ SOURCE REFS (from leaf metadata)
 
 MEASURED SOURCE LEDGER (identify_source's measured pages[] — the ground truth for every figure below; verify against THIS, never from memory and never by claiming to fetch):
 
-{{leaf.pages}}
+{{artifact.pages}}
 
 Follow this procedure:
 
@@ -305,7 +305,7 @@ Add the **Validation Scripts** (format + density, cross-link resolution, prerequ
 
 MEASURED SOURCE LEDGER (the coverage map's ground truth — EVERY heading listed here must appear in the Section Coverage Map, mapped to exactly one note; an unmapped ledger heading is an orphan and fails review CP7):
 
-{{leaf.pages}}
+{{artifact.pages}}
 
 Build the Section Coverage Map
 with zero orphaned source headings, the Split Decisions table, the

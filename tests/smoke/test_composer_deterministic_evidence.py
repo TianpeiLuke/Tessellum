@@ -112,6 +112,7 @@ def test_no_members_no_ledger_override(tmp_path: Path) -> None:
 
 def _doc(headings, mapped, failures):
     return {
+        "_pages_code_measured": True,  # unit fixtures simulate the driver's ledger
         "pages": [{"source_id": "p", "measured_words": 10, "headings": headings}],
         "section_coverage_map": [
             {"source_section": m, "maps_to_note": "n.md"} for m in mapped
@@ -174,3 +175,202 @@ def test_exhibits_render_coverage_and_figures() -> None:
 
 def test_exhibits_empty_without_ledger() -> None:
     assert compute_review_exhibits({}) == ""
+
+
+# ── E1/E2/E3 (FZ 20k9c1a1a1b7c2k1a1b1) ──────────────────────────────────────
+
+
+def test_exhibits_cover_sections_gates_inventory_density() -> None:
+    pd = {
+        "pages": [{"source_id": "p", "measured_words": 100, "headings": ["A"]}],
+        "section_coverage_map": [{"source_section": "A", "maps_to_note": "n"}],
+        "plan_text": "## Planned Notes\n| 1 | a.md |\n| 2 | b.md |\n\n## Scope\nhas 100. G1 G2 G3 G4 G5 G6 G7 G8",
+        "planned_notes": [
+            {"filename": "a.md", "approx_words": 1200},
+            {"filename": "b.md", "approx_words": 1500},
+        ],
+        "total_notes": 2,
+    }
+    ex = compute_review_exhibits(pd)
+    assert "SECTIONS (computed): 2/14" in ex and "BELOW the >=90% threshold" in ex
+    assert "GATES (computed): 8/8" in ex
+    assert "INVENTORY (computed): planned_notes list=2, total_notes=2, Planned-Notes table rows=2 (consistent)" in ex
+    assert "DENSITY (computed): approx_words min=1200 median=1500 max=1500" in ex
+
+
+def test_inventory_exhibit_flags_mismatch() -> None:
+    pd = {
+        "pages": [{"source_id": "p", "measured_words": 1, "headings": ["A"]}],
+        "section_coverage_map": [{"source_section": "A", "maps_to_note": "n"}],
+        "plan_text": "## Planned Notes\n| 1 | a.md |\n",
+        "planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}],
+        "total_notes": 9,
+    }
+    assert "MISMATCH" in compute_review_exhibits(pd)
+
+
+def test_mandatory_sections_single_source_matches_every_golden() -> None:
+    """E1.3 binding: the runtime constant and each golden slice's list agree —
+    the criteria cannot fork (the R1/R2 + 7-vs-8-gates drift class)."""
+    import json as _json
+
+    from tessellum.composer.contracts import MANDATORY_PLAN_SECTIONS
+
+    eval_root = Path(__file__).resolve().parents[2] / "eval" / "digestion_pipeline"
+    checked = 0
+    for facts_path in sorted(eval_root.glob("*/golden_facts.json")):
+        gp = _json.loads(facts_path.read_text())["golden_plan"]
+        sections = gp.get("mandatory_plan_sections")
+        if sections is None:
+            continue
+        assert tuple(sections) == MANDATORY_PLAN_SECTIONS, facts_path
+        checked += 1
+    assert checked >= 1
+
+
+def test_guard_drops_ledger_figure_claim_when_figures_present() -> None:
+    d = _doc(["A"], ["A"], ["CP7 FAIL — word counts are outside tolerance vs measured"])
+    d["plan_text"] = "Source table says 10 words"
+    ready, failures = _review_verdict(d)
+    assert ready and failures == []
+    assert d["contradicted_failures"]
+
+
+def test_guard_keeps_figure_claim_when_figures_absent() -> None:
+    d = _doc(["A"], ["A"], ["CP7 FAIL — word counts are outside tolerance vs measured"])
+    d["plan_text"] = "no numbers here"
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+
+
+def test_guard_keeps_per_note_density_critique() -> None:
+    """Review F3: a per-note/statistics figure critique is NOT ledger-scoped
+    and must never be dropped by page-figure presence."""
+    d = _doc(["A"], ["A"],
+             ["CP6 FAIL — note 7's declared word count does not match its mapped sections: approx_words=1750 vs ~600 source words"])
+    d["plan_text"] = "Source table says 10 words"
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+
+
+def test_guard_requires_code_provenance() -> None:
+    """Review F4: model-emitted pages can never ground a drop — without the
+    driver's provenance flag no domain fires."""
+    d = _doc(["A"], ["A"], ["CP7 FAIL — 5 headings absent from the coverage map"])
+    del d["_pages_code_measured"]
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+
+
+def test_figure_presence_is_digit_boundary_matched() -> None:
+    """Review F7: measured 10 must not 'match' inside 2100."""
+    d = _doc(["A"], ["A"], ["CP7 FAIL — word counts are outside tolerance vs measured"])
+    d["plan_text"] = "the value 2100 appears but never the real figure"
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+
+
+def test_stale_drops_cleared_on_clean_round() -> None:
+    """Review F8: a prior round's contradicted_failures must not survive a
+    round that dropped nothing."""
+    d = _doc(["A"], ["A"], ["CP5 FAIL — genuine qualitative critique"])
+    d["contradicted_failures"] = ["old claim from a prior round"]
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+    assert "contradicted_failures" not in d
+
+
+def test_section_claims_are_never_code_dropped() -> None:
+    """Review F1/F2: prose-substring presence is NOT deterministic evidence of
+    a section's existence, and a 'missing' claim can be a true coverage/content
+    defect — the section domain was REMOVED; such claims always stand."""
+    d = _doc(["A"], ["A"], ["CP8 FAIL — the Undigested Terms Plan section is entirely absent"])
+    d["plan_text"] = "10 ...\n## Undigested Terms Plan\ncontent"
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+
+
+def test_true_coverage_claim_never_dropped_via_section_wording() -> None:
+    """Review F1 (the CRITICAL): a claim phrased as 'missing' about a REAL
+    orphan must never be dropped — orphans exist, orphan_safe is False."""
+    d = _doc(["Intro", "Advanced Topics"], ["Intro"],
+             ["CP7 FAIL — the Section Coverage Map is missing the Advanced Topics heading"])
+    ready, failures = _review_verdict(d)
+    assert not ready and len(failures) == 1
+    assert "contradicted_failures" not in d
+
+
+def test_result_surfaces_contradicted_failures(tmp_path: Path) -> None:
+    """E3.2: a fabricated claim dropped by the guard reaches the caller as
+    DigestionResult.contradicted_failures — and the run COMPLETES (the r3
+    class terminates round 1 as ready instead of burning the budget)."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    text = "# Only Heading\n\n" + "word " * 50
+    blob = {
+        "plan_path": "plans/p.md", "plan_text": "# Plan\n\n" + str(len(text.split())),
+        "ready": False,
+        "failures": ["CP7 FAIL — 30 headings unmapped in the coverage map"],
+        "output_path": "notes/n.md", "body_markdown": "# N\n\nbody",
+        "total_notes": 1,
+        "section_coverage_map": [{"source_section": "Only Heading", "maps_to_note": "notes/n.md"}],
+    }
+    result = run_digestion_pipeline(
+        skills_dir=sd,
+        source_leaf={
+            "id": "demo", "total_notes": 1, "member_count": 1,
+            "members": [{"source_id": "p1", "excerpt": text}],
+        },
+        backend=MockBackend(default=json.dumps(blob)),
+        vault_root=tmp_path / "vault",
+    )
+    assert result.completed
+    assert result.contradicted_failures
+    assert "unmapped" in result.contradicted_failures[0]
+    assert result.plan_doc.get("_pages_code_measured") is True
+
+
+def test_pages_is_an_artifact_key_and_pages_durably(tmp_path: Path) -> None:
+    """E2.1: the ledger is a first-class artifact — durable mode pages it as
+    an ArtifactRef whose deref matches the in-RAM rendering byte-for-byte."""
+    from tessellum.composer.contracts import _ARTIFACT_KEYS, ArtifactRef
+    from tessellum.composer.digestion import _build_artifact_store
+    from tessellum.composer.executor import _resolve_placeholders
+
+    assert "pages" in _ARTIFACT_KEYS
+    doc = {"pages": [{"source_id": "p", "measured_words": 7, "headings": ["A"]}]}
+    ram = _build_artifact_store(doc)
+    durable = _build_artifact_store(doc, tmp_path / "arts")
+    assert isinstance(durable["pages"], ArtifactRef)
+    t = "L: {{artifact.pages}}"
+    assert _resolve_placeholders(t, leaf={}, upstream={}, artifacts=ram) == \
+           _resolve_placeholders(t, leaf={}, upstream={}, artifacts=durable)
+
+
+def test_ledger_synthesized_from_source_content(tmp_path: Path) -> None:
+    """Review F4 deep fix: the runtime/CLI single-doc shape (top-level
+    source_content, empty members) still gets a CODE-measured ledger."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    text = "# Solo Heading\n\n" + "tok " * 40
+    blob = {
+        "plan_path": "plans/p.md", "plan_text": "# Plan\n\n" + str(len(text.split())),
+        "ready": True, "failures": [],
+        "output_path": "notes/n.md", "body_markdown": "# N\n\nbody",
+        "total_notes": 1,
+        "section_coverage_map": [{"source_section": "Solo Heading", "maps_to_note": "notes/n.md"}],
+    }
+    result = run_digestion_pipeline(
+        skills_dir=sd,
+        source_leaf={"id": "demo", "total_notes": 1, "source_content": text,
+                     "source_name": "solo-doc"},
+        backend=MockBackend(default=json.dumps(blob)),
+        vault_root=tmp_path / "vault",
+    )
+    assert result.completed
+    pages = result.plan_doc["pages"]
+    assert pages[0]["source_id"] == "solo-doc"
+    assert pages[0]["measured_words"] == len(text.split())
+    assert result.plan_doc.get("_pages_code_measured") is True

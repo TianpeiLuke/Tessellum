@@ -145,6 +145,10 @@ expected_output_schema:
           - 'null'
 ```
 
+COMPUTED EXHIBITS (deterministic checks the driver already ran — CITE these in each checkpoint verdict; do NOT re-count. If your impression contradicts an exhibit, THE EXHIBIT WINS and your checkpoint must say so):
+
+{{leaf.review_exhibits}}
+
 Step 2 of tessellum-review-digestion-plan: Check Structure & Gates.
 
 Read the plan via {{artifact.plan_text}} and run the structural
@@ -300,9 +304,9 @@ Read the full augmented plan **directly from `{{artifact.plan_text}}`** (the dur
 
 MEASURED SOURCE LEDGER (the code-computed pages[] — verify CP7 against THIS, never a live fetch):
 
-{{leaf.pages}}
+{{artifact.pages}}
 
-COMPUTED EXHIBITS (deterministic checks the driver already ran — CITE these; do NOT re-count. An LLM re-count of a long text confabulates, so if your impression contradicts an exhibit, THE EXHIBIT WINS and your checkpoint must say so):
+COMPUTED EXHIBITS (deterministic checks the driver already ran — every checkpoint verdict MUST name the exhibit(s) it relied on; do NOT re-count. An LLM re-count of a long text confabulates, so if your impression contradicts an exhibit, THE EXHIBIT WINS and your checkpoint must say so):
 
 {{leaf.review_exhibits}}
 

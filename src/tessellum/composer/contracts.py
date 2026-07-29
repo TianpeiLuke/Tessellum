@@ -58,7 +58,42 @@ _PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
 # through the LLM (lossy by construction). The SINGLE source of truth shared by
 # the driver's artifact store (``digestion``) and the compiler's re-emission
 # lint (``compiler``); keep them in lockstep from here.
-_ARTIFACT_KEYS: tuple[str, ...] = ("plan_text", "source_excerpt", "planned_notes")
+# E2.1 (FZ 20k9c1a1a1b7c2k1a1b1): ``pages`` — the CODE-computed source ledger
+# (digestion.compute_source_ledger) — is a first-class working-memory artifact:
+# paged durably under --durable-artifacts, covered by the re-emission lint, and
+# consumed by reference (``{{artifact.pages}}``) in the review/augment skills.
+_ARTIFACT_KEYS: tuple[str, ...] = ("plan_text", "source_excerpt", "planned_notes", "pages")
+
+# E1.3 (FZ 20k9c1a1a1b7c2k1a1b1): the mandatory plan sections — the SINGLE
+# source of truth for the runtime's deterministic section scan (the review
+# exhibits + the section contradiction-guard domain). The eval scorer's P7
+# keeps its per-slice ``golden_facts.json`` list authoritative for scoring;
+# a binding test asserts the two lists agree so the criteria cannot fork.
+# Matching convention (shared with the scorer): the pre-parenthetical stem,
+# case-insensitive, anywhere in the plan text.
+MANDATORY_PLAN_SECTIONS: tuple[str, ...] = (
+    "Scope",
+    "Content Strategy",
+    "Source Pages (measured)",
+    "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+    "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+    "Split Decisions",
+    "Summary Statistics & Building Block Distribution",
+    "Per-Note Related Notes Mapping (cross-ref contract)",
+    "Density Re-Assessment",
+    "Undigested Terms Plan",
+    "Per-Phase Validation Gate",
+    "Entry Point Decision",
+    "Inlinks",
+    "Review Sign-Off (CP1-CP9)",
+)
+
+
+def mandatory_section_stems() -> tuple[str, ...]:
+    """The matchable stems (pre-parenthetical, stripped) of
+    :data:`MANDATORY_PLAN_SECTIONS` — the scan convention shared with the eval
+    scorer's P7 check."""
+    return tuple(s.split(" (")[0].strip() for s in MANDATORY_PLAN_SECTIONS)
 
 
 class ArtifactIntegrityError(RuntimeError):

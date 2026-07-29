@@ -45,7 +45,12 @@ from tessellum.composer.compiler import (
     compile_skill,
 )
 from tessellum.composer.context_assembler import ContextAssembler, WindowedAssembler
-from tessellum.composer.contracts import _ARTIFACT_KEYS, ArtifactRef, PlanDoc
+from tessellum.composer.contracts import (
+    _ARTIFACT_KEYS,
+    ArtifactRef,
+    PlanDoc,
+    mandatory_section_stems,
+)
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.executor import (
     DEFAULT_TIMEOUT_SECONDS,
@@ -54,7 +59,12 @@ from tessellum.composer.executor import (
     _stringify,
     upstream_placeholder_keys,
 )
-from tessellum.composer.gates import build_plan_gate, duplicate_target_predicate
+from tessellum.composer.gates import (
+    PLAN_NOTE_MAX_WORDS,
+    PLAN_OVERSPLIT_MIN_WORDS,
+    build_plan_gate,
+    duplicate_target_predicate,
+)
 from tessellum.composer.knowledge_plan import (
     NoteIntentGraph,
     project_note_intent_graph,
@@ -153,6 +163,7 @@ class DigestionResult:
     under_produced: bool = False
     review_rounds: int = 0
     run_id: str | None = None
+    contradicted_failures: tuple[str, ...] = ()
 
 
 # P12 (FZ 20k9c1a1a1b7c2e): the shared ceiling for a DERIVED response budget.
@@ -489,6 +500,35 @@ _ORPHAN_CLAIM_RE = re.compile(
     re.IGNORECASE,
 )
 
+# E3.1 (FZ 20k9c1a1a1b7c2k1a1b1): the figure-mismatch claim domain — dropped
+# only when EVERY ledger figure is verbatim-present in the plan text.
+# Review F3: the domain is LEDGER-scoped — the claim must reference the
+# measured/ledger/source-page figures, so a genuine per-note density or
+# summary-statistics critique (not checkable against page figures) is never
+# dropped by page-figure presence.
+_FIGURE_CLAIM_RE = re.compile(
+    r"(measured|ledger|source[ -]pages?)"
+    r".{0,120}?(mismatch|outside tolerance|understat|overstat|far (below|above)|does not match|incorrect)"
+    r"|(word.count|figures?)"
+    r".{0,80}?(outside tolerance|understat|overstat)"
+    r".{0,80}?(measured|ledger)",
+    re.IGNORECASE | re.DOTALL,
+)
+def _figures_all_present(plan_doc: dict) -> bool:
+    """Every code-measured page figure appears — digit-boundary-matched
+    (review F7: ``10`` must not match inside ``2100``) — in the plan text."""
+    pages = plan_doc.get("pages")
+    plan_text = plan_doc.get("plan_text") or ""
+    if not isinstance(pages, list) or not isinstance(plan_text, str) or not plan_text:
+        return False
+    figs = [
+        pg.get("measured_words") for pg in pages
+        if isinstance(pg, dict) and isinstance(pg.get("measured_words"), int)
+    ]
+    return bool(figs) and all(
+        re.search(rf"(?<!\d){f}(?!\d)", plan_text) for f in figs
+    )
+
 
 def _norm_heading(s: object) -> str:
     return " ".join(str(s).lower().split())
@@ -530,8 +570,9 @@ def compute_review_exhibits(plan_doc: dict) -> str:
     """Render the deterministic review EXHIBITS (issue 9 / mechanism 1 of FZ
     20k9c1a1a1b7c2k1a1b): quantities the driver computes exactly, injected so
     the reviewer JUDGES over them instead of re-counting (an LLM re-count of a
-    long text confabulates — the r3 false rejection). Empty string when
-    nothing is computable (byte-identical prompts for ledger-less runs)."""
+    long text confabulates — the r3 false rejection). SECTIONS/GATES render
+    from ``plan_text`` alone, so any plan-carrying run gets exhibits; only a
+    plan-less doc renders the empty string."""
     parts: list[str] = []
     orphans = compute_coverage_orphans(plan_doc)
     if orphans is not None:
@@ -554,6 +595,67 @@ def compute_review_exhibits(plan_doc: dict) -> str:
                 )
         if fig:
             parts.append("FIGURES (computed): " + "; ".join(fig))
+    plan_text = plan_doc.get("plan_text") or ""
+    if isinstance(plan_text, str) and plan_text:
+        # SECTIONS — the deterministic scan against the single-sourced list
+        # (E1.1/E1.3): the P7 residual and the E18 "section absent" false-
+        # reject class are both countable, so code counts them.
+        low = plan_text.lower()
+        present, absent = [], []
+        for stem in mandatory_section_stems():
+            (present if stem.lower() in low else absent).append(stem)
+        n_all = len(present) + len(absent)
+        passes = len(present) >= 0.9 * n_all  # the eval P7 threshold
+        parts.append(
+            f"SECTIONS (computed): {len(present)}/{n_all} mandatory sections "
+            f"present — {'MEETS' if passes else 'BELOW'} the >=90% threshold"
+            + (f"; stems not found: {absent} (section NAMES vary by "
+               f"convention — judge whether an equivalent section exists "
+               f"under another name before failing)" if absent else "")
+        )
+        # GATES — distinct G1–G8 tokens named anywhere in the plan.
+        gates = sorted(set(re.findall(r"\bG[1-8]\b", plan_text)))
+        missing_gates = [g for g in ("G1","G2","G3","G4","G5","G6","G7","G8") if g not in gates]
+        parts.append(
+            f"GATES (computed): {len(gates)}/8 distinct gate tokens named"
+            + (f"; MISSING: {missing_gates}" if missing_gates else " (G1-G8 all named)")
+        )
+    # INVENTORY — the one-inventory parity (the r4 18-vs-8 class).
+    notes = plan_doc.get("planned_notes")
+    if isinstance(notes, (list, tuple)) and notes:
+        total = plan_doc.get("total_notes")
+        table_rows = None
+        if isinstance(plan_text, str) and plan_text:
+            # score.py's exact convention (review F6): H2-anchored/terminated.
+            m = re.search(r"(?mi)^##\s+Planned Notes", plan_text)
+            if m:
+                rest = plan_text[m.end():]
+                nxt = re.search(r"(?m)^##\s+", rest)
+                section = rest[: nxt.start()] if nxt else rest
+                table_rows = len(re.findall(r"(?m)^\|\s*\d+\s*\|", section))
+        parts.append(
+            f"INVENTORY (computed): planned_notes list={len(notes)}, "
+            f"total_notes={total}"
+            + (f", Planned-Notes table rows={table_rows}" if table_rows is not None else "")
+            + (" — MISMATCH (one inventory expected)"
+               if (isinstance(total, int) and total != len(notes)
+                   and plan_doc.get("plan_shape") != "master_plus_subplans")
+               or (table_rows is not None and table_rows != len(notes))
+               else " (consistent)")
+        )
+        # DENSITY — per-note declared words vs the gate band.
+        words = sorted(
+            w for n in notes if isinstance(n, dict)
+            for w in [n.get("approx_words")] if isinstance(w, int) and w > 0
+        )
+        if words:
+            mid = words[len(words) // 2]
+            parts.append(
+                f"DENSITY (computed): approx_words min={words[0]} median={mid} "
+                f"max={words[-1]} over {len(words)} notes "
+                f"(ceiling {PLAN_NOTE_MAX_WORDS}, over-split floor "
+                f"{PLAN_OVERSPLIT_MIN_WORDS})"
+            )
     return "\n".join(parts)
 
 
@@ -578,16 +680,32 @@ def _review_verdict(plan_doc: dict) -> tuple[bool, list]:
     # Scoped to the coverage-orphan domain — the one empirically observed
     # fabrication class; other failure text passes through untouched.
     if failures:
-        orphans = compute_coverage_orphans(plan_doc)
-        if orphans is not None and len(orphans) == 0:
-            kept, dropped = [], []
-            for f in failures:
-                (dropped if _ORPHAN_CLAIM_RE.search(str(f)) else kept).append(f)
-            if dropped:
-                plan_doc["contradicted_failures"] = [str(d) for d in dropped]
-                failures = kept
-                if not failures:
-                    ready = True
+        # Review F4: a drop is only as sound as the evidence's PROVENANCE —
+        # every domain gates on the pages[] ledger being CODE-computed
+        # (``_pages_code_measured``, set by the driver). Model-emitted pages
+        # (a caller outside run_digestion_pipeline, or a source with no
+        # inline text) can never ground a drop.
+        code_measured = bool(plan_doc.get("_pages_code_measured"))
+        orphans = compute_coverage_orphans(plan_doc) if code_measured else None
+        orphan_safe = orphans is not None and len(orphans) == 0
+        figures_safe = code_measured and _figures_all_present(plan_doc)
+        kept, dropped = [], []
+        for f in failures:
+            sf = str(f)
+            if orphan_safe and _ORPHAN_CLAIM_RE.search(sf):
+                dropped.append(sf)
+            elif figures_safe and _FIGURE_CLAIM_RE.search(sf):
+                dropped.append(sf)
+            else:
+                kept.append(f)
+        if dropped:
+            plan_doc["contradicted_failures"] = dropped
+            failures = kept
+            if not failures:
+                ready = True
+        else:
+            # Review F8: never carry a PRIOR round's drops into this verdict.
+            plan_doc.pop("contradicted_failures", None)
     return ready, failures
 
 
@@ -1252,9 +1370,23 @@ def run_digestion_pipeline(
     # from the members' inline text — the model may not author measurements.
     # Computed once here; re-asserted after every phase fold so an LLM
     # re-emission of pages[] never survives (measured-by-code, k1a1a).
-    code_ledger = compute_source_ledger(plan_doc.get("members") or [])
+    ledger_members = plan_doc.get("members") or []
+    if not ledger_members:
+        # Review F4: the runtime + CLI single-doc paths carry the source as a
+        # top-level ``source_content`` with EMPTY members — synthesize a
+        # pseudo-member so the ledger is code-measured on the primary path
+        # too (else the model's estimates become the "evidence").
+        sc = plan_doc.get("source_content")
+        if isinstance(sc, str) and sc.strip():
+            ledger_members = [{
+                "source_id": plan_doc.get("source_name")
+                or plan_doc.get("id") or "source",
+                "excerpt": sc,
+            }]
+    code_ledger = compute_source_ledger(ledger_members)
     if code_ledger:
         plan_doc["pages"] = code_ledger
+        plan_doc["_pages_code_measured"] = True
     # M0 review (medium): a corpus_wide {{leaf.X}} that now resolves (the
     # _corpus_leaf fix) can render a large value — e.g. {{leaf.members}} /
     # {{leaf.source_refs}} — that, with NO assembler, trips the executor's
@@ -1321,6 +1453,7 @@ def run_digestion_pipeline(
         return DigestionResult(
             completed=False, stopped_at=phase, sign_off=None,
             phases=tuple(phases), plan_doc=plan_doc, review_rounds=review_rounds, run_id=run_id,
+            contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
         )
 
     # plan (once)
@@ -1420,6 +1553,7 @@ def run_digestion_pipeline(
             phases=tuple(phases),
             plan_doc=plan_doc,
             review_rounds=review_rounds, run_id=run_id,
+            contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
         )
 
     if stop_after == "review":
@@ -1434,6 +1568,7 @@ def run_digestion_pipeline(
             phases=tuple(phases),
             plan_doc=plan_doc,
             review_rounds=review_rounds, run_id=run_id,
+            contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
         )
 
     # ── execute: the fan-out wave (one leaf per planned note) ───────────────
@@ -1477,6 +1612,7 @@ def run_digestion_pipeline(
             plan_doc=plan_doc,
             under_produced=True,
             review_rounds=review_rounds, run_id=run_id,
+            contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
         )
     phases.append(
         PhaseOutcome(
@@ -1502,6 +1638,7 @@ def run_digestion_pipeline(
         plan_doc=plan_doc,
         under_produced=under_produced,
         review_rounds=review_rounds, run_id=run_id,
+            contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
     )
 
 
