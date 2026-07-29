@@ -34,6 +34,7 @@ the *composition + scope* layer over the existing format primitives.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Literal, Sequence
@@ -395,6 +396,18 @@ def plan_structure_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]
 # gate never rejects on a subjective "is this atomic?" read.
 PLAN_NOTE_MAX_WORDS: int = 1800
 
+# PLAN-008 over-split floor (FZ 20k9c1a1a1b7c3). The symmetric complement to
+# PLAN-004's over-dense CEILING: a plan that shreds a source into many thin
+# notes fails the eval's note-count ratio just as an over-dense plan fails
+# density. The threshold is the eval's OWN P1 tolerance boundary — the golden
+# targets ~1,600 words/note and P1 accepts up to ratio 1.4, i.e. down to
+# 1,600 / 1.4 ≈ 1,143 words/note — so the max acceptable note count is
+# ceil(measured_total_words / 1143). Setting the floor to the eval boundary
+# (not the skill's 1,500 aim) keeps the gate NO STRICTER than the metric it
+# serves, so a golden-shaped plan never false-fails. Eval run 3 declared 13
+# notes for a 12,813-word source (ceil(12813/1143)=12) → over-split by 1.
+PLAN_OVERSPLIT_MIN_WORDS: int = 1143
+
 
 def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
     """A ``plan`` gate over OBJECTIVE note-atomicity signals (FZ 20k9d4).
@@ -433,6 +446,13 @@ def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]
       ``approx_words`` — density is unverifiable, so the plan must be re-planned
       with real per-note word estimates (keeps IDENT-5 fail-closed; a count,
       not a judgement).
+    - **PLAN-008** the plan is OVER-SPLIT — the enumerated note count exceeds
+      ``ceil(measured_source_words / PLAN_OVERSPLIT_MIN_WORDS)`` (the symmetric
+      complement to PLAN-004's over-dense ceiling). Only the ``planned_notes``
+      shape, and only when ``pages[*].measured_words`` gives a real source total
+      (fail-soft: no measurement → no judgement). The floor is the eval's own
+      P1 ratio boundary, so a golden-shaped plan never false-fails; remedy by
+      CONSOLIDATING thin notes or re-mapping coverage.
 
     A plan_doc with NEITHER a typed graph NOR planned_notes is not judged here
     (no atomicity signal to check) — ``plan_structure_predicate`` already
@@ -477,6 +497,28 @@ def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]
             f"{PLAN_NOTE_MAX_WORDS}-word ceiling can be checked",
         ))
 
+    # PLAN-008 — over-split floor (FZ 20k9c1a1a1b7c3), the complement to PLAN-004.
+    # ONLY the LLM ``planned_notes`` shape (a typed graph plans its own fan-out),
+    # and ONLY when the MEASURED source total is known (fail-soft: no measurement
+    # → no over-split judgement, never a false fail). Over-split = the enumerated
+    # count exceeds ceil(measured_total / PLAN_OVERSPLIT_MIN_WORDS) — the eval's
+    # own P1 ratio boundary, so a golden-shaped plan passes. Remedy: consolidate
+    # thin notes (or re-map coverage), the mirror of PLAN-004's split remedy.
+    if notes and notes_source == "planned_notes":
+        measured_total = _measured_source_words(plan_doc)
+        if measured_total > 0:
+            max_notes = math.ceil(measured_total / PLAN_OVERSPLIT_MIN_WORDS)
+            if len(notes) > max_notes:
+                issues.append(Issue(
+                    Severity.ERROR, "PLAN-008", "planned_notes",
+                    f"plan is over-split: {len(notes)} notes for a "
+                    f"{measured_total}-word source exceeds the max "
+                    f"{max_notes} (measured_total / {PLAN_OVERSPLIT_MIN_WORDS} "
+                    f"words-per-note floor) — re-plan by CONSOLIDATING thin "
+                    f"notes or redistributing the coverage map so each note "
+                    f"carries closer to the ~1,600-word target",
+                ))
+
     issues.extend(_coverage_issues(plan_doc, has_notes=bool(notes)))
     return issues
 
@@ -504,6 +546,30 @@ def _coerce_words(value: object) -> int | None:
             return None
         return n if n >= 0 else None
     return None
+
+
+def _measured_source_words(plan_doc: dict) -> int:
+    """Total MEASURED source words across ``pages[*].measured_words`` — the
+    code-computed ground truth for the PLAN-008 over-split check (FZ
+    20k9c1a1a1b7c3 / the b7c2k1a1b deterministic ledger). Reads the top-level
+    ``pages`` (identify_source merges it in) or a nested ``source_assessment``.
+    Returns ``0`` when no page carries a measured count — the caller then makes
+    NO over-split judgement (fail-soft, never a false fail on an unmeasured
+    plan). Only ``measured_words`` counts; an LLM ``approx_words``/``words``
+    estimate is deliberately ignored (the whole point is a code-measured base)."""
+    pages = plan_doc.get("pages")
+    if not isinstance(pages, list) or not pages:
+        src = plan_doc.get("source_assessment")
+        pages = src.get("pages") if isinstance(src, dict) else None
+    if not isinstance(pages, list):
+        return 0
+    total = 0
+    for pg in pages:
+        if isinstance(pg, dict):
+            n = _coerce_words(pg.get("measured_words"))
+            if n:
+                total += n
+    return total
 
 
 def _coverage_issues(plan_doc: dict, *, has_notes: bool) -> list[Issue]:

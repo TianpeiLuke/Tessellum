@@ -4,6 +4,14 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — PLAN-008 over-split gate: the density-floor complement to PLAN-004's ceiling (Fix 4, FZ 20k9c1a1a1b7c3) — 2026-07-28
+
+Every Bedrock eval run over-split (run 1: 14 notes, run 2: 26/16, run 3: 13) a source the golden made 8 — 12,813 measured words that math-target ~8 notes at the skill's ~1,600-word aim. The plan gates enforced only the over-dense CEILING (PLAN-004, reject ≥1,800 w/note) and word presence (PLAN-007); nothing resisted shredding a source into many thin notes, so the eval's P1 note-count ratio failed on every run with zero gate signal to the revise loop.
+
+- **`plan_atomicity_predicate` gains PLAN-008** (`gates.py`): a plan is over-split when the enumerated `planned_notes` count exceeds `ceil(measured_source_words / PLAN_OVERSPLIT_MIN_WORDS)`. The floor `PLAN_OVERSPLIT_MIN_WORDS=1143` is the eval's OWN P1 tolerance boundary (golden ~1,600 w/note ÷ the 1.4 ratio cap), so the gate is NO STRICTER than the metric it serves — a golden-shaped plan (8 notes) never false-fails. Symmetric to PLAN-004; remedy is CONSOLIDATE (the mirror of PLAN-004's split). `planned_notes` shape only (a typed graph plans its own fan-out); **fail-soft** when no `pages[*].measured_words` is present (no measurement → no judgement, never a false fail).
+- New `_measured_source_words()` helper reads the code-computed ledger (`pages[*].measured_words` from issue 11) — deliberately ignores LLM `approx_words` estimates.
+- +4 tests (`test_composer_plan_atomicity_gate.py`): fires on over-split, silent on golden-shaped, fail-soft unmeasured, typed-graph exempt. Fixed the native-e2e fixture (`_SOURCE_LEAF` excerpt padded to ~3,900 measured words so its 2-note plan is coherent — a 3-word placeholder tripped PLAN-008). Full suite 2041 passed; ruff clean.
+
 ### Composer — a flat plan's `total_notes` is clamped to the enumerated `planned_notes` count (Fix 2, FZ 20k9c1a1a1b7c3) — 2026-07-28
 
 The second Bedrock eval run (FZ 20k9c1a1a1b7c3) and its re-run on the ledger-fixed HEAD both produced a plan whose count fields disagree: `planned_notes`=13 enumerated but `total_notes`=16 (plus dangling `planned_note_count`=18 / `estimated_note_count`=26 re-stated from memory by different steps). Because `_declared_note_count` prefers the `total_notes` scalar (16) while the fan-out projects the 13 enumerated leaves, the P13 execute pre-flight aborts on 16≠13 — a real defect the ledger fix (`2d19ee9`) grounded the *content* of but did not reconcile the *count of*.

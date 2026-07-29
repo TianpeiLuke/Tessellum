@@ -105,11 +105,18 @@ _SUPERSET_RESPONSE = {
 }
 
 
+# PLAN-008 (FZ 20k9c1a1a1b7c3) code-measures the source from the members' inline
+# text (compute_source_ledger), so the excerpt must carry enough real words that
+# the fixture's 2-note plan is NOT over-split: 2 notes needs a measured total
+# above ceil-boundary 2*1143 ≈ 2,286 words. A 3-word placeholder would trip
+# PLAN-008 (2 notes for a 3-word source) and false-fail this contract test.
+_DEMO_EXCERPT = ("Some source content. " * 1300)  # ~2,600 measured words → 2 notes coherent
+
 _SOURCE_LEAF = {
     "id": "demo",
     "source_url": "https://example.com/docs",
     "source_name": "Demo Docs",
-    "members": [{"source_id": "p1", "excerpt": "Some source content.",
+    "members": [{"source_id": "p1", "excerpt": _DEMO_EXCERPT,
                  "source_url": "https://example.com/docs/p1"}],
     "member_count": 1,
     # keys the gate/normalize read

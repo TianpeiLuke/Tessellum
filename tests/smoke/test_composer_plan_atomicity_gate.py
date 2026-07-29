@@ -137,6 +137,52 @@ def test_plan007_exempts_typed_graph_no_words() -> None:
     assert not any(i.rule_id == "PLAN-007" for i in plan_atomicity_predicate(doc))
 
 
+def test_plan008_over_split_fires_when_count_exceeds_measured_target() -> None:
+    # Fix 2/4 (FZ 20k9c1a1a1b7c3): 13 thin notes for a 12,813-word source
+    # (measured) exceeds ceil(12813/1143)=12 → over-split. Mirrors eval run 3.
+    doc = _plan(
+        planned=[{"filename": f"n{i}.md", "building_block": "concept",
+                  "approx_words": 900} for i in range(13)],
+        pages=[{"measured_words": 6822}, {"measured_words": 3072},
+               {"measured_words": 2919}],
+    )
+    p008 = [i for i in plan_atomicity_predicate(doc) if i.rule_id == "PLAN-008"]
+    assert p008, "PLAN-008 must fire on an over-split plan"
+    assert "over-split" in p008[0].message
+
+
+def test_plan008_golden_shaped_count_passes() -> None:
+    # 8 notes for the same 12,813-word source (golden's count) is within
+    # ceil(12813/1143)=12 → no over-split. The gate is no stricter than the
+    # eval's P1 ratio, so a golden-shaped plan never false-fails.
+    doc = _plan(
+        planned=[{"filename": f"n{i}.md", "building_block": "concept",
+                  "approx_words": 1600} for i in range(8)],
+        pages=[{"measured_words": 6822}, {"measured_words": 3072},
+               {"measured_words": 2919}],
+    )
+    assert not any(i.rule_id == "PLAN-008" for i in plan_atomicity_predicate(doc))
+
+
+def test_plan008_fail_soft_when_unmeasured() -> None:
+    # No measured_words anywhere → NO over-split judgement (fail-soft; never a
+    # false fail on an unmeasured plan), even with an absurd note count.
+    doc = _plan(planned=[{"filename": f"n{i}.md", "building_block": "concept",
+                          "approx_words": 500} for i in range(30)])
+    assert not any(i.rule_id == "PLAN-008" for i in plan_atomicity_predicate(doc))
+
+
+def test_plan008_exempts_typed_graph() -> None:
+    # A typed note_intent_graph plans its own fan-out deterministically — the
+    # over-split heuristic is a planned_notes-shape concern only.
+    graph = {"objective_id": "o", "intents": [
+        {"note_id": f"n{i}", "building_block": "concept"} for i in range(30)]}
+    doc = {"plan_path": "p", "plan_text": "x", "total_notes": 30,
+           "note_intent_graph": graph,
+           "pages": [{"measured_words": 3000}]}
+    assert not any(i.rule_id == "PLAN-008" for i in plan_atomicity_predicate(doc))
+
+
 def test_plan006_omitted_section_caught_via_headings_inventory() -> None:
     # Review-fix (CONFIRMED, HIGH): a source section DROPPED from the coverage
     # map entirely (not just an empty target) is caught by set-difference
