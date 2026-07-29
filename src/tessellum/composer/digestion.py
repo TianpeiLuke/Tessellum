@@ -385,6 +385,19 @@ def _build_artifact_store(
     return store
 
 
+def page_plan_artifacts(
+    plan_doc: dict[str, Any], durable_dir: Path
+) -> dict[str, Any]:
+    """J2 (FZ 20k9c1a1a1b7c2k2): the public persist seam for runtime callers —
+    page the FINAL plan-of-record's heavy fields (``_ARTIFACT_KEYS``) to the
+    durable store and return the store dict (an :class:`ArtifactRef` per
+    successfully paged key; the raw in-RAM value where the durable write
+    fail-softed). The runtime executor records the returned refs' digests in
+    ``plan.json`` as ``_artifact_refs`` so promote can prove the bytes it
+    executes are the bytes the human approved."""
+    return _build_artifact_store(plan_doc, durable_dir)
+
+
 def _run_phase_linear(
     skill_name: str,
     *,

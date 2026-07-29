@@ -195,3 +195,131 @@ def test_rehydrate_failsoft_on_odd_shapes() -> None:
     plan_doc = {"members": "junk"}
     _rehydrate_plan_from_source_leaf(plan_doc, {"members": [{"excerpt": "x"}]})
     assert plan_doc["members"] == "junk"  # untouched, no raise
+
+
+# ── J1+J2 (FZ 20k9c1a1a1b7c2k2): one episodic surface + one plan-of-record ───
+
+
+def test_execute_wires_episodic_surface_and_artifact_refs(tmp_path, monkeypatch) -> None:
+    """The REAL DigestionExecutor passes the job-dir episodic seams (runs/,
+    artifacts/) to the pipeline (J1) and persists a refs-bearing plan.json
+    whose digests match the durable of-record bytes (J2)."""
+    import hashlib
+
+    from tessellum.composer.digestion import DigestionResult
+    from tessellum.runtime import executor as executor_mod
+    from tessellum.runtime.executor import DigestionExecutor
+
+    paths, store, source = _runtime(tmp_path)
+    admitted, _ = admit_path(source, paths=paths, store=store)
+    captured: dict = {}
+
+    def _stub_pipeline(**kwargs):
+        captured.update(kwargs)
+        return DigestionResult(
+            completed=True, stopped_at=None, sign_off=None, phases=(),
+            plan_doc={
+                "plan_text": "# Accepted", "total_notes": 1,
+                "planned_notes": [{"filename": "n1"}],
+                "source_content": "evidence",
+            },
+        )
+
+    monkeypatch.setattr(executor_mod, "run_digestion_pipeline", _stub_pipeline)
+    ex = DigestionExecutor(paths=paths, backend=None)  # type: ignore[arg-type]  # never called — pipeline stubbed
+    outcome = Supervisor(
+        store=store, paths=paths, executor=ex,  # type: ignore[arg-type]
+        owner_id="w", rebuild_index=False,
+    ).work_once()
+    assert outcome.status == "complete"
+    art = paths.job_artifacts(admitted.job_id)
+    # J1: the composer's episodic tier lands under the job's own dir.
+    assert captured["runs_dir"] == art / "runs"
+    assert captured["durable_artifact_dir"] == art / "artifacts"
+    # J2: plan.json carries digests matching the durable of-record bytes.
+    plan = json.loads((art / "plan.json").read_text(encoding="utf-8"))
+    refs = plan["_artifact_refs"]
+    payload = (art / "artifacts" / "plan_text").read_bytes()
+    assert hashlib.sha256(payload).hexdigest() == refs["plan_text"]["sha256"]
+    assert payload.decode("utf-8") == "# Accepted"
+    assert "source_content" not in plan  # the projection stays slim
+
+
+def _persisted_plan(tmp_path):
+    """Build the REAL persist artifact set: a plan_doc paged via
+    _slim_plan_with_refs, round-tripped through the exact plan.json
+    serialization (sort_keys=True — dict key order changes vs the store's
+    insertion-ordered bytes, which is what the parse-compare must absorb)."""
+    from tessellum.runtime.executor import _slim_plan_with_refs
+
+    art = tmp_path / "job-art"
+    plan_doc = {
+        "plan_text": "# Plan\nbody",
+        "planned_notes": [{"zeta": 1, "alpha": 2, "filename": "n1"}],
+        "pages": [{"page": "p1", "words": 10}],
+        "total_notes": 1,
+        "source_content": "SRC",
+    }
+    slim = _slim_plan_with_refs(plan_doc, art / "artifacts")
+    reloaded = json.loads(json.dumps(slim, indent=2, sort_keys=True, default=str))
+    return plan_doc, reloaded, art
+
+
+def test_verify_roundtrip_passes_and_pops_refs(tmp_path) -> None:
+    from tessellum.runtime.executor import _verify_plan_artifacts
+
+    plan_doc, reloaded, art = _persisted_plan(tmp_path)
+    _verify_plan_artifacts(reloaded, art)
+    assert "_artifact_refs" not in reloaded  # never leaks into prompts
+    assert reloaded["plan_text"] == plan_doc["plan_text"]
+    assert reloaded["planned_notes"] == plan_doc["planned_notes"]
+
+
+def test_verify_store_tamper_fails_closed(tmp_path) -> None:
+    import pytest
+
+    from tessellum.runtime.executor import DigestionIncompleteError, _verify_plan_artifacts
+
+    _plan_doc, reloaded, art = _persisted_plan(tmp_path)
+    (art / "artifacts" / "plan_text").write_text("TAMPERED", encoding="utf-8")
+    with pytest.raises(DigestionIncompleteError, match="hash mismatch"):
+        _verify_plan_artifacts(reloaded, art)
+
+
+def test_verify_missing_artifact_fails_closed(tmp_path) -> None:
+    import pytest
+
+    from tessellum.runtime.executor import DigestionIncompleteError, _verify_plan_artifacts
+
+    _plan_doc, reloaded, art = _persisted_plan(tmp_path)
+    (art / "artifacts" / "plan_text").unlink()
+    with pytest.raises(DigestionIncompleteError, match="unreadable"):
+        _verify_plan_artifacts(reloaded, art)
+
+
+def test_verify_projection_drift_fails_closed(tmp_path) -> None:
+    import pytest
+
+    from tessellum.runtime.executor import DigestionIncompleteError, _verify_plan_artifacts
+
+    _plan_doc, reloaded, art = _persisted_plan(tmp_path)
+    reloaded["plan_text"] = "# EDITED after approval"
+    with pytest.raises(DigestionIncompleteError, match="drifted"):
+        _verify_plan_artifacts(reloaded, art)
+
+
+def test_verify_restores_missing_inline_from_store(tmp_path) -> None:
+    from tessellum.runtime.executor import _verify_plan_artifacts
+
+    plan_doc, reloaded, art = _persisted_plan(tmp_path)
+    del reloaded["plan_text"]  # the projection lost the field
+    _verify_plan_artifacts(reloaded, art)
+    assert reloaded["plan_text"] == plan_doc["plan_text"]  # store is of-record
+
+
+def test_verify_noop_without_refs(tmp_path) -> None:
+    from tessellum.runtime.executor import _verify_plan_artifacts
+
+    plan_doc = {"plan_text": "# pre-J2 plan"}
+    _verify_plan_artifacts(plan_doc, tmp_path)  # no _artifact_refs → no-op
+    assert plan_doc == {"plan_text": "# pre-J2 plan"}

@@ -119,3 +119,44 @@ def test_status_row_is_read_only(tmp_path: Path) -> None:
 
     _ = _status_row(after, now=999999.0)  # pure projection, no side effect
     assert store.get(job.job_id).state == JobState.ADMITTED
+
+
+# ── J1 (FZ 20k9c1a1a1b7c2k2): the composer-grain episodic view ───────────────
+
+
+def test_composer_status_reads_checkpoints_and_attempts(tmp_path: Path) -> None:
+    import json
+
+    from tessellum.cli.runtime import _composer_status_for_job
+
+    paths = _paths(tmp_path)
+    runs = paths.job_artifacts("job-x") / "runs"
+    (runs / "checkpoints").mkdir(parents=True)
+    (runs / "checkpoints" / "01_plan.json").write_text("{}", encoding="utf-8")
+    (runs / "checkpoints" / "02_augment.json").write_text("{}", encoding="utf-8")
+    (runs / "attempts.jsonl").write_text(
+        "\n".join([
+            json.dumps({"kind": "success", "section_id": "write_plan", "attempt": 1}),
+            json.dumps({"kind": "empty", "section_id": "read_draft", "attempt": 1,
+                        "error": "empty response (stop_reason=end_turn)"}),
+            json.dumps({"kind": "success", "section_id": "read_draft", "attempt": 2}),
+        ]) + "\n",
+        encoding="utf-8",
+    )
+    out = _composer_status_for_job(paths, "job-x")
+    assert out["checkpoint"] == "02_augment"
+    assert out["checkpoints"] == 2
+    assert out["attempts"]["total"] == 3
+    assert out["attempts"]["kinds"] == {"success": 2, "empty": 1}
+    # the last NON-success record is what the operator needs first
+    assert out["attempts"]["last_failure"] == {
+        "step": "read_draft", "kind": "empty", "attempt": 1,
+        "error": "empty response (stop_reason=end_turn)",
+    }
+
+
+def test_composer_status_absent_is_none(tmp_path: Path) -> None:
+    from tessellum.cli.runtime import _composer_status_for_job
+
+    paths = _paths(tmp_path)
+    assert _composer_status_for_job(paths, "no-such-job") is None

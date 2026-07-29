@@ -21,9 +21,11 @@ from tessellum.composer import (
 )
 from tessellum.composer.context_assembler import get_assembler
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
+from tessellum.composer.contracts import ArtifactRef
 from tessellum.composer.digestion import (
     DigestionResult,
     PhaseOutcome,
+    page_plan_artifacts,
     run_digestion_pipeline,
     run_execute_wave,
     slim_plan_doc,
@@ -102,6 +104,88 @@ def _rehydrate_plan_from_source_leaf(plan_doc: dict, source_leaf: dict) -> None:
                 sm = src_members[i]
             if isinstance(sm, dict) and sm.get("excerpt"):
                 dm["excerpt"] = sm["excerpt"]
+
+
+def _slim_plan_with_refs(plan_doc: dict, artifacts_dir: Path) -> dict:
+    """J2 (FZ 20k9c1a1a1b7c2k2): one plan-of-record — build the slim
+    ``plan.json`` projection AND page the final heavy fields to the durable
+    store, recording each successfully paged key's digest under
+    ``_artifact_refs``. ``artifacts/`` holds the of-record bytes; ``plan.json``
+    is the human-readable projection carrying the digests that let
+    :func:`_verify_plan_artifacts` prove, at promote, that the bytes executed
+    are the bytes approved. A fail-softed page (no ref) simply goes
+    unrecorded — that key degrades to today's unverified behaviour."""
+    slim = slim_plan_doc(plan_doc)
+    store = page_plan_artifacts(plan_doc, artifacts_dir)
+    refs = {
+        key: {"sha256": ref.sha256, "size": ref.size}
+        for key, ref in store.items()
+        if isinstance(ref, ArtifactRef)
+    }
+    if refs:
+        slim["_artifact_refs"] = refs
+    return slim
+
+
+def _verify_plan_artifacts(plan_doc: dict, artifact_dir: Path) -> None:
+    """J2 (FZ 20k9c1a1a1b7c2k2): promote's integrity gate — the human approved
+    SPECIFIC plan bytes; refuse to execute anything else.
+
+    A paused run's ``plan.json`` carries ``_artifact_refs`` (key → sha256/size)
+    recorded when :func:`_slim_plan_with_refs` paged the final heavy fields to
+    ``artifacts/<key>``. Verify BOTH directions before executing: the durable
+    file still hashes to the recorded digest (store integrity), and the
+    projection's inline value still matches the durable bytes (projection
+    coherence — strings compare byte-wise; structured values parse-compare, so
+    plan.json's ``sort_keys`` round-trip cannot false-positive against the
+    store's insertion-ordered serialization). A missing inline value is
+    restored from the verified store (the store is the of-record). Any
+    mismatch raises :class:`DigestionIncompleteError` — fail-closed, never
+    fail-soft: executing unverified bytes under a human's approval is worse
+    than not executing. Plans persisted before this change carry no
+    ``_artifact_refs`` → no-op. Mutates ``plan_doc`` in place (pops the refs
+    so they never leak into prompts)."""
+    refs = plan_doc.pop("_artifact_refs", None)
+    if not isinstance(refs, dict) or not refs:
+        return
+    for key, ref in refs.items():
+        target = artifact_dir / "artifacts" / key
+        try:
+            payload = target.read_bytes()
+        except OSError as exc:
+            raise DigestionIncompleteError(
+                f"promote: durable artifact '{key}' unreadable ({exc}) — the "
+                f"approved plan's of-record bytes are gone; refusing to execute"
+            ) from exc
+        digest = hashlib.sha256(payload).hexdigest()
+        expected = ref.get("sha256") if isinstance(ref, dict) else None
+        if digest != expected:
+            raise DigestionIncompleteError(
+                f"promote: durable artifact '{key}' hash mismatch (store "
+                f"{digest[:12]}… != approved {str(expected)[:12]}…) — "
+                f"artifacts/ changed since approval; refusing to execute"
+            )
+        text = payload.decode("utf-8")
+        inline = plan_doc.get(key)
+        if inline is None:
+            try:
+                plan_doc[key] = json.loads(text)
+            except ValueError:
+                plan_doc[key] = text
+            continue
+        if isinstance(inline, str):
+            coherent = inline == text
+        else:
+            try:
+                coherent = json.loads(text) == inline
+            except ValueError:
+                coherent = False
+        if not coherent:
+            raise DigestionIncompleteError(
+                f"promote: plan.json's '{key}' no longer matches the approved "
+                f"of-record artifact — the projection drifted from the store; "
+                f"refusing to execute"
+            )
 
 
 class VaultEffectJournal:
@@ -719,6 +803,15 @@ class DigestionExecutor:
                 # an accepted plan; the supervisor parks the job PAUSED for human
                 # promote/reject.
                 stop_after=policy.stop_after,
+                # J1 (FZ 20k9c1a1a1b7c2k2): one episodic surface — the composer's
+                # checkpoints/, attempts.jsonl and per-step traces land under the
+                # job's own dir (runs/), where `runtime status` reads them at the
+                # same grain the retry ladder acts on. The durable working store
+                # pages under artifacts/ — the job dir IS the run scope on the
+                # service path (latest-write-wins across lease generations is the
+                # of-record semantics; only generations of the SAME job share it).
+                runs_dir=artifact_dir / "runs",
+                durable_artifact_dir=artifact_dir / "artifacts",
             )
         except BaseException:
             self.rollback_uncommitted()
@@ -729,8 +822,14 @@ class DigestionExecutor:
         # not another copy of the source — slim_plan_doc drops source_content +
         # members[].excerpt (already durable in source_leaf.json / the spool),
         # so the same source bytes are no longer serialized a third time.
+        # J2 (FZ 20k9c1a1a1b7c2k2): the dump also pages the final heavy fields
+        # to artifacts/ and records their digests (_artifact_refs), making the
+        # durable store the of-record and plan.json a verifiable projection.
         (artifact_dir / "plan.json").write_text(
-            json.dumps(slim_plan_doc(result.plan_doc), indent=2, sort_keys=True, default=str)
+            json.dumps(
+                _slim_plan_with_refs(result.plan_doc, artifact_dir / "artifacts"),
+                indent=2, sort_keys=True, default=str,
+            )
             + "\n",
             encoding="utf-8",
         )
@@ -767,6 +866,10 @@ class DigestionExecutor:
             )
         plan_doc = json.loads(plan_path.read_text(encoding="utf-8"))
         source_leaf = json.loads(source_leaf_path.read_text(encoding="utf-8"))
+        # J2 (FZ 20k9c1a1a1b7c2k2): fail-closed integrity gate BEFORE anything
+        # executes under the human's approval — prove plan.json still matches
+        # the durable of-record artifacts it was projected from.
+        _verify_plan_artifacts(plan_doc, artifact_dir)
         # Re-hydrate the source bytes slim_plan_doc dropped, so execute has
         # the full leaf context (source_content + members[].excerpt) it needs.
         _rehydrate_plan_from_source_leaf(plan_doc, source_leaf)
@@ -814,6 +917,9 @@ class DigestionExecutor:
                 related_notes_db=(
                     self.paths.index_db if self.paths.index_db.exists() else None
                 ),
+                # J1 (FZ 20k9c1a1a1b7c2k2): the promoted wave writes to the same
+                # episodic surface (attempts.jsonl / traces) as the paused run.
+                runs_dir=artifact_dir / "runs",
             )
         except BaseException:
             self.rollback_uncommitted()

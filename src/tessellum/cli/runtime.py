@@ -308,6 +308,52 @@ def _leaf_status_for_job(paths: RuntimePaths, job_id: str) -> dict | None:
     return {"counts": manifest.status_counts(), "leaves": leaves}
 
 
+def _composer_status_for_job(paths: RuntimePaths, job_id: str) -> dict | None:
+    """J1 (FZ 20k9c1a1a1b7c2k2): the composer-grain episodic view — the same
+    surface the executor writes under the job dir (``runs/``): the latest
+    plan-of-record checkpoint (which phase fold the run last completed) and the
+    attempts-journal tail (per-attempt retry-ladder evidence). This is what
+    turns a silent multi-phase wedge (the third eval run's ~65-minute
+    credential wall) into a live, attempt-grain diagnosis. Read-only and
+    fail-soft: absent files (a pre-J1 job, or a run before its first fold) →
+    ``None``."""
+    runs = paths.job_artifacts(job_id) / "runs"
+    out: dict = {}
+    try:
+        checkpoints = sorted(p.name for p in (runs / "checkpoints").glob("*.json"))
+    except OSError:
+        checkpoints = []
+    if checkpoints:
+        out["checkpoint"] = checkpoints[-1].rsplit(".", 1)[0]
+        out["checkpoints"] = len(checkpoints)
+    try:
+        lines = (runs / "attempts.jsonl").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        lines = []
+    if lines:
+        kinds: dict = {}
+        last_failure = None
+        for line in lines:
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            kind = str(rec.get("kind"))
+            kinds[kind] = kinds.get(kind, 0) + 1
+            if kind != "success":
+                last_failure = {
+                    "step": rec.get("section_id"),
+                    "kind": kind,
+                    "attempt": rec.get("attempt"),
+                    "error": (str(rec.get("error"))[:120]
+                              if rec.get("error") is not None else None),
+                }
+        out["attempts"] = {"total": len(lines), "kinds": kinds}
+        if last_failure is not None:
+            out["attempts"]["last_failure"] = last_failure
+    return out or None
+
+
 def _status_row(job: Job, now: float) -> dict:
     """A compact per-job status row: phase (state), age, lease + expiry flag."""
     lease = job.lease
@@ -334,6 +380,7 @@ def _render_status(paths: RuntimePaths, store: RuntimeStore, args: argparse.Name
             return {"error": f"job not found: {args.job}"}
         row = _status_row(job, now)
         row["leaves"] = _leaf_status_for_job(paths, job.job_id)
+        row["composer"] = _composer_status_for_job(paths, job.job_id)
         row["events"] = [
             {"seq": e.sequence, "type": e.event_type, "at": e.at, "detail": e.detail}
             for e in store.events(job.job_id, limit=args.limit)
@@ -363,6 +410,19 @@ def _print_status_human(snapshot: dict) -> None:
         if lease_owner is not None:
             flag = "  EXPIRED" if snapshot["lease_expired"] else ""
             print(f"  lease: {lease_owner}  expires_in={snapshot['lease_expires_in']}s{flag}")
+        comp = snapshot.get("composer")
+        if comp:
+            att = comp.get("attempts") or {}
+            bits = []
+            if comp.get("checkpoint"):
+                bits.append(f"checkpoint={comp['checkpoint']} ({comp['checkpoints']} folds)")
+            if att:
+                bits.append(f"attempts={att['total']} {att['kinds']}")
+            print("  composer: " + "  ".join(bits))
+            failure = att.get("last_failure")
+            if failure:
+                print(f"    last-failure: [{failure['kind']}] {failure['step']}"
+                      f"  attempt={failure['attempt']}  {failure['error'] or ''}")
         leaves = snapshot.get("leaves")
         if leaves is None:
             print("  leaves: (none yet — job is pre-execute)")
