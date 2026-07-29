@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Skills — `identify_source` goes measured-by-code: transcribe the ledger, no tool role-play (J3 finding 1, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
+
+The FIRST live runtime digestion (J3, `converge` profile, Anthropic API) dead-lettered in minutes — and the new J1 attempts journal diagnosed it from outside the process: `identify_source` instructed the model to "read the source with the appropriate reader", but the M0 single-doc service leaf carries only a `file://` URI and the composer backend has NO tools, so the model role-played a fake `<tool_call>read_file</tool_call>` transcript instead of the schema'd JSON — deterministically, through every retry and job attempt. The five eval-driver runs never exposed this (they fed member excerpts inline). Fix at the class level: the step now receives the code-computed MEASURED SOURCE LEDGER (`{{leaf.pages}}` — available BEFORE the plan phase) and the inline SOURCE CONTENT (`{{leaf.source_excerpt}}` — the A3.1 field, assembler-windowed), and is instructed to TRANSCRIBE the ledger verbatim into `pages[]` (never re-measure) and never emit tool role-play. The E-era "read every page / watch the underestimation failure mode" tool language is gone — measurement is code's job now on every path.
+
 ### Runtime — `max_review_rounds` policy-gated on the service path (J3 plumbing, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
 
 `RuntimePolicy.max_review_rounds` (default 0 = single-pass, byte-identical) now threads into the executor's pipeline call — before this the P15 review-revise loop, the demonstrated cure for plan over-splitting (the API runs' 17→16→8 convergence), was unreachable under the supervisor. The J3 convergence run is the first consumer. +1 assertion in the executor capture test. Follow-up in the same batch: the `converge` policy profile (`max_review_rounds=2`) and `runtime submit --profile`, so a convergence job is one CLI submit away on any backend.

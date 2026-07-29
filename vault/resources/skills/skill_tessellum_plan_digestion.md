@@ -98,22 +98,21 @@ CORPUS MEMBERS (a non-empty `members` list means a multi-document bundle; `membe
 - member_count: {{leaf.member_count}}
 - members: {{leaf.members}}
 
+MEASURED SOURCE LEDGER (code-computed from the actual source bytes; the ground truth for every figure in this step):
+{{leaf.pages}}
+
+SOURCE CONTENT (provided inline — you have NO tools and there is nothing to fetch; a `file://` source_url is already fully included below):
+{{leaf.source_excerpt}}
+
 Follow this procedure:
 
-- **If `members` is a non-empty list** (a multi-document bundle), you are planning a *corpus*, not a single page: treat each member's excerpt as one source document, measure them together, and assess the aggregate volume across ALL members to decide the plan shape. A truncated excerpt means the member is larger than shown — weight it by its `full_char_count`, not the excerpt length. Otherwise (`member_count: 1`, empty `members`), plan the single source at `source_url` as before.
-
-Read the source end to end, then measure it — do NOT estimate from memory.
-
-- **Determine source type** and the right read path: authenticated internal sites (a wiki, a docs portal, a shared design doc, code-repo docs) are read with the appropriate authenticated-site reader; public URLs with a web fetch; local files/PDFs with the file reader.
-- **Read the root page and every leaf page.** Extract linked sub-pages and read each one; an unread page is an unmeasurable page.
-- **MEASURE content size per page — not estimate.** For each page record measured word count (from the actual tool output), code-block count (``` pairs / 2), and the list of H2/H3 headings. Record these in a Source table (Page, URL, Measured Words, Code Blocks, Headings).
-- **Watch the underestimation failure mode.** Agents routinely underestimate page size by 50–70% when working from training knowledge instead of a real read. If most pages read as <1500 words, or the whole multi-page source totals <5000 words, the measurements are almost certainly wrong — go back and actually read every page.
+- You are a single-shot model with NO tools. NEVER emit `<tool_call>` / `<tool_response>` blocks, and never role-play fetching a URL or reading a file — everything this step needs is provided above.
+- **Transcribe the MEASURED SOURCE LEDGER verbatim into your `pages[]` output.** Its rows already carry `url`, `measured_words`, `code_blocks`, and the complete verbatim `headings` list, measured by code from the real bytes — do NOT re-measure, re-count, or estimate any of these figures; `total_words` is the sum of the ledger rows' `measured_words`.
+- **If `members` is a non-empty list** (a multi-document bundle), you are planning a *corpus*, not a single page: the ledger has one row per member; assess the aggregate volume across ALL members to decide the plan shape. Otherwise (`member_count: 1`, empty `members`), plan the single source at `source_url` from the SOURCE CONTENT above.
+- **Determine source type** from `source_url` and the content itself: wiki | docs_portal | shared_doc | code_repo_docs | external | local_file.
 - **Assess total volume to decide the plan shape.** ≤10,000 words (≤15 notes) → single plan. 10,000–30,000 words (15–30 notes) → single plan with phased execution. >30,000 words (>30 notes) → divide-and-conquer: a pure-index master plan plus self-contained sub-plans, each producing 4–10 notes.
 
-Emit a structured `source_assessment` (source type, per-page measured sizes, total words, estimated note count, and the plan-shape decision) for the downstream steps to build on. Read the root page AND every leaf page,
-MEASURE each page's word count / code-block count / headings from the
-actual tool output (never estimate from memory), then decide the plan
-shape by total volume.
+Emit a structured `source_assessment` (source type, the TRANSCRIBED per-page measured sizes, total words, estimated note count, and the plan-shape decision) for the downstream steps to build on.
 
 Return ONLY the JSON object specified by expected_output_schema; no
 prose, no code fences.
