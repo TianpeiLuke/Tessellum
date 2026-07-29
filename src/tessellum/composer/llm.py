@@ -192,12 +192,30 @@ class AnthropicBackend:
         if client is None:
             try:
                 import anthropic  # type: ignore[import-not-found]
+                import httpx  # anthropic's own transport dep
             except ImportError as e:  # pragma: no cover — environment-dep
                 raise ImportError(
                     "AnthropicBackend requires the `anthropic` package. "
                     "Install with: pip install tessellum[agent]"
                 ) from e
-            self.client = anthropic.Anthropic(api_key=api_key)
+            # J3 finding 5 (FZ 20k9c1a1a1b7c2k2): the first live runtime wave
+            # wedged for 60+ minutes on FOUR silent stalled HTTPS streams —
+            # ESTABLISHED sockets, no data, no timeout firing, every worker
+            # thread parked, zero CPU (E7's API-side sibling: an unattended
+            # run must never be able to hang unboundedly on one request).
+            # Explicit httpx timeouts bound every phase of a request — read
+            # is PER CHUNK GAP on a stream, so a healthy multi-minute
+            # generation is unaffected while a silent stream raises within
+            # 300s and the retry ladder (which owns ALL retry semantics —
+            # hence max_retries=0, the SDK's hidden internal retries would
+            # double the blip-rider's budget) classifies + retries it.
+            self.client = anthropic.Anthropic(
+                api_key=api_key,
+                max_retries=0,
+                timeout=httpx.Timeout(
+                    connect=30.0, read=300.0, write=60.0, pool=60.0
+                ),
+            )
         else:
             self.client = client
         self.model = model

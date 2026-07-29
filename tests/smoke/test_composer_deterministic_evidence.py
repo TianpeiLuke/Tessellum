@@ -533,3 +533,29 @@ def test_figure_match_absorbs_thousands_separators():
         "plan_text": "Summary: the source measures 12,813 words in total.",
     }
     assert _figures_all_present(doc)
+
+
+def test_anthropic_client_bounded_timeouts_and_no_sdk_retries(monkeypatch):
+    """J3 finding 5: the client must carry explicit httpx timeouts (a silent
+    stalled stream raises within the read gap instead of wedging the wave
+    forever) and max_retries=0 (the ladder owns retry semantics)."""
+    import sys
+    import types
+
+    captured = {}
+
+    fake = types.ModuleType("anthropic")
+
+    def _ctor(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    fake.Anthropic = _ctor
+    monkeypatch.setitem(sys.modules, "anthropic", fake)
+
+    from tessellum.composer.llm import AnthropicBackend
+
+    AnthropicBackend(model="claude-sonnet-4-6", api_key="k")
+    assert captured["max_retries"] == 0
+    t = captured["timeout"]
+    assert t.read == 300.0 and t.connect == 30.0
