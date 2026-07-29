@@ -1387,6 +1387,19 @@ def run_digestion_pipeline(
     if code_ledger:
         plan_doc["pages"] = code_ledger
         plan_doc["_pages_code_measured"] = True
+        # Issue 15 (FZ 20k9c1a1a1b7c2k1a1b1a): prose bands do not bind — give
+        # the PLANNER the computed count band (mechanism 2 reaching its last
+        # producer). Derived from the same arithmetic the PLAN-004/PLAN-008
+        # gates enforce, so round 0 plans inside what sign-off will accept.
+        total = sum(pg.get("measured_words", 0) for pg in code_ledger)
+        if total > 0:
+            lo = max(1, -(-total // PLAN_NOTE_MAX_WORDS))
+            hi = max(lo, -(-total // PLAN_OVERSPLIT_MIN_WORDS))
+            plan_doc["note_count_band"] = (
+                f"{lo}..{hi} notes (measured {total} words; density ceiling "
+                f"{PLAN_NOTE_MAX_WORDS}, over-split floor {PLAN_OVERSPLIT_MIN_WORDS} "
+                f"— the PLAN-004/PLAN-008 gates enforce this band at sign-off)"
+            )
     # M0 review (medium): a corpus_wide {{leaf.X}} that now resolves (the
     # _corpus_leaf fix) can render a large value — e.g. {{leaf.members}} /
     # {{leaf.source_refs}} — that, with NO assembler, trips the executor's

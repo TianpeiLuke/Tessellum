@@ -111,6 +111,12 @@ cancellation primitive. A late result is discarded.
 MAX_TRUNCATION_RETRIES: int = 2
 """Max times a `truncated` step escalates its max_tokens and retries. Separate
 from MAX_LOGIC_RETRIES — truncation is capacity, not a logic defect."""
+
+# Issue 13: an empty response signals a transient service window — identical
+# errors are the blip's NATURE, so they are exempt from the same-error
+# short-circuit and retried on their own bounded budget with forced backoff.
+MAX_EMPTY_RETRIES: int = 3
+
 DEFAULT_TRUNCATION_BASE_TOKENS: int = 16000
 """Base to escalate from when a truncating step declared no explicit max_tokens
 (the LLMRequest default)."""
@@ -454,6 +460,26 @@ def execute_step(
         raise InterruptedError("pipeline cancelled before materialization")
 
     error: str | None = None
+
+    # Issue 13 (FZ 20k9c1a1a1b7c2k1a1b1a): an EMPTY response is a transient
+    # service condition (verified non-prompt-deterministic by reproduction —
+    # the identical r5 prompt succeeds), NOT a prompt/schema defect. Diagnose
+    # it FIRST with the stop_reason attached, so it never masquerades as
+    # "response is not valid JSON" and the retry wrapper can ride the blip
+    # with backoff instead of same-error short-circuiting inside it.
+    if not response.content.strip():
+        stop = response.metadata.get("stop_reason")
+        return StepResult(
+            section_id=step.section_id,
+            leaf_id=leaf.get("_id"),
+            response=response,
+            materialized=MaterializedOutput(
+                structured={}, notes=f"empty response (stop_reason={stop})"
+            ),
+            elapsed_ms=response.elapsed_ms,
+            error=f"empty response (stop_reason={stop})",
+            error_class="transient",
+        )
 
     # Chat models habitually wrap a JSON/markdown response in an outer
     # ```` ```json … ``` ```` fence, which makes json.loads fail at char 0 and
@@ -844,6 +870,7 @@ def execute_step_with_retry(
     cancellation_check: Callable[[], bool] | None = None,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
+    attempt_recorder: Callable[[dict], None] | None = None,
 ) -> StepResult:
     """Retry-budgeted wrapper around :func:`execute_step`.
 
@@ -895,6 +922,34 @@ def execute_step_with_retry(
     history: list[str] = []  # error-message hashes, in attempt order
     kind_history: list[str] = []
     logic_attempts = 0
+    empty_retries = 0
+
+    def _record(kind: str, result_or_none, err: str | None) -> None:
+        # Issue 14 (FZ 20k9c1a1a1b7c2k1a1b1a): per-ATTEMPT episodic capture —
+        # the record must be as fine-grained as the control flow that acts on
+        # it (the retry ladder decides per attempt; pre-fix it hashed each
+        # attempt's evidence then discarded it). Fail-soft: recording must
+        # never fail the step.
+        if attempt_recorder is None:
+            return
+        try:
+            resp = getattr(result_or_none, "response", None)
+            meta = (resp.metadata if resp is not None else {}) or {}
+            content = resp.content if resp is not None else ""
+            attempt_recorder({
+                "section_id": step.section_id,
+                "leaf_id": leaf.get("_id"),
+                "attempt": len(kind_history),
+                "kind": kind,
+                "error": err,
+                "response_chars": len(content),
+                "content_head": content[:2000],
+                "stop_reason": meta.get("stop_reason"),
+                "output_tokens": meta.get("output_tokens"),
+                "input_tokens": meta.get("input_tokens"),
+            })
+        except Exception:
+            pass
     # P16: escalated response budget for a truncation-retry. None until a
     # `truncated` failure bumps it; then threaded into execute_step so the retry
     # asks for more tokens instead of replaying the same too-small cap.
@@ -974,6 +1029,7 @@ def execute_step_with_retry(
             crash_recoveries += 1
             kind_history.append("crash")
             err = f"{type(e).__name__}: {e}"
+            _record("crash", None, err)
             history.append(_hash_error(err))
             last_error = err
             if crash_recoveries > max_crash_recoveries:
@@ -1036,6 +1092,7 @@ def execute_step_with_retry(
         if result.error is None:
             # Success — record the success attempt and return.
             kind_history.append("success")
+            _record("success", result, None)
             return StepResult(
                 section_id=result.section_id,
                 leaf_id=result.leaf_id,
@@ -1086,6 +1143,33 @@ def execute_step_with_retry(
                 )
             continue
 
+        # Issue 13 — an EMPTY response rides the blip on its own bounded
+        # budget: identical empty errors are the transient window's nature, so
+        # they are EXEMPT from the same-error short-circuit (which killed r5
+        # inside a blip in seconds), and backoff is FORCED even when the
+        # wrapper's backoff flag is off — waiting is the only correct move.
+        if (
+            result.error
+            and result.error.startswith("empty response")
+            and empty_retries < MAX_EMPTY_RETRIES
+        ):
+            empty_retries += 1
+            kind_history.append("empty")
+            _record("empty", result, result.error)
+            last_error = result.error
+            last_response = result.response
+            last_materialized = result.materialized
+            last_elapsed_ms = result.elapsed_ms
+            sleep_fn(
+                full_jitter_backoff(
+                    empty_retries,
+                    base=max(backoff_base, 1.0),
+                    cap=backoff_cap,
+                    rng=backoff_rng,
+                )
+            )
+            continue
+
         # P16 — TRUNCATION is an output-SIZE condition, not a logic/prompt
         # defect: retrying with the same cap just re-truncates identically. So a
         # `truncated` result escalates max_tokens (2×, capped) and retries on its
@@ -1095,6 +1179,7 @@ def execute_step_with_retry(
         if result.error_class == "truncated" and truncation_retries < MAX_TRUNCATION_RETRIES:
             truncation_retries += 1
             kind_history.append("truncated")
+            _record("truncated", result, result.error)
             last_error = result.error
             last_response = result.response
             last_materialized = result.materialized
@@ -1106,6 +1191,7 @@ def execute_step_with_retry(
         # Logic failure (schema / materializer / contract).
         logic_attempts += 1
         kind_history.append("logic")
+        _record("logic", result, result.error)
         err = result.error
         history.append(_hash_error(err))
         last_error = err

@@ -4,6 +4,15 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — r5's three issues fixed: empty-response triage, the attempts journal, the computed note-count band (issues 13/14/15, FZ 20k9c1a1a1b7c2k1a1b1a) — 2026-07-28
+
+The r5 validation run's post-mortem, fixed at the class level. Issue 13's root cause was determined by REPRODUCTION before coding: the identical revise-round prompt succeeds cleanly on both the raw and full-executor paths — the empty responses were a transient API window, which the same-error short-circuit then hard-terminated INSIDE the blip (3 identical attempts in seconds).
+
+- **Issue 13 — empty responses are first-class and blip-ridden** (`executor.py`). `execute_step` diagnoses an empty response BEFORE any parse (`"empty response (stop_reason=X)"`, `error_class="transient"`) so it never masquerades as "not valid JSON"; the retry wrapper gives empties their OWN bounded budget (`MAX_EMPTY_RETRIES=3`) with FORCED full-jitter backoff (even when `backoff=False` — waiting is the only correct move) and EXEMPTS them from the same-error short-circuit, since identical errors are the blip's nature. A flaky-backend test proves the r5 scenario now completes once the blip clears.
+- **Issue 14 — the attempts journal** (`executor.py`, `scheduler.py`). The episodic tier's grain now matches the control flow's: every retry-ladder attempt (`empty`/`truncated`/`logic`/`crash`/`success`) is appended to `<runs_dir>/attempts.jsonl` with `{content_head, stop_reason, output/input_tokens, error}` — fail-soft, `None` runs_dir byte-identical. Pre-fix the ladder HASHED each attempt's evidence for the same-error check and then discarded it, keeping only the hash — which is why r5's incident was undiagnosable. The design rule this encodes: the episodic record must be at least as fine-grained as the control flow that acts on it.
+- **Issue 15 — the computed note-count band** (`digestion.py`, plan skill). Prose bands do not bind (r5 planned 17 notes against a measured 8..12): the driver now derives the band from the code ledger with the SAME arithmetic the PLAN-004/PLAN-008 gates enforce and injects it as `{{leaf.note_count_band}}` into the planner — mechanism 2 (symmetric grounding) reaching its last producer; round 0 plans inside what sign-off will accept. Plus E1.4: `write_plan` now mandates the CANONICAL section headings the review's deterministic scan checks (chasing P7 to 14/14).
+- +4 tests (31 total): the blip-rider (3 empties → success, forced backoff, journal kinds), terminal clarity on budget exhaustion, the e2e journal, the band computation. Full suite 2060 passed, ruff clean.
+
 ### Composer — the deterministic-evidence E-phases: full exhibits, the ledger as artifact, hardened guard domains (E1–E3, FZ 20k9c1a1a1b7c2k1a1b1) — 2026-07-28
 
 Implements the deterministic-evidence design's remaining coverage, adversarially reviewed (9 findings — including a CRITICAL where the first cut's section-claim drop domain could override the orphan evidence and fabricate approvals — all fixed before commit; the every-pivot-ships-a-latent-defect pattern held a fifth time).

@@ -374,3 +374,124 @@ def test_ledger_synthesized_from_source_content(tmp_path: Path) -> None:
     assert pages[0]["source_id"] == "solo-doc"
     assert pages[0]["measured_words"] == len(text.split())
     assert result.plan_doc.get("_pages_code_measured") is True
+
+
+# ── issues 13/14/15 (FZ 20k9c1a1a1b7c2k1a1b1a) ──────────────────────────────
+
+
+class _FlakyEmptyBackend:
+    """Returns empty content N times, then a valid payload — the r5 blip."""
+
+    backend_id = "flaky-empty"
+
+    def __init__(self, empties: int, payload: str) -> None:
+        self.empties = empties
+        self.payload = payload
+        self.calls = 0
+
+    def call(self, request):
+        from tessellum.composer.llm import LLMResponse
+
+        self.calls += 1
+        content = "" if self.calls <= self.empties else self.payload
+        return LLMResponse(
+            content=content, elapsed_ms=1.0, backend_id=self.backend_id,
+            metadata={"stop_reason": "end_turn", "output_tokens": len(content)},
+        )
+
+
+def _one_step_skill(tmp_path: Path) -> Path:
+    from test_composer_episodic_hardening import _write_phase_skill
+
+    sd = tmp_path / "skills"
+    sd.mkdir(exist_ok=True)
+    _write_phase_skill(sd, "skill_solo", output_key="out", required=["ok"])
+    return sd / "skill_solo.md"
+
+
+def test_empty_response_rides_the_blip(tmp_path: Path) -> None:
+    """Issue 13: empties are diagnosed first-class (stop_reason attached),
+    EXEMPT from the same-error short-circuit, retried with forced backoff —
+    and the step SUCCEEDS once the blip clears (r5 would have completed)."""
+    from tessellum.composer import compile_skill
+    from tessellum.composer.executor import execute_step_with_retry
+
+    compiled = compile_skill(_one_step_skill(tmp_path))
+    backend = _FlakyEmptyBackend(empties=3, payload=json.dumps({"ok": True}))
+    sleeps: list[float] = []
+    attempts: list[dict] = []
+    result = execute_step_with_retry(
+        compiled.steps[0], leaf={"_id": "corpus"}, upstream={},
+        backend=backend, vault_root=tmp_path / "v", dry_run=True,
+        sleep_fn=sleeps.append, attempt_recorder=attempts.append,
+    )
+    assert result.error is None
+    assert backend.calls == 4  # 3 empties ridden + 1 success
+    assert len(sleeps) == 3 and all(s > 0 for s in sleeps)  # forced backoff
+    kinds = [a["kind"] for a in attempts]
+    assert kinds == ["empty", "empty", "empty", "success"]
+    # Issue 14: the journal captured stop_reason for every attempt
+    assert all(a["stop_reason"] == "end_turn" for a in attempts)
+
+
+def test_empty_budget_exhaustion_is_terminal_and_clear(tmp_path: Path) -> None:
+    from tessellum.composer import compile_skill
+    from tessellum.composer.executor import execute_step_with_retry
+
+    compiled = compile_skill(_one_step_skill(tmp_path))
+    backend = _FlakyEmptyBackend(empties=99, payload="{}")
+    result = execute_step_with_retry(
+        compiled.steps[0], leaf={"_id": "corpus"}, upstream={},
+        backend=backend, vault_root=tmp_path / "v", dry_run=True,
+        sleep_fn=lambda s: None,
+    )
+    assert result.error and "empty response" in result.error
+    assert "stop_reason=end_turn" in result.error  # self-explanatory
+
+
+def test_attempts_journal_written_via_pipeline(tmp_path: Path) -> None:
+    """Issue 14 e2e: a runs_dir pipeline run writes attempts.jsonl."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    runs = tmp_path / "runs"
+    result = run_digestion_pipeline(
+        skills_dir=sd,
+        source_leaf={"id": "demo", "total_notes": 1, "member_count": 1,
+                     "members": [{"source_id": "m", "excerpt": "# H\nw"}],
+                     "section_coverage_map": [{"source_section": "H", "maps_to_note": "n.md"}]},
+        backend=MockBackend(default=json.dumps({
+            "plan_path": "p.md", "plan_text": "# P\n1",
+            "ready": True, "failures": [],
+            "output_path": "n.md", "body_markdown": "# N\nb", "total_notes": 1,
+            "section_coverage_map": [{"source_section": "H", "maps_to_note": "n.md"}],
+        })),
+        vault_root=tmp_path / "vault",
+        runs_dir=runs,
+    )
+    assert result.completed
+    lines = (runs / "attempts.jsonl").read_text().splitlines()
+    assert lines and all(json.loads(x)["kind"] for x in lines)
+
+
+def test_note_count_band_computed_from_ledger(tmp_path: Path) -> None:
+    """Issue 15: the driver injects the computed band the gates enforce."""
+    sd = tmp_path / "skills"
+    sd.mkdir()
+    _synthetic_pipeline(sd)
+    text = "# H\n\n" + "word " * 3600  # 3602 words -> band 3..4
+    result = run_digestion_pipeline(
+        skills_dir=sd,
+        source_leaf={"id": "demo", "total_notes": 1, "member_count": 1,
+                     "members": [{"source_id": "m", "excerpt": text}]},
+        backend=MockBackend(default=json.dumps({
+            "plan_path": "p.md", "plan_text": "# P\n3602",
+            "ready": True, "failures": [],
+            "output_path": "n.md", "body_markdown": "# N\nb", "total_notes": 1,
+            "section_coverage_map": [{"source_section": "H", "maps_to_note": "n.md"}],
+        })),
+        vault_root=tmp_path / "vault",
+    )
+    band = result.plan_doc.get("note_count_band", "")
+    assert band.startswith("3..4 notes")
+    assert "3602 words" in band

@@ -58,6 +58,28 @@ from tessellum.composer.manifest import ArtifactRecord, AttemptRecord, Manifest
 from tessellum.composer.materializer import MaterializedOutput
 
 
+def _make_attempt_recorder(runs_dir: Path | None):
+    """Issue 14 (FZ 20k9c1a1a1b7c2k1a1b1a): the per-attempt episodic journal —
+    every retry-ladder attempt appended as one JSONL line under
+    ``<runs_dir>/attempts.jsonl`` (fail-soft; ``None`` runs_dir → no journal,
+    byte-identical). The r5 empty-response incident was undiagnosable because
+    only TERMINAL step records were kept; this captures the evidence the
+    ladder acts on, at the grain it acts on."""
+    if runs_dir is None:
+        return None
+    path = Path(runs_dir) / "attempts.jsonl"
+
+    def _append(rec: dict) -> None:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(rec, default=str) + "\n")
+        except Exception:
+            pass
+
+    return _append
+
+
 def _corpus_leaf(leaves: list[dict]) -> dict:
     """Build the synthetic leaf a ``corpus_wide`` step resolves ``{{leaf.X}}``
     against.
@@ -291,6 +313,7 @@ def run_pipeline(
                 cancellation_check=cancellation_check,
                 effect_guard=effect_guard,
                 effect_recorder=effect_recorder,
+                attempt_recorder=_make_attempt_recorder(runs_dir),
             )
             step_results.append(result)
             if breaker is not None:
@@ -961,6 +984,7 @@ def run_pipeline_dynamic(
             cancellation_check=cancellation_check,
             effect_guard=effect_guard,
             effect_recorder=effect_recorder,
+            attempt_recorder=_make_attempt_recorder(runs_dir),
         )
 
         # Per-session close-gate. Only when a close_gate is
