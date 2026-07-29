@@ -111,7 +111,7 @@ Tessellum rests on four foundations — remove any one and the system stops work
 
 ## Architecture
 
-![Tessellum 1.12.0 architecture showing durable Composer artifacts, deterministic verification gates, runtime orchestration, semantic certification, incremental indexing, hybrid retrieval, and vault authority](docs/assets/tessellum_architecture.png)
+![Tessellum 1.12.0 architecture showing policy-driven runtime supervision, episodic Composer memory, deterministic verification gates, semantic certification, incremental indexing, hybrid retrieval, and vault authority](docs/assets/tessellum_architecture.png)
 
 *Source-level view of Tessellum's write and retrieval paths. Solid arrows are active runtime paths; dashed arrows identify opt-in primitives or integrations that are implemented but not wired into the automatic runtime end to end.*
 
