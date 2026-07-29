@@ -75,6 +75,35 @@ class DigestionIncompleteError(RuntimeError):
         return cls(f"digestion stopped at {stopped}: {decision}")
 
 
+def _rehydrate_plan_from_source_leaf(plan_doc: dict, source_leaf: dict) -> None:
+    """Re-hydrate the source bytes ``slim_plan_doc`` dropped from a persisted
+    ``plan.json`` (T3 promote, FZ 20k9d6a): ``source_content`` AND every
+    ``members[].excerpt`` — a multi-member bundle leaf's writers read
+    per-member excerpts via ``_project_planned_notes_to_leaves``, so a
+    promoted multi-member job would otherwise dispatch writers with EMPTY
+    source (the silent ungrounded-notes class). Join by ``source_id``/
+    ``name`` with a positional fallback; never overwrites bytes the plan_doc
+    still carries. Mutates ``plan_doc`` in place."""
+    if "source_content" not in plan_doc and "source_content" in source_leaf:
+        plan_doc["source_content"] = source_leaf["source_content"]
+    src_members = source_leaf.get("members")
+    doc_members = plan_doc.get("members")
+    if isinstance(src_members, list) and isinstance(doc_members, list):
+        by_id = {
+            (m.get("source_id") or m.get("name")): m
+            for m in src_members
+            if isinstance(m, dict) and (m.get("source_id") or m.get("name"))
+        }
+        for i, dm in enumerate(doc_members):
+            if not isinstance(dm, dict) or dm.get("excerpt"):
+                continue
+            sm = by_id.get(dm.get("source_id") or dm.get("name"))
+            if sm is None and i < len(src_members) and isinstance(src_members[i], dict):
+                sm = src_members[i]
+            if isinstance(sm, dict) and sm.get("excerpt"):
+                dm["excerpt"] = sm["excerpt"]
+
+
 class VaultEffectJournal:
     """Capture pre-write vault bytes so uncommitted work can be rolled back.
 
@@ -738,10 +767,9 @@ class DigestionExecutor:
             )
         plan_doc = json.loads(plan_path.read_text(encoding="utf-8"))
         source_leaf = json.loads(source_leaf_path.read_text(encoding="utf-8"))
-        # Re-hydrate the source bytes slim_plan_doc dropped, so execute has the
-        # full leaf context (source_content + members[].excerpt) it needs.
-        if "source_content" not in plan_doc and "source_content" in source_leaf:
-            plan_doc["source_content"] = source_leaf["source_content"]
+        # Re-hydrate the source bytes slim_plan_doc dropped, so execute has
+        # the full leaf context (source_content + members[].excerpt) it needs.
+        _rehydrate_plan_from_source_leaf(plan_doc, source_leaf)
 
         manifest = Manifest.load(artifact_dir / "manifest.json")
         budget = RunBudget(

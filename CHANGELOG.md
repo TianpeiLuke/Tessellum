@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Runtime — T3 promote re-hydrates `members[].excerpt` too (the slim-plan ⨝ source-leaf join completed) — 2026-07-28
+
+An alignment check between the T3 control plane (`c9cf0e8`) and the A1.5 slim `plan.json` found `resume_execute` re-hydrating only `source_content` while its docstring promised `members[].excerpt` as well — a promoted MULTI-MEMBER job (a bundle leaf) would have dispatched its writers with empty per-member source (the silent ungrounded-notes class), since `_project_planned_notes_to_leaves` reads `members[].excerpt`. Extracted the re-hydration into `_rehydrate_plan_from_source_leaf` (source_content + per-member excerpts, joined by `source_id`/`name` with a positional fallback, never overwriting bytes the plan still carries, fail-soft on odd shapes) and pinned it with tests. Full suite 2078 passed.
+
 ### Deps/CI — `mcp` bounded to `<2` + the seed vault's forbidden `source` keys fixed — 2026-07-28
 
 Two CI reds, both environmental: (1) the freshly-released **mcp 2.0.0** removed the `Server.list_tools` decorator API `mcp/server.py` builds on — CI's unpinned `mcp>=1.0` resolved to it and both test jobs failed on import; bounded to `mcp>=1.0,<2` (the ruff-pin determinism precedent) until a deliberate 2.x port. (2) The 553-note vault port predated P19's `FORBIDDEN_FIELDS`, leaving 19 `lit_*` literature notes with the forbidden `source:` key (TESS-003) — the seed-vault format-check job had been red since; renamed per the spec's own mapping (`source`→`source_url`, arXiv IDs expanded to real URLs). `tessellum format check vault/` exits 0.

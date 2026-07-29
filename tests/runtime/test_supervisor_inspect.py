@@ -158,3 +158,40 @@ def test_fresh_job_takes_full_execute_path(tmp_path: Path) -> None:
     )
     # _has_accepted_plan is False on a fresh job → execute() (not resume) chosen.
     assert sup._has_accepted_plan(admitted.job_id) is False
+
+
+# ── promote re-hydration (the slim-plan ⨝ source-leaf join) ──────────────────
+
+
+def test_rehydrate_restores_source_content_and_member_excerpts() -> None:
+    from tessellum.runtime.executor import _rehydrate_plan_from_source_leaf
+
+    plan_doc = {
+        "plan_text": "# P",
+        "members": [
+            {"source_id": "a"},                       # slim-dropped excerpt
+            {"source_id": "b", "excerpt": "KEEP"},    # still carried — never overwrite
+            {"name": "c"},                            # id-less, positional fallback
+        ],
+    }
+    source_leaf = {
+        "source_content": "FULL",
+        "members": [
+            {"source_id": "a", "excerpt": "AAA"},
+            {"source_id": "b", "excerpt": "BBB-orig"},
+            {"name": "c", "excerpt": "CCC"},
+        ],
+    }
+    _rehydrate_plan_from_source_leaf(plan_doc, source_leaf)
+    assert plan_doc["source_content"] == "FULL"
+    assert plan_doc["members"][0]["excerpt"] == "AAA"
+    assert plan_doc["members"][1]["excerpt"] == "KEEP"  # not clobbered
+    assert plan_doc["members"][2]["excerpt"] == "CCC"
+
+
+def test_rehydrate_failsoft_on_odd_shapes() -> None:
+    from tessellum.runtime.executor import _rehydrate_plan_from_source_leaf
+
+    plan_doc = {"members": "junk"}
+    _rehydrate_plan_from_source_leaf(plan_doc, {"members": [{"excerpt": "x"}]})
+    assert plan_doc["members"] == "junk"  # untouched, no raise
