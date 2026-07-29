@@ -109,11 +109,14 @@ LEAF METADATA
 PRIOR REVIEW FAILURES (P15 revise round — empty on the first augment pass)
 {{leaf.review_failures}}
 
+DRAFT PLAN (the of-record plan text, provided by reference from the run's working store — this IS the draft; you have NO tools, there is no file to open, and you must NEVER emit `<tool_call>` / `<tool_response>` blocks or role-play reading a file):
+{{artifact.plan_text}}
+
 Follow this procedure:
 
 **If PRIOR REVIEW FAILURES above is non-empty, this is a REVISE round:** a prior review REJECTED the augmented plan for those specific, checkable gaps. Your job is to REVISE the plan to resolve EACH listed failure while PRESERVING everything already correct — do not drop or rewrite sections the review did not flag, and do not shrink the plan. Treat each failure as a concrete instruction (e.g. "gate G7 absent" → add the G7 row to every phase gate table; "Related Notes uses bare wikilinks" → add a description + relevancy statement to each mapped link; "Note Format not derived from an existing note" → read a real target-dir note and cite it). If the block is empty, this is the first augment pass — proceed normally.
 
-Read the draft plan file at `$PLANS_DIR/plan_digest_<topic>.md`. First detect the plan's structure: a **single plan** has a Planned Notes table with concrete filenames and is augmented directly; a **master plan** has a Sub-Plans Index Table linking to sub-plan files and is NOT augmented itself (its sub-plans are augmented independently).
+Assess the DRAFT PLAN provided above (never claim to read it from disk — the block above is the of-record text). First detect the plan's structure: a **single plan** has a Planned Notes table with concrete filenames and is augmented directly; a **master plan** has a Sub-Plans Index Table linking to sub-plan files and is NOT augmented itself (its sub-plans are augmented independently).
 
 Then inventory which mandatory sections are PRESENT and which are MISSING — Routing Decision, Section Coverage Map, Split Decisions, Note Format Definition, Pacing Rules, Density Re-Assessment, Validation Scripts, per-phase GATE tables, per-note Related Notes mapping, Inlink mapping, Entry Point specifics, Follow-up Recommendations, Undigested Terms Plan, Term-Note Authoring Requirements, and the Entry Point Decision.
 
@@ -197,9 +200,10 @@ expected_output_schema:
       description: Terms surfaced by the re-read that the original plan missed
 ```
 
-You are running step 2 of tessellum-augment-digestion-plan: re-read the
-source and verify density. This step is non-negotiable — you MUST read
-the actual source pages, not the plan's summary.
+You are running step 2 of tessellum-augment-digestion-plan: verify the
+plan's density against the MEASURED SOURCE LEDGER below. Non-negotiable:
+verify against the ledger's measured figures, never the plan's summary —
+and you have NO tools, so never claim to fetch or re-read anything.
 
 DRAFT ASSESSMENT (from step 1)
 {{upstream.draft_assessment}}
