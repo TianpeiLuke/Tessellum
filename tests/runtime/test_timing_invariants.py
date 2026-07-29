@@ -7,17 +7,25 @@ from tessellum.runtime.timing import all_profile_violations, timing_violations
 
 
 def test_every_shipped_profile_satisfies_the_timing_invariants() -> None:
-    v = all_profile_violations()
-    assert v["default"] == []
-    assert v["fast"] == []
-    assert v["inspect"] == []
+    """Post-R2.4: EVERY shipped profile is clean — converge's INV-2 exception
+    (TTL 900 → cadence > default claim TTL, safe only via the entry re-lease)
+    was deleted by the detector rollback."""
+    assert all(v == [] for v in all_profile_violations().values())
 
 
-def test_converge_inv2_names_the_discharging_mechanism() -> None:
-    """converge (TTL 900 → cadence 300 > default claim 120) trips INV-2's
-    arithmetic half — the finding must NAME the entry re-lease so removing
-    that mechanism without fixing the numbers is loud. R2.4's detector
-    rollback deletes this exception."""
+def test_inv2_still_fires_for_a_hypothetical_long_ttl_profile(monkeypatch) -> None:
+    """The INV-2 arithmetic guard remains armed: a profile with cadence >=
+    the default claim TTL must produce the entry-re-lease-naming finding."""
+    from tessellum.runtime.policy import RuntimePolicy
+
+    real = RuntimePolicy.for_profile
+
+    def fake(profile):
+        if profile == "converge":
+            return RuntimePolicy(max_review_rounds=2, lease_ttl=900.0)
+        return real(profile)
+
+    monkeypatch.setattr(RuntimePolicy, "for_profile", staticmethod(fake))
     findings = timing_violations("converge")
     assert findings and all("entry re-lease" in f for f in findings)
 

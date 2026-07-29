@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Runtime/Tests — R2.4 detector rollback + R3.5 the F1/F2/F4 regressions (FZ 20k9c1a1a1b7c2k2a1b/c) — 2026-07-29
+
+**R2.4**: converge's interim `lease_ttl=900` rolled back to the detector default — a TTL answers "how fast do we declare a worker dead", never "how long may work take"; the hardened renewal actor (R2.1) owns liveness now, and the schedule test proves a blocked call 2.5× the TTL survives under it. Dead-worker detection returns to ~2 minutes from ~15. EVERY shipped profile now passes the timing table clean; the INV-2 arithmetic guard stays armed via a hypothetical-long-TTL test. **R3.5**: `test_j3_regressions.py` — the three prose-only J3 fixes get failing-then-passing pins that render the REAL steps' prompts exactly as the executor does: F1 (identify_source on the M0 shape carries the ledger + inline source + the no-tools mandate, no sentinels), F2 (read_draft carries the of-record draft), F4 (write_augmented_plan receives the revise directives + draft + ledger with the concrete-edit mandate). "Patched, not fixed" retired. +5 tests (suite 2145).
+
 ### Composer — E3.3 decided: CP5/CP6 demote to advisory-until-calibrated (FZ 20k9c1a1a1b7c2k1a1b1) — 2026-07-29
 
 The deferred loop-policy decision, made on r5 + J3 evidence: GATING checkpoints are the deterministic-backed ones (CP1–CP4, CP7, CP8 — each with a computed exhibit or gate behind it); CP5 (derivation faithfulness) and CP6 (borderline atomicity) are QUALITATIVE and uncalibrated — r5's CP5 bootstrap-posture false-reject is the evidence class. `_review_verdict`: a verdict whose ONLY failures are CP5/CP6-prefixed flips ready for the LOOP, with the critiques preserved on `plan_doc["advisory_failures"]` and still surfaced at sign-off — the reviewer's voice demoted, never silenced; mixed failures still block; the P8 calibration path is the promotion route. Three pre-E3.3 pins updated to the new contract (each annotated with what changed and why). +3 tests (suite 2142).

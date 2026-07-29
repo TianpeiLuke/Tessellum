@@ -328,7 +328,8 @@ def test_converge_profile_enables_revise_loop() -> None:
     policy = RuntimePolicy.for_profile("converge")
     assert policy.max_review_rounds == 2
     assert policy.stop_after is None
-    assert policy.lease_ttl == 900.0  # covers the 300s read timeout + backoff
+    # R2.4: detector constant — the renewal actor owns liveness, not the TTL
+    assert policy.lease_ttl == RuntimePolicy().lease_ttl
     assert RuntimePolicy.for_profile("default").max_review_rounds == 0
 
 
