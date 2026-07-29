@@ -62,6 +62,13 @@ _PLAN_DOC_KEY_ALIASES: dict[str, tuple[str, ...]] = {
 # (digestion.compute_source_ledger) — is a first-class working-memory artifact:
 # paged durably under --durable-artifacts, covered by the re-emission lint, and
 # consumed by reference (``{{artifact.pages}}``) in the review/augment skills.
+# R4.3 (FZ 20k9c1a1a1b7c2k2a1d): the two-sided canonical-form contract for
+# measured figures — ONE owner for both sides so the skill prose (generator
+# pins the canonical form) and the matchers (absorb known human renderings)
+# cannot drift apart; test_canonical_figure_contract binds both to this.
+FIGURE_CANONICAL_RENDERING: str = "BARE DIGITS"
+FIGURE_ABSORBED_RENDERINGS: tuple[str, ...] = ("thousands commas",)
+
 _ARTIFACT_KEYS: tuple[str, ...] = ("plan_text", "source_excerpt", "planned_notes", "pages")
 
 # E1.3 (FZ 20k9c1a1a1b7c2k1a1b1): the mandatory plan sections — the SINGLE

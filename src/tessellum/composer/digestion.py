@@ -595,6 +595,69 @@ def compute_coverage_orphans(plan_doc: dict) -> list[str] | None:
     return orphans
 
 
+def compute_assessment_violations(plan_doc: dict) -> list[str] | None:
+    """R4.1 (FZ 20k9c1a1a1b7c2k2a1d): deterministic cross-checks of
+    LLM-emitted ASSESSMENTS against the artifacts they describe — the
+    schema-valid-fabrication defense (J3's F2 round 1 PASSED by fabricating a
+    plausible draft assessment from nothing; gates that validate shape can
+    never catch well-formed output about nothing).
+
+    Checks (all lenient-normalized, the same tolerance the coverage orphans
+    use — the F3 lesson says the CODE side absorbs rendering variance):
+
+    - ``sections_present`` claims ⊆ the REAL H2 scan of ``plan_text``;
+    - coverage-map rows name only REAL ledger headings (invented sections);
+    - ``plan_structure == "master"`` requires a Sub-Plans Index in the text.
+
+    Returns ``None`` when nothing is computable (no plan_text), else the
+    violation list. Rendered as the ASSESSMENTS exhibit — the reviewer
+    judges over it; promotion to a ladder-blocking error is the E3.3
+    advisory-vs-gating decision, not this function's."""
+    plan_text = plan_doc.get("plan_text")
+    if not isinstance(plan_text, str) or not plan_text:
+        return None
+    violations: list[str] = []
+    real_h2 = {_norm_heading(h) for h in re.findall(r"(?m)^##\s+(.+)$", plan_text)}
+    claimed = plan_doc.get("sections_present")
+    if isinstance(claimed, list) and claimed and real_h2:
+        for c in claimed:
+            n = _norm_heading(c)
+            if not n:
+                continue
+            if n in real_h2 or any(n in h or h in n for h in real_h2):
+                continue
+            violations.append(
+                f"sections_present claims {str(c)!r} but no matching H2 "
+                f"exists in plan_text"
+            )
+    if plan_doc.get("_pages_code_measured"):
+        ledger = {
+            _norm_heading(h)
+            for pg in (plan_doc.get("pages") or []) if isinstance(pg, dict)
+            for h in (pg.get("headings") or [])
+        }
+        cmap = plan_doc.get("section_coverage_map")
+        if isinstance(cmap, list) and ledger:
+            for row in cmap:
+                if not isinstance(row, dict):
+                    continue
+                sec = _norm_heading(row.get("source_section", ""))
+                if not sec:
+                    continue
+                if sec in ledger or any(sec in h or h in sec for h in ledger):
+                    continue
+                violations.append(
+                    f"coverage map names {row.get('source_section')!r} which "
+                    f"is NOT a measured source heading (invented section)"
+                )
+    if plan_doc.get("plan_structure") == "master" and "sub-plans index" not in plan_text.lower():
+        violations.append(
+            "plan_structure claims 'master' but plan_text has no "
+            "Sub-Plans Index table"
+        )
+    return violations
+
+
 def compute_review_exhibits(plan_doc: dict) -> str:
     """Render the deterministic review EXHIBITS (issue 9 / mechanism 1 of FZ
     20k9c1a1a1b7c2k1a1b): quantities the driver computes exactly, injected so
@@ -624,6 +687,17 @@ def compute_review_exhibits(plan_doc: dict) -> str:
                 )
         if fig:
             parts.append("FIGURES (computed): " + "; ".join(fig))
+        # ASSESSMENTS (R4.1, FZ 20k9c1a1a1b7c2k2a1d): fabrication defense —
+        # LLM assessments cross-checked against the artifacts they describe.
+        assess = compute_assessment_violations(plan_doc)
+        if assess is not None:
+            parts.append(
+                "ASSESSMENTS (computed): "
+                + (f"{len(assess)} mismatch(es) between emitted assessments "
+                   f"and the artifacts they describe -> {assess}"
+                   if assess else
+                   "all cross-checked assessment fields consistent with the artifacts")
+            )
     plan_text = plan_doc.get("plan_text") or ""
     if isinstance(plan_text, str) and plan_text:
         # SECTIONS — the deterministic scan against the single-sourced list
