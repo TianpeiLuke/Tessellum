@@ -164,7 +164,8 @@ def test_default_timeout_constant_is_300():
     # full plan body, dispatch_notes a full note body) can take 2–4 min for a
     # single Bedrock/Anthropic call over a large source; 120s killed them as a
     # false "stall".
-    assert DEFAULT_TIMEOUT_SECONDS == 300.0
+    # R2.3: derived as READ_TIMEOUT_S + 60s watchdog slack (timing.py INV-3)
+    assert DEFAULT_TIMEOUT_SECONDS == 360.0
 
 
 # ── Compile-time budget (B.3) ──────────────────────────────────────────────

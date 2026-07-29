@@ -137,6 +137,18 @@ class MockBackend:
         )
 
 
+
+# R2.3 (FZ 20k9c1a1a1b7c2k2a1b): the transport timeout constants — hoisted so
+# the timing assertion table (runtime/timing.py) can bind the step watchdog to
+# them instead of three files sharing a coincidental 300.
+CONNECT_TIMEOUT_S: float = 30.0
+READ_TIMEOUT_S: float = 300.0
+"""Per CHUNK GAP on a stream — a healthy multi-minute generation is unaffected;
+a silent stream raises within this bound for the ladder to classify."""
+WRITE_TIMEOUT_S: float = 60.0
+POOL_TIMEOUT_S: float = 60.0
+
+
 class AnthropicBackend:
     """Anthropic Messages API backend.
 
@@ -213,7 +225,8 @@ class AnthropicBackend:
                 api_key=api_key,
                 max_retries=0,
                 timeout=httpx.Timeout(
-                    connect=30.0, read=300.0, write=60.0, pool=60.0
+                    connect=CONNECT_TIMEOUT_S, read=READ_TIMEOUT_S,
+                    write=WRITE_TIMEOUT_S, pool=POOL_TIMEOUT_S,
                 ),
             )
         else:

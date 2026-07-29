@@ -45,7 +45,9 @@ def classify_reason(error_msg: str | None) -> Reason:
 
     Precedence, checked against the lower-cased message (highest first):
 
-    1. ``stall`` — the watchdog stall marker (``"stalled after"``).
+    1. ``stall`` — the watchdog stall marker (``"stalled after"``) and, R3.4,
+       transport timeouts (``"readtimeout"`` / ``"connecttimeout"`` /
+       ``"timed out"``) — a bounded wait that expired is transient by nature.
     2. ``missing_consumed`` — a required ``{{upstream.X}}`` was absent (P23):
        the fix is upstream, not a retry here.
     3. ``truncated`` — response cut at the token cap
@@ -78,6 +80,13 @@ def classify_reason(error_msg: str | None) -> Reason:
     msg = error_msg.lower()
 
     if "stalled after" in msg:
+        return "stall"
+    # R3.4 (FZ 20k9c1a1a1b7c2k2a1c): a TRANSPORT timeout is the same class as
+    # a watchdog stall — a bounded wait that expired. Run 6 recorded its
+    # 300s ReadTimeout as `crash` (burning crash-recovery budget on the one
+    # class where waiting-and-retrying is the whole cure); with the F5 client
+    # timeouts these are now routine, so they ride the transient rung.
+    if "readtimeout" in msg or "connecttimeout" in msg or "timed out" in msg:
         return "stall"
     if "missing required consumed input" in msg:
         return "missing_consumed"

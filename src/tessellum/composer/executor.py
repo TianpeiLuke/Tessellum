@@ -89,8 +89,13 @@ same-error loops. 200 chars is enough to distinguish most error-payload
 shapes without overfitting to a specific line/column hint."""
 
 
-DEFAULT_TIMEOUT_SECONDS: float = 300.0
-"""Default per-step watchdog timeout. Raised from 120s → 300s: the large-output
+DEFAULT_TIMEOUT_SECONDS: float = 360.0
+"""Default per-step watchdog timeout — DERIVED (R2.3, FZ 20k9c1a1a1b7c2k2a1b)
+as the transport read timeout + 60s slack, so the watchdog can never fire
+simultaneously with (or before) the transport's own bound: the panel flagged
+watchdog=300 == read=300 with zero slack as a coincidental equality acting as
+load-bearing structure. runtime/timing.py asserts the ordering.
+Raised originally from 120s → 300s: the large-output
 generation steps (``write_plan`` emits a full multi-hundred-line plan body,
 ``dispatch_notes`` a full note body) can legitimately take 2–4 minutes for a
 single Bedrock/Anthropic call over a large source, and 120s killed them
