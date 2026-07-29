@@ -352,3 +352,106 @@ def test_rebuild_roundtrips_through_save_load(tmp_path: Path) -> None:
     reloaded = Manifest.load(path)
     assert reloaded.entries["a"].status == "done"
     assert reloaded.entries["b"].status == "pending"
+
+
+# ── A4.1 (FZ 20k9c1a1a1b7c2k1a): thin ledger — structured_output offload ─────
+
+
+def _committed_manifest(path: Path, payload: dict) -> "Manifest":
+    from tessellum.composer.manifest import Manifest, ManifestEntry
+
+    m = Manifest(path=path, entries={})
+    m.upsert_entry(
+        ManifestEntry(
+            leaf_id="leaf-1", status="in_progress", run_id="r1", generation=1
+        )
+    )
+    m.commit_success(
+        "leaf-1",
+        run_id="r1",
+        generation=1,
+        plan_hash="p",
+        input_hash="i",
+        capability_version="c",
+        structured_output=payload,
+        artifacts=(),
+        now=1.0,
+    )
+    return m
+
+
+def test_large_structured_output_offloads_and_inflates(tmp_path: Path) -> None:
+    """A big payload leaves the manifest JSON (thin ledger), lands as a
+    sha-verified sidecar, and load() re-inflates it transparently — the
+    scheduler's resume reader never changes."""
+    from tessellum.composer.manifest import Manifest
+
+    path = tmp_path / "manifest.json"
+    payload = {"note_body": "X" * 10_000, "output_path": "a/b.md"}
+    m = _committed_manifest(path, payload)
+    m.save()
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    ed = raw["entries"]["leaf-1"]
+    assert ed["structured_output"] == {}          # thin: no inline payload
+    ref = ed["structured_output_ref"]
+    side = path.parent / "structured" / ref["name"]
+    assert side.is_file() and side.stat().st_size == ref["size"]
+
+    loaded = Manifest.load(path)
+    assert loaded.entries["leaf-1"].structured_output == payload  # inflated
+
+
+def test_small_structured_output_stays_inline(tmp_path: Path) -> None:
+    from tessellum.composer.manifest import Manifest
+
+    path = tmp_path / "manifest.json"
+    m = _committed_manifest(path, {"output_path": "a/b.md"})
+    m.save()
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    ed = raw["entries"]["leaf-1"]
+    assert ed["structured_output"] == {"output_path": "a/b.md"}
+    assert "structured_output_ref" not in ed
+    assert not (path.parent / "structured").exists()
+    loaded = Manifest.load(path)
+    assert loaded.entries["leaf-1"].structured_output == {"output_path": "a/b.md"}
+
+
+def test_corrupt_sidecar_degrades_like_a_corrupt_candidate(tmp_path: Path) -> None:
+    """A candidate whose sidecar doesn't verify is a BAD candidate: load()
+    falls through the backup chain (here: to empty) instead of silently
+    resuming with an empty upstream payload."""
+    from tessellum.composer.manifest import Manifest
+
+    path = tmp_path / "manifest.json"
+    payload = {"note_body": "Y" * 10_000}
+    m = _committed_manifest(path, payload)
+    m.save()
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    name = raw["entries"]["leaf-1"]["structured_output_ref"]["name"]
+    (path.parent / "structured" / name).write_text("TAMPERED", encoding="utf-8")
+
+    loaded = Manifest.load(path)
+    assert loaded.entries == {}  # degraded loudly to empty, not silently to {}
+
+
+def test_old_inline_manifest_loads_unchanged(tmp_path: Path) -> None:
+    """A 1.1-era manifest (inline payload, no ref) round-trips untouched."""
+    from tessellum.composer.manifest import Manifest
+
+    path = tmp_path / "manifest.json"
+    big = {"note_body": "Z" * 10_000}
+    old_payload = {
+        "version": "1.1",
+        "entries": {
+            "leaf-1": {
+                "leaf_id": "leaf-1",
+                "status": "done",
+                "structured_output": big,
+                "committed_at": 1.0,
+            }
+        },
+    }
+    path.write_text(json.dumps(old_payload), encoding="utf-8")
+    loaded = Manifest.load(path)
+    assert loaded.entries["leaf-1"].structured_output == big

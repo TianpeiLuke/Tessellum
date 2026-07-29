@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import sqlite3
@@ -22,6 +23,8 @@ from tessellum.runtime.admission import archive_source
 from tessellum.runtime.locking import vault_write_lock
 from tessellum.runtime.models import Job
 from tessellum.runtime.paths import RuntimePaths
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -162,6 +165,31 @@ def rebuild_index_atomically(
     return target, dense_degraded
 
 
+def gc_working_artifacts(job: Job, *, paths: RuntimePaths) -> bool:
+    """A4.2 (FZ 20k9c1a1a1b7c2k1a): the Zettelkasten discard — on COMMIT,
+    sweep the job's fleeting working store (``<job>/artifacts/``, the A2/J1
+    durable working-memory tier), RETAINING the episodic record (``runs/``
+    checkpoints + attempts + traces, ``manifest.json`` + its ``structured/``
+    sidecars, ``plan.json``, ``composer-events.jsonl``, ``statistics.json``)
+    and the vault-effects journal (its recovery consumers —
+    ``rollback_uncommitted`` / ``recover_pending`` — must never lose it; the
+    supervisor sequences ``accept_uncommitted`` BEFORE ``commit_job``, so by
+    the time this runs the journal is durably accepted). ``plan.json``'s
+    ``_artifact_refs`` digests survive as provenance of what the working set
+    held. Fail-soft: GC must never fail a commit. Returns True iff a working
+    store existed and was removed."""
+    try:
+        target = paths.job_artifacts(job.job_id) / "artifacts"
+        if target.is_dir():
+            shutil.rmtree(target)
+            return True
+    except Exception:
+        # Broad by design: GC is best-effort cleanup and must never fail a
+        # commit — not even on an unexpected job/paths shape.
+        logger.warning("GC of working artifacts failed", exc_info=True)
+    return False
+
+
 def commit_job(
     job: Job,
     *,
@@ -170,6 +198,7 @@ def commit_job(
     with_dense: bool = True,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     lock_vault: bool = True,
+    gc_artifacts: bool = True,
 ) -> CommitResult:
     index_path = paths.index_db
     dense_degraded: bool | None = None
@@ -181,6 +210,10 @@ def commit_job(
             lock_vault=lock_vault,
         )
     archive_path = archive_source(job, paths=paths, effect_guard=effect_guard)
+    # A4.2: the fleeting working store is discarded only once the commit's
+    # durable effects (index publish + source archive) are in place.
+    if gc_artifacts:
+        gc_working_artifacts(job, paths=paths)
     return CommitResult(
         archive_path=archive_path,
         index_path=index_path,

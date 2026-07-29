@@ -236,13 +236,16 @@ def test_execute_wires_episodic_surface_and_artifact_refs(tmp_path, monkeypatch)
     # J1: the composer's episodic tier lands under the job's own dir.
     assert captured["runs_dir"] == art / "runs"
     assert captured["durable_artifact_dir"] == art / "artifacts"
-    # J2: plan.json carries digests matching the durable of-record bytes.
+    # J2: plan.json carries digests of the of-record bytes the store paged.
     plan = json.loads((art / "plan.json").read_text(encoding="utf-8"))
     refs = plan["_artifact_refs"]
-    payload = (art / "artifacts" / "plan_text").read_bytes()
-    assert hashlib.sha256(payload).hexdigest() == refs["plan_text"]["sha256"]
-    assert payload.decode("utf-8") == "# Accepted"
+    expected = hashlib.sha256("# Accepted".encode("utf-8")).hexdigest()
+    assert refs["plan_text"]["sha256"] == expected
     assert "source_content" not in plan  # the projection stays slim
+    # A4.2: the COMMIT swept the fleeting working store (the Zettelkasten
+    # discard) — the refs' digests remain in plan.json as provenance.
+    assert not (art / "artifacts").exists()
+    assert (art / "plan.json").is_file()  # the episodic record is retained
 
 
 def _persisted_plan(tmp_path):

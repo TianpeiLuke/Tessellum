@@ -282,6 +282,21 @@ LEAF METADATA
 - target_path: {{leaf.target_path}}
 - source_ref: {{leaf.source_ref}}
 
+YOUR ASSIGNED SECTIONS (code-measured: the coverage-map rows THIS note
+owns, joined with the source ledger's measured pages. These sections are
+your scope — cover them in this note. An empty block means the plan
+carried no per-note coverage rows; fall back to the plan's own mapping):
+{{leaf.owned_sections_md}}
+
+PLAN OF RECORD (read by reference from the run's working store — use it
+for cross-note context and the format definition; NEVER re-emit it):
+{{artifact.plan_text}}
+
+SOURCE MATERIAL (read by reference from the run's working store — read
+this FIRST and ground every claim in it; it is the single of-record
+source copy all writers share):
+{{artifact.source_excerpt}}
+
 RELATED NOTES (retrieved per-note by relevance to THIS note's thesis;
 each is an EXISTING vault note with a path already resolved relative to
 this note's target_path — ready to paste as a markdown link):

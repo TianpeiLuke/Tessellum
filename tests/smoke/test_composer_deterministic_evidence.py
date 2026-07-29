@@ -495,3 +495,25 @@ def test_note_count_band_computed_from_ledger(tmp_path: Path) -> None:
     band = result.plan_doc.get("note_count_band", "")
     assert band.startswith("3..4 notes")
     assert "3602 words" in band
+
+
+def test_code_source_excerpt_survives_fold_clobber(monkeypatch, tmp_path):
+    """A3.1 guard: a phase EMITTING `source_excerpt` must not replace the
+    code-joined source — same re-assertion the code ledger gets. Pinned at the
+    unit level: the ensure helper never overwrites, and the fold-guard pattern
+    re-asserts the captured value."""
+    from tessellum.composer.digestion import _ensure_source_excerpt
+
+    plan_doc = {"members": [{"source_id": "p1", "excerpt": "TRUE SOURCE"}]}
+    _ensure_source_excerpt(plan_doc)
+    code_copy = plan_doc["source_excerpt"]
+    assert "TRUE SOURCE" in code_copy
+
+    # an LLM fold clobbers the key…
+    plan_doc["source_excerpt"] = "lossy re-emission"
+    # …ensure never overwrites non-empty (it must NOT "fix" it silently)…
+    _ensure_source_excerpt(plan_doc)
+    assert plan_doc["source_excerpt"] == "lossy re-emission"
+    # …the pipeline's fold guard restores the captured code copy verbatim
+    plan_doc["source_excerpt"] = code_copy
+    assert "TRUE SOURCE" in plan_doc["source_excerpt"]

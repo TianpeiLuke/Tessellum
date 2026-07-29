@@ -288,15 +288,21 @@ def slim_plan_doc(plan_doc: dict[str, Any]) -> dict[str, Any]:
     """A shallow, dump-friendly copy of ``plan_doc`` without the bulky inline
     source bytes (A1.2/A1.5, FZ 20k9c1a1a1b7c2k1a).
 
-    Drops ``source_content`` and each ``members[].excerpt`` — the source bytes
-    are already durable elsewhere (the runtime's ``source_leaf.json`` / spool;
-    the CLI's ``--source`` file), so re-serializing them into every checkpoint
-    and ``plan.json`` just multiplies durable copies of the same payload (the
+    Drops ``source_content``, each ``members[].excerpt``, and (A3.1) the
+    joined ``source_excerpt`` — the source bytes are already durable elsewhere
+    (the runtime's ``source_leaf.json`` / spool; the CLI's ``--source`` file;
+    the excerpt is paged to the durable artifact store with its digest
+    recorded in ``plan.json``'s ``_artifact_refs``, from which promote
+    restores it verified), so re-serializing them into every checkpoint and
+    ``plan.json`` just multiplies durable copies of the same payload (the
     dedup smell the vault-memory design removes). Every other key passes
     through by reference; member dicts keep their metadata (``source_id``,
     ``source_url``, …). Pure — never mutates the input.
     """
-    slim = {k: v for k, v in plan_doc.items() if k != "source_content"}
+    slim = {
+        k: v for k, v in plan_doc.items()
+        if k not in ("source_content", "source_excerpt")
+    }
     members = slim.get("members")
     if isinstance(members, list):
         slim["members"] = [
@@ -739,6 +745,105 @@ def _declared_note_count(plan_doc: dict) -> int:
     return len(planned) if isinstance(planned, list) else 0
 
 
+def _joined_source_excerpt(plan_doc: dict) -> tuple[str, list[str]]:
+    """The single joined source text + refs the execute wave grounds writers
+    in. Members' excerpts joined under ``# SOURCE:`` headers; a member-less
+    single-doc leaf (the runtime M0 shape) falls back to the top-level
+    ``source_content`` — the same pseudo-member symmetry
+    :func:`compute_source_ledger` applies (E3.1 review F4), closing the latent
+    empty-source gap on that path (before A3 the projection read ONLY members,
+    so a single-doc runtime job's writers received an empty source)."""
+    members = plan_doc.get("members")
+    source_refs: list[str] = []
+    parts: list[str] = []
+    if isinstance(members, list) and members:
+        for m in members:
+            if not isinstance(m, dict):
+                continue
+            ex = m.get("excerpt") or m.get("source_content") or ""
+            ref = m.get("source_url") or m.get("ref") or m.get("source_id") or ""
+            if ref:
+                source_refs.append(str(ref))
+            parts.append(f"# SOURCE: {m.get('source_id') or ref}\n\n{ex}")
+    source_excerpt = "\n\n".join(parts)
+    if not source_excerpt.strip():
+        sc = plan_doc.get("source_content")
+        if isinstance(sc, str) and sc.strip():
+            name = plan_doc.get("source_name") or plan_doc.get("source_url") or "source"
+            source_excerpt = f"# SOURCE: {name}\n\n{sc}"
+    if not source_refs:
+        su = plan_doc.get("source_url")
+        source_refs = list(su) if isinstance(su, list) else ([str(su)] if su else [])
+    return source_excerpt, source_refs
+
+
+def _ensure_source_excerpt(plan_doc: dict) -> None:
+    """A3.1 (FZ 20k9c1a1a1b7c2k1a): make the joined source excerpt a
+    ``plan_doc`` field so the artifact store pages ONE durable copy every
+    writer reads by reference (``{{artifact.source_excerpt}}``) instead of N
+    inline copies riding every leaf. Idempotent; never overwrites an existing
+    non-empty value (a promote path may have restored it from the verified
+    durable store — that copy is the of-record)."""
+    if not plan_doc.get("source_excerpt"):
+        excerpt, _refs = _joined_source_excerpt(plan_doc)
+        if excerpt:
+            plan_doc["source_excerpt"] = excerpt
+
+
+def _owned_sections_md(filename: str, plan_doc: dict) -> str:
+    """E2.3 (FZ 20k9c1a1a1b7c2k1a1b1): the per-note ledger slice — the
+    ``section_coverage_map`` rows this note owns, joined with the code-measured
+    ``pages[]`` ledger, rendered as the writer's assigned-sections block. The
+    writer learns exactly which MEASURED sections it owns instead of
+    re-deriving its scope from the whole plan. Empty string when the plan
+    carries no usable map (never a ``<missing>`` sentinel — the projection
+    stamps the key unconditionally)."""
+    cmap = plan_doc.get("section_coverage_map")
+    if not isinstance(cmap, list) or not cmap:
+        return ""
+    heading_pages: dict[str, tuple[str, Any]] = {}
+    pages = plan_doc.get("pages")
+    if isinstance(pages, list):
+        for pg in pages:
+            if not isinstance(pg, dict):
+                continue
+            page_name = str(pg.get("page") or pg.get("source_id") or "")
+            for h in pg.get("headings") or []:
+                heading_pages[_norm_heading(str(h))] = (page_name, pg.get("words"))
+    def _name_match(a: str, b: str) -> bool:
+        # Boundary-aware suffix match: `tessellum_a.md` owns rows naming
+        # `a.md` (the file-prefix convention), but `data.md` must NOT match
+        # `a.md` — a bare endswith is the same silent-corruption class as
+        # substring FZ renumbering. The extra char before the suffix must be
+        # a real name boundary.
+        if a == b:
+            return True
+        if len(a) > len(b) and a.endswith(b):
+            return a[-len(b) - 1] in ("_", "-", "/", ".")
+        return False
+
+    base = filename.rsplit("/", 1)[-1]
+    lines: list[str] = []
+    for row in cmap:
+        if not isinstance(row, dict):
+            continue
+        target = str(row.get("maps_to_note") or row.get("note") or "").strip()
+        target = target.rsplit("/", 1)[-1]
+        if not target or not (_name_match(base, target) or _name_match(target, base)):
+            continue
+        section = str(row.get("source_section") or "").strip()
+        if not section:
+            continue
+        page, words = heading_pages.get(_norm_heading(section), ("", None))
+        if page and words:
+            lines.append(f"- {section} (source: {page}, {words} measured words on page)")
+        elif page:
+            lines.append(f"- {section} (source: {page})")
+        else:
+            lines.append(f"- {section}")
+    return "\n".join(lines)
+
+
 def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
     """Project an LLM-authored plan's ``planned_notes`` into per-note writer
     leaves — the native execute-wave fan-out (FZ 20k9c1a1a1b7c2b).
@@ -753,11 +858,21 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
     Each leaf carries the ``note`` payload the ``dispatch_notes`` writer reads
     (filename / thesis / building_block), a vault-relative ``target_path``
     (routing dir + file prefix + filename — what the E2 type-contract resolver
-    keys on), the ``source_ref``, and — because the composer backend is single-
-    shot with no file-reading tool — the source content inline (``source_excerpt``
-    + the full ``plan_text`` for cross-note context). Pure + fail-soft: a
-    ``planned_notes`` that is missing, not a list, or has no usable ``filename``
-    yields ``[]`` so the caller falls through to the whole-plan leaf.
+    keys on), and the ``source_ref``.
+
+    A3.1/A3.3 (FZ 20k9c1a1a1b7c2k1a): the leaves are METADATA-ONLY — the
+    heavy ``source_excerpt`` + ``plan_text`` travel ONCE via the wave's
+    artifact store (``{{artifact.source_excerpt}}`` / ``{{artifact.plan_text}}``
+    in the execute skill), not N× inline (the old O(plan×N) input carry).
+    Each leaf instead carries ``artifact_refs`` (key → sha256 of the
+    stringified of-record value), so the scheduler's ``_task_identity`` leaf
+    hash binds the CONTENT by reference — resume identity is sha256-of-refs.
+    E2.3: each leaf also carries its ``owned_sections_md`` slice (coverage map
+    ⨝ measured ledger). Mutates ``plan_doc`` only via
+    :func:`_ensure_source_excerpt` (idempotent). Fail-soft: a
+    ``planned_notes`` that is missing, not a list, or has no usable
+    ``filename`` yields ``[]`` so the caller falls through to the whole-plan
+    leaf.
     """
     planned = plan_doc.get("planned_notes")
     if not isinstance(planned, list) or not planned:
@@ -775,25 +890,19 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
     ).strip("/") or "resources/documentation"
     prefix = str(plan_doc.get("file_prefix") or routing.get("file_prefix") or "")
 
-    # Source content: the admitted members' excerpts (inline — single-shot backend).
-    members = plan_doc.get("members")
-    source_excerpt = ""
-    source_refs: list[str] = []
-    if isinstance(members, list) and members:
-        parts = []
-        for m in members:
-            if not isinstance(m, dict):
-                continue
-            ex = m.get("excerpt") or m.get("source_content") or ""
-            ref = m.get("source_url") or m.get("ref") or m.get("source_id") or ""
-            if ref:
-                source_refs.append(str(ref))
-            parts.append(f"# SOURCE: {m.get('source_id') or ref}\n\n{ex}")
-        source_excerpt = "\n\n".join(parts)
-    if not source_refs:
-        su = plan_doc.get("source_url")
-        source_refs = list(su) if isinstance(su, list) else ([str(su)] if su else [])
+    # A3.1: the joined source becomes a plan_doc field (paged ONCE by the
+    # artifact store), and the leaves carry content DIGESTS instead of bytes.
+    _ensure_source_excerpt(plan_doc)
+    _excerpt, source_refs = _joined_source_excerpt(plan_doc)
     plan_text = str(plan_doc.get("plan_text") or "")
+    artifact_refs = {
+        key: hashlib.sha256(_stringify(val).encode("utf-8")).hexdigest()
+        for key, val in (
+            ("plan_text", plan_text),
+            ("source_excerpt", plan_doc.get("source_excerpt") or ""),
+        )
+        if val
+    }
 
     leaves: list[dict] = []
     for pn in planned:
@@ -811,9 +920,9 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
                 "thesis": str(pn.get("description") or ""),
                 "building_block": pn.get("building_block"),
                 "approx_words": pn.get("approx_words"),
-                "source_excerpt": source_excerpt,
-                "plan_text": plan_text,
             },
+            "artifact_refs": dict(artifact_refs),
+            "owned_sections_md": _owned_sections_md(name, plan_doc),
             "target_path": f"{note_dir}/{name}",
             "source_ref": source_refs,
         })
@@ -1256,11 +1365,14 @@ def run_execute_wave(
         posture = _execute_fallback_strategy(skills_dir)
         if posture == "degrade":
             effective_breaker = breaker.with_tripping_classes(frozenset({"auth"}))
-    # P21-full: expose the plan's durable artifacts BY REFERENCE to the writer
-    # leaves ({{artifact.plan_text}} etc.). The per-leaf projection already
-    # inlines plan_text/source_excerpt into each leaf (the single-shot backend
-    # has no file tool); the artifact channel is the additive by-reference path
-    # a migrated skill can read from instead. Empty store → byte-identical.
+    # P21-full + A3.2: the writer leaves are metadata-only (the A3.1
+    # projection), so the artifact channel is now the LOAD-BEARING path — the
+    # execute skill reads {{artifact.plan_text}} / {{artifact.source_excerpt}}
+    # from this store (one copy, durable under --durable-artifacts) instead of
+    # each leaf re-carrying the bytes. _ensure_source_excerpt guarantees the
+    # store has the joined source even for direct callers (corpus / runtime
+    # promote) that skip the pipeline's early ensure.
+    _ensure_source_excerpt(plan_doc)
     artifacts = execute_kwargs.pop("artifacts", None) or _build_artifact_store(plan_doc)
     return run_pipeline_dynamic(
         compiled,
@@ -1413,6 +1525,15 @@ def run_digestion_pipeline(
                 f"{PLAN_NOTE_MAX_WORDS}, over-split floor {PLAN_OVERSPLIT_MIN_WORDS} "
                 f"— the PLAN-004/PLAN-008 gates enforce this band at sign-off)"
             )
+    # A3.1 (FZ 20k9c1a1a1b7c2k1a): derive the joined source excerpt ONCE from
+    # the input (members / source_content — invariant across folds) so every
+    # artifact store built from here pages one durable of-record copy the
+    # writers read by reference. Captured for re-assertion after every fold —
+    # same guard the code ledger has: a phase EMITTING a `source_excerpt` key
+    # would otherwise clobber the code-joined source with a lossy LLM
+    # re-emission (the E12/E16 class under a new key).
+    _ensure_source_excerpt(plan_doc)
+    code_source_excerpt = plan_doc.get("source_excerpt")
     # M0 review (medium): a corpus_wide {{leaf.X}} that now resolves (the
     # _corpus_leaf fix) can render a large value — e.g. {{leaf.members}} /
     # {{leaf.source_refs}} — that, with NO assembler, trips the executor's
@@ -1470,6 +1591,8 @@ def run_digestion_pipeline(
         _normalize_plan_doc_keys(plan_doc)
         if code_ledger:
             plan_doc["pages"] = code_ledger
+        if code_source_excerpt:
+            plan_doc["source_excerpt"] = code_source_excerpt
         if linear_runs_dir is not None:
             checkpoint_seq += 1
             _checkpoint_plan_doc(linear_runs_dir, checkpoint_seq, phase, plan_doc)

@@ -107,9 +107,16 @@ def test_projection_reads_note_dir_from_routing_decision():
 
 # ── source content threading (single-shot backend has no file tool) ──────────
 
-def test_projection_inlines_member_excerpts_into_every_leaf():
-    """Each leaf carries the admitted members' excerpts inline (the composer
-    backend is single-shot with no file-reading tool) + the plan_text."""
+def test_projection_leaves_are_metadata_only_with_artifact_refs():
+    """A3.1/A3.3 (FZ 20k9c1a1a1b7c2k1a): leaves carry NO inline source/plan
+    bytes — the joined source becomes plan_doc["source_excerpt"] (paged ONCE by
+    the artifact store; {{artifact.source_excerpt}} / {{artifact.plan_text}} in
+    the execute skill) and each leaf carries their content DIGESTS
+    (artifact_refs), so task identity binds the content by reference."""
+    import hashlib
+
+    from tessellum.composer.executor import _stringify
+
     plan = {
         "planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}],
         "members": [
@@ -120,11 +127,61 @@ def test_projection_inlines_member_excerpts_into_every_leaf():
     }
     leaves = _project_planned_notes_to_leaves(plan)
     assert len(leaves) == 2
+    # the joined source is now a plan_doc field the artifact store pages once
+    assert "ALPHA" in plan["source_excerpt"] and "BETA" in plan["source_excerpt"]
+    expected = {
+        "plan_text": hashlib.sha256(_stringify("# THE PLAN").encode()).hexdigest(),
+        "source_excerpt": hashlib.sha256(
+            _stringify(plan["source_excerpt"]).encode()
+        ).hexdigest(),
+    }
     for leaf in leaves:
-        assert "ALPHA" in leaf["note"]["source_excerpt"]
-        assert "BETA" in leaf["note"]["source_excerpt"]
-        assert leaf["note"]["plan_text"] == "# THE PLAN"
+        assert "source_excerpt" not in leaf["note"]
+        assert "plan_text" not in leaf["note"]
+        assert leaf["artifact_refs"] == expected
+        assert leaf["owned_sections_md"] == ""  # no coverage map in this plan
         assert leaf["source_ref"] == ["http://x/1", "http://x/2"]
+
+
+def test_projection_single_doc_falls_back_to_source_content():
+    """The member-less runtime M0 shape grounds writers from the top-level
+    source_content (the latent empty-source gap A3.1 closes — before, the
+    projection read ONLY members, so a single-doc job joined an empty source)."""
+    plan = {
+        "planned_notes": [{"filename": "a.md"}],
+        "members": [],
+        "source_content": "THE SINGLE DOC BODY",
+        "source_name": "doc.md",
+        "plan_text": "# P",
+    }
+    leaves = _project_planned_notes_to_leaves(plan)
+    assert len(leaves) == 1
+    assert "THE SINGLE DOC BODY" in plan["source_excerpt"]
+    assert "source_excerpt" in leaves[0]["artifact_refs"]
+
+
+def test_projection_owned_sections_join_coverage_map_with_ledger():
+    """E2.3 (FZ 20k9c1a1a1b7c2k1a1b1): each leaf's owned_sections_md is the
+    coverage-map rows THIS note owns joined with the measured pages ledger."""
+    plan = {
+        "planned_notes": [{"filename": "a.md"}, {"filename": "b.md"}],
+        "members": [{"source_id": "p1", "excerpt": "X"}],
+        "plan_text": "# P",
+        "section_coverage_map": [
+            {"maps_to_note": "a.md", "source_section": "Alpha Setup"},
+            {"maps_to_note": "b.md", "source_section": "Beta Config"},
+            {"maps_to_note": "a.md", "source_section": "Unmeasured Extra"},
+        ],
+        "pages": [
+            {"page": "p1", "words": 500, "headings": ["Alpha Setup", "Beta Config"]},
+        ],
+    }
+    leaves = _project_planned_notes_to_leaves(plan)
+    a, b = leaves
+    assert "Alpha Setup (source: p1, 500 measured words on page)" in a["owned_sections_md"]
+    assert "Unmeasured Extra" in a["owned_sections_md"]  # row without ledger match kept
+    assert "Beta Config" not in a["owned_sections_md"]   # other note's section excluded
+    assert "Beta Config (source: p1, 500 measured words on page)" in b["owned_sections_md"]
 
 
 def test_projection_one_leaf_per_note_matches_count():
@@ -260,3 +317,24 @@ def test_preflight_dangling_upstream_failsoft_without_compiled():
     leaves = [_leaf("a.md"), _leaf("b.md")]
     pf = preflight_execute_wave(plan, leaves, compiled=None)
     assert pf.ok  # no dangling check without compiled, others pass
+
+
+def test_owned_sections_filename_match_is_boundary_aware():
+    """`tessellum_a.md` owns rows naming `a.md` (prefix convention), but
+    `data.md` must NOT own `a.md`'s rows — bare endswith is the substring-
+    renumbering corruption class."""
+    plan = {
+        "planned_notes": [{"filename": "data.md"}, {"filename": "tessellum_a.md"}],
+        "members": [{"source_id": "p1", "excerpt": "X"}],
+        "plan_text": "# P",
+        "section_coverage_map": [
+            {"maps_to_note": "a.md", "source_section": "Alpha"},
+            {"maps_to_note": "data.md", "source_section": "Delta"},
+        ],
+        "pages": [],
+    }
+    data_leaf, prefixed_leaf = _project_planned_notes_to_leaves(plan)
+    assert "Alpha" not in data_leaf["owned_sections_md"]      # no false suffix match
+    assert "Delta" in data_leaf["owned_sections_md"]
+    assert "Alpha" in prefixed_leaf["owned_sections_md"]      # prefix boundary matches
+    assert "Delta" not in prefixed_leaf["owned_sections_md"]

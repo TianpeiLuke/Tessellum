@@ -57,6 +57,7 @@ import json
 import logging
 import os
 import shutil
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -64,8 +65,16 @@ from typing import Any, Iterable, Mapping
 logger = logging.getLogger(__name__)
 
 
-MANIFEST_VERSION: str = "1.1"
-"""On-disk schema version. Bumped only on a breaking payload change."""
+MANIFEST_VERSION: str = "1.2"
+"""On-disk schema version. Bumped only on a breaking payload change.
+1.2 (A4.1, FZ 20k9c1a1a1b7c2k1a): large ``structured_output`` payloads
+offload to ``<manifest dir>/structured/`` sidecars, referenced by
+``structured_output_ref`` — 1.1 manifests (inline payloads) load unchanged."""
+
+
+_STRUCTURED_OFFLOAD_MIN_BYTES: int = 2048
+"""Inline payloads at or above this serialized size offload to a sidecar
+(A4.1) — below it, offloading trades one read for two with no size win."""
 
 
 VALID_STATUSES: frozenset[str] = frozenset(
@@ -577,13 +586,60 @@ class Manifest:
         path = self.path
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        data = json.dumps(self._to_payload(), indent=2, sort_keys=True) + "\n"
+        payload = self._to_payload()
+        # A4.1 (FZ 20k9c1a1a1b7c2k1a): thin ledger — big structured_output
+        # payloads offload to sidecar files; the manifest JSON (rewritten on
+        # EVERY delta-patch) carries only their digests.
+        self._offload_structured(payload, path)
+        data = json.dumps(payload, indent=2, sort_keys=True) + "\n"
 
         if path.exists():
             self._rotate_backups(path)
 
         _atomic_write_text(path, data)
         return path
+
+    @staticmethod
+    def _offload_structured(payload: dict, path: Path) -> None:
+        """A4.1: replace each entry's large inline ``structured_output`` with a
+        ``structured_output_ref`` (``{name, sha256, size}``) pointing at a
+        sidecar under ``<manifest dir>/structured/`` — the manifest stays a
+        THIN ledger while the payload bytes live once, beside it, under the
+        same durability regime (unique-tmp + atomic replace; the write is
+        skipped when the on-disk sidecar already holds the same bytes). Small
+        payloads (< :data:`_STRUCTURED_OFFLOAD_MIN_BYTES`) stay inline. The
+        sidecar filename is a digest of the leaf_id (leaf ids may contain path
+        separators), stable across saves — latest-write-wins, the same
+        of-record semantics as the entry it mirrors. Fail-soft per entry: a
+        failed sidecar write keeps that payload inline (the ledger's
+        durability never depends on the sidecar's)."""
+        entries = payload.get("entries") or {}
+        for leaf_id, ed in entries.items():
+            so = ed.get("structured_output")
+            if not so:
+                continue
+            blob = json.dumps(so, sort_keys=True).encode("utf-8")
+            if len(blob) < _STRUCTURED_OFFLOAD_MIN_BYTES:
+                continue
+            digest = hashlib.sha256(blob).hexdigest()
+            name = hashlib.sha256(leaf_id.encode("utf-8")).hexdigest()[:24] + ".json"
+            side_dir = path.parent / "structured"
+            target = side_dir / name
+            try:
+                current = target.read_bytes() if target.is_file() else None
+                if current is None or hashlib.sha256(current).hexdigest() != digest:
+                    side_dir.mkdir(parents=True, exist_ok=True)
+                    tmp = side_dir / f".{name}.{uuid.uuid4().hex[:8]}.tmp"
+                    tmp.write_bytes(blob)
+                    tmp.replace(target)
+            except OSError:
+                continue
+            ed["structured_output"] = {}
+            ed["structured_output_ref"] = {
+                "name": name,
+                "sha256": digest,
+                "size": len(blob),
+            }
 
     @classmethod
     def load(cls, path: Path, *, sweep_tmps: bool = True) -> "Manifest":
@@ -621,13 +677,26 @@ class Manifest:
                     candidate,
                 )
                 continue
+            try:
+                manifest = cls._from_payload(payload, path=path)
+            except ManifestError as exc:
+                # A4.1: a candidate whose structured sidecars don't resolve is
+                # a BAD candidate (its ledger claims payloads it cannot
+                # produce) — same degradation chain as a corrupt JSON body.
+                logger.warning(
+                    "manifest candidate %s has unresolvable structured "
+                    "sidecars (%s); trying next backup",
+                    candidate,
+                    exc,
+                )
+                continue
             if candidate != path:
                 logger.warning(
                     "manifest %s unreadable; recovered from backup %s",
                     path,
                     candidate,
                 )
-            return cls._from_payload(payload, path=path)
+            return manifest
 
         logger.warning(
             "no readable manifest at %s (or any backup); starting empty", path
@@ -684,6 +753,45 @@ class Manifest:
             },
         }
 
+    @staticmethod
+    def _inflate_structured(ed: dict, *, path: Path | None) -> dict[str, Any]:
+        """A4.1 load side: resolve a ``structured_output_ref`` back to the
+        payload — read the sidecar, verify its sha256 against the recorded
+        digest, parse. Any failure (no path context, missing file, digest
+        mismatch, bad JSON) raises :class:`ManifestError` — the ledger claims
+        a payload it cannot produce, so this CANDIDATE is bad; ``load()``
+        falls through to the next backup rather than silently resuming with an
+        empty upstream payload."""
+        ref = ed.get("structured_output_ref")
+        if not isinstance(ref, dict):
+            return dict(ed.get("structured_output") or {})
+        if path is None:
+            raise ManifestError(
+                "structured_output_ref present but manifest has no path context"
+            )
+        target = path.parent / "structured" / str(ref.get("name") or "")
+        try:
+            blob = target.read_bytes()
+        except OSError as exc:
+            raise ManifestError(
+                f"structured sidecar unreadable: {target} ({exc})"
+            ) from exc
+        if hashlib.sha256(blob).hexdigest() != ref.get("sha256"):
+            raise ManifestError(
+                f"structured sidecar hash mismatch: {target}"
+            )
+        try:
+            payload = json.loads(blob.decode("utf-8"))
+        except ValueError as exc:
+            raise ManifestError(
+                f"structured sidecar is not valid JSON: {target}"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise ManifestError(
+                f"structured sidecar is not an object: {target}"
+            )
+        return payload
+
     @classmethod
     def _from_payload(cls, payload: dict, *, path: Path | None) -> "Manifest":
         entries: dict[str, ManifestEntry] = {}
@@ -709,7 +817,7 @@ class Manifest:
                 plan_hash=ed.get("plan_hash"),
                 input_hash=ed.get("input_hash"),
                 capability_version=ed.get("capability_version"),
-                structured_output=dict(ed.get("structured_output") or {}),
+                structured_output=cls._inflate_structured(ed, path=path),
                 artifacts=tuple(
                     ArtifactRecord(
                         path=artifact["path"],
@@ -814,6 +922,14 @@ def _payload_shape_ok(payload: object) -> bool:
             return False
         generation = ed.get("generation")
         if generation is not None and not isinstance(generation, int):
+            return False
+        ref = ed.get("structured_output_ref")
+        if ref is not None and (
+            not isinstance(ref, dict)
+            or not isinstance(ref.get("name"), str)
+            or not isinstance(ref.get("sha256"), str)
+            or not isinstance(ref.get("size"), int)
+        ):
             return False
         if not isinstance(ed.get("structured_output", {}), dict):
             return False

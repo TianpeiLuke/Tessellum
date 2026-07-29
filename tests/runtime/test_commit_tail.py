@@ -461,3 +461,65 @@ def test_archive_fsyncs_parent_after_quarantine_replay(
 
     assert source.parent in synced
     assert not quarantine.exists()
+
+
+# ── A4.2 (FZ 20k9c1a1a1b7c2k1a): GC-at-commit — the Zettelkasten discard ─────
+
+
+def test_commit_job_gcs_working_artifacts_and_retains_episodic(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from dataclasses import dataclass
+
+    from tessellum.runtime.commit_tail import commit_job
+
+    paths = _paths(tmp_path)
+
+    @dataclass
+    class _Job:
+        job_id: str = "job-gc"
+
+    art = paths.job_artifacts("job-gc")
+    (art / "artifacts").mkdir(parents=True)
+    (art / "artifacts" / "plan_text").write_text("# P", encoding="utf-8")
+    (art / "runs" / "checkpoints").mkdir(parents=True)
+    (art / "runs" / "attempts.jsonl").write_text("{}\n", encoding="utf-8")
+    (art / "plan.json").write_text("{}", encoding="utf-8")
+    (art / "manifest.json").write_text("{}", encoding="utf-8")
+
+    monkeypatch.setattr(
+        "tessellum.runtime.commit_tail.archive_source",
+        lambda job, *, paths, effect_guard=None: paths.artifacts,
+    )
+    commit_job(_Job(), paths=paths, rebuild_index=False)
+    # the fleeting working store is swept…
+    assert not (art / "artifacts").exists()
+    # …the episodic record survives
+    assert (art / "runs" / "attempts.jsonl").is_file()
+    assert (art / "runs" / "checkpoints").is_dir()
+    assert (art / "plan.json").is_file()
+    assert (art / "manifest.json").is_file()
+
+
+def test_commit_job_gc_optout_keeps_working_artifacts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from dataclasses import dataclass
+
+    from tessellum.runtime.commit_tail import commit_job
+
+    paths = _paths(tmp_path)
+
+    @dataclass
+    class _Job:
+        job_id: str = "job-keep"
+
+    art = paths.job_artifacts("job-keep")
+    (art / "artifacts").mkdir(parents=True)
+    (art / "artifacts" / "pages").write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(
+        "tessellum.runtime.commit_tail.archive_source",
+        lambda job, *, paths, effect_guard=None: paths.artifacts,
+    )
+    commit_job(_Job(), paths=paths, rebuild_index=False, gc_artifacts=False)
+    assert (art / "artifacts" / "pages").is_file()

@@ -480,6 +480,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "integrity-checked references and survive a crash. Default: in-RAM.",
     )
     digest_cmd.add_argument(
+        "--gc-artifacts", action="store_true",
+        help="A4.2: on a COMPLETED run, sweep the run-scoped durable working "
+        "store (<base>/<run_id>/artifacts) — the Zettelkasten discard of "
+        "fleeting working memory once the run committed. Traces, checkpoints "
+        "and the attempts journal (the episodic record) are retained. "
+        "No effect without --durable-artifacts or on a failed run "
+        "(a crashed run's artifacts are its resume state). Default: keep.",
+    )
+    digest_cmd.add_argument(
         "--max-review-rounds", type=int, default=0,
         help="P15 review-revise rounds: on a plan-quality rejection, re-augment "
         "from the review's failures and re-review, up to N extra rounds "
@@ -1470,6 +1479,26 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
             print(f"  revise rounds: {result.review_rounds}")
         print(f"  → completed={result.completed}"
               + (f"  stopped_at={result.stopped_at}" if result.stopped_at else ""))
+    # A4.2 (FZ 20k9c1a1a1b7c2k1a): the CLI path's terminal GC hook — the
+    # digest command has no commit tail, so a COMPLETED run's fleeting working
+    # store is swept here (opt-in). A failed/paused run keeps its artifacts:
+    # they are its resume state.
+    if getattr(args, "gc_artifacts", False) and result.completed:
+        durable_dir = extra_kwargs.get("durable_artifact_dir")
+        if durable_dir is not None:
+            import shutil as _shutil
+            run_root = Path(durable_dir).parent
+            try:
+                if Path(durable_dir).is_dir():
+                    _shutil.rmtree(durable_dir)
+                    # remove the now-empty <run_id> scope dir (best-effort)
+                    try:
+                        run_root.rmdir()
+                    except OSError:
+                        pass
+            except OSError:
+                print(f"  (gc-artifacts: sweep of {durable_dir} failed; kept)",
+                      file=sys.stderr)
     return 0 if result.completed else 1
 
 
