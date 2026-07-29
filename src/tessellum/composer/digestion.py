@@ -519,6 +519,11 @@ _ORPHAN_CLAIM_RE = re.compile(
     re.IGNORECASE,
 )
 
+# E3.3: failures attributed to the QUALITATIVE checkpoints (CP5 derivation
+# faithfulness, CP6 borderline atomicity) — advisory-until-calibrated. The
+# review skill's failure strings are CP-prefixed by its own contract.
+_ADVISORY_CLAIM_RE = re.compile(r"(?i)^cp[56]\b")
+
 # E3.1 (FZ 20k9c1a1a1b7c2k1a1b1): the figure-mismatch claim domain — dropped
 # only when EVERY ledger figure is verbatim-present in the plan text.
 # Review F3: the domain is LEDGER-scoped — the claim must reference the
@@ -809,6 +814,25 @@ def _review_verdict(plan_doc: dict) -> tuple[bool, list]:
         else:
             # Review F8: never carry a PRIOR round's drops into this verdict.
             plan_doc.pop("contradicted_failures", None)
+    # E3.3 (FZ 20k9c1a1a1b7c2k1a1b1, decided 2026-07-29 on r5 + J3 evidence):
+    # advisory-vs-gating. GATING checkpoints are the deterministic-backed ones
+    # (CP1–CP4, CP7, CP8 — each has a computed exhibit or gate behind it);
+    # CP5 (derivation faithfulness) and CP6 (borderline atomicity) are
+    # QUALITATIVE and uncalibrated — r5's CP5 bootstrap-posture false-reject
+    # and the calibration principle ("uncalibrated judgements demote to
+    # advisory") put them below the loop-gating bar until the P8 calibration
+    # path promotes them. A verdict whose ONLY failures are advisory-prefixed
+    # flips ready for the LOOP; the advisory failures are preserved on
+    # ``plan_doc["advisory_failures"]`` and still surface at sign-off — the
+    # reviewer's voice is demoted, never silenced.
+    if not ready and failures:
+        advisory, gating = [], []
+        for f in failures:
+            (advisory if _ADVISORY_CLAIM_RE.match(str(f).strip()) else gating).append(f)
+        if advisory and not gating:
+            plan_doc["advisory_failures"] = [str(f) for f in advisory]
+            return True, []
+        plan_doc.pop("advisory_failures", None)
     return ready, failures
 
 

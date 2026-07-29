@@ -142,11 +142,14 @@ def test_guard_drops_fabricated_orphan_claim() -> None:
          "CP5 FAIL — format not derived"],
     )
     ready, failures = _review_verdict(d)
-    assert not ready  # the genuine CP5 failure stands
-    assert failures == ["CP5 FAIL — format not derived"]
+    # E3.3 (2026-07-29): the fabricated CP7 claim is DROPPED (contradicted),
+    # and the remaining CP5 critique is advisory-until-calibrated — surfaced
+    # on advisory_failures, no longer blocking the loop. (Pre-E3.3 this pin
+    # asserted `not ready` with the CP5 failure standing.)
     assert d["contradicted_failures"] == [
         "CP7 FAIL — coverage map is materially incomplete: 30 headings unmapped"
     ]
+    assert ready and d["advisory_failures"] == ["CP5 FAIL — format not derived"]
 
 
 def test_guard_flips_ready_when_all_claims_fabricated() -> None:
@@ -250,7 +253,10 @@ def test_guard_keeps_per_note_density_critique() -> None:
              ["CP6 FAIL — note 7's declared word count does not match its mapped sections: approx_words=1750 vs ~600 source words"])
     d["plan_text"] = "Source table says 10 words"
     ready, failures = _review_verdict(d)
-    assert not ready and len(failures) == 1
+    # F3's point holds: the critique is never DROPPED — post-E3.3 it survives
+    # as an advisory (CP6 = qualitative), not a loop block.
+    assert "contradicted_failures" not in d
+    assert ready and "1750" in d["advisory_failures"][0]
 
 
 def test_guard_requires_code_provenance() -> None:
@@ -276,7 +282,9 @@ def test_stale_drops_cleared_on_clean_round() -> None:
     d = _doc(["A"], ["A"], ["CP5 FAIL — genuine qualitative critique"])
     d["contradicted_failures"] = ["old claim from a prior round"]
     ready, failures = _review_verdict(d)
-    assert not ready and len(failures) == 1
+    # F8's point holds: the stale drop is cleared; the CP5 critique itself is
+    # advisory post-E3.3 (surfaced, non-blocking).
+    assert ready and d["advisory_failures"]
     assert "contradicted_failures" not in d
 
 
@@ -559,3 +567,38 @@ def test_anthropic_client_bounded_timeouts_and_no_sdk_retries(monkeypatch):
     assert captured["max_retries"] == 0
     t = captured["timeout"]
     assert t.read == 300.0 and t.connect == 30.0
+
+
+def test_advisory_only_failures_flip_ready_for_the_loop():
+    """E3.3 (decided 2026-07-29): CP5/CP6 are qualitative and uncalibrated —
+    a verdict whose ONLY failures are advisory flips ready, with the failures
+    preserved on advisory_failures (surfaced at sign-off, never silenced)."""
+    from tessellum.composer.digestion import _review_verdict
+
+    doc = {"ready": False, "failures": [
+        "CP5 FAIL - derivation faithfulness doubtful on note 3",
+        "CP6 FAIL - borderline atomicity: consider splitting note 2",
+    ]}
+    ready, failures = _review_verdict(doc)
+    assert ready is True and failures == []
+    assert len(doc["advisory_failures"]) == 2
+
+
+def test_mixed_failures_still_block_and_clear_stale_advisory():
+    from tessellum.composer.digestion import _review_verdict
+
+    doc = {"ready": False, "advisory_failures": ["stale"], "failures": [
+        "CP5 FAIL - qualitative doubt",
+        "CP7 FAIL - 3 measured headings unmapped",
+    ]}
+    ready, failures = _review_verdict(doc)
+    assert ready is False and len(failures) == 2
+    assert "advisory_failures" not in doc  # stale entry cleared
+
+
+def test_gating_checkpoints_unaffected_by_demotion():
+    from tessellum.composer.digestion import _review_verdict
+
+    doc = {"ready": False, "failures": ["CP2 FAIL - gate table missing G7"]}
+    ready, failures = _review_verdict(doc)
+    assert ready is False and failures

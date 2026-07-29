@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — E3.3 decided: CP5/CP6 demote to advisory-until-calibrated (FZ 20k9c1a1a1b7c2k1a1b1) — 2026-07-29
+
+The deferred loop-policy decision, made on r5 + J3 evidence: GATING checkpoints are the deterministic-backed ones (CP1–CP4, CP7, CP8 — each with a computed exhibit or gate behind it); CP5 (derivation faithfulness) and CP6 (borderline atomicity) are QUALITATIVE and uncalibrated — r5's CP5 bootstrap-posture false-reject is the evidence class. `_review_verdict`: a verdict whose ONLY failures are CP5/CP6-prefixed flips ready for the LOOP, with the critiques preserved on `plan_doc["advisory_failures"]` and still surfaced at sign-off — the reviewer's voice demoted, never silenced; mixed failures still block; the P8 calibration path is the promotion route. Three pre-E3.3 pins updated to the new contract (each annotated with what changed and why). +3 tests (suite 2142).
+
 ### Composer — acquisition-verb lint, dispatch-time required-input validation, the feedback edge pinned (R1.2–R1.4, FZ 20k9c1a1a1b7c2k2a1a) — 2026-07-29
 
 **R1.2**: `audit_acquisition_prose` — the inverse of the shipped tool-leakage check: acquisition prose (read/fetch/browse + an object) with NO content-bearing binding is a finding ("role-play bait on a tool-free backend"); the four shipped skills audit clean (the J3 fixes already grounded every such step) and a parametrized test keeps them clean. **R1.3**: a declared-REQUIRED `leaf.*`/`artifact.*` input that is absent/empty at dispatch refuses the backend call with a typed `validation` error instead of rendering a `<missing …>` sentinel into the prompt — the under-fed-prompt substrate of F1/F2 is now unreachable for manifested steps; `upstream.*` deliberately keeps the existing loud missing_consumed/P23 machinery. **R1.4**: the F4 feedback edge pinned at the contract level — `leaf.review_failures` is a declared input of BOTH `read_draft` and the effector `write_augmented_plan` (which also declares the artifact under revision + the ledger); the schema bottleneck cannot silently reopen. +5 tests (suite 2137).
