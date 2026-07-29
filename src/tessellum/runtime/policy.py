@@ -67,12 +67,20 @@ class RuntimePolicy:
             # J3 (FZ 20k9c1a1a1b7c2k2): the convergence posture — the P15
             # revise loop ON so an over-split round-0 plan is driven toward
             # the gates' note-count band before sign-off (the API runs'
-            # demonstrated 17→16→8 cure). lease_ttl covers the longest
-            # single backend call (the 300s stalled-stream read timeout,
-            # finding 5) plus ladder backoff — no heartbeat can renew INSIDE
-            # a blocked call, so a 120s capture-workload TTL fences out a
-            # digestion worker mid-legitimate-step (finding 6: run 6's
-            # ReadTimeout at 300s → LeaseLostError on the retry).
+            # demonstrated 17→16→8 cure).
+            #
+            # lease_ttl CORRECTED RECORD (R5.2, FZ 20k9c1a1a1b7c2k2a1e): the
+            # original comment claimed "no heartbeat can renew INSIDE a
+            # blocked call" — false: the supervisor's daemon renewal thread
+            # (shipped v1.2.0) renews every ttl/3 independent of the blocked
+            # main thread. Run 6's lease death mechanism is a labeled
+            # HYPOTHESIS (the renewal thread stopped renewing — one-shot-fatal
+            # exit or repeated busy-skips; undiagnosable because no renewal
+            # journal existed — the discriminating instrumentation is R2.1's
+            # heartbeats journal). A large TTL is therefore a MITIGATION that
+            # widens the survivable dead-renewal window, not a workload bound;
+            # per the timing-algebra design (FZ b7c2k2a1b) it rolls back to a
+            # detector constant once the renewal actor is hardened (R2.4).
             return cls(max_review_rounds=2, lease_ttl=900.0)
         if profile != "default":
             raise ValueError(f"unknown runtime policy profile: {profile!r}")

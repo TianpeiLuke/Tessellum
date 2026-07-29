@@ -941,6 +941,7 @@ def execute_step_with_retry(
                 "leaf_id": leaf.get("_id"),
                 "attempt": len(kind_history),
                 "kind": kind,
+                "at": time.time(),
                 "error": err,
                 "response_chars": len(content),
                 "content_head": content[:2000],

@@ -283,6 +283,17 @@ The CI workflow (`.github/workflows/ci.yml`, planned v0.1) runs:
 - `python scripts/check_yaml_frontmatter.py --path vault/`
 - `python scripts/check_note_format.py --path vault/`
 
+## Incident-fix protocol (R5.1, FZ 20k9c1a1a1b7c2k2a1e)
+
+Measured-by-code applies to causality: an observation is evidence, a mechanism is a claim, and claims are verified or labeled. Every fix responding to a live failure follows four steps, each leaving an artifact — the more urgent the fix, the less the narrative is trusted:
+
+1. **OBSERVATION** — quote the episodic evidence with provenance (attempts-journal line, checkpoint, store event, `lsof`, log excerpt).
+2. **MECHANISM** — state the causal claim WITH its verification: the implicated code path read and cited, a reproduction, or a discriminating probe. If unverified, label it `HYPOTHESIS` and name the discriminating test that would settle it.
+3. **FIX** — sized against the verified mechanism only, landing with a regression test that fails before and passes after (a class fixed without one is patched, not fixed).
+4. **REVIEW** — the same adversarial pass a planned batch gets, explicitly asking: does the stated mechanism survive contact with the code?
+
+CHANGELOG rule: causal language earns its verbs — "because" requires a citation (test name, repro script, or code reference); unverified causality writes "consistent with" and carries the `HYPOTHESIS` label. Precedent: r5's issue 13 (reproduction before cure) is the model; the J3 evening's F6→F7 chain (one new defect per unreviewed timing fix) is the counter-example this protocol exists to prevent.
+
 ## License
 
 [MIT](LICENSE).

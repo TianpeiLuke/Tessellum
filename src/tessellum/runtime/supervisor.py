@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+import json
 import random
-import sqlite3
 import socket
 import threading
 import time
@@ -218,6 +218,25 @@ class Supervisor:
         finally:
             self._active_job_id = None
 
+    def _journal_heartbeat(
+        self, job_id: str, *, ok: bool, error: str | None, ttl: float
+    ) -> None:
+        """R2.1: the renewal journal — one JSONL line per beat/skip/failure
+        under the job's episodic dir (the same J1 surface the attempts journal
+        uses). Fail-soft: journaling must never affect the renewal loop."""
+        try:
+            runs = self.paths.job_artifacts(job_id) / "runs"
+            runs.mkdir(parents=True, exist_ok=True)
+            with (runs / "heartbeats.jsonl").open("a", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps(
+                        {"at": time.time(), "ok": ok, "error": error, "ttl": ttl}
+                    )
+                    + "\n"
+                )
+        except Exception:
+            pass
+
     @contextmanager
     def _heartbeat(
         self,
@@ -234,21 +253,41 @@ class Supervisor:
                 raise errors[0]
 
         def _run() -> None:
+            # R2.1 (FZ 20k9c1a1a1b7c2k2a1b): the hardened renewal actor. The
+            # old body was one-shot-fatal — the FIRST non-busy error killed the
+            # thread silently and the failure surfaced minutes later as an
+            # unattributable LeaseLostError (run 6's hypothesized mechanism,
+            # undiagnosable because no renewal record existed). Now: transient
+            # errors retry on cadence and escalate ONLY when no renewal has
+            # landed within one full TTL (the lease is then genuinely at risk);
+            # a LeaseLostError from the store is terminal immediately (the
+            # lease is fenced/expired — renewal can never succeed again); and
+            # EVERY beat, skip, and failure is journaled fail-soft to the job's
+            # episodic dir, so the actor's fate is reconstructible next time.
+            last_success = time.time()
             while not stopped.wait(max(0.05, ttl / 3.0)):
                 try:
                     self.store.heartbeat(job_id, lease, lease_ttl=ttl)
-                except sqlite3.OperationalError as exc:
-                    # A lease_guard held by this worker may temporarily own the
-                    # SQLite write lock while publishing an external effect.
-                    if "locked" in str(exc).lower() or "busy" in str(exc).lower():
-                        continue
+                    last_success = time.time()
+                    self._journal_heartbeat(job_id, ok=True, error=None, ttl=ttl)
+                except LeaseLostError as exc:
+                    self._journal_heartbeat(
+                        job_id, ok=False, error=f"terminal: {exc}", ttl=ttl
+                    )
                     errors.append(exc)
                     failed.set()
                     return
-                except Exception as exc:  # noqa: BLE001 - surfaced to executor
-                    errors.append(exc)
-                    failed.set()
-                    return
+                except Exception as exc:  # noqa: BLE001 - transient until stale
+                    self._journal_heartbeat(job_id, ok=False, error=str(exc), ttl=ttl)
+                    if time.time() - last_success > ttl:
+                        errors.append(
+                            RuntimeError(
+                                f"lease renewal could not land within one TTL "
+                                f"({ttl}s) for job {job_id}; last error: {exc}"
+                            )
+                        )
+                        failed.set()
+                        return
 
         thread = threading.Thread(
             target=_run,
@@ -261,9 +300,25 @@ class Supervisor:
         # long profile TTL (converge: 900s) the first renewal would come AFTER
         # the short claim lease expired — the run dies at the first heartbeat
         # tick. Re-lease synchronously NOW so the lease lifetime and the
-        # renewal cadence come from the same number; a lease already lost at
-        # entry fails fast here instead of mid-phase.
-        self.store.heartbeat(job_id, lease, lease_ttl=ttl)
+        # renewal cadence come from the same number. R2.1 refinement: only a
+        # LOST lease fails fast here (journaled); a transient store error at
+        # entry retries briefly then defers to the thread's staleness logic —
+        # entry must not be stricter than the steady state it establishes.
+        for entry_attempt in range(3):
+            try:
+                self.store.heartbeat(job_id, lease, lease_ttl=ttl)
+                break
+            except LeaseLostError as exc:
+                self._journal_heartbeat(
+                    job_id, ok=False, error=f"terminal: {exc}", ttl=ttl
+                )
+                raise
+            except Exception as exc:  # noqa: BLE001 - transient at entry
+                self._journal_heartbeat(
+                    job_id, ok=False, error=f"entry: {exc}", ttl=ttl
+                )
+                if entry_attempt < 2:
+                    time.sleep(0.1 * (entry_attempt + 1))
         thread.start()
         try:
             yield _assert_healthy
