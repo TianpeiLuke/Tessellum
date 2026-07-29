@@ -517,3 +517,19 @@ def test_code_source_excerpt_survives_fold_clobber(monkeypatch, tmp_path):
     # …the pipeline's fold guard restores the captured code copy verbatim
     plan_doc["source_excerpt"] = code_copy
     assert "TRUE SOURCE" in plan_doc["source_excerpt"]
+
+
+def test_figure_match_absorbs_thousands_separators():
+    """J3 finding 3: the exhibit/guard must find 12813 written as '12,813' —
+    run 3's revise loop exhausted on the comma. Boundaries still hold."""
+    from tessellum.composer.digestion import _figure_present, _figures_all_present
+
+    assert _figure_present(12813, "measured total: 12,813 words")
+    assert _figure_present(12813, "measured total: 12813 words")
+    assert not _figure_present(12813, "value 212813 is different")   # boundary
+    assert not _figure_present(12813, "value 128,134 is different")  # trailing digit
+    doc = {
+        "pages": [{"measured_words": 12813}],
+        "plan_text": "Summary: the source measures 12,813 words in total.",
+    }
+    assert _figures_all_present(doc)

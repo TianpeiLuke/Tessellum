@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — figure matching absorbs thousands separators; plan skill writes bare digits (J3 finding 3, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
+
+Run 3's revise loop exhausted its rounds on a brittleness defect in the evidence code itself: the plan reconciled to the measured total but wrote it the human way (`12,813`), and both the FIGURES exhibit (`str(mw) in plan_text` — bare substring) and the guard's digit-boundary regex only recognize `12813` — so the exhibit reported the figure NOT FOUND and the reviewer, correctly obeying the citation contract, rejected. The code side must absorb rendering, never the reviewer: new `_figure_present` (boundary-guarded, optional comma between digit groups) backs both the exhibit and `_figures_all_present`; the plan skill's verbatim-figures mandate now also says bare digits (belt at the generator, braces at the matcher). Suite 2099.
+
 ### Skills — `read_draft` gets the draft BY REFERENCE + the no-tools mandate; `reread_source` opening de-tooled (J3 finding 2, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
 
 The J3 retry's revise round hit the SAME class at a second site: `read_draft` said "Read the draft plan file at `$PLANS_DIR/…`" and never provided the draft — the model role-played a 20K-char fake `<tool_call>` transcript instead of JSON (stochastic: round 1's pass emitted a plausible assessment from nothing, which is its own grounding hole). The A3.2 by-reference migration reached the writer but not this step. Fix: the step now receives the of-record draft as `{{artifact.plan_text}}` with the explicit no-tools/no-role-play mandate, and assesses THAT text; `reread_source`'s "you MUST read the actual source pages" opening (mixed signal next to its ledger) is reworded to verify-against-the-ledger. Diagnosed live, mid-run, from the attempts journal's `content_head` — the J1 surface's second catch in one run.

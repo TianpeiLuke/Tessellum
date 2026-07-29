@@ -533,9 +533,21 @@ _FIGURE_CLAIM_RE = re.compile(
     r".{0,80}?(measured|ledger)",
     re.IGNORECASE | re.DOTALL,
 )
+def _figure_present(figure: int, text: str) -> bool:
+    """Digit-boundary AND thousands-separator-tolerant figure match (J3
+    finding 3, FZ 20k9c1a1a1b7c2k2): the ledger says ``12813``, a
+    human-formatted plan writes ``12,813`` — run 3's revise loop exhausted on
+    exactly that, the exhibit reporting the reconciled figure NOT FOUND. The
+    CODE side absorbs the rendering; a reviewer must never reject over a
+    comma. Boundary guards preserved (review F7: ``10`` must not match inside
+    ``2100``)."""
+    pattern = r"(?<!\d)" + r",?".join(str(figure)) + r"(?!\d)"
+    return bool(re.search(pattern, text))
+
+
 def _figures_all_present(plan_doc: dict) -> bool:
-    """Every code-measured page figure appears — digit-boundary-matched
-    (review F7: ``10`` must not match inside ``2100``) — in the plan text."""
+    """Every code-measured page figure appears — boundary-matched and
+    separator-tolerant (:func:`_figure_present`) — in the plan text."""
     pages = plan_doc.get("pages")
     plan_text = plan_doc.get("plan_text") or ""
     if not isinstance(pages, list) or not isinstance(plan_text, str) or not plan_text:
@@ -544,9 +556,7 @@ def _figures_all_present(plan_doc: dict) -> bool:
         pg.get("measured_words") for pg in pages
         if isinstance(pg, dict) and isinstance(pg.get("measured_words"), int)
     ]
-    return bool(figs) and all(
-        re.search(rf"(?<!\d){f}(?!\d)", plan_text) for f in figs
-    )
+    return bool(figs) and all(_figure_present(f, plan_text) for f in figs)
 
 
 def _norm_heading(s: object) -> str:
@@ -610,7 +620,7 @@ def compute_review_exhibits(plan_doc: dict) -> str:
             if isinstance(mw, int):
                 fig.append(
                     f"{pg.get('source_id') or pg.get('url') or '?'}: measured_words={mw} "
-                    f"{'PRESENT' if str(mw) in plan_text else 'NOT FOUND'} in plan_text"
+                    f"{'PRESENT' if _figure_present(mw, plan_text) else 'NOT FOUND'} in plan_text"
                 )
         if fig:
             parts.append("FIGURES (computed): " + "; ".join(fig))
