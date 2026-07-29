@@ -305,6 +305,41 @@ def execute_step(
             f"step {step.section_id!r} has no prompt_section_text — was it compiled?"
         )
 
+    # R1.3 (FZ 20k9c1a1a1b7c2k2a1a): dispatch-time required-input validation —
+    # a declared-REQUIRED informational input that is absent/empty refuses
+    # dispatch with a typed validation error instead of rendering a
+    # `<missing …>` sentinel into the prompt (the under-fed prompt is the
+    # F1/F2 role-play substrate). Scope: leaf.* and artifact.* — the
+    # constructor-provided namespaces; upstream.* keeps the existing
+    # missing_consumed machinery (already loud, P23-cascaded).
+    for _name, _req in getattr(step, "declared_inputs", ()):
+        if not _req:
+            continue
+        _ns, _, _key = _name.partition(".")
+        if _ns == "leaf":
+            _val = leaf.get(_key)
+        elif _ns == "artifact":
+            _val = (artifacts or {}).get(_key)
+        else:
+            continue
+        if _val in (None, "", [], (), {}):
+            return StepResult(
+                section_id=step.section_id,
+                leaf_id=leaf.get("_id"),
+                response=LLMResponse(
+                    content="", elapsed_ms=0.0,
+                    backend_id=getattr(backend, "backend_id", ""),
+                    metadata={"required_input_missing": _name},
+                ),
+                materialized=MaterializedOutput(
+                    structured={},
+                    notes=f"required input {_name} missing/empty at dispatch",
+                ),
+                elapsed_ms=(time.monotonic() - start) * 1000.0,
+                error=f"required input {_name} missing or empty at dispatch",
+                error_class="validation",
+            )
+
     prompt = _resolve_placeholders(
         step.prompt_section_text,
         leaf=leaf,

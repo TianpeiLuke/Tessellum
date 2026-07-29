@@ -103,3 +103,86 @@ def test_parity_catches_an_ungrounded_shape() -> None:
         label_a="eval_driver", label_b="runtime_m0",
     )
     assert any("source_excerpt" in f or "pages" in f for f in findings)
+
+
+# ── R1.2: the acquisition-verb lint ──────────────────────────────────────────
+
+from tessellum.composer.compiler import audit_acquisition_prose  # noqa: E402
+
+
+@pytest.mark.skipif(not _skills_present(), reason="real skills not present")
+@pytest.mark.parametrize("name", PHASE_SKILL_NAMES)
+def test_shipped_skills_have_no_role_play_bait(name: str) -> None:
+    """R1.2: every acquisition-verbed step renders a content-bearing binding —
+    the F1/F2 substrate (read/fetch prose with nothing bound on a tool-free
+    backend) is a lint failure now."""
+    pipeline = compile_skill(SKILLS / f"{name}.md")
+    assert audit_acquisition_prose(pipeline) == []
+
+
+def test_acquisition_lint_flags_ungrounded_read_prose(tmp_path: Path) -> None:
+    skill = tmp_path / "skill_bait.md"
+    skill.write_text(
+        "# Bait\n\n"
+        "## Step <!-- :: section_id = s1 :: -->\n\n"
+        "```yaml\n"
+        "role: CORE\naggregation: corpus_wide\nbatchable: false\ndepends_on: []\n"
+        "materializer: no_op\noutput_key: o\n"
+        "```\n\n"
+        "Read the source file end to end and measure it. Uses {{leaf.source_url}}.\n",
+        encoding="utf-8",
+    )
+    findings = audit_acquisition_prose(compile_skill(skill))
+    assert findings and "role-play bait" in findings[0]
+
+
+# ── R1.3: dispatch-time required-input validation ────────────────────────────
+
+def test_required_input_missing_refuses_dispatch(tmp_path: Path) -> None:
+    from tessellum.composer import MockBackend
+    from tessellum.composer.executor import execute_step
+
+    skill = tmp_path / "skill_req.md"
+    skill.write_text(
+        "# Req\n\n"
+        "## Step <!-- :: section_id = s1 :: -->\n\n"
+        "```yaml\n"
+        "role: CORE\naggregation: corpus_wide\nbatchable: false\ndepends_on: []\n"
+        "materializer: no_op\noutput_key: o\n"
+        "inputs:\n- name: leaf.pages\n  required: true\n"
+        "```\n\n"
+        "Ledger: {{leaf.pages}}\n",
+        encoding="utf-8",
+    )
+    step = compile_skill(skill).steps[0]
+    backend = MockBackend()
+    result = execute_step(
+        step, leaf={"_id": "x"}, upstream={}, backend=backend,
+        vault_root=tmp_path, dry_run=False,
+    )
+    assert result.error_class == "validation"
+    assert "required input leaf.pages" in (result.error or "")
+    assert backend.calls == []  # refused BEFORE the backend call
+
+    ok = execute_step(
+        step, leaf={"_id": "x", "pages": [{"measured_words": 5}]},
+        upstream={}, backend=backend, vault_root=tmp_path, dry_run=False,
+    )
+    assert ok.error is None
+
+
+# ── R1.4: the feedback edge reaches the writer (contract-level pin) ──────────
+
+@pytest.mark.skipif(not _skills_present(), reason="real skills not present")
+def test_feedback_edge_declared_at_the_effector_step() -> None:
+    """R1.4: `leaf.review_failures` is a DECLARED input of BOTH the revise
+    round's reader (read_draft) and the step that rewrites the artifact under
+    review (write_augmented_plan) — the F4 schema bottleneck cannot silently
+    reopen while this pin holds."""
+    pipeline = compile_skill(SKILLS / "skill_tessellum_augment_digestion_plan.md")
+    by_id = {s.section_id: dict(s.declared_inputs) for s in pipeline.steps}
+    assert "leaf.review_failures" in by_id["read_draft"]
+    assert "leaf.review_failures" in by_id["write_augmented_plan"]
+    # and the effector also receives the artifact under revision + the ledger
+    assert "artifact.plan_text" in by_id["write_augmented_plan"]
+    assert "artifact.pages" in by_id["write_augmented_plan"]

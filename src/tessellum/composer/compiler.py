@@ -960,3 +960,35 @@ def audit_input_closure(pipeline: "CompiledPipeline") -> list[str]:
                 f"never referenced in the prompt"
             )
     return findings
+
+
+_ACQUISITION_RE = re.compile(
+    r"\b(re-?read|read|fetch|browse|crawl)\b[^.\n]{0,60}\b"
+    r"(page|pages|file|files|url|urls|site|sites|source|draft|vault|document)\b",
+    re.IGNORECASE,
+)
+_CONTENT_HOLE_RE = re.compile(
+    r"\{\{\s*(artifact\.[a-z0-9_]+|upstream\.[a-z0-9_]+"
+    r"|leaf\.(?:pages|source_excerpt|source_content|plan_text|members))\s*\}\}"
+)
+
+
+def audit_acquisition_prose(pipeline: "CompiledPipeline") -> list[str]:
+    """R1.2 (FZ 20k9c1a1a1b7c2k2a1a): the acquisition-verb lint — the inverse
+    of the shipped tool-leakage check. On the tool-free composer backend, a
+    step whose prose instructs the model to READ/FETCH/BROWSE something must
+    also render at least one content-bearing binding (an artifact ref, an
+    upstream payload, or an inline source/plan/ledger leaf key) — else the
+    prose is role-play bait: J3's F1/F2 were exactly acquisition imperatives
+    compiled against ``allowed_tools=()`` with nothing bound. Report mode."""
+    findings: list[str] = []
+    for step in pipeline.steps:
+        prompt = step.prompt_section_text or ""
+        m = _ACQUISITION_RE.search(prompt)
+        if m and not _CONTENT_HOLE_RE.search(prompt):
+            findings.append(
+                f"step {step.section_id!r}: acquisition prose "
+                f"({m.group(0)!r}) with NO content-bearing binding — "
+                f"role-play bait on a tool-free backend"
+            )
+    return findings
