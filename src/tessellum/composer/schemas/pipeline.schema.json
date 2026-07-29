@@ -4,7 +4,9 @@
   "title": "Tessellum Composer Pipeline",
   "description": "Per-step pipeline declarations for a Tessellum capture/digest skill. Each step's contract lives in a leading ```yaml``` block inside its `<!-- :: section_id = X :: -->` H2 section in the single-file skill canonical; `tessellum.composer.loader.load_pipeline` reads and validates each block against the `Step` definition here. The `Step` definition is the authoritative per-step schema; the top-level `pipeline` array shape is retained for the assembled in-memory model.",
   "type": "object",
-  "required": ["pipeline"],
+  "required": [
+    "pipeline"
+  ],
   "properties": {
     "version": {
       "type": "string",
@@ -15,14 +17,22 @@
       "type": "array",
       "minItems": 1,
       "description": "Ordered list of step declarations.",
-      "items": { "$ref": "#/definitions/Step" }
+      "items": {
+        "$ref": "#/definitions/Step"
+      }
     }
   },
   "additionalProperties": true,
   "definitions": {
     "Step": {
       "type": "object",
-      "required": ["section_id", "role", "aggregation", "batchable", "depends_on"],
+      "required": [
+        "section_id",
+        "role",
+        "aggregation",
+        "batchable",
+        "depends_on"
+      ],
       "properties": {
         "section_id": {
           "type": "string",
@@ -30,12 +40,20 @@
           "description": "Anchor id matching `<!-- :: section_id = X :: -->` in the skill canonical."
         },
         "role": {
-          "enum": ["CORE", "DEFERRED", "INFRA"],
+          "enum": [
+            "CORE",
+            "DEFERRED",
+            "INFRA"
+          ],
           "description": "CORE = compiled into pipeline_dag (LLM-dispatched); DEFERRED = visible to compiler but not auto-dispatched; INFRA = dropped, no LLM call (informational/glue)."
         },
         "aggregation": {
-          "enum": ["per_leaf", "cross_leaf", "corpus_wide"],
-          "description": "How the step instance is multiplied — once per leaf, once across all leaves of a cross_leaf scope, or once for the whole corpus."
+          "enum": [
+            "per_leaf",
+            "cross_leaf",
+            "corpus_wide"
+          ],
+          "description": "How the step instance is multiplied \u2014 once per leaf, once across all leaves of a cross_leaf scope, or once for the whole corpus."
         },
         "batchable": {
           "type": "boolean",
@@ -43,7 +61,9 @@
         },
         "depends_on": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "section_ids this step depends on. Forward references not allowed; compiler enforces topological order."
         },
         "materializer": {
@@ -57,21 +77,32 @@
           "description": "Materializer key. Resolves via `tessellum.composer.contracts.MATERIALIZER_CONTRACTS`. Required for CORE/DEFERRED steps; INFRA steps default to no_op."
         },
         "wire_format": {
-          "enum": ["json", "markdown_with_frontmatter", "xml_tag_list", "none"],
-          "description": "Optional override of the materializer contract's declared wire_format. Usually omitted — the contract is authoritative."
+          "enum": [
+            "json",
+            "markdown_with_frontmatter",
+            "xml_tag_list",
+            "none"
+          ],
+          "description": "Optional override of the materializer contract's declared wire_format. Usually omitted \u2014 the contract is authoritative."
         },
         "operation_verb": {
-          "enum": ["PRODUCE", "APPLY", "DESCRIBE"],
+          "enum": [
+            "PRODUCE",
+            "APPLY",
+            "DESCRIBE"
+          ],
           "description": "Optional override of the materializer contract's declared operation_verb. PRODUCE = write new; APPLY = overwrite existing; DESCRIBE = informational, no side effect."
         },
         "applies_to_files": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Static list of vault-relative paths the step applies to. APPLY-mode steps require non-empty."
         },
         "applies_to_files_query": {
           "$ref": "#/definitions/Query",
-          "description": "Declarative query resolved against the unified DB at compile time. Mutually informative with `applies_to_files`. Requires the indexer (not shipped in v0.0.9 — Wave 1 loaders accept the field but cannot resolve it until the indexer ships)."
+          "description": "Declarative query resolved against the unified DB at compile time. Mutually informative with `applies_to_files`. Requires the indexer (not shipped in v0.0.9 \u2014 Wave 1 loaders accept the field but cannot resolve it until the indexer ships)."
         },
         "expected_output_schema": {
           "type": "object",
@@ -87,24 +118,53 @@
         },
         "mcp_dependencies": {
           "type": "array",
-          "items": { "$ref": "#/definitions/MCPDependency" },
+          "items": {
+            "$ref": "#/definitions/MCPDependency"
+          },
           "description": "MCPs this step depends on. Compiler resolves each entry against `tessellum.composer.contracts.MCP_CONTRACTS` and raises ContractViolation on drift before any LLM call fires."
+        },
+        "inputs": {
+          "type": "array",
+          "description": "R1.1 (FZ 20k9c1a1a1b7c2k2a1a): the step's declared informational inputs \u2014 every fact the prompt needs, named as a fully-qualified binding (leaf.X / upstream.Y / artifact.Z). audit_input_closure verifies the manifest equals the prompt's actual template holes; a prompt may never instruct the model to ACQUIRE information.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "required": {
+                "type": "boolean",
+                "default": false
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": true
     },
     "MCPDependency": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string",
           "pattern": "^[a-z][a-z0-9_-]*$",
-          "description": "Stable MCP identifier (lowercase, hyphens/underscores allowed). Matches a key in `tessellum.composer.contracts.MCP_CONTRACTS`. The default registry is empty — Tessellum has no built-in MCPs; users register their own at runtime."
+          "description": "Stable MCP identifier (lowercase, hyphens/underscores allowed). Matches a key in `tessellum.composer.contracts.MCP_CONTRACTS`. The default registry is empty \u2014 Tessellum has no built-in MCPs; users register their own at runtime."
         },
         "calls": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Specific MCP tool names this step invokes. Each name MUST appear in the corresponding `MCPContract.available_tools` (loaded from a co-located JSON snapshot when registered); the compiler raises UNKNOWN_MCP_TOOL otherwise."
         },
         "required": {
@@ -117,7 +177,9 @@
     },
     "Query": {
       "type": "object",
-      "required": ["kind"],
+      "required": [
+        "kind"
+      ],
       "properties": {
         "kind": {
           "enum": [
@@ -134,7 +196,9 @@
         },
         "exclude_dirs": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Vault-relative directory prefixes to exclude. Defaults vary by kind."
         }
       },

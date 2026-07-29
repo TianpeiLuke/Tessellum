@@ -57,6 +57,11 @@ expected_output_schema:
       type: string
     total_notes:
       type: integer
+inputs:
+- name: artifact.plan_text
+  required: true
+- name: leaf.plan_path
+  required: false
 ```
 
 Step 1 of tessellum-review-digestion-plan: Read the Plan (identity + status gate).
@@ -143,6 +148,11 @@ expected_output_schema:
           type:
           - string
           - 'null'
+inputs:
+- name: leaf.review_exhibits
+  required: false
+- name: artifact.plan_text
+  required: true
 ```
 
 COMPUTED EXHIBITS (deterministic checks the driver already ran — CITE these in each checkpoint verdict; do NOT re-count. If your impression contradicts an exhibit, THE EXHIBIT WINS and your checkpoint must say so):
@@ -267,6 +277,15 @@ expected_output_schema:
           type:
           - string
           - 'null'
+inputs:
+- name: artifact.plan_text
+  required: true
+- name: upstream.structure_checks
+  required: true
+- name: artifact.pages
+  required: true
+- name: leaf.review_exhibits
+  required: false
 ```
 
 Step 3 of tessellum-review-digestion-plan: Check Density & Terms.
@@ -335,6 +354,11 @@ expected_output_schema:
       items:
         type: string
       description: One string per failed checkpoint; empty when ready.
+inputs:
+- name: upstream.structure_checks
+  required: true
+- name: upstream.density_checks
+  required: true
 ```
 
 Step 4 of tessellum-review-digestion-plan: Report Verdict.

@@ -97,6 +97,17 @@ expected_output_schema:
       items:
         type: string
       description: Mandatory augmentation sections the later steps must add
+inputs:
+- name: leaf.plan_path
+  required: false
+- name: leaf.source_refs
+  required: false
+- name: leaf.review_failures
+  required: false
+- name: artifact.plan_text
+  required: true
+- name: upstream.draft_assessment
+  required: true
 ```
 
 You are running step 1 of tessellum-augment-digestion-plan: read the
@@ -198,6 +209,15 @@ expected_output_schema:
       items:
         type: string
       description: Terms surfaced by the re-read that the original plan missed
+inputs:
+- name: upstream.draft_assessment
+  required: true
+- name: leaf.source_refs
+  required: false
+- name: artifact.pages
+  required: true
+- name: upstream.density_reassessment
+  required: true
 ```
 
 You are running step 2 of tessellum-augment-digestion-plan: verify the
@@ -290,6 +310,13 @@ expected_output_schema:
             type: array
             items:
               type: string
+inputs:
+- name: upstream.density_reassessment
+  required: true
+- name: upstream.coverage_and_gates
+  required: true
+- name: artifact.pages
+  required: true
 ```
 
 You are running step 3 of tessellum-augment-digestion-plan: assemble the
@@ -427,6 +454,11 @@ expected_output_schema:
           type:
           - string
           - 'null'
+inputs:
+- name: upstream.coverage_and_gates
+  required: true
+- name: upstream.crossref_contract
+  required: true
 ```
 
 You are running step 4 of tessellum-augment-digestion-plan: build the
@@ -477,6 +509,19 @@ expected_output_schema:
     body_markdown:
       type: string
       description: The full augmented plan content, written verbatim by the materializer
+inputs:
+- name: upstream.draft_assessment
+  required: true
+- name: upstream.coverage_and_gates
+  required: true
+- name: upstream.crossref_contract
+  required: true
+- name: artifact.plan_text
+  required: true
+- name: artifact.pages
+  required: true
+- name: leaf.review_failures
+  required: false
 ```
 
 You are running step 5 of tessellum-augment-digestion-plan: rewrite the

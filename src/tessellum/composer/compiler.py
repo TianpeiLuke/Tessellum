@@ -173,6 +173,11 @@ class CompiledStep:
     # coeff * declared_notes. None → no scaling (byte-identical to pre-P12).
     max_tokens_per_note: int | None = None
     timeout_seconds_per_note: float | None = None
+    # R1.1 (FZ 20k9c1a1a1b7c2k2a1a): the declared input manifest —
+    # tuple of (fully-qualified binding name, required). Empty for steps
+    # authored before the manifest convention; audit_input_closure reports
+    # those as the adoption worklist.
+    declared_inputs: tuple[tuple[str, bool], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -862,6 +867,7 @@ def _compile_step(step: PipelineStep, skill_path: Path) -> CompiledStep:
         max_tokens=step.max_tokens,
         max_tokens_per_note=step.max_tokens_per_note,
         timeout_seconds_per_note=step.timeout_seconds_per_note,
+        declared_inputs=tuple((i.name, i.required) for i in step.inputs),
     )
 
 
@@ -907,3 +913,50 @@ __all__ = [
     "compile_skill",
     "to_dag_json",
 ]
+
+
+# ── R1.1 (FZ 20k9c1a1a1b7c2k2a1a): the input-closure audit ────────────────────
+
+_INPUT_HOLE_RE = re.compile(r"\{\{\s*(leaf|upstream|artifact)\.([a-z0-9_]+)\s*\}\}")
+
+
+def audit_input_closure(pipeline: "CompiledPipeline") -> list[str]:
+    """The closure lint over every step's input contract (report mode).
+
+    For each step: the prompt's actual template holes (``{{leaf.X}}`` /
+    ``{{upstream.Y}}`` / ``{{artifact.Z}}`` — ``retry.*`` and ``existing.*``
+    are runtime/apply-mode namespaces, not informational inputs) must equal
+    the declared ``inputs`` manifest. Three finding classes:
+
+    - ``no input manifest`` — the step predates the convention; the listed
+      holes ARE its adoption worklist.
+    - ``undeclared input`` — a hole the manifest does not name (the F1/F2
+      class surfaces here the moment a migration misses a step).
+    - ``declared but never referenced`` — a manifest entry with no hole
+      (drift in the other direction).
+
+    Pure report: returns finding strings, raises nothing — enforcement is the
+    caller's policy decision (the deployment-parity canary asserts the four
+    shipped skills stay clean)."""
+    findings: list[str] = []
+    for step in pipeline.steps:
+        prompt = step.prompt_section_text or ""
+        holes = {f"{ns}.{key}" for ns, key in _INPUT_HOLE_RE.findall(prompt)}
+        declared = {name for name, _req in step.declared_inputs}
+        if not step.declared_inputs:
+            if holes:
+                findings.append(
+                    f"step {step.section_id!r}: no input manifest "
+                    f"(holes: {sorted(holes)})"
+                )
+            continue
+        for hole in sorted(holes - declared):
+            findings.append(
+                f"step {step.section_id!r}: undeclared input {{{{{hole}}}}}"
+            )
+        for name in sorted(declared - holes):
+            findings.append(
+                f"step {step.section_id!r}: input {name!r} declared but "
+                f"never referenced in the prompt"
+            )
+    return findings

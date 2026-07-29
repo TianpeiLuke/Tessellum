@@ -70,6 +70,9 @@ expected_output_schema:
       - string
       - 'null'
       description: Why the run was refused, or null when ready
+inputs:
+- name: leaf.plan_path
+  required: false
 ```
 
 You are the master orchestrator verifying that a digestion plan is
@@ -151,6 +154,9 @@ expected_output_schema:
       type: boolean
       description: 'True once the ## Plan Boot Report + ## Plan Amendments sections are appended
         to the plan'
+inputs:
+- name: upstream.preflight_report
+  required: true
 ```
 
 You are the master orchestrator booting the plan and applying
@@ -234,6 +240,9 @@ expected_output_schema:
         non-empty => return to boot_and_amend)
       items:
         type: string
+inputs:
+- name: upstream.boot_report
+  required: true
 ```
 
 You are the master orchestrator extracting per-batch sub-agent
@@ -272,6 +281,25 @@ expected_output_schema:
       type: string
       description: Vault-relative .md path for this planned note
       pattern: ^[a-z0-9_/]+\.md$
+inputs:
+- name: leaf.note
+  required: false
+- name: leaf.target_path
+  required: false
+- name: leaf.source_ref
+  required: false
+- name: leaf.owned_sections_md
+  required: false
+- name: artifact.plan_text
+  required: true
+- name: artifact.source_excerpt
+  required: true
+- name: leaf.related_references_md
+  required: false
+- name: leaf.type_contract_md
+  required: false
+- name: upstream.batch_contracts
+  required: true
 ```
 
 You are a writer sub-agent producing exactly one planned note. One
@@ -394,6 +422,11 @@ expected_output_schema:
     overall_ok:
       type: boolean
       description: True only if all counts are 0 and coverage is complete
+inputs:
+- name: upstream.note_body
+  required: true
+- name: leaf.related_references_md
+  required: false
 ```
 
 You are running the independent post-hoc verification sweep over the

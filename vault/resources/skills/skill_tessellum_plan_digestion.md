@@ -86,6 +86,19 @@ expected_output_schema:
       - single_plan
       - single_plan_phased
       - master_plus_subplans
+inputs:
+- name: leaf.source_url
+  required: false
+- name: leaf.source_name
+  required: false
+- name: leaf.member_count
+  required: false
+- name: leaf.members
+  required: false
+- name: leaf.pages
+  required: true
+- name: leaf.source_excerpt
+  required: true
 ```
 
 You are running Phase 1, step 1 (identify_source) of tessellum-plan-digestion.
@@ -163,6 +176,9 @@ expected_output_schema:
           type: array
           items:
             type: string
+inputs:
+- name: upstream.source_assessment
+  required: true
 ```
 
 You are running Phase 1, step 2 (route) of tessellum-plan-digestion.
@@ -263,6 +279,13 @@ expected_output_schema:
               type: string
           rationale:
             type: string
+inputs:
+- name: upstream.source_assessment
+  required: true
+- name: upstream.routing_decision
+  required: true
+- name: leaf.note_count_band
+  required: false
 ```
 
 You are running Phase 1, step 3 (decompose) of tessellum-plan-digestion.
@@ -392,6 +415,9 @@ expected_output_schema:
       type: array
       items:
         type: string
+inputs:
+- name: upstream.note_breakdown
+  required: true
 ```
 
 You are running Phase 1, step 4 (cross_references) of
@@ -446,6 +472,15 @@ expected_output_schema:
     body_markdown:
       type: string
       description: The complete digestion plan file body, including YAML frontmatter
+inputs:
+- name: upstream.source_assessment
+  required: true
+- name: upstream.note_breakdown
+  required: true
+- name: upstream.cross_ref_plan
+  required: true
+- name: upstream.routing_decision
+  required: true
 ```
 
 You are running Phase 1, step 5 (write_plan) of tessellum-plan-digestion.

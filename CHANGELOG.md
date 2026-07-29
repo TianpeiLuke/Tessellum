@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — input manifests + closure audit; prompt-diff leaf-constructor parity (R1.1/R3.2, FZ 20k9c1a1a1b7c2k2a1a/c) — 2026-07-29
+
+The static/dynamic twins over the step input contract. **R1.1**: steps now declare their informational INPUTS with the same rigor as outputs — `StepInput` in the loader, `inputs:` in the Step schema, `CompiledStep.declared_inputs`, and `audit_input_closure` (report mode): every `{{leaf/upstream/artifact.X}}` hole must be declared and every declaration referenced; manifests authored for all ~20 steps of the four skills (generated from the actual holes, content-bearing + upstream bindings marked required) — the audit runs clean, and a parametrized test keeps it clean, so the next A3.2-style migration gap fails CI the day it is written. **R3.2**: `composer/parity.py` normalizes the eval-driver leaf and the runtime M0 leaf exactly as the pipeline does (F4 pseudo-member ledger + joined excerpt) and diffs which bindings resolve per step — zero findings post-J3 (the certificate the five pre-J3 green evals never actually held), with `leaf.members` as the one DECLARED shape-variant exemption (the single-source contract's own definition) and a negative test proving a stripped source is caught. +7 tests (suite 2113).
+
 ### Tests — the mock E2E service-path canary (R3.1, FZ 20k9c1a1a1b7c2k2a1c) — 2026-07-29
 
 The test the J3 arc lacked: the REAL four skills driven through the LITERAL production entrypoint — admission → claim → supervisor (hardened heartbeat) → `DigestionExecutor` → plan/augment/review → sign-off gates → the 2-writer execute wave → wave gate → commit tail with GC — on a `MockBackend` superset response, in ~1s, every CI push. Asserts the J2 `_artifact_refs`, the A4.2 sweep + episodic retention, the timestamped attempts journal, and both notes materialized. Building it exercised the machinery for real twice: the wave gate's dedup check correctly BLOCKED the first fixture (two leaves, one output_path), and the verify step's prompt embedding the written notes exposed mock-keying order. Suite 2106.

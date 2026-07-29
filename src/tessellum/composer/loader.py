@@ -79,6 +79,22 @@ class Query(BaseModel):
     exclude_dirs: tuple[str, ...] = ()
 
 
+class StepInput(BaseModel):
+    """R1.1 (FZ 20k9c1a1a1b7c2k2a1a): one declared informational input of a
+    step — the input-manifest half of the contract symmetry (steps always
+    declared outputs; inputs lived as untyped template holes plus prose, the
+    root of the J3 tool-role-play class). ``name`` is the fully-qualified
+    binding (``leaf.X`` / ``upstream.Y`` / ``artifact.Z``); ``required`` marks
+    bindings whose empty/sentinel rendering should refuse dispatch (R1.3);
+    ``role`` is a one-line human note."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    required: bool = False
+    role: str = ""
+
+
 class PipelineStep(BaseModel):
     """One inline step contract with typed access to the ``Step`` schema."""
 
@@ -98,6 +114,10 @@ class PipelineStep(BaseModel):
     prompt_template: str | None = None
     output_key: str | None = None
     mcp_dependencies: tuple[MCPDependency, ...] = ()
+    inputs: tuple[StepInput, ...] = ()
+    """R1.1: the step's declared informational inputs — audited for closure
+    against the prompt's actual template holes by
+    :func:`tessellum.composer.compiler.audit_input_closure`."""
     # Robustness fields. All optional.
     timeout_seconds: float | None = None
     """Per-step watchdog timeout. None → use executor default (120s)."""
