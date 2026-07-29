@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Runtime — `max_review_rounds` policy-gated on the service path (J3 plumbing, FZ 20k9c1a1a1b7c2k2) — 2026-07-28
+
+`RuntimePolicy.max_review_rounds` (default 0 = single-pass, byte-identical) now threads into the executor's pipeline call — before this the P15 review-revise loop, the demonstrated cure for plan over-splitting (the API runs' 17→16→8 convergence), was unreachable under the supervisor. The J3 convergence run is the first consumer. +1 assertion in the executor capture test.
+
 ### Composer/Runtime — the A3/A4 memory migration: metadata-only leaves, the source in the store, thin manifest, GC-at-commit (FZ 20k9c1a1a1b7c2k1a) — 2026-07-28
 
 Completes the vault-as-memory plan's A3 (de-dup migration) and A4 (thin ledger + GC), finishing J2's "the store is the of-record" claim for the SOURCE bytes too. Adversarially self-reviewed — two latent defects fixed pre-commit (a fold clobbering the code-joined source with an LLM re-emission, and a non-boundary-aware filename match that would have let `data.md` own `a.md`'s sections — the substring-renumbering class).

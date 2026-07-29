@@ -50,6 +50,12 @@ class RuntimePolicy:
     # `reject`s. ``None`` (default) → the full plan→…→execute path, byte-identical
     # to pre-T3. The ``inspect`` profile sets it.
     stop_after: str | None = None
+    # J3 (FZ 20k9c1a1a1b7c2k2) — the P15 review-revise loop on the service
+    # path. Before this, the runtime executor never passed the parameter, so
+    # the loop that demonstrably converges an over-split plan toward the
+    # golden count (the API runs' 17→16→8) was unreachable under the
+    # supervisor. ``0`` (default) → single-pass, byte-identical to pre-J3.
+    max_review_rounds: int = 0
 
     @classmethod
     def for_profile(cls, profile: str) -> "RuntimePolicy":

@@ -236,6 +236,8 @@ def test_execute_wires_episodic_surface_and_artifact_refs(tmp_path, monkeypatch)
     # J1: the composer's episodic tier lands under the job's own dir.
     assert captured["runs_dir"] == art / "runs"
     assert captured["durable_artifact_dir"] == art / "artifacts"
+    # J3: the revise loop is policy-gated (default 0 = single-pass).
+    assert captured["max_review_rounds"] == 0
     # J2: plan.json carries digests of the of-record bytes the store paged.
     plan = json.loads((art / "plan.json").read_text(encoding="utf-8"))
     refs = plan["_artifact_refs"]

@@ -803,6 +803,8 @@ class DigestionExecutor:
                 # an accepted plan; the supervisor parks the job PAUSED for human
                 # promote/reject.
                 stop_after=policy.stop_after,
+                # J3 (FZ 20k9c1a1a1b7c2k2): the P15 revise loop, policy-gated.
+                max_review_rounds=policy.max_review_rounds,
                 # J1 (FZ 20k9c1a1a1b7c2k2): one episodic surface — the composer's
                 # checkpoints/, attempts.jsonl and per-step traces land under the
                 # job's own dir (runs/), where `runtime status` reads them at the
