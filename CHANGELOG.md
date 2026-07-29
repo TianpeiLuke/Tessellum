@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Tests — the mock E2E service-path canary (R3.1, FZ 20k9c1a1a1b7c2k2a1c) — 2026-07-29
+
+The test the J3 arc lacked: the REAL four skills driven through the LITERAL production entrypoint — admission → claim → supervisor (hardened heartbeat) → `DigestionExecutor` → plan/augment/review → sign-off gates → the 2-writer execute wave → wave gate → commit tail with GC — on a `MockBackend` superset response, in ~1s, every CI push. Asserts the J2 `_artifact_refs`, the A4.2 sweep + episodic retention, the timestamped attempts journal, and both notes materialized. Building it exercised the machinery for real twice: the wave gate's dedup check correctly BLOCKED the first fixture (two leaves, one output_path), and the verify step's prompt embedding the written notes exposed mock-keying order. Suite 2106.
+
 ### Runtime — the hardened renewal actor + renewal journal; run-6 forensics under the protocol (R2.1/R2.2, FZ 20k9c1a1a1b7c2k2a1b) — 2026-07-29
 
 - **R2.2 — run-6 investigation (the protocol's first application).** OBSERVATION: store events place run 6's claim at 01:06:52 and the last attempts-journal write at 01:31:04 — ~24 minutes during which the 40s-cadence renewal thread had ~35 opportunities to renew, yet the lease was lost. MECHANISM (verified to this depth): the renewal thread STOPPED RENEWING; the specific stop path is a labeled HYPOTHESIS (one-shot-fatal exit on a first non-busy error, or repeated busy-skips) — undiagnosable deeper because no renewal record existed, and the attempts journal carried no timestamps. Corollary: the original F6 finding was misdiagnosed (its TTL-900 fix widened the survivable dead-renewal window rather than fixing the actor), now pinned by a schedule test: a blocked main thread 2.5× the TTL SURVIVES under a live renewal actor (`test_blocked_main_thread_longer_than_ttl_survives`).
