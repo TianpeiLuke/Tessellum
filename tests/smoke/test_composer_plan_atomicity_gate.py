@@ -65,7 +65,7 @@ def test_note_intent_rejects_negative_words() -> None:
 
 
 def _plan(planned=None, coverage=None, **extra):
-    doc = {"plan_path": "plans/p.md", "plan_text": "x", "total_notes": 1}
+    doc = {"plan_path": "plans/p.md", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off", "total_notes": 1}
     if planned is not None:
         doc["planned_notes"] = planned
     if coverage is not None:
@@ -132,7 +132,7 @@ def test_plan007_exempts_typed_graph_no_words() -> None:
         {"note_id": "n1", "building_block": "concept"},          # no approx_words
         {"note_id": "n2", "building_block": "procedure"},
     ]}
-    doc = {"plan_path": "p", "plan_text": "x", "total_notes": 2,
+    doc = {"plan_path": "p", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off", "total_notes": 2,
            "note_intent_graph": graph}
     assert not any(i.rule_id == "PLAN-007" for i in plan_atomicity_predicate(doc))
 
@@ -177,7 +177,7 @@ def test_plan008_exempts_typed_graph() -> None:
     # over-split heuristic is a planned_notes-shape concern only.
     graph = {"objective_id": "o", "intents": [
         {"note_id": f"n{i}", "building_block": "concept"} for i in range(30)]}
-    doc = {"plan_path": "p", "plan_text": "x", "total_notes": 30,
+    doc = {"plan_path": "p", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off", "total_notes": 30,
            "note_intent_graph": graph,
            "pages": [{"measured_words": 3000}]}
     assert not any(i.rule_id == "PLAN-008" for i in plan_atomicity_predicate(doc))
@@ -282,7 +282,7 @@ def test_predicate_reads_typed_graph() -> None:
             {"note_id": "n1", "building_block": "concept", "approx_words": 2500},
         ],
     }
-    doc = {"plan_path": "p", "plan_text": "x", "total_notes": 1,
+    doc = {"plan_path": "p", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off", "total_notes": 1,
            "note_intent_graph": graph}
     issues = plan_atomicity_predicate(doc)
     assert any(i.rule_id == "PLAN-004" and "n1" in i.message for i in issues)
@@ -292,7 +292,7 @@ def test_typed_graph_takes_priority_over_planned_notes() -> None:
     # When both are present the typed graph is authoritative.
     graph = {"objective_id": "o", "intents": [
         {"note_id": "g1", "building_block": "concept", "approx_words": 3000}]}
-    doc = {"plan_path": "p", "plan_text": "x", "total_notes": 1,
+    doc = {"plan_path": "p", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off", "total_notes": 1,
            "note_intent_graph": graph,
            "planned_notes": [{"filename": "p1.md", "building_block": "concept",
                               "approx_words": 100}]}
@@ -307,7 +307,7 @@ def test_typed_graph_takes_priority_over_planned_notes() -> None:
 def test_no_notes_no_atomicity_issues() -> None:
     # A plan enumerating no notes has no atomicity signal — structure gate owns
     # the shapeless/empty-plan fail-closed case, not this predicate.
-    assert plan_atomicity_predicate({"plan_path": "p", "plan_text": "x",
+    assert plan_atomicity_predicate({"plan_path": "p", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off",
                                      "total_notes": 0}) == []
 
 
@@ -377,7 +377,7 @@ def test_augment_phase_does_not_clobber_coverage_gate(tmp_path) -> None:
     })
 
     # simulate the linear plan→augment flat merge (_collect_structured: dict.update)
-    plan_doc = {"plan_path": "plans/p.md", "plan_text": "x", "total_notes": 1,
+    plan_doc = {"plan_path": "plans/p.md", "plan_text": "x\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off", "total_notes": 1,
                 "pages": [{"headings": ["Intro", "Security"]}]}
     for blob in (plan_step3, augment_step3):
         out = materialize("no_op", blob, vault_root=tmp_path)

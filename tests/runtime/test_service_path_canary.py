@@ -81,7 +81,7 @@ _SUPERSET = {
     "entry_point_decision": {"action": "UPDATE", "matches_size_threshold": True,
                              "target_entry_point": "entry_demo.md"},
     "status": "pending", "total_notes": 2,
-    "plan_text": "# Plan\n\n## Objective\n\nbody\n",
+    "plan_text": "# Plan\n\n## Objective\n\nbody\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off\n",
     "cp1": {"result": "PASS", "gap": None}, "cp2": {"result": "PASS", "gap": None},
     "cp3": {"result": "PASS", "gap": None}, "cp4": {"result": "PASS", "gap": None},
     "cp5": {"result": "PASS", "gap": None}, "cp6": {"result": "PASS", "gap": None},

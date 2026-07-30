@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 
 from tessellum.composer import MockBackend, run_digestion_pipeline
+from tessellum.composer.contracts import mandatory_section_stems
 from tessellum.composer.digestion import (
     _review_verdict,
     compute_coverage_orphans,
@@ -28,6 +29,10 @@ from tessellum.composer.digestion import (
 )
 
 from test_composer_episodic_hardening import _synthetic_pipeline
+
+# PLAN-009 gates coverage-map-bearing plans on the mandatory sections —
+# fixtures that assert completion must carry the stems.
+_STEM_BLOB = "\n" + "\n".join(f"## {s}" for s in mandatory_section_stems())
 
 
 # ── issue 11: the code-computed ledger ───────────────────────────────────────
@@ -58,7 +63,7 @@ def test_pipeline_ledger_survives_model_reemission(tmp_path: Path) -> None:
     _synthetic_pipeline(sd)
     text = "# Only Heading\n\n" + "word " * 50
     blob = {
-        "plan_path": "plans/p.md", "plan_text": "# Plan\n\nbody",
+        "plan_path": "plans/p.md", "plan_text": "# Plan\n\nbody" + _STEM_BLOB,
         "ready": True, "failures": [],
         "output_path": "notes/n.md", "body_markdown": "# N\n\nbody",
         "total_notes": 1,
@@ -91,7 +96,7 @@ def test_no_members_no_ledger_override(tmp_path: Path) -> None:
     sd.mkdir()
     _synthetic_pipeline(sd)
     blob = {
-        "plan_path": "plans/p.md", "plan_text": "# Plan\n\nbody",
+        "plan_path": "plans/p.md", "plan_text": "# Plan\n\nbody" + _STEM_BLOB,
         "ready": True, "failures": [],
         "output_path": "notes/n.md", "body_markdown": "# N\n\nbody",
         "total_notes": 1,
@@ -317,7 +322,7 @@ def test_result_surfaces_contradicted_failures(tmp_path: Path) -> None:
     _synthetic_pipeline(sd)
     text = "# Only Heading\n\n" + "word " * 50
     blob = {
-        "plan_path": "plans/p.md", "plan_text": "# Plan\n\n" + str(len(text.split())),
+        "plan_path": "plans/p.md", "plan_text": "# Plan\n\n" + str(len(text.split())) + _STEM_BLOB,
         "ready": False,
         "failures": ["CP7 FAIL — 30 headings unmapped in the coverage map"],
         "output_path": "notes/n.md", "body_markdown": "# N\n\nbody",
@@ -364,7 +369,7 @@ def test_ledger_synthesized_from_source_content(tmp_path: Path) -> None:
     _synthetic_pipeline(sd)
     text = "# Solo Heading\n\n" + "tok " * 40
     blob = {
-        "plan_path": "plans/p.md", "plan_text": "# Plan\n\n" + str(len(text.split())),
+        "plan_path": "plans/p.md", "plan_text": "# Plan\n\n" + str(len(text.split())) + _STEM_BLOB,
         "ready": True, "failures": [],
         "output_path": "notes/n.md", "body_markdown": "# N\n\nbody",
         "total_notes": 1,
@@ -469,7 +474,7 @@ def test_attempts_journal_written_via_pipeline(tmp_path: Path) -> None:
                      "members": [{"source_id": "m", "excerpt": "# H\nw"}],
                      "section_coverage_map": [{"source_section": "H", "maps_to_note": "n.md"}]},
         backend=MockBackend(default=json.dumps({
-            "plan_path": "p.md", "plan_text": "# P\n1",
+            "plan_path": "p.md", "plan_text": "# P\n1" + _STEM_BLOB,
             "ready": True, "failures": [],
             "output_path": "n.md", "body_markdown": "# N\nb", "total_notes": 1,
             "section_coverage_map": [{"source_section": "H", "maps_to_note": "n.md"}],
@@ -620,7 +625,7 @@ def test_gate_failure_reenters_the_revise_loop_despite_reviewer_ready(tmp_path, 
         "ready": True, "failures": [],
         "_pages_code_measured": True,
         "plan_path": "plans/plan_digest_demo.md",
-        "plan_text": "# Plan\n\n## Objective\n",
+        "plan_text": "# Plan\n\n## Objective\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off",
         "total_notes": 1,
         "planned_notes": [{"filename": "a.md", "building_block": "concept",
                            "approx_words": 900}],

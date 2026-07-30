@@ -71,7 +71,7 @@ _SUPERSET_RESPONSE = {
     "undigested_terms": [], "validation_gates": ["G1", "G2"],
     # plan/augment.write_plan / write_augmented_plan (body_markdown materializer)
     "output_path": "plans/plan_digest_demo.md",
-    "body_markdown": "# Plan\n\n## Objective\n\nbody\n",
+    "body_markdown": "# Plan\n\n## Objective\n\nbody\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off\n",
     # augment.read_draft
     "plan_path": "plans/plan_digest_demo.md", "plan_structure": "single",
     "sections_present": ["Objective"], "sections_missing": [],
@@ -84,7 +84,7 @@ _SUPERSET_RESPONSE = {
     "entry_point_decision": {"action": "UPDATE", "matches_size_threshold": True,
                              "target_entry_point": "entry_demo.md"},
     # review.step_1_read_plan
-    "status": "pending", "total_notes": 2, "plan_text": "# Plan\n\n## Objective\n\nbody\n",
+    "status": "pending", "total_notes": 2, "plan_text": "# Plan\n\n## Objective\n\nbody\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off\n",
     # review.step_2 / step_3 checkpoints — each is an object {result, gap}
     "cp1": {"result": "PASS", "gap": None}, "cp2": {"result": "PASS", "gap": None},
     "cp3": {"result": "PASS", "gap": None}, "cp4": {"result": "PASS", "gap": None},
@@ -121,7 +121,7 @@ _SOURCE_LEAF = {
     "member_count": 1,
     # keys the gate/normalize read
     "plan_path": "plans/plan_digest_demo.md",
-    "plan_text": "# Plan\n\n## Objective\n\nbody\n",
+    "plan_text": "# Plan\n\n## Objective\n\nbody\n## Scope\n## Content Strategy\n## Source Pages\n## Planned Notes\n## Section Coverage Map\n## Split Decisions\n## Summary Statistics & Building Block Distribution\n## Per-Note Related Notes Mapping\n## Density Re-Assessment\n## Undigested Terms Plan\n## Per-Phase Validation Gate\n## Entry Point Decision\n## Inlinks\n## Review Sign-Off\n",
     "total_notes": 2,
 }
 

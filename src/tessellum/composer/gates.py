@@ -691,6 +691,47 @@ def _plan_notes(plan_doc: dict) -> tuple[list[dict], str]:
     return [], "none"
 
 
+def plan_sections_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
+    """PLAN-009 (phase 3, FZ 20k9c1a1a1b7c2k2a3a): the mandatory-sections
+    scan PROMOTED from exhibit-informed to gating — the deterministic check
+    the eval's P7 runs, at the eval's own >=90% threshold (the goldens
+    themselves land 13–14/14). The Bedrock leg's first-ever 14/14 proves the
+    writers can; with F8 the revise loop now GRINDS plans there instead of
+    P7 failing silently at scoring time. Deliberately threshold-based, never
+    per-section: section NAMES legitimately vary (the E1.3 lesson)."""
+    if not isinstance(plan_doc, dict):
+        return []
+    # Scope: the mandatory-section contract applies to FULL digestion plans,
+    # and the marker of one is its section coverage map (the artifact the
+    # mandatory sections document). A doc without one (unit fixtures, partial
+    # folds) is not in scope — deliberate, not a loophole: every real plan
+    # already carries the map because PLAN-006 requires it.
+    cmap = plan_doc.get("section_coverage_map")
+    if not (isinstance(cmap, list) and cmap):
+        return []
+    plan_text = plan_doc.get("plan_text")
+    if not isinstance(plan_text, str) or not plan_text:
+        return []
+    from tessellum.composer.contracts import mandatory_section_stems
+
+    stems = mandatory_section_stems()
+    low = plan_text.lower()
+    present = [s for s in stems if s.lower() in low]
+    if len(present) >= 0.9 * len(stems):
+        return []
+    missing = [s for s in stems if s.lower() not in low]
+    return [
+        Issue(
+            Severity.ERROR,
+            "PLAN-009",
+            "plan_sections",
+            f"only {len(present)}/{len(stems)} mandatory sections present "
+            f"(threshold >=90%); missing stems: {missing} — add each as a "
+            f"section (equivalent names under the same stem count)",
+        )
+    ]
+
+
 def build_plan_gate() -> GateSuite:
     """The plan-scope structural pre-filter (the sign-off ladder's rung 1).
 
@@ -706,6 +747,13 @@ def build_plan_gate() -> GateSuite:
                 scope="plan",
                 predicate=plan_structure_predicate,
                 cause="plan_structure",
+            ),
+            Gate(
+                gate_id="plan_sections",
+                kind="checkpoint",
+                scope="session",
+                predicate=plan_sections_predicate,
+                cause="plan_sections",
             ),
             Gate(
                 gate_id="plan_atomicity",

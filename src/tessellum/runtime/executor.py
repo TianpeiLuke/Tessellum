@@ -805,6 +805,15 @@ class DigestionExecutor:
                 stop_after=policy.stop_after,
                 # J3 (FZ 20k9c1a1a1b7c2k2): the P15 revise loop, policy-gated.
                 max_review_rounds=policy.max_review_rounds,
+                # Phase 2 (FZ 20k9c1a1a1b7c2k2a3a): the note-level grounding
+                # verifier — identifier grounding (deterministic) + the
+                # calibrated certificate — when the policy opts in. None
+                # (default) → the gate fails closed if grounding_gate is on
+                # without a calibration (the existing loud semantics).
+                grounding_verifier=(
+                    self._build_grounding_verifier(source_content)
+                    if policy.grounding_gate else None
+                ),
                 # J1 (FZ 20k9c1a1a1b7c2k2): one episodic surface — the composer's
                 # checkpoints/, attempts.jsonl and per-step traces land under the
                 # job's own dir (runs/), where `runtime status` reads them at the
@@ -836,6 +845,39 @@ class DigestionExecutor:
             encoding="utf-8",
         )
         return result
+
+    def _build_grounding_verifier(self, source_text: str):
+        """Phase 2 (FZ b7c2k2a3a): construct the two-layer grounding verifier
+        from the calibration artifact named by ``TESSELLUM_GROUNDING_CALIBRATION``
+        (the B3 pilot's JSON: scorer model + threshold + alpha). Returns None
+        when the artifact is absent/unreadable — the close gate then fails
+        CLOSED on the grounding predicate, which is the correct loud posture
+        for an opted-in gate with no calibration."""
+        import os
+
+        path = os.environ.get("TESSELLUM_GROUNDING_CALIBRATION")
+        if not path:
+            return None
+        try:
+            artifact = json.loads(Path(path).read_text(encoding="utf-8"))
+            from tessellum.composer.note_grounding import make_grounded_verifier
+            from tessellum.composer.semantic_certificate import ConformalThresholds
+
+            thresholds = ConformalThresholds(
+                thresholds={"grounding": float(artifact["grounding_threshold"])},
+                alpha=float(artifact["alpha"]),
+                n_calibration=int(artifact["n_calibration"]),
+                domains=("documentation",),
+            )
+            from tessellum.composer import AnthropicBackend
+
+            scorer_backend = AnthropicBackend(model=artifact["scorer_model"])
+            return make_grounded_verifier(
+                self.backend, thresholds, source_text,
+                scorer_backend=scorer_backend,
+            )
+        except Exception:
+            return None
 
     def resume_execute(
         self,

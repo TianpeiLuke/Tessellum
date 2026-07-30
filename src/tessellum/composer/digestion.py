@@ -949,6 +949,14 @@ def _owned_sections_md(filename: str, plan_doc: dict) -> str:
             lines.append(f"- {section} (source: {page})")
         else:
             lines.append(f"- {section}")
+    if lines:
+        # Phase 3 (FZ b7c2k2a3a): the code-block budget rides the slice —
+        # N5's cap made explicit where the writer decides what to include.
+        lines.append(
+            "- BUDGET: at most 6 code blocks in this note — select the "
+            "REPRESENTATIVE snippets from your sections, do not transcribe "
+            "every block."
+        )
     return "\n".join(lines)
 
 
