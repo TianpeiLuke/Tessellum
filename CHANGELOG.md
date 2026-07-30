@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Eval — the grounding-gate calibration pilot: threshold fixed, admit/block verified live (B3, FZ 20k9c1a1a1b7c2k1a) — 2026-07-29
+
+`runs/eval/b3_calibration_pilot.py` + the committed artifact `eval/digestion_pipeline/calibration_grounding.json`: 32 faithful claims (golden-note sentences) + 8 handcrafted fabrications scored by the REAL `make_llm_claim_scorer` on the designated scorer model (haiku — recorded in the artifact; thresholds are scorer-specific by construction) against the claude_code_mcp source; `calibrate(alpha=0.05)` fixes the grounding threshold at **0.85** (n=40, zero abstains), and the live `certify` verification PASSED — the faithful claim-set ACCEPTS, a set carrying one fabrication ABSTAINS (min_score 0.0; the scorer put every fabrication at ≤ the threshold with clean separation). Remaining follow-on, recorded in the artifact: the runtime flip — loading these thresholds in the close gate with a `span_text_of` over the note's owned sections (E2.3's slices are the natural spans).
+
 ### Composer — the AgentMemory facade (A5.3, FZ 20k9c1a1a1b7c2k1a) — 2026-07-29
 
 The naming pass the vault-as-memory design deferred until the tiers stabilized (A0–A4 have): `composer/agent_memory.py` — WORKING (`working_put/get` → the durable artifact store), EPISODIC (`episodic_append/read` → timestamped JSONL streams under the run dir, fail-soft like every journal), SEMANTIC (`semantic_search` → hybrid retrieval, empty in the bootstrap posture — the CP5 lesson as a default), PROCEDURAL (`procedural_load` → `compile_skill`). NO new behavior — every method delegates to the seam that owns its tier. +4 tests (suite 2150).
