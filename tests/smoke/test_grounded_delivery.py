@@ -136,3 +136,65 @@ def test_code_density_close_gate_advisory(tmp_path):
     comp = suite.evaluate(note, verdict=GroundingVerdict("grounded"), short_circuit=False)
     dens = next(r for r in comp.results if r.gate_id == "code_density")
     assert dens.passed and dens.issues  # advisory: carried, never blocks
+
+
+# ── k2a4a residual fixes: rematerialize postimage + advisory journaling ─────
+
+
+def test_rematerialize_records_postimage_for_rollback(tmp_path):
+    from tessellum.composer.digestion import _rematerialize_plan_file
+    from tessellum.runtime.executor import VaultEffectJournal
+
+    vault = tmp_path / "vault"
+    (vault / "plans").mkdir(parents=True)
+    plan_file = vault / "plans" / "p.md"
+    plan_file.write_text("original", encoding="utf-8")
+    journal = VaultEffectJournal(vault, effect_guard=None,
+                                 journal_dir=tmp_path / "journal")
+    doc = {"plan_path": "plans/p.md", "plan_text": "reconciled"}
+    _rematerialize_plan_file(doc, vault, None, journal)
+    assert plan_file.read_text(encoding="utf-8") == "reconciled"
+    # before the fix this raised "current bytes are not journaled"
+    journal.rollback()
+    assert plan_file.read_text(encoding="utf-8") == "original"
+
+
+def test_close_gate_advisory_event_emitted(tmp_path):
+    from tessellum.composer.gates import GroundingVerdict, build_close_gate
+    from tessellum.composer.scheduler import _run_close_gate
+
+    note = tmp_path / "n.md"
+    fm = (
+        "---\ntags:\n  - resource\n  - documentation\nkeywords:\n  - k one\n"
+        "  - k two\n  - k three\n  - k four\n  - k five\ntopics:\n  - t one\n"
+        "  - t two\nlanguage: markdown\ndate of note: 2026-07-30\n"
+        "status: active\nbuilding_block: concept\n"
+        'access_control_group: ["general"]\n---\n\n'
+    )
+    note.write_text(
+        fm + "## Overview\n\nbody\n\n" + "```\nx\n```\n\n" * 8
+        + "## Related Notes\n\n- [t one](n.md)\n",
+        encoding="utf-8",
+    )
+
+    from tessellum.composer.executor import MaterializedOutput, StepResult
+
+    real = StepResult(
+        section_id="s", leaf_id=None, response=None,
+        materialized=MaterializedOutput(structured={}, files_written=(note,)),
+        elapsed_ms=1.0, error=None,
+    )
+
+    events = []
+    result, cause = _run_close_gate(
+        step=None, leaf={}, result=real, close_gate=build_close_gate(),
+        event_recorder=events.append,
+        grounding_verifier=lambda st, lf, rs: GroundingVerdict("grounded", advisory="x-contamination: t"),
+        fixer=None, informed_fixer=None, max_fix_rounds=0, backend=None,
+        vault_root=tmp_path, dry_run=False, cancellation_check=None,
+        effect_guard=None, effect_recorder=None,
+    )
+    assert cause is None  # advisory never blocks
+    assert events and events[0]["event"] == "close_gate_advisory"
+    ids = {i["rule_id"] for i in events[0]["issues"]}
+    assert {"GROUND-003", "NOTE-005"} <= ids

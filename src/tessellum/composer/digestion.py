@@ -1337,6 +1337,14 @@ def _rematerialize_plan_file(
                 target.write_text(plan_text, encoding="utf-8")
         else:
             target.write_text(plan_text, encoding="utf-8")
+        # k2a4a residual fix: register the reconciled bytes as an ALLOWED
+        # post-state (the journal supports multiple postimages per path; the
+        # materializer records its writes — this direct write must too, else
+        # a later rollback/recovery sees "current bytes are not journaled"
+        # and fails closed on the plan file).
+        record_postimage = getattr(effect_recorder, "record_postimage", None)
+        if record_postimage is not None:
+            record_postimage(target, plan_text.encode("utf-8"))
     except Exception:
         pass
 

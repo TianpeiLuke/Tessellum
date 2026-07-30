@@ -996,6 +996,7 @@ def run_pipeline_dynamic(
         gate_cause: str | None = None
         if close_gate is not None and result.error is None:
             result, gate_cause = _run_close_gate(
+                event_recorder=_record_event,
                 step=step,
                 leaf=leaf,
                 result=result,
@@ -1385,6 +1386,7 @@ def _run_close_gate(
     leaf: dict,
     result: StepResult,
     close_gate: GateSuite,
+    event_recorder: "Callable[[dict], None] | None" = None,
     grounding_verifier: "Callable[[CompiledStep, dict, StepResult], GroundingVerdict] | None",
     fixer: "Callable[[CompiledStep, dict, tuple], StepResult] | None",
     informed_fixer: "Callable[[FixContext], object] | None",
@@ -1425,7 +1427,24 @@ def _run_close_gate(
             if grounding_verifier is not None
             else None
         )
-        composite = close_gate.evaluate(note_path, verdict=verdict)
+        composite = close_gate.evaluate(
+            note_path, verdict=verdict, short_circuit=False
+        )
+        # k2a4a residual fix: ADVISORY findings on a PASSING close gate
+        # (GROUND-003 cross-contamination, NOTE-005 code density) used to
+        # vanish -- journal them like the wave gate journals its advisories.
+        if event_recorder is not None and composite.passed:
+            advisories = [
+                {"severity": i.severity.value, "rule_id": i.rule_id,
+                 "gate_id": r.gate_id, "message": i.message}
+                for r in composite.results for i in r.issues
+            ]
+            if advisories:
+                event_recorder({
+                    "event": "close_gate_advisory",
+                    "note": str(note_path),
+                    "issues": advisories,
+                })
         return composite.passed, composite.first_failure_cause, composite.blocking_issues
 
     # Two fixer shapes are supported. An ``informed_fixer`` (FixContext ->
