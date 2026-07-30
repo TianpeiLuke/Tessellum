@@ -1160,6 +1160,48 @@ def _reconcile_generated_sections(plan_doc: dict[str, Any]) -> None:
         )
 
 
+def _reconcile_section_assessment(plan_doc: dict[str, Any]) -> None:
+    """F16 (FZ 20k9c1a1a1b7c2k2a3a — sweep run 12): ``sections_present`` /
+    ``sections_missing`` are SELF-ASSESSMENTS of ``plan_text`` — 100%
+    code-derivable, so code owns them.
+
+    Run 12 burned all three review rounds on exactly this class: the
+    model-emitted registry claimed labels ('Inlink mapping', 'Entry Point
+    specifics') that matched no real H2 ('## Inlinks', '## Entry Point
+    Decision'), the reviewer correctly blocked per exhibit-wins, and each
+    revise round produced a NEW label mismatch. R4.1's ASSESSMENTS check
+    detects the class; this ends it (the F11→F13→F15 law again):
+    ``sections_present`` is overwritten with the REAL fence-aware H2 scan
+    and ``sections_missing`` with the mandatory stems absent from the text.
+    Only keys the model actually emitted are overwritten — a doc without
+    the assessment channel is untouched."""
+    pt = plan_doc.get("plan_text")
+    if not (isinstance(pt, str) and pt):
+        return
+    if "sections_present" not in plan_doc and "sections_missing" not in plan_doc:
+        return
+    real_h2: list[str] = []
+    in_fence = False
+    for line in pt.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = re.match(r"^##\s+(.+?)\s*$", line)
+        if m:
+            real_h2.append(m.group(1))
+    if "sections_present" in plan_doc:
+        plan_doc["sections_present"] = real_h2
+    if "sections_missing" in plan_doc:
+        from tessellum.composer.contracts import mandatory_section_stems
+
+        low = pt.lower()
+        plan_doc["sections_missing"] = [
+            s for s in mandatory_section_stems() if s.lower() not in low
+        ]
+
+
 def _rematerialize_plan_file(
     plan_doc: dict[str, Any],
     vault_root: Path,
@@ -1979,6 +2021,7 @@ def run_digestion_pipeline(
                     plan_doc["source_excerpt"] = code_source_excerpt
                 _reconcile_planned_notes_table(plan_doc)
                 _reconcile_generated_sections(plan_doc)
+                _reconcile_section_assessment(plan_doc)
                 checkpoint_seq = cp_seq
                 resumed_phase = cp_phase
                 plan_doc["_resumed_from_checkpoint"] = {
@@ -2021,6 +2064,8 @@ def run_digestion_pipeline(
         # code-generated when the writer omits them — run 9 burned all three
         # rounds failing to author sections whose content is plan_doc data.
         _reconcile_generated_sections(plan_doc)
+        # F16: the section self-assessment is code-computed from the text.
+        _reconcile_section_assessment(plan_doc)
         if linear_runs_dir is not None:
             checkpoint_seq += 1
             _checkpoint_plan_doc(linear_runs_dir, checkpoint_seq, phase, plan_doc)

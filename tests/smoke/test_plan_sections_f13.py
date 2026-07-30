@@ -143,3 +143,29 @@ def test_pipeline_completes_when_writer_omits_derivable_sections(tmp_path: Path)
     assert result.completed
     for s in _DERIVABLE:
         assert f"## {s}" in result.plan_doc["plan_text"]
+
+
+# ── F16 (run 12): the section self-assessment is code-owned ─────────────────
+
+
+def test_f16_sections_present_overwritten_with_real_h2_scan() -> None:
+    from tessellum.composer.digestion import _reconcile_section_assessment
+
+    d = {
+        "plan_text": "# P\n\n## Inlinks\n\nbody\n\n```bash\n## not a heading\n```\n\n## Entry Point Decision\n\nbody\n",
+        "sections_present": ["Inlink mapping", "Entry Point specifics"],
+        "sections_missing": ["everything the model imagined"],
+    }
+    _reconcile_section_assessment(d)
+    assert d["sections_present"] == ["Inlinks", "Entry Point Decision"]
+    # sections_missing recomputed against the mandatory stems, fence-aware
+    assert "Scope" in d["sections_missing"]
+    assert "everything the model imagined" not in d["sections_missing"]
+
+
+def test_f16_untouched_without_the_assessment_channel() -> None:
+    from tessellum.composer.digestion import _reconcile_section_assessment
+
+    d = {"plan_text": "# P\n\n## Inlinks\n"}
+    _reconcile_section_assessment(d)
+    assert "sections_present" not in d and "sections_missing" not in d
