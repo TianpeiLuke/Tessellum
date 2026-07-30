@@ -74,6 +74,7 @@ from tessellum.composer.note_coverage import (
     extend_wave_gate_with_note_coverage,
     extract_headings,
 )
+from tessellum.composer.note_coverage import name_match as nc_name_match
 from tessellum.composer.scheduler import (
     RunResult,
     run_pipeline,
@@ -958,17 +959,10 @@ def _owned_sections_md(filename: str, plan_doc: dict) -> str:
             page_name = str(pg.get("page") or pg.get("source_id") or "")
             for h in pg.get("headings") or []:
                 heading_pages[_norm_heading(str(h))] = (page_name, pg.get("words"))
-    def _name_match(a: str, b: str) -> bool:
-        # Boundary-aware suffix match: `tessellum_a.md` owns rows naming
-        # `a.md` (the file-prefix convention), but `data.md` must NOT match
-        # `a.md` — a bare endswith is the same silent-corruption class as
-        # substring FZ renumbering. The extra char before the suffix must be
-        # a real name boundary.
-        if a == b:
-            return True
-        if len(a) > len(b) and a.endswith(b):
-            return a[-len(b) - 1] in ("_", "-", "/", ".")
-        return False
+    # Boundary-aware suffix match (`tessellum_a.md` owns rows naming `a.md`;
+    # `data.md` must NOT match `a.md`) — ONE implementation, canonical in
+    # note_coverage since the F12 consolidation.
+    _name_match = nc_name_match
 
     base = filename.rsplit("/", 1)[-1]
     lines: list[str] = []
