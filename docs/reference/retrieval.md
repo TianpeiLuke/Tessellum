@@ -28,8 +28,8 @@ API, symbols, and signatures for the read layer. For the mental model and how wo
 
 ### Hybrid (`hybrid.py`)
 
-- `hybrid_search(db_path: Path | str, query: str, *, dense_query: str | None = None, k: int = 20, k1: int = 60, per_strategy_k: int | None = None) -> list[HybridHit]` — RRF fusion of BM25 + dense; ordered by descending RRF score, ties broken by `note_id`. `per_strategy_k` defaults to `max(2*k, 20)`. Falls back to BM25-only if dense raises. `dense_query` (default `query`) lets the embedding arm receive a natural-language query while the BM25 arm keeps an FTS5-safe token bag.
-- `HybridHit` — `@dataclass(frozen=True)`: `note_id: str`, `note_name: str`, `score: float` (RRF sum, higher = better), `bm25_rank: int | None`, `dense_rank: int | None` (1-indexed ranks per ranker; `None` if absent from that ranker's top-K).
+- `hybrid_search(db_path: Path | str, query: str, *, dense_query: str | None = None, k: int = 20, k1: int = 60, per_strategy_k: int | None = None, snippet_length: int | None = None) -> list[HybridHit]` — RRF fusion of BM25 + dense; ordered by descending RRF score, ties broken by `note_id`. `per_strategy_k` defaults to `max(2*k, 20)`. Falls back to BM25-only if dense raises. `dense_query` (default `query`) lets the embedding arm receive a natural-language query while the BM25 arm keeps an FTS5-safe token bag. `snippet_length` (default `None` = no snippets) is forwarded to the BM25 arm only.
+- `HybridHit` — `@dataclass(frozen=True)`: `note_id: str`, `note_name: str`, `score: float` (RRF sum, higher = better), `bm25_rank: int | None`, `dense_rank: int | None` (1-indexed ranks per ranker; `None` if absent from that ranker's top-K), `snippet: str | None = None` (BM25 excerpt with `<<<term>>>` markers; `None` when the note surfaced only via dense or snippets were disabled — carries the quoted source span DKS provenance (P1) cites).
 
 ### Graph / BFS (`graph.py`)
 
@@ -54,7 +54,7 @@ API, symbols, and signatures for the read layer. For the mental model and how wo
 |-----|-----------------|-------|
 | `building_block` | `building_block` | exact (closed BB enum) |
 | `status` | `note_status` | exact (closed status enum) |
-| `category` | `note_category` (`tags[0]`, PARA bucket) | exact |
+| `category` | `note_category` (top-level folder → PARA bucket via `_CATEGORY_MAP`; never from tags) | exact |
 | `second_category` | `note_second_category` (`tags[1]`) | exact |
 | `tag` | `tags[]` JSON array | any-of (`json_each`, exact value) |
 | `keyword` | `keywords[]` JSON array | any-of (`json_each`, exact value) |

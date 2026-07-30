@@ -18,7 +18,7 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 
 - `build(vault_path: Path | str, db_path: Path | str, *, force: bool = False, with_dense: bool = True) -> BuildResult` — full from-scratch scan and write. Creates `db_path` parent dirs as needed. Raises `FileNotFoundError` if `vault_path` is not a directory; raises `FileExistsError` if `db_path` exists and `force=False` (with `force=True`, deletes and recreates). `with_dense=False` skips embedding generation. **Fail-soft:** with `with_dense=True`, a missing `sentence-transformers` dep or an encoder failure degrades to a BM25-only index (`dense_degraded=True`, zero embeddings, warning logged with `exc_info`) instead of crashing the build.
 - `build_incremental(vault_path: Path | str, db_path: Path | str, *, with_dense: bool = True) -> BuildResult` — update an EXISTING index in place, re-indexing **only the delta**. Diffs the vault against the `notes` table by `note_id` → added / modified (detected by `last_indexed_mtime` OR `content_hash`, so a same-mtime edit is caught) / deleted, and applies only that. Unchanged notes AND their `notes_vec` embeddings are left untouched (no re-encode); `note_int_id` is preserved for unchanged/modified notes (new = `MAX+1`), so existing vec rows stay valid; `note_links` is rebuilt globally (cross-note resolution). Falls back to a full `build()` when the DB doesn't exist. One transaction; the dense DELETE+INSERT is `SAVEPOINT`-wrapped so an encoder failure preserves prior embeddings. Proven equal (parity) to a from-scratch `build()`.
-- `BuildResult` — `@dataclass(frozen=True)`: `db_path: Path`, `notes_indexed: int`, `links_indexed: int`, `skipped_files: int`, `duration_seconds: float`, `embeddings_generated: int = 0` (0 when `with_dense=False`), `dense_degraded: bool = False` (True iff dense was requested but the encoder failed → BM25-only).
+- `BuildResult` — `@dataclass(frozen=True)`: `db_path: Path`, `notes_indexed: int`, `links_indexed: int`, `skipped_files: int`, `duration_seconds: float`, `embeddings_generated: int = 0` (0 when `with_dense=False`), `dense_degraded: bool = False` (True iff dense was requested but the encoder failed → BM25-only), plus the per-pass delta counts `notes_added` / `notes_modified` / `notes_deleted` (`int = 0`) and `incremental: bool = False`, populated only by `build_incremental` (0/`False` on a full `build()`).
 
 ### Reader (`db.py`)
 
@@ -38,7 +38,7 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 | `note_count()` | `int` | `COUNT(*)` of notes |
 | `link_count()` | `int` | `COUNT(*)` of links |
 
-- `NoteRow` — `@dataclass(frozen=True)`: one `notes` row with JSON columns (`tags`, `keywords`, `topics`) parsed to `tuple[str, ...]`. Fields mirror the `notes` table below, plus `indexed_at` and `last_indexed_mtime`.
+- `NoteRow` — `@dataclass(frozen=True)`: one `notes` row with JSON columns (`tags`, `keywords`, `topics`) parsed to `tuple[str, ...]`. Fields mirror the `notes` table below except `content_hash` and `note_int_id` (builder-internal: the change-detection key and the vec-join surrogate are not exposed on `NoteRow`); includes `indexed_at` and `last_indexed_mtime`.
 - `LinkRow` — `@dataclass(frozen=True)`: `link_id: int`, `source_note_id: str`, `target_note_id: str`, `link_context: str | None`, `link_type: str | None`, `created_at: str | None`.
 
 ## Schema (`schema.sql`)

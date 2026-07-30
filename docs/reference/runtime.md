@@ -13,7 +13,8 @@ For the design and recovery model, see [../runtime.md](../runtime.md).
 | `store.py` | Transactional SQLite queue, events, state transitions, claims, lease fencing, retry, cancellation. |
 | `admission.py` | Inbox confinement, stable-file checks, spool-before-admit, source archival. |
 | `routing.py` | Explicit eight-lane routing to `native_digestion` and phase-skill digesting. |
-| `policy.py` | `default` and `fast` unattended-execution profiles. |
+| `policy.py` | `default`, `fast`, `inspect`, and `converge` unattended-execution profiles. |
+| `timing.py` | Machine-asserted timing-invariant table (detector vs workload constants): `timing_violations(profile)` / `all_profile_violations()` report cross-module liveness ordering violations for every shipped profile. |
 | `executor.py` | Source extraction, backend construction, native Composer adapter, and durable vault-effect journal. |
 | `supervisor.py` | Claim/route/execute/heartbeat/retry/commit orchestration. |
 | `commit_tail.py` | Atomic index rebuild and idempotent source acknowledgement. |
@@ -51,6 +52,13 @@ Methods:
   the prefix and length but does not validate that the digest is hexadecimal;
   callers should pass refs produced by admission.
 - `job_artifacts(job_id: str) -> Path`
+- `run_dir(run_id: str) -> Path` — the validated per-run root
+  `runs/<run_id>/`; rejects empty ids, path separators, and the reserved
+  `runtime`/`composer`/`dks`/`eval` subsystem subdirectories.
+
+The module-level `new_run_id()` factory mints `run-<UTC stamp>-<8 hex>`
+identities that sort by mint time and can never collide with the reserved
+subdirectories.
 
 The runtime CLI's `--db` overrides only `RuntimePaths.db` after discovery.
 `events` is currently created as a reserved directory; job events live in
@@ -82,7 +90,9 @@ and `dead_letter`.
 | terminal states | none |
 
 Current inbox admission inserts `admitted` directly. The current supervisor
-does not emit `received`, `validating`, or `paused`.
+does not emit `received` or `validating`. It emits `paused` when a
+`stop_after="review"` (inspect) run reaches an accepted plan;
+`promote`/`reject` move the paused job to `ready`/`cancelled`.
 
 Immutable dataclasses:
 
@@ -348,6 +358,27 @@ the lease; if cancellation was requested it terminalizes the job instead.
 `committing`, ensuring digestion is not rerun. `promote_due_retries()` moves
 due, uncancelled execution rows to `ready`.
 
+Pause and liveness:
+
+```python
+store.promote_paused(job_id: str, *, now: float | None = None) -> Job
+store.reject_paused(job_id: str, *, now: float | None = None) -> Job
+store.force_cancel(job_id: str, *, now: float | None = None) -> Job
+store.reap_expired_leases(*, now: float | None = None, max_attempts: int = 3) -> int
+```
+
+`promote_paused()` moves an inspected `paused` job to `ready`, clearing any
+stale lease so `claim_next()` re-claims it fresh into its execute wave; it is
+the verb behind the CLI's `promote`. `reject_paused()` moves `paused` to
+`cancelled`, discarding the accepted-but-unexecuted plan (CLI `reject`).
+`force_cancel()` fences the worker out by bumping the lease generation and
+nulling the lease owner, then marks the job `cancelled` — the escalation
+behind `runtime cancel --force` for a worker ignoring cooperative
+cancellation. `reap_expired_leases()` actively runs the same stranded-lease
+reclaim `claim_next()` performs lazily (shared `_reap_stale_leases` body) and
+returns the number of jobs reaped; `RuntimeService` calls it on each idle
+cycle so a dead worker's lease is reclaimed even when no new work arrives.
+
 Revisions and capsules (schema v5):
 
 ```python
@@ -541,17 +572,41 @@ RuntimePolicy(
     context_max_chars: int = 120_000,
     close_gate: bool = True,
     wave_gate: bool = True,
+    grounding_gate: bool = False,
     tools_enabled: bool = False,
     max_attempts: int = 3,
     lease_ttl: float = 120.0,
+    breaker_proportion: float | None = 0.8,
+    breaker_min_dispatched: int = 3,
+    breaker_error_threshold: int | None = 10,
+    stop_after: str | None = None,
+    max_review_rounds: int = 0,
+    resume_from_checkpoint: bool = True,
+    identifier_grounding: bool = True,
 )
 
 RuntimePolicy.for_profile(profile: str) -> RuntimePolicy
 ```
 
+`grounding_gate` opts in to the calibrated grounding certificate at close; it
+fails closed when no calibration artifact is available. `identifier_grounding`
+(default on) enables the free deterministic identifier layer: a token absent
+from the source blocks, while a token outside the note's owned slice is
+advisory. `resume_from_checkpoint` (default on) lets a re-claimed generation
+of the same job skip already-checkpointed phases. `stop_after="review"` parks
+the job `paused` at an accepted plan for human promote/reject.
+`max_review_rounds` enables the P15 review-revise loop (`0` = single pass).
+The three `breaker_*` fields configure the run-level systemic-failure circuit
+breaker: the execute wave aborts once `breaker_proportion` of at least
+`breaker_min_dispatched` dispatched leaves fail with the same systemic class,
+or after `breaker_error_threshold` terminal systemic failures regardless of
+proportion.
+
 `fast` overrides `max_workers=2`, `max_invocations=30`, and
-`max_fix_rounds=0`. `default` uses the constructor defaults. Any other profile
-raises `ValueError`.
+`max_fix_rounds=0`. `inspect` sets `stop_after="review"` (park at an accepted
+plan for human promote/reject). `converge` sets `max_review_rounds=2` (the
+P15 review-revise loop). `default` uses the constructor defaults. Any other
+profile raises `ValueError`.
 
 ## Executor API
 
@@ -574,6 +629,13 @@ DigestionExecutor(
 )
 
 executor.execute(
+    job: Job,
+    lease: Lease,
+    route: DigestionRoute,
+    policy: RuntimePolicy,
+) -> DigestionResult
+
+executor.resume_execute(
     job: Job,
     lease: Lease,
     route: DigestionRoute,
@@ -618,10 +680,22 @@ suffixes.
 
 The executor calls `run_digestion_pipeline()` with a per-job manifest, run id
 `<job-id>:<lease-generation>`, the job's `execution_generation`,
-per-backend-call invocation budget, context assembler, optional format-only
-close gate/fixer, optional wave gate, zero-delay reclaim of prior job-lease leaf
+per-backend-call invocation budget, context assembler, an optional close gate —
+the full format+grounding gate when `grounding_gate` or `identifier_grounding`
+is on (`identifier_grounding` defaults on, wiring the free deterministic
+identifier verifier built from the source text; `grounding_gate` instead builds
+the calibrated certificate verifier from the JSON artifact named by
+`TESSELLUM_GROUNDING_CALIBRATION`, and fails closed when no verifier can be
+built), or format-only when both grounding flags are off — plus an optional LLM
+fixer, optional wave gate, zero-delay reclaim of prior job-lease leaf
 claims, cancellation/effect guards, a vault-effect journal, and Composer
-event/statistics paths. The shared budget covers retries and fixer calls across
+event/statistics paths. It also passes `stop_after`, `max_review_rounds`, and
+the `grounding_verifier` from the policy, `runs_dir` (the job's episodic
+surface for checkpoints, attempts, and traces) and `durable_artifact_dir`
+under the job's artifact directory, and `resume_from_checkpoint` (default on)
+so a re-claimed generation of the same job finds its predecessor's checkpoints
+under the job's `runs/` dir — source-identity guarded — and skips the
+already-paid linear phases. The shared budget covers retries and fixer calls across
 all four phases; the context assembler also covers all four. With a
 `journal_dir`, the
 journal fsyncs originals, every intended postimage hash, and an atomic manifest
@@ -633,6 +707,18 @@ journal. `recover_pending()` therefore treats an open journal for a durably
 accepted job as accepted, while replaying other open journals and discarding
 accepted/rolled-back cleanup leftovers under the cross-process vault lock.
 
+`execute()` dumps a slimmed `plan.json` into the job's artifact directory: a
+plan-of-record projection whose heavy fields are paged to `artifacts/` with
+recorded digests (`_slim_plan_with_refs` / `_artifact_refs`), stamped with the
+F14 `_sign_off` record (`accepted`/`decision`/`stopped_at`/`completed` — the
+stamp's presence is not approval). `resume_execute()` runs only the execute
+wave over a previously accepted plan: it refuses, fail-closed, any `plan.json`
+without a positive `_sign_off.accepted` stamp and verifies the
+`_verify_plan_artifacts` digests before executing, so the promoted wave runs
+exactly the plan the human approved. The supervisor's `_has_accepted_plan`
+parses the stamp to route a re-claimed job to `resume_execute()` versus the
+full pipeline.
+
 ## Supervisor and service API
 
 ```python
@@ -643,6 +729,7 @@ Supervisor(
     executor: DigestionExecutor,
     owner_id: str | None = None,
     rebuild_index: bool = True,
+    with_dense: bool = True,
     sleep_fn=time.sleep,
 )
 
@@ -652,10 +739,11 @@ supervisor.run_forever(*, poll_seconds: float = 2.0, stop: callable | None = Non
 WorkOutcome(job_id: str | None, status: str, detail: str | None = None)
 ```
 
-Observed status values are `idle`, `complete`, `cancelled`, `lease_lost`,
-`retry_wait`, and `dead_letter`.
+Observed status values are `idle`, `complete`, `cancelled`, `paused`,
+`lease_lost`, `retry_wait`, and `dead_letter`.
 
-The default owner id is `<hostname>:<uuid>`. The supervisor holds the
+The default owner id is `<hostname>:<uuid>`. `with_dense` is threaded into
+`commit_job()` (`False` = BM25-only rebuild, no ML deps). The supervisor holds the
 cross-process live-vault lock from crash-journal recovery through execution and
 commit, while execute leaves still fan out internally. It classifies failures
 with Composer's `classify_error()` and schedules Composer's full-jitter delay
@@ -666,6 +754,14 @@ a mismatch raises `RoutingPinError` and dead-letters without dispatch.
 Jobs claimed in `committing` bypass routing, planning, and execution and resume
 only `commit_job()`. Commit failures use a separate full-jitter schedule and
 `commit_attempts` budget while remaining in `committing`.
+
+During execution a renewal actor re-leases synchronously on entry with the
+profile TTL — so lease lifetime and renewal cadence come from the same number
+even though `claim_next()` leases with the default TTL before the profile is
+known — then renews every `ttl/3`. Transient store errors retry on cadence and
+escalate only after a full TTL without a landed renewal, a lost lease is
+terminal immediately, and every beat, skip, and failure is appended fail-soft
+to the job's `runs/heartbeats.jsonl`.
 
 ```python
 InboxScanner(
@@ -701,6 +797,7 @@ RuntimeService(
     scanner: InboxScanner,
     supervisor: Supervisor,
     scan_seconds: float = 2.0,
+    reap_seconds: float = 30.0,
 )
 
 service.run() -> None
@@ -708,7 +805,9 @@ service.run() -> None
 
 The scanner recursively visits each existing lane in `LANE_HINTS` order and
 sorts paths within a lane. The service scans, performs one supervisor iteration,
-and waits only after an `idle` outcome.
+and waits only after an `idle` outcome; on idle cycles it also actively sweeps
+expired leases via `store.reap_expired_leases()` (`reap_seconds=0` disables
+the sweep, leaving only claim-time lazy reclaim).
 
 `admit_bundle()` is a separate, opt-in entry point that admits an
 explicitly-supplied ordered list of member paths as one coordinated objective
@@ -760,7 +859,7 @@ not the expensive build. `commit_job()` rebuilds first, then durably archives
 admitted spool bytes. Source acknowledgement replays a prior job-owned hidden
 quarantine after process death. The supervisor already owns the live-vault
 transaction, so it invokes the commit tail with
-`with_dense=True, lock_vault=False` (R1 — the published live index now carries a
+`with_dense=self.with_dense` (`True` by default) and `lock_vault=False` (R1 — the published live index now carries a
 dense vector surface, not BM25-only). The build is **fail-soft**: a missing
 `sentence-transformers` dep or an encoder failure degrades to a BM25-only index
 with `dense_degraded=True`, which `rebuild_index_atomically` returns, `commit_job`
@@ -830,12 +929,16 @@ accept `--backend {mock,anthropic,bedrock}`, `--model`, `--region`,
 | Command | Purpose | Additional flags |
 |---|---|---|
 | `tessellum runtime init` | Initialize runtime directories, DB, and all eight inbox lanes. | none |
-| `tessellum runtime submit <path>` | Spool and admit one existing inbox file. | `--settle-seconds` (default `0`) |
+| `tessellum runtime submit <path>` | Spool and admit one existing inbox file. | `--settle-seconds` (default `0`), `--profile` (`default`/`fast`/`inspect`/`converge`) |
 | `tessellum runtime work` | Promote retries, claim, and process at most one job. | backend flags, `--no-index` |
 | `tessellum runtime serve` | Poll inbox lanes and supervise until signalled. | backend flags, `--scan-seconds` (2), `--settle-seconds` (1), `--no-index` |
 | `tessellum runtime get <job-id>` | Print one job as JSON. | `--events` |
 | `tessellum runtime list` | Print jobs newest-first as JSON. | repeatable `--state`, `--limit` (100) |
-| `tessellum runtime cancel <job-id>` | Request cooperative cancellation. | none |
+| `tessellum runtime status` | Live task-manager view: per-job phase plus per-leaf digestion status. | `--job`, `--watch`, `--interval` (2), `--limit` (100), `--json` |
+| `tessellum runtime cancel <job-id>` | Request cooperative cancellation. | `--force` (fence the worker out and mark cancelled) |
+| `tessellum runtime plan <job-id>` | Show the accepted plan of an inspected (paused) job. | none |
+| `tessellum runtime promote <job-id>` | Promote an inspected (paused) job into its execute wave. | none |
+| `tessellum runtime reject <job-id>` | Reject an inspected (paused) job — discard its plan, cancel. | none |
 | `tessellum runtime retry <job-id>` | Create a linked retry of cancelled/dead-letter work. | none |
 | `tessellum runtime doctor` | Check resolved paths, index-parent writability, and DB readability. | none |
 

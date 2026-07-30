@@ -7,7 +7,7 @@ Lookup surface for the `tessellum` command. For the mental model and the reasons
 - Console script: `tessellum = "tessellum.cli:main"` (`pyproject.toml` `[project.scripts]`).
 - `cli/__init__.py` re-exports `main` from `cli.main`.
 - `tessellum` (no subcommand) → `main._print_banner()`, exit `0`.
-- `tessellum --version` → `tessellum 1.2.0` (from `tessellum.__about__.__version__`).
+- `tessellum --version` → `tessellum 1.12.0` (from `tessellum.__about__.__version__`).
 
 ## File → role
 
@@ -26,8 +26,8 @@ Lookup surface for the `tessellum` command. For the mental model and the reasons
 | `cli/composer.py` | `tessellum composer {validate,compile,run,batch,eval,scaffold-sidecar,digest}` → `tessellum.composer`. |
 | `cli/dks.py` | `tessellum dks <observations.jsonl>` → `tessellum.dks`. |
 | `cli/mcp.py` | `tessellum mcp serve` → `tessellum.mcp.run_stdio` (lazy `[mcp]` import). |
-| `cli/runtime.py` | `tessellum runtime {init,submit,work,serve,get,list,cancel,retry,doctor}` → `tessellum.runtime`. |
-| `tessellum/__about__.py` | `__version__` (`"1.2.0"`) + `__status__`; read by the version banner. |
+| `cli/runtime.py` | `tessellum runtime {init,submit,work,serve,get,list,status,cancel,plan,promote,reject,retry,doctor}` → `tessellum.runtime`. |
+| `tessellum/__about__.py` | `__version__` (`"1.12.0"`) + `__status__`; read by the version banner. |
 
 ## Dispatcher (`cli/main.py`)
 
@@ -98,7 +98,7 @@ Group handler defaults to `run_bb_audit`; bare `tessellum bb` exits `2` with usa
 | `batch` | `run_composer_batch_cli` | `jobs` (JSON list) | `--parallelism` (4), `--no-resume`, `--dry-run`, `--mock-responses`, `--backend {mock,anthropic}`, `--model`, `--format` |
 | `eval` | `run_composer_eval_cli` | `scenarios_dir` | `--backend {mock,anthropic}`, `--judge-backend {none,mock,anthropic}`, `--mock-responses`, `--judge-mock-responses`, `--model`, `--dry-run`, `--format` |
 | `scaffold-sidecar` | `run_composer_scaffold_cli` | `skill` (`.md`) | `--stdout` |
-| `digest` | `run_composer_digest_cli` | `--source` (JSON object file) | `--skills-dir`, `--vault`, `--backend {mock,anthropic,bedrock}`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--format` |
+| `digest` | `run_composer_digest_cli` | `--source` (JSON object file) | `--skills-dir`, `--vault`, `--backend {mock,anthropic,bedrock}`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--run-id` (minted `run-<utc>-<hex>` when absent), `--runs-dir` (per-step traces + checkpoints), `--durable-artifacts` (page the `{{artifact.X}}` store to disk as integrity-checked refs), `--gc-artifacts` (requires `--durable-artifacts`; completed runs only), `--max-review-rounds` (`0`), `--format`. Output surfaces `run_id`, `review_rounds`, and the sign-off `reason`. |
 
 `composer run` base flags: `--leaves`, `--vault` (default `vault`), `--mock-responses`, `--backend {mock,anthropic,bedrock}` (default `mock`), `--region` (default `us-east-1`), `--aws-profile`, `--model`, `--dry-run`, `--no-trace`, `--runs-dir` (default `./runs/composer`), `--format`, `--progress`.
 
@@ -125,9 +125,9 @@ Three short-circuit modes (skip the observations run):
 | Calibrate | `--calibrate` | `--target-false-gate-rate` (default 0.10) |
 | Meta | `--meta` | `--apply`, `--min-cycles` (default `DEFAULT_MIN_CYCLES` = 20), `--target-failure {premise,warrant,counter-example,undercutting}`, `--proposer {heuristic,llm}`, `--attacker {none,llm}`, `--survive-threshold {strict,majority,permissive}` (default `majority`) |
 
-### `runtime {init,submit,work,serve,get,list,cancel,retry,doctor}` (`runtime_command` `required=True`)
+### `runtime {init,submit,work,serve,get,list,status,cancel,plan,promote,reject,retry,doctor}` (`runtime_command` `required=True`)
 
-Durable automatic inbox ingestion and job control. Every non-service successful leaf prints JSON to stdout; `serve` runs silently. A bare `tessellum runtime` is an argparse invocation error and exits `2`. Every parser also has argparse's standard `-h/--help`; parse failures exit `2`. Exceptions not explicitly mapped below propagate from `main` (and terminate the console process nonzero).
+Durable automatic inbox ingestion and job control. Every non-service successful leaf prints JSON to stdout, except that `status` defaults to a human table (JSON only with `--json`) and `plan` prints the raw plan file; `serve` runs silently. A bare `tessellum runtime` is an argparse invocation error and exits `2`. Every parser also has argparse's standard `-h/--help`; parse failures exit `2`. Exceptions not explicitly mapped below propagate from `main` (and terminate the console process nonzero).
 
 #### Paths and environment
 
@@ -156,12 +156,16 @@ Other discovery overrides are `TESSELLUM_RUNS` (default `<root>/runs`), `TESSELL
 | Subcommand | Arguments and flags | Behavior and output | Exit |
 |------------|---------------------|---------------------|------|
 | `init` | common paths only | Opens the DB, creates the resolved inbox directory, and creates lanes `papers`, `book`, `podcast`, `sops`, `manual_retrieved`, `general`, `latex`, `flash`. Prints `{db, inbox}`. Idempotent. | `0`; filesystem/SQLite errors propagate. |
-| `submit PATH` | `--settle-seconds FLOAT` (`0.0`), common paths | Resolves an existing stable regular file, requires the resolved target below a named inbox lane, and rejects hidden names and temporary suffixes `.tmp`, `.part`, `.swp`, `.crdownload`. Spools bytes by SHA-256 before idempotent admission. Prints the job payload plus `created` (`false` returns the existing job). | `0`; `2` for an admission or filesystem error. Argparse errors also exit `2`. |
-| `work` | backend family, common paths | Promotes due retries, claims at most one admitted/ready job for digestion or one committing job for commit-only resume, and runs under a heartbeat lease. Prints `{job_id, status, detail}`. Status is `idle`, `complete`, `cancelled`, `retry_wait`, `dead_letter`, or `lease_lost`. | `1` only for `dead_letter` or `lease_lost`; otherwise `0`, including `idle`, `cancelled`, and scheduled retry. Setup/backend errors propagate. |
+| `submit PATH` | `--settle-seconds FLOAT` (`0.0`), `--profile {default,fast,inspect,converge}`, common paths | Resolves an existing stable regular file, requires the resolved target below a named inbox lane, and rejects hidden names and temporary suffixes `.tmp`, `.part`, `.swp`, `.crdownload`. Spools bytes by SHA-256 before idempotent admission. `--profile` selects the runtime policy profile stored on the job (`inspect` parks at review for human promote/reject; `converge` enables 2 revise rounds). Prints the job payload plus `created` (`false` returns the existing job). | `0`; `2` for an admission or filesystem error. Argparse errors also exit `2`. |
+| `work` | backend family, common paths | Promotes due retries, claims at most one admitted/ready job for digestion or one committing job for commit-only resume, and runs under a heartbeat lease. A promoted job whose persisted `plan.json` carries an accepted sign-off stamp resumes execute-only over the approved plan (never re-plans); an unstamped or rejected `plan.json` falls through to the full pipeline. Prints `{job_id, status, detail}`. Status is `idle`, `complete`, `cancelled`, `retry_wait`, `paused`, `dead_letter`, or `lease_lost`. | `1` only for `dead_letter` or `lease_lost`; otherwise `0`, including `idle`, `cancelled`, `paused`, and scheduled retry. Setup/backend errors propagate. |
 | `serve` | `--scan-seconds FLOAT` (`2.0`), `--settle-seconds FLOAT` (`1.0`), backend family, common paths | Foreground loop: recursively reconcile the eight known lanes, run one supervisor claim, and wait `scan-seconds` only when idle. Stable-file checks wait `settle-seconds`. SIGINT/SIGTERM requests a graceful stop. No normal JSON output. | `0` after graceful stop; setup/backend/service errors propagate. |
 | `get JOB_ID` | `--events` (false), common paths | Prints one job. With `--events`, adds its ordered event history (up to the store default of 500 events). | `0`; `1` and `job not found` on stderr if absent. |
 | `list` | repeatable `--state STATE`, `--limit INT` (`100`), common paths | Prints a newest-first JSON array. Repeated states OR together; no state selects all. State choices: `received`, `admitted`, `routed`, `planning`, `ready`, `running`, `validating`, `committing`, `retry_wait`, `paused`, `complete`, `cancelled`, `dead_letter`. | `0`; invalid state/flag exits `2` via argparse. |
-| `cancel JOB_ID` | common paths | Requests cancellation and prints the resulting job. An unleased cancellable job moves immediately to `cancelled`; an owned job sets `cancel_requested` for cooperative cancellation; a terminal job is returned unchanged. | `0`; `1` and `job not found` on stderr if absent. |
+| `status` | `--job JOB_ID`, `--watch`, `--interval FLOAT` (`2.0`), `--limit INT` (`100`), `--json`, common paths | Read-only task-manager view: aggregate per-job phase with lease + `EXPIRED` flags, or (with `--job`) a drill-down of per-leaf manifest rows with heartbeat age, the composer checkpoint/attempts tail, and an event tail. `--watch` redraws every `--interval` seconds until Ctrl-C; `--json` emits the snapshot as JSON. | `0`; `1` if the snapshot carries an error (e.g. job not found). |
+| `cancel JOB_ID` | `--force`, common paths | Requests cancellation and prints the resulting job. An unleased cancellable job moves immediately to `cancelled`; an owned job sets `cancel_requested` for cooperative cancellation; a terminal job is returned unchanged. `--force` is the escalation past the cooperative signal: `store.force_cancel` bumps the lease generation and nulls the owner, so a worker ignoring the signal fails its next fenced transition. | `0`; `1` and `job not found` on stderr if absent. |
+| `plan JOB_ID` | common paths | Prints the inspected/paused job's persisted `plan.json` verbatim. | `0`; `1` and a stderr message if the job or its plan is missing. |
+| `promote JOB_ID` | common paths | Promotes an inspected job `paused` → `ready` and prints the job; the next claim runs execute-only over the approved, sign-off-stamped plan via `resume_execute`. | `0`; `1` on a missing job or `TransitionError`. |
+| `reject JOB_ID` | common paths | Rejects an inspected job — discards its plan and cancels — and prints the job. | `0`; `1` on a missing job or `TransitionError`. |
 | `retry JOB_ID` | common paths | Creates and prints a new admitted job whose `supersedes_job_id` points to the prior job. Only `cancelled` and `dead_letter` jobs are retryable; the source event gets a unique retry suffix, so the new generation does not deduplicate to the old job. | `0`; `1` for a missing job or an ineligible state. |
 | `doctor` | common paths | Prints all resolved paths and booleans for runtime DB, vault dir, inbox dir, skills dir, index-parent writability, and a jobs read. Note that opening the store makes the runtime DB/read check true; this is a readiness check, not a non-mutating probe. | `0` only when every check is true; otherwise `1`. |
 
@@ -176,7 +180,7 @@ Handler `run_mcp_serve` (`_mcp_op="serve"`) → `tessellum.mcp.run_stdio` (lazy 
 
 | Extra | Packages | Gates |
 |-------|----------|-------|
-| `[mcp]` | `mcp>=1.0`, `fastapi`, `uvicorn` | `mcp serve` |
+| `[mcp]` | `mcp>=1.0,<2` (2.0 removed the decorator API `mcp/server.py` builds on), `fastapi`, `uvicorn` | `mcp serve` |
 | `[agent]` | `anthropic>=0.40` | `--backend anthropic` / `bedrock`; DKS `--backend anthropic`, `--proposer llm`, `--attacker llm` |
 | `[papers]` | `pyzotero`, `requests` | — |
 | `[ingest]` | `watchdog`, `beautifulsoup4`, `html2text`, `pdfplumber`, `PyPDF2`, `python-docx`, `python-pptx` | Automatic-runtime PDF source extraction (`pdfplumber`); other packages are ingest headroom. |

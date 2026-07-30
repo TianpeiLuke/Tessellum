@@ -31,7 +31,7 @@ API, symbols, and signatures for the Dialectic Knowledge System runtime. See [..
 - `ToulminComponent = Literal["premise", "warrant", "counter-example", "undercutting"]` — which Toulmin component an attack targets (`core.py:61-72`).
 - `CycleMode = Literal["fresh", "extend", "branch"]` — where the cycle root lives in the FZ graph (`core.py:74-82`).
 - `CounterStrength = Literal["weak", "moderate", "strong"]` (`core.py:84`).
-- `WarrantChangeKind = Literal["added", "revised", "superseded"]` (`core.py:1149`).
+- `WarrantChangeKind = Literal["added", "revised", "superseded"]` (`core.py:1245`).
 
 ### The seven component dataclasses
 
@@ -39,17 +39,17 @@ All frozen. Five are BB-node subclasses whose `bb_type` is fixed by the parent (
 
 | Dataclass | Base | Key fields |
 |-----------|------|-----------|
-| `DKSObservation` (step 1) | `EmpiricalObservationNode` | `summary: str`, `timestamp: str \| None` (`core.py:90-105`) |
-| `DKSWarrant` | — | Toulmin 6-tuple: `claim`, `data`, `warrant`, `backing`, `qualifier`, `rebuttal` (`core.py:108-122`) |
-| `DKSArgument` (step 2/3) | `ArgumentNode` | `warrant: DKSWarrant`, `evidence: str`, `perspective: str` (`core.py:124-139`) |
-| `DKSContradicts` (step 4) | — | `attacker_fz`, `attacked_fz`, `reason`. No FZ node — a link (`core.py:142-154`) |
-| `DKSCounterArgument` (step 5) | `CounterArgumentNode` | `attacked_fz`, `broken_component: ToulminComponent`, `counter_claim`, `reason`, `strength: CounterStrength` (`core.py:157-173`) |
-| `DKSPattern` (step 6) | `ModelNode` | `description: str`, `observed: tuple[str, ...]` (`core.py:176-187`) |
-| `DKSRuleRevision` (step 7) | — | `folgezettel`, `revised_warrant: DKSWarrant`, `supersedes: str \| None` (`core.py:190-201`) |
+| `DKSObservation` (step 1) | `EmpiricalObservationNode` | `summary: str`, `timestamp: str \| None` (`core.py:90-115`) |
+| `DKSWarrant` | — | Toulmin 6-tuple: `claim`, `data`, `warrant`, `backing`, `qualifier`, `rebuttal` (`core.py:118-136`) |
+| `DKSArgument` (step 2/3) | `ArgumentNode` | `warrant: DKSWarrant`, `evidence: str`, `perspective: str` (`core.py:165-180`) |
+| `DKSContradicts` (step 4) | — | `attacker_fz`, `attacked_fz`, `reason`. No FZ node — a link (`core.py:183-195`) |
+| `DKSCounterArgument` (step 5) | `CounterArgumentNode` | `attacked_fz`, `broken_component: ToulminComponent`, `counter_claim`, `reason`, `strength: CounterStrength` (`core.py:198-214`) |
+| `DKSPattern` (step 6) | `ModelNode` | `description: str`, `observed: tuple[str, ...]` (`core.py:217-228`) |
+| `DKSRuleRevision` (step 7) | — | `folgezettel`, `revised_warrant: DKSWarrant`, `supersedes: str \| None` (`core.py:231-245`) |
 
-### `DKSCycleResult` (frozen dataclass, `core.py:207-363`)
+### `DKSCycleResult` (frozen dataclass, `core.py:248-410`)
 
-Output of one cycle. Legacy scalar fields (`argument_a`, `argument_b`, `contradicts`, `counter`, `pattern`, `rule_revision`) plus multi-perspective tuples (`arguments`, `contradicts_edges`, `grounded_labelling`, `rule_revisions`) plus telemetry (`elapsed_ms`, `backend_id`, `escalation_decision`, `confidence_score`, `silent_failures`).
+Output of one cycle. Identity fields (`cycle_id`, `mode` — the fresh/extend/branch allocation mode the cycle ran under) plus legacy scalar fields (`argument_a`, `argument_b`, `contradicts`, `counter`, `pattern`, `rule_revision`) plus multi-perspective tuples (`arguments`, `contradicts_edges`, `grounded_labelling`, `rule_revisions`) plus telemetry (`elapsed_ms`, `backend_id`, `escalation_decision`, `confidence_score`, `silent_failures`).
 
 | Property | Returns | Meaning |
 |----------|---------|---------|
@@ -62,9 +62,9 @@ Terminal-shape discriminator: `argument_b is None` iff the cycle was gated (2 FZ
 
 ### `allocate_cycle_fz(existing_trails, mode="fresh", parent_fz=None) -> str`
 
-Allocate the cycle-root FZ (`core.py:372-409`). `fresh` = next unused top-level integer; `extend`/`branch` = next letter-suffix child of `parent_fz` (mechanically identical at the allocator layer). Raises `ValueError` if `extend`/`branch` given no `parent_fz`. Internal: `_next_fresh_root`, `_next_child_of` (walks `a`..`z` then two-letter suffixes; `core.py:427-462`).
+Allocate the cycle-root FZ (`core.py:413-450`). `fresh` = next unused top-level integer; `extend`/`branch` = next child of `parent_fz`, alternating component class by depth — a digit-ending parent gets the next unused letter child (`a`..`z`, then two-letter suffixes), a letter-ending parent gets the next unused digit child (`1a` → `1a1`) — mechanically identical for extend vs branch at the allocator layer. Raises `ValueError` if `extend`/`branch` given no `parent_fz`. Internal: `_next_fresh_root`, `_next_child_of` (`core.py:453-539`).
 
-### `DKSCycle` (`core.py:475-1116`)
+### `DKSCycle` (`core.py:542-1215`)
 
 ```python
 DKSCycle(
@@ -77,12 +77,13 @@ DKSCycle(
     retrieval_client: object | None = None,
     semantic_disagreement: bool = False,
     perspectives: tuple[str, ...] = ("conservative", "exploratory"),
+    mode: CycleMode = "fresh",
 )
 ```
 
-`run() -> DKSCycleResult`. `perspectives` must have ≥2 unique entries (`ValueError` otherwise). N>2 auto-activates `_run_n_perspective` (pairwise contradicts + Dung grounded labelling + multi-revision authoring). Per-step methods: `_step_argument`, `_step_disagreement`, `_step_counter`, `_step_pattern`, `_step_rule_revision`. Silent-failure sites: `_llm_check_disagreement`, `_format_retrieval_context`, and the JSON-parse swallow on every step (`_step_argument`, `_step_counter`, `_step_pattern`, `_step_rule_revision`).
+`run() -> DKSCycleResult`. `mode` is the requested fresh/extend/branch allocation mode; it round-trips into `DKSCycleResult.mode` and the trace. `perspectives` must have ≥2 unique entries (`ValueError` otherwise). N>2 auto-activates `_run_n_perspective` (pairwise contradicts + Dung grounded labelling + multi-revision authoring). Per-step methods: `_step_argument`, `_step_disagreement`, `_step_counter`, `_step_pattern`, `_step_rule_revision`. Silent-failure sites: `_llm_check_disagreement`, `_format_retrieval_context`, and the JSON-parse swallow on every step (`_step_argument`, `_step_counter`, `_step_pattern`, `_step_rule_revision`).
 
-### `DKSRunner` (`core.py:1211-1320`)
+### `DKSRunner` (`core.py:1307-1452`)
 
 ```python
 DKSRunner(
@@ -93,20 +94,21 @@ DKSRunner(
     confidence_model=None, confidence_threshold=None,
     retrieval_client=None, semantic_disagreement=False,
     perspectives=("conservative", "exploratory"),
+    modes: tuple[CycleMode, ...] = (),
 )
 ```
 
-`run() -> DKSRunResult`. One cycle per observation; each cycle sees `initial_warrants` + every prior revision. Threads each `rule_revisions` entry into a `WarrantChange` (`added`, or `revised`+`superseded` pair).
+`run() -> DKSRunResult`. One cycle per observation; `modes` gives each observation its allocation mode, positionally aligned — empty means every cycle is `fresh`, and a non-empty tuple must match the observation count (`ValueError` otherwise); each cycle sees `initial_warrants` + every prior revision. Threads each `rule_revisions` entry into a `WarrantChange` (`added`, or `revised`+`superseded` pair).
 
-### `DKSRunResult` (frozen, `core.py:1180-1208`)
+### `DKSRunResult` (frozen, `core.py:1276-1304`)
 
 Fields: `cycles`, `warrant_changes`, `final_warrants`, `elapsed_ms`, `backend_id`. Properties: `cycle_count`, `closed_loop_count`, `gated_count`.
 
-### `WarrantChange` (frozen, `core.py:1162-1177`)
+### `WarrantChange` (frozen, `core.py:1258-1273`)
 
 `cycle_id`, `kind: WarrantChangeKind`, `warrant: DKSWarrant | None`, `revision_fz: str | None`, `superseded_fz: str | None`. The `superseded` tombstone carries only the FZ (`warrant=None`).
 
-- `aggregate_warrant_changes(changes) -> dict[str, int]` — count by kind (`core.py:1323-1330`).
+- `aggregate_warrant_changes(changes) -> dict[str, int]` — count by kind (`core.py:1455-1488`).
 
 ## Dung AF (`dks/dung.py`)
 

@@ -4,7 +4,7 @@ Developer-facing guide for working on Tessellum itself (not for users of Tessell
 
 ## Layout Convention
 
-Tessellum **dogfoods itself** — its public documentation lives in `vault/` as typed atomic notes following the same Building Block format the system asks of users. There is no separate `docs/` directory.
+Tessellum **dogfoods itself** — its public knowledge documentation lives in `vault/` as typed atomic notes following the same Building Block format the system asks of users. Engineering architecture and per-module design/reference docs live in `docs/` (shipped in the sdist), distinct from the vault's knowledge documentation.
 
 The top-level folders map to **CQRS workflow roles**: System P (capture) writes `vault/`; System D (retrieval) reads `vault/` and writes `data/`. Plans and runtime traces sit *outside* both systems — plans are governance (meta to both); run-artifacts are session forensics. See [`plans/plan_cqrs_repo_layout.md`](plans/plan_cqrs_repo_layout.md) for the full workflow → folder mapping.
 
@@ -12,11 +12,11 @@ The top-level folders map to **CQRS workflow roles**: System P (capture) writes 
 |---|---|---|---|
 | `import`-able Python | `src/tessellum/` | both — engines | PEP src-layout — installed package surface |
 | Knowledge content (incl. Tessellum's own docs) | `vault/` | shared substrate | P writes, D reads — single SoT for typed knowledge |
-| Skill canonical bodies | `vault/resources/skills/` | both | In-vault skill SoT pattern; pipeline sidecars co-located |
-| Skill thin-headers | `.claude/skills/`, `.kiro/skills/` | both | Per-runtime entry; point at the canonical body |
+| Skill canonical bodies | `vault/resources/skills/` | both | In-vault skill SoT pattern — one file per skill, contract blocks inlined |
+| Engineering design docs | `docs/` | meta | Per-module architecture + API reference; ships in sdist |
 | User input (PDFs, papers, drafts) | `inbox/` | System P input queue | Drop zone for raw incoming awaiting digestion |
 | **Project plans** | `plans/` | **governance — meta to both** | Decisions about how Tessellum is built; committed |
-| Generated DBs / indexes | `data/` | System D build output | Regenerable; gitignored |
+| Generated DBs / indexes | `data/` | System D build output | Regenerable; keep out of commits (not currently gitignored) |
 | **Runtime traces** | `runs/` | both — runtime forensics | Capture / retrieval / composer run artifacts; gitignored |
 | Experiment outputs | `experiments/` | mostly System D | Per-run subdirs |
 | One-off operational utilities | `scripts/` | meta — dev/maintenance | Vault migrations, repo maintenance, contributor helpers; *not* shipped in the wheel. Core capabilities go in `src/tessellum/cli/` as subcommands instead. See [`scripts/README.md`](scripts/README.md). |
@@ -40,23 +40,9 @@ Three reasons:
 2. **Format conformance** — Tessellum's own documentation has to follow the format Tessellum demands of its users. If we can't make our docs fit, we're asking users to do something we won't do ourselves.
 3. **Demonstrates the system on itself** — a new user opens the repo, browses `vault/`, and sees a working example of the system documenting itself. That's the strongest README possible.
 
-This decision is documented in [`vault/resources/analysis_thoughts/thought_dogfooding_decision.md`](vault/resources/analysis_thoughts/thought_dogfooding_decision.md) (planned for v0.1).
-
 ## Path Resolution
 
-All paths flow through `scripts/config.py` (single SoT). The constants:
-
-```python
-REPO_ROOT      = Path(__file__).resolve().parent.parent
-PACKAGE_DIR    = REPO_ROOT / "src" / "tessellum"
-VAULT_PATH     = REPO_ROOT / "vault"
-INBOX_PATH     = REPO_ROOT / "inbox"
-DATA_PATH      = REPO_ROOT / "data"
-DB_PATH        = DATA_PATH / "databases" / "tessellum_unified.db"
-EXPERIMENTS_PATH = REPO_ROOT / "experiments"
-```
-
-Skills and scripts MUST import from `config.py`. Never hardcode a path.
+Paths are explicit CLI arguments with cwd-relative defaults — every subcommand takes `--vault` (default `./vault`) and, where relevant, `--db` (default `./data/tessellum.db`). There is no global config module; never hardcode paths in library code — thread them through function parameters.
 
 ## Dev Setup
 
@@ -81,12 +67,7 @@ mypy src/tessellum/
 
 ## Adding a Skill
 
-Skills live in **three** files (the in-vault SoT pattern):
-
-1. **Canonical body**: `vault/resources/skills/skill_<name>.md` — the actual procedure (YAML frontmatter + steps + format spec)
-2. **Claude thin-header**: `.claude/skills/<name>/SKILL.md` — short pointer to the canonical body
-3. **Kiro thin-header**: `.kiro/skills/<name>/SKILL.md` — same pattern
-4. **Pipeline sidecar** (optional): `vault/resources/skills/skill_<name>.pipeline.yaml` — only if the skill has typed-contract steps
+A skill is **one file**: `vault/resources/skills/skill_tessellum_<name>.md` — YAML frontmatter + per-step contract blocks + SOP prose, all inlined (no thin-headers, no pipeline sidecars since 1.2.0). Scaffold with `tessellum capture skill`; use `vault/resources/templates/template_skill.md` as the exemplar.
 
 ## YAML Frontmatter Specification
 
@@ -138,7 +119,22 @@ building_block: <bb-type>      # closed 8-element enum (see below)
 last_updated: YYYY-MM-DD       # if the note has been revised since `date of note`
 author: <handle>               # optional, for attribution
 related_wiki: null             # external reference URL or null (kept for parent-vault compat; usually null in Tessellum)
+access_control_group: <group>  # vault access tag; recommended, not universally required
 ```
+
+### Forbidden fields
+
+The validator rejects these legacy / parent-vault keys as `TESS-003` errors — each has a canonical replacement:
+
+| Forbidden key | Canonical replacement |
+|---|---|
+| `title` | the H1 heading |
+| `category` | `tags` |
+| `created` | `date of note` |
+| `updated` | `last_updated` |
+| `source` | `source_url` |
+| `parent` | `folgezettel_parent` |
+| `note_second_category` | `tags[1]` |
 
 ### Optional type-specific fields
 
@@ -173,11 +169,12 @@ The canonical field name is `folgezettel_parent:` (long form). The shorter `fz_p
 
 #### Skill canonical bodies (under `vault/resources/skills/`)
 
+Legacy keys `related_skill_headers: []` and `pipeline_metadata: none` may appear on older skill canonicals; new skills omit both — contract blocks are inlined per step.
+
+#### Documentation notes (`tags[1]` in `documentation` / `aws_docs` / `dev_tool_docs`)
+
 ```yaml
-related_skill_headers:
-  - .claude/skills/<name>/SKILL.md
-  - .kiro/skills/<name>/SKILL.md
-pipeline_metadata: ./skill_<name>.pipeline.yaml   # or "none"
+source_url: <url>              # required for these flavors — the external source the note derives from
 ```
 
 #### Literature notes (under `vault/resources/papers/lit_*.md`)
@@ -226,14 +223,16 @@ section_type: <abstract|intro|method|...>
 
 ### Templates
 
-The canonical executable form of this spec lives at [`vault/resources/templates/`](vault/resources/templates/) — one template per Building Block type. Copy a template, rename it, fill placeholders. The validator checks the templates themselves against the spec, so templates and spec cannot drift apart.
+The canonical executable form of this spec lives at [`vault/resources/templates/`](vault/resources/templates/) — one template per Building Block type plus flavor templates (FAQ, COE, SOP, skill, entry point, code repo/snippet, acronym glossary, experiment, thought, and the shared YAML-header template). Copy a template, rename it, fill placeholders. The validator checks the templates themselves against the spec, so templates and spec cannot drift apart.
 
 ### Validation
 
 ```bash
-python scripts/check_yaml_frontmatter.py --path vault/<your-note>.md
-python scripts/check_note_format.py --path vault/<your-note>.md
+tessellum format check vault/<your-note>.md   # single note
+tessellum format check vault/                 # whole vault (what CI runs)
 ```
+
+`--strict` promotes warnings to errors.
 
 The format checker enforces all 7 required fields, validates the closed enums against the lists above, warns if `keywords < 3` or `topics < 2`, and checks `tags[0]` against the closed PARA bucket list.
 
@@ -244,7 +243,7 @@ The 8 top-level BB types are **closed**. Sub-kinds (encoded as `tags[1]`) are **
 1. Add the sub-kind value as `tags[1]` in your note's YAML frontmatter
 2. Optionally add a term note in `vault/resources/term_dictionary/term_<subkind>.md` documenting it
 3. If a directory doesn't yet exist for the new sub-kind, create one under the appropriate PARA bucket and move the note in (see "Subdirectory Conventions" below)
-4. Run `bash scripts/update_notes_database.sh` to re-index
+4. Run `tessellum index build --force` to re-index (defaults: `--vault vault`, `--db data/tessellum.db`)
 
 The 8 top-level BB types live in the `building_block:` field — distinct from the `tags:` field. The two are orthogonal: `building_block` is the epistemic axis (closed); `tags[1]` is the contextual routing label (open).
 
@@ -252,20 +251,20 @@ The 8 top-level BB types live in the `building_block:` field — distinct from t
 
 If your contribution introduces a new architectural argument, it deserves a Folgezettel trail. Pattern:
 
-1. Author the **root note** as an `argument` BB at `vault/resources/analysis_thoughts/thought_<topic>.md`; set `folgezettel: "<N>"` (next root number) and `fz_parent: null`
+1. Author the **root note** as an `argument` BB at `vault/resources/analysis_thoughts/thought_<topic>.md`; set `folgezettel: "<N>"` (next root number) and `folgezettel_parent: null`
 2. Write child notes that elaborate, challenge, or absorb into synthesis
 3. Update `vault/0_entry_points/entry_folgezettel_trails.md` with the new trail's row + ASCII tree
 
-See [`vault/resources/term_dictionary/term_folgezettel.md`](vault/resources/term_dictionary/term_folgezettel.md) (planned v0.1) for the full convention.
+See [`vault/resources/term_dictionary/term_folgezettel.md`](vault/resources/term_dictionary/term_folgezettel.md) for the full convention.
 
 ## Release Process
 
 1. Update `CHANGELOG.md` with the release notes
 2. Bump `version` in `pyproject.toml`
-3. Tag the release: `git tag v0.x.y && git push --tags`
+3. Tag the release: `git tag v1.x.y && git push --tags`
 4. Build: `python -m build`
 5. Upload: `twine upload dist/*`
-6. The `.github/workflows/publish.yml` workflow runs the upload automatically on tag push (planned v0.1)
+6. There is no publish workflow yet — steps 4–5 are the actual manual release path
 
 ## Code Style
 
@@ -276,12 +275,14 @@ See [`vault/resources/term_dictionary/term_folgezettel.md`](vault/resources/term
 
 ## CI
 
-The CI workflow (`.github/workflows/ci.yml`, planned v0.1) runs:
-- `ruff check src/`
-- `ruff format --check src/`
-- `pytest`
-- `python scripts/check_yaml_frontmatter.py --path vault/`
-- `python scripts/check_note_format.py --path vault/`
+The CI workflow (`.github/workflows/ci.yml`) runs four jobs on every push/PR to main:
+
+1. **lint** — `ruff check src/ tests/`, with ruff pinned in lockstep with the dev extra
+2. **test** — `pytest tests/` on Python 3.11 and 3.12 with `.[agent,mcp,dev]` installed
+3. **format** — `tessellum format check vault/` (errors fail; warnings are advisory)
+4. **build** — `hatch build` + verify the templates ship in the wheel
+
+Superseded runs are cancelled per-branch.
 
 ## Incident-fix protocol (R5.1, FZ 20k9c1a1a1b7c2k2a1e)
 

@@ -49,8 +49,9 @@ skill_*.md (one self-contained canonical:
 One file describes one skill. The canonical is the single source of truth, the
 procedure a person reads. Each pipeline step is an H2 section marked by an anchor
 comment; directly under the heading sits a fenced contract block that carries the
-machine-readable facts — the step's role, what it materializes, what it depends on,
-the schema of its output — and after the block comes the prompt prose the step runs.
+machine-readable facts — the step's role, the inputs it consumes, what it
+materializes, what it depends on, the schema of its output — and after the block
+comes the prompt prose the step runs.
 The contract and the prompt live in the same section, joined by construction rather
 than by a cross-file pointer, so they can never drift apart. Sections without a
 contract block (setup, resources, the skill description) are prose, not steps. The
@@ -79,8 +80,10 @@ sections and so declares no pipeline. Because each step's section id comes strai
 from its anchor rather than a separate file, a step can never name a section that
 does not exist. The compiler then walks each step and enforces its contracts. A step names a
 materializer; that name must be known, and the step's declared output must promise
-at least the fields that materializer requires. It sorts the steps by their
-dependencies, rejecting cycles and — pointedly — forward references, since a
+at least the fields that materializer requires. An input-closure audit, held to
+zero findings in CI, checks each prompt's placeholders against the step's declared
+inputs — every hole declared, every declaration referenced. It sorts the steps by
+their dependencies, rejecting cycles and — pointedly — forward references, since a
 dependency naming a step that appears later is almost always author confusion. It
 pulls each step's prompt text out of the canonical by section id. Finally it
 estimates how large each step's rendered prompt will grow once upstream outputs are
@@ -95,7 +98,10 @@ and every faster or fancier feature is measured against it.
 
 **Execute one step.** Whichever path is driving, the atom of work is the same:
 resolve the step's prompt template — substituting in the current leaf's fields, the
-relevant upstream outputs, and any retry context — into a concrete request; call
+relevant upstream outputs, any retry context, and by-reference artifacts, the large
+durable payloads the driver injects from an integrity-checked store rather than
+letting a prior step lossily re-emit them — into a concrete request, refusing the
+dispatch outright when a declared-required input is absent; call
 the backend under a watchdog; validate the response against the step's schema; and
 hand a clean result to the materializer, which writes the note. The watchdog matters
 because a model call can hang. It runs the call with a timeout, and on a stall
@@ -124,19 +130,26 @@ matter how the threads interleave.
 
 ## Resilience: retries, outcomes, resume
 
-A single step failing is normal; the executor distinguishes *why*. It keeps two
-separate retry budgets — one for logic failures (a bad schema, a contract miss) and
-one for crashes (the backend raised, or the watchdog stalled). They are separate on
-purpose: an algorithmic defect and a network flake call for different remedies and
-must not starve each other. On top of that sits a short-circuit — if the last few
-attempts all produced the *same* error, retrying clearly will not help, so it bails
-before the budget runs out. Backoff between attempts is opt-in, so the default path
-stays byte-identical to a world without it. Each retry feeds the prior error back
+A single step failing is normal; the executor distinguishes *why*. It keeps a
+separate retry budget per failure class — logic failures (a bad schema, a contract
+miss), crashes (the backend raised, or the watchdog stalled), truncation (a
+truncated result escalates max_tokens on its own budget rather than replaying the
+same cap), and empty responses (a transient service window, retried on its own
+bounded budget). They are separate on purpose: each class calls for a different
+remedy and must not starve the others. On top of that sits a short-circuit — if
+the last few attempts all produced the *same* error, retrying clearly will not
+help, so it bails before the budget runs out — except for empty responses, whose
+identical errors are the transient blip's nature and are exempt. Backoff between
+attempts is opt-in, so
+the default path stays byte-identical to a world without it — except for
+empty-response retries, where waiting is the only correct move and full-jitter
+backoff is forced even when backoff is off. Each retry feeds the prior error back
 into the prompt, so the model gets a chance to correct rather than blindly repeat.
 
 When the dust settles, a step's result is classified into one closed set of
 outcomes — succeeded, retries exhausted, watchdog killed, stuck in a same-error
-loop, contract violation, or budget exhausted. This discriminated union enforces a
+loop, contract violation, budget exhausted, or wave short-circuited by the
+run-level breaker. This discriminated union enforces a
 discipline: you can only read a step's produced note when the outcome is *success*;
 asking for the artifact of any other outcome is a type error. It becomes structurally
 impossible to consume a note that never validated. The ordering of outcomes is
@@ -160,6 +173,13 @@ successful `StepResult`, including its structured output, so dependent steps rec
 the same upstream context without another model call. Any mismatch, missing file, or
 old manifest entry simply runs again.
 
+The execute wave's manifest has a linear-phase sibling: the digestion driver
+checkpoints the plan-of-record after every phase fold, and an opt-in resume replays
+from the latest checkpoint — skipping the already-paid plan and review work — but
+only after proving source identity: the checkpoint's code-measured ledger must
+equal one recomputed from the claimed source, and every code-owned field is
+re-stamped, so a checkpoint never overrides what code measures.
+
 Two fences keep this safe under concurrency. Claiming a leaf is a compare-and-swap
 that only one worker can win, and a successful commit must still match the claim's
 owner and generation. A reclaimed or stale worker therefore cannot mark its output
@@ -180,17 +200,27 @@ one gate abstraction, reused at the plan, session, and wave scopes; there is no
 second mechanism. The close-gate runs after a note is captured and is ordered
 cheapest-first: a format check (delegated to Tessellum's own note validator, not
 reimplemented) followed by a grounding check. Grounding is the one semantic concern,
-but even it stays a program — it *reads* a verdict produced independently by an
-agent and decides pass or fail. A missing or auth-blocked verdict fails closed. The
-gate never guesses at plausibility, so a fabricated citation cannot slip through by
-looking convincing.
+but even it stays a program — it *reads* a typed verdict produced independently by
+a verifier and decides. The default verifier is itself deterministic and free:
+every code-like identifier a note asserts must literally appear in the source, so
+an invented API surface self-announces on a string check; a calibrated
+model-backed scorer is the opt-in deeper tier. A grounded verdict may still carry
+a non-blocking advisory — an identifier real in the source but foreign to the
+note's owned slice — recorded without blocking. A missing or auth-blocked verdict
+fails closed. The gate never guesses at plausibility, so a fabricated citation
+cannot slip through by looking convincing.
 
 The ordering of gate and commit is the load-bearing rule. The note file is written
 during capture, but the leaf is only marked done — and the result only treated as
 clean — *after* the gate passes. A gate failure turns an otherwise-clean capture
 into an errored, blocked result. A note that failed its gate is never silently
-recorded as done. The wave-gate adds one check a per-session gate structurally
-cannot make: catching two leaves that resolved to the same target path. When a
+recorded as done. The wave-gate makes the checks a per-session gate structurally
+cannot: two leaves resolving to the same target path; a cross-note link that stays
+unresolved once every sibling in the wave has landed — a check no single note's
+close can time right; and whether each written note actually leaves a trace of
+every source section it owns. The latter two land as advisory warnings recorded in
+the run events — the composite verdict is evaluated in full, not fail-fast — with
+a calibrated strict mode as the promotion path. When a
 wave gate is active, manifest success commits are deferred until that gate accepts
 the whole wave; rejected leaves return to claimable work. Standalone Composer may
 leave an inspected but rejected note on disk. The automatic runtime adds a durable
@@ -221,8 +251,12 @@ The budget is the runaway-fan-out breaker a static compile check cannot provide.
 Immediately before every backend call, including retry and informed-fixer calls,
 the executor charges one unit against the shared run budget atomically and
 all-or-nothing. A refused call halts the leaf with a budget-exhausted outcome
-without dispatching. Credentials are pooled alongside: the pool leases the
-least-used key per call, and when a call fails it classifies the cause. A hard
+without dispatching. Beside the token budget sits an error-class circuit breaker:
+once a proportional share of dispatched leaves fail on the same systemic wall (an
+expired credential pool, a marketplace-wide rate limit), the wave short-circuits —
+remaining leaves get a distinct breaker-tripped outcome and are marked blocked,
+never retried into the same wall. Credentials are pooled alongside: the pool
+leases the least-used key per call, and when a call fails it classifies the cause. A hard
 rate-limit, quota, or auth failure benches that key for an absolute cooldown
 that survives a restart and releases the lease so the next attempt draws a
 different key; a transient blip keeps the lease. Crucially the pool holds key
@@ -232,9 +266,12 @@ never touches a credential.
 Sign-off is the approval ladder from plan to execute, climbed cheapest-first. A
 program gate is a pure structural pre-filter that can reject outright — and on the
 digestion path it now includes a deterministic note-atomicity gate that fails a plan
-on objective signals a program can measure (a note over the density ceiling, a
-multi-block building block, a source section left out of coverage) and loops it back
-to re-planning, so the split-the-notes rules are enforced by code rather than left to
+on objective signals a program can measure (a note over the density ceiling, a plan
+shredded into more notes than the measured source supports, a multi-block building
+block, a source section left out of coverage, a mandatory plan section missing,
+reported per section), plus an advisory balance check that flags a note whose owned
+source span far exceeds the density ceiling, and loops a failing plan back to
+re-planning, so the split-the-notes rules are enforced by code rather than left to
 the planner's goodwill. An agent
 judge returns an approve-or-reject with a confidence; and a human seam is reached
 *only* when agent confidence is low or the blast radius is high. The rung callables
@@ -349,9 +386,14 @@ note outside the calibrated domain, a claim the scorer could not judge — routi
 to a human. One honest limit bounds the promise: this is an empirical, in-sample
 calibration, not yet a distribution-free guarantee. The certificate now runs end to end —
 a reference scorer, note-to-claim extraction, the runtime seam, and an A7.5 go/no-go gate
-all ship — but a production entailment model and a labelled corpus of wrong-but-well-formed
-notes remain an external prerequisite. Until that gate returns GO on a real corpus it does
-not license skipping human review: the certificate fails closed and promotion stays
+all ship — and a first calibration ships with it: the reference scorer was calibrated
+on a labelled pilot corpus (threshold fixed per failure class, the faithful set
+accepting and a set carrying one fabrication abstaining, live), the artifact is
+committed, and the runtime can load it to back the note-level grounding gate — over
+the full source span, since a pilot of the owned-slice variant was refuted by
+measurement. Thresholds are scorer-specific by construction. Capsule promotion
+without the human artifact still awaits a GO on a production-scale corpus of
+wrong-but-well-formed notes; until then promotion stays
 supervised. See [semantic-certificate.md](semantic-certificate.md) for the full mechanism.
 
 **Bounded planning that always halts.** When a planner re-plans from review evidence,

@@ -50,27 +50,42 @@ ready` with the specific gaps to fix. The checkpoints are not only about note qu
 they are, pointedly, about connection: that every note names its related notes, that
 every note is discoverable under an entry point, that the undigested terms are accounted
 for, that coverage has no holes and no overlaps. A verdict of `ready` is granted only
-when every checkpoint passes. A rejection stops the pipeline here, before a single note
-is authored — because the entire point of a gate is to not spend the execution wave on
-an unsound plan.
+when every gating checkpoint passes; the reviewer's purely qualitative critiques are
+preserved as advisories that surface at sign-off without blocking. A rejection stops the
+pipeline here, before a single note is authored — because the entire point of a gate is
+to not spend the execution wave on an unsound plan.
 
 Two layers make up that gate, and they are deliberately different. A hard, deterministic
 atomicity gate fires only on *objective* signals a program can measure without argument: a
 note estimated over the density ceiling, a building block that crams more than one type, a
-source section left out of the coverage map, or a plan that enumerates notes yet declares no
-word estimate at all. Any of these fails the plan closed and loops it back to re-planning —
-and the gate only asserts "not acceptable"; the planner is free to remedy by splitting new
-notes *or* rearranging the coverage, not a prescribed fix. On top of that sits the reviewer's
-*subjective* read — is this note truly one idea, is the decomposition genuinely complete —
-which advises but never hard-fails. Machine-checkable rules are enforced by code; judgment
-stays with the reviewer.
+source section left out of the coverage map, a plan that enumerates notes yet declares no
+word estimate at all, a plan that over-splits the source into more notes than its measured
+volume supports, or a full plan missing its mandatory sections. Any of these fails the plan
+closed and loops it back to re-planning — and the gate only asserts "not acceptable"; the
+planner is free to remedy by splitting new notes *or* rearranging the coverage, not a
+prescribed fix. A per-note balance check — a note whose owned slice of the source measures
+more than twice the density ceiling — warns advisorily rather than blocking, until it is
+calibrated. On top of that sits the reviewer's *subjective* read — is this note truly one
+idea, is the decomposition genuinely complete — which advises but never hard-fails.
+Machine-checkable rules are enforced by code; judgment stays with the reviewer. The same
+division of labour applies to the plan's own text: after every phase the pipeline
+regenerates the sections whose content is pure data — the planned-notes table, the
+source-pages ledger, the summary statistics, and the plan's own section self-assessment —
+as code-derived projections of the structured plan, so a model can never state a tally, a
+page figure, or a completeness claim in a section code owns.
 
 **Execute.** The fourth phase authors the notes. It fans the reviewed plan out into the
 parallel wave — one writer per planned note — and each authored note flows through the
 same discipline every Composer write obeys: it is validated against its schema, written
 through the one materializer channel, and passed through the close-gate that checks its
-format and its grounding before the note is allowed to count. A note that fails its gate
-is repaired by the fix loop or left blocked; it is never silently recorded as done.
+format and its grounding before the note is allowed to count. The grounding rung is
+two-layered and on by default: a free deterministic identifier check blocks any note that
+asserts a code-like token — a flag, a config key, a constant — that appears nowhere in
+the source (a token found in the source but outside the note's own slice is an advisory
+finding, not a block), and a calibrated claim certificate, engaged when a calibration
+artifact is configured, scores the note's claims against the full source and fails closed
+below its calibrated threshold. A note that fails its gate is repaired by the fix loop or
+left blocked; it is never silently recorded as done.
 
 Each writer is also handed the shape its note type owes. Every note kind has a required-
 section contract — a term note owes a Definition and Examples, a how-to owes Setup, Steps,
@@ -81,6 +96,20 @@ its building block, because a vault-wide review found the two are genuinely inde
 building block spans many flavors and one flavor many building blocks. Enforcement stays
 advisory rather than a hard gate (an INFO note when an authored section is missing), on the
 same model-permissive, gates-enforce discipline the plan gate follows.
+
+Above all, each writer is handed the verbatim text of the source sections its note owns —
+resolved by the same fence-aware coverage join the gates use — rendered first in its
+prompt as the material to transcribe literals from, with the full source still available
+for context. Symmetrically, the plan phase's connection decisions are retrieval-backed:
+the routing and cross-reference steps read an actual snapshot of the most relevant
+existing notes rather than being told to search a vault they cannot reach.
+
+After the wave, cross-note sweeps run where a single writer cannot see: a duplicate-target
+check blocks two writers claiming the same note path; a deterministic coverage sweep
+verifies each written note carries traces of the source sections it owns; and a
+link-resolution sweep re-checks outbound links once every sibling exists. The coverage
+and link findings are advisory warnings recorded with the run's events until each check
+is calibrated strict.
 
 ## How a note joins the graph
 
@@ -109,8 +138,10 @@ most relevant to it — hybrid search picks seeds, a best-first walk expands the
 over the link graph — then rebases the hits to real paths relative to the new note and renders
 them as a `## References` block the writer starts from. So every note ships with
 relevance-ranked outbound edges by default, term notes are given room to meet the trail's
-citation floor, and the verify step rejects a note that ends up with no resolvable outbound
-reference at all.
+citation floor, and after the wave a deterministic link-resolution sweep re-checks every
+outbound link once all siblings exist, recording any still-unresolved target as an
+advisory finding in the run's events; the LLM verify step merely narrates the computed
+results and carries no authority.
 
 **Required inlinks** are the reverse of that: the backlinks that *other* notes must gain
 so the connection reads both ways. When a new note belongs next to an existing one, the
@@ -201,7 +232,12 @@ automatic runtime runs it continuously: it admits a source file from one of eigh
 lanes, spools its bytes under a content address, leases the job to a worker, invokes the
 native digestion driver, and — only after the notes are authored — performs the atomic
 P-to-D index rebuild under a live-vault lock, so a reader never sees a half-written
-digestion. The runtime's queue is operational state, never knowledge; losing it can lose
+digestion. A retried or re-claimed job does not re-pay the linear phases: the pipeline
+resumes from its last checkpoint, guarded by source identity — the checkpoint's
+code-measured ledger must match the claimed source — and an execute-only resume is
+honoured only for a plan whose on-disk record carries an explicit sign-off acceptance
+stamp, so a crashed attempt's forensic plan dump is never mistaken for an approved
+plan. The runtime's queue is operational state, never knowledge; losing it can lose
 pending work, never the meaning of a committed note. See [runtime.md](runtime.md) for the
 control plane and [architecture.md](architecture.md) for where digestion sits in the whole
 system.

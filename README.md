@@ -63,7 +63,7 @@ tessellum mcp serve                                                          # s
 
 ## Status
 
-**Current `main` — every engine subsystem shipped.** Test suite: **1762 passing**. Newest: per-note type contracts, incremental indexing, a hard plan-atomicity gate, hybrid retrieval feeding note authoring, a runnable grounding certificate, and the DKS self-driving reasoning arc.
+**Current `main` — every engine subsystem shipped.** Test suite: **2204 passing**. Newest: grounded context delivery (verbatim owned source slices per writer), a free default-ON identifier-grounding fabrication gate, deterministic code-owned plan sections and note-coverage sweeps, checkpoint-resume for crashed digestions with a sign-off acceptance stamp, a hardened lease-renewal actor, and the four-tier AgentMemory facade.
 
 - **Composer** — *typed-contract pipeline runtime.* A skill compiles to a typed DAG with **zero LLM calls**. It then runs serially or in parallel. Backends: Mock / Anthropic / Bedrock / Pooled.
 - **Knowledge transaction** — *a multi-note digestion as one atomic transaction.* Staged, gated, then **published all-or-nothing**. Additive and opt-in.
@@ -200,7 +200,10 @@ Tessellum/
 │   ├── composer/          Composer v4 runtime — compiler + scheduler (serial run_pipeline + dynamic
 │   │                      run_pipeline_dynamic) + executor (retry ladder) + manifest + gates + fix +
 │   │                      credential_pool + context_assembler + planning + signoff + llm
-│   │                      (Mock/Anthropic/Bedrock/Pooled) + batch + eval
+│   │                      (Mock/Anthropic/Bedrock/Pooled) + batch + eval + digestion (native
+│   │                      plan → augment → review → execute driver) + note_grounding + note_coverage
+│   │                      (deterministic fabrication + owned-section coverage verifiers) +
+│   │                      agent_memory + parity + error_taxonomy
 │   ├── dks/               Dialectic Knowledge System engine — core + fsm + dung + confidence + persistence + meta/
 │   ├── runtime/           Durable automatic inbox queue, routing, leased supervisor, commit tail, and tool broker
 │   ├── capture.py         18-flavor capture registry (concept, procedure, skill, model, argument,
@@ -214,13 +217,14 @@ Tessellum/
 ├── composer-ts/           TypeScript orchestration bridge (bridge-not-port; shells the Python CLI)
 ├── docs/                  Architecture + per-module design reference
 ├── vault/                 Shared substrate — typed atomic notes (Tessellum dogfoods itself)
-│   ├── 0_entry_points/    Master TOC + 5 acronym glossaries (statistics, critical thinking,
-│   │                      cognitive science, network science, LLMs) + master glossary index
+│   ├── 0_entry_points/    Master TOC + 6 acronym glossaries (statistics, critical thinking,
+│   │                      cognitive science, network science, LLMs, Tessellum foundations)
+│   │                      + master glossary index
 │   ├── resources/
 │   │   ├── term_dictionary/   Conceptual primer (BB, FZ, DKS, CQRS, Z, PARA, …)
 │   │   ├── how_to/            How-to guides
 │   │   ├── analysis_thoughts/ Architecture arguments + FZ trails
-│   │   ├── templates/         15 copy-and-fill skeletons (executable spec exemplars)
+│   │   ├── templates/         18 copy-and-fill skeletons, one per capture flavor (+ shared YAML-header template)
 │   │   ├── skills/            Self-contained skill canonicals (per-step contract blocks inline)
 │   │   ├── code_snippets/     `## Patterns`-format snippet notes (one component or algorithm)
 │   │   ├── code_repos/        Repo notes (main + sub-note structure)
@@ -235,8 +239,10 @@ Tessellum/
 │   ├── composer/          Composer chain run traces (wired by `tessellum composer run/batch`)
 │   └── runtime/           Durable jobs, content-addressed spool, artifacts, and source archive
 ├── experiments/           Experiment outputs
+├── eval/                  Committed evaluation assets — golden digestion sets + the calibration
+│                          artifacts the grounding certificate loads via TESSELLUM_GROUNDING_CALIBRATION
 ├── scripts/               Operational utilities (one-off migrations; not in wheel)
-└── tests/                 Test suite (1389 passing, 1 skipped)
+└── tests/                 Test suite (~2204 passing)
 ```
 
 **Two documentation surfaces, by audience.** [`docs/`](docs/) is the **engineering reference** — the system architecture, the end-to-end [digestion](docs/digestion.md) flow, and a per-module design doc (runtime, composer, dks, retrieval, indexer, bb, format, cli, mcp) for contributors reading the code. [`vault/`](vault/) is the **knowledge documentation** — Tessellum dogfoods itself, so its concepts, how-tos, and design arguments live as typed atomic notes; start at [`vault/0_entry_points/entry_master_toc.md`](vault/0_entry_points/entry_master_toc.md). See [DEVELOPING.md](DEVELOPING.md) for the rationale.

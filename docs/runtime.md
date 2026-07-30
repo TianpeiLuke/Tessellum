@@ -25,7 +25,7 @@ runs/runtime/spool/ + runtime.db
 native Composer digestion
   plan -> augment -> review -> execute fan-out
         |
-        | format close gate, wave gate, manifest resume
+        | close gate (format + identifier grounding), wave gate, manifest resume
         v
 vault/ new markdown
         |
@@ -132,8 +132,11 @@ nonterminal states -> dead_letter
 
 The current inbox admission starts directly at `admitted`, and the supervisor
 uses `routed`, `planning`, `ready`, `running`, `committing`, and the terminal or
-retry states. `received`, `validating`, and `paused` are modeled extension
-points, not states emitted by the current supervisor. Every general transition
+retry states. `received` and `validating` are modeled extension points, not
+states emitted by the current supervisor. `paused` is live: with the `inspect`
+profile the supervisor stops after an accepted plan and parks the job
+`paused`; `tessellum runtime promote` returns it to `ready` for an execute-only
+resume of the approved plan, and `reject` cancels it. Every general transition
 is compare-and-check against an expected state; specialized retry and claim
 updates are transactional.
 
@@ -156,15 +159,19 @@ All owner-sensitive writes require and compare the supplied owner and lease
 generation with the current row. Once another worker reclaims the job, a stale
 worker receives `LeaseLostError` rather than committing through an obsolete
 claim. Terminal transitions clear the lease in the same transaction. A
-heartbeat thread extends the expiry while Composer is running.
+heartbeat thread extends the expiry while Composer is running; transient
+renewal errors retry and escalate only when no renewal lands within one TTL, a
+lost lease is terminal immediately, and every beat and failure is journaled to
+the job's artifact directory.
 
 The fence reaches the filesystem boundary. `lease_guard()` holds a SQLite
 write transaction while one materializer/fixer write, manifest save, index
 replace, rollback, or source acknowledgement publishes. Reclaim waits for that
-short effect; an expired or superseded owner cannot enter it. Heartbeat failure
-surfaces at the next cancellation or effect boundary; a synchronous backend
-call cannot be interrupted in place. Checks run before backend dispatch and
-again before materialization in both linear and fan-out phases.
+short effect; an expired or superseded owner cannot enter it. Terminal
+heartbeat failure surfaces at the next cancellation or effect boundary; a
+synchronous backend call cannot be interrupted in place. Checks run before
+backend dispatch and again before materialization in both linear and fan-out
+phases.
 
 Before each claim, expired execution leases return to `ready` when routing
 metadata is complete or `admitted` when routing must be repaired; expired
@@ -183,6 +190,11 @@ Recovery is layered:
 - The per-job Composer manifest recovers verified execute leaves and fences
   leaf-level ownership. A new job lease can immediately reclaim the old
   lease's leaf claims; standalone Composer keeps a conservative stale timeout.
+- Composer phase checkpoints under the job's artifact directory let a
+  re-claimed generation of the same job skip already-completed linear phases
+  (`resume_from_checkpoint`, default on); a checkpoint whose measured source
+  identity does not match the claimed source is discarded and the run starts
+  fresh.
 - The durable vault-effect journal restores overwritten files and removes new
   files when a process dies before the commit decision. It records every
   intended postimage before publication and preserves unknown post-crash edits.
@@ -212,19 +224,23 @@ that persisted capability and digest; mutable skill drift fails closed before
 execution. An explicit linked retry is a new job and may route against the new
 skill set.
 
-Two policy profiles ship:
+Four policy profiles ship:
 
 | Profile | Workers | Invocation budget | Fix rounds | Other defaults |
 |---|---:|---:|---:|---|
-| `default` | 4 | 100 | 1 | windowed context, format close gate, wave gate, 3 job attempts |
+| `default` | 4 | 100 | 1 | windowed context, close gate (format + identifier grounding), wave gate, 3 job attempts |
 | `fast` | 2 | 30 | 0 | otherwise inherits `default`; selected automatically for `flash` |
+| `inspect` | 4 | 100 | 1 | inherits `default`; `stop_after=review` parks the job paused at an accepted plan for human promote/reject |
+| `converge` | 4 | 100 | 1 | inherits `default`; two review-revise rounds (`max_review_rounds=2`) |
 
-Both profiles cap assembled context at 120,000 characters across every
+All profiles cap assembled context at 120,000 characters across every
 digestion phase, disable runtime tools, leave the optional cost cap unset, and
 use a 120-second initial and renewed lease TTL. The invocation budget is shared
 by plan, augment, review, and execute and charges every backend call, including
-Composer retries and close-gate repair calls. Profiles are code-defined and
-unknown names fail closed.
+Composer retries and close-gate repair calls. Every profile also defaults
+checkpoint resume on, identifier grounding on, the calibrated grounding gate
+off, and single-pass review unless a profile turns on the revise loop.
+Profiles are code-defined and unknown names fail closed.
 
 ## Native Composer execution
 
@@ -237,18 +253,33 @@ loads that job's Composer manifest, and calls
 `run_digestion_pipeline()` directly:
 
 1. `plan`, `augment`, and `review` run as linear Composer phases.
-2. The program sign-off gate checks plan structure and the review verdict.
-3. `execute` runs as Composer's dynamic fan-out over `execute_leaves`, or one
-   leaf carrying the full plan when the plan does not provide leaves.
+2. The program sign-off gate runs a deterministic plan gate — structure,
+   mandatory plan sections, objective atomicity (density ceiling and
+   over-split floor), and an advisory per-note balance check — alongside the
+   review verdict. The plan gate also vetoes reviewer false-accepts inside the
+   optional review-revise loop (`max_review_rounds`), and purely qualitative
+   reviewer checkpoints are demoted to advisory rather than blocking.
+3. `execute` runs as Composer's dynamic fan-out over per-note leaves projected
+   from the accepted plan's `planned_notes` (each leaf carries the verbatim
+   source sections that note owns), over explicit `execute_leaves` when a plan
+   supplies them, or over one leaf carrying the full plan only when neither is
+   available.
 4. The runtime supplies one shared per-backend-call invocation budget and
    context assembler to all phases, plus cancellation checks, manifest
-   identity, statistics, events, wave deduplication, and a close gate.
+   identity, statistics, events, a wave gate — blocking duplicate-target
+   detection plus advisory owned-section note-coverage and intra-wave
+   link-resolution sweeps, with the full composite verdict (advisories
+   included) recorded in the job's event stream — and a close gate.
 
-The unattended close gate is deliberately format-only. Composer's full close
-gate also supports grounding, but the runtime has no independent grounding
-verifier to supply that verdict; pretending otherwise would turn an unavailable
-check into false assurance. With the default policy, one informed LLM fix round
-may repair a format failure. Composer backends remain tool-free.
+The unattended close gate runs format plus a deterministic identifier-grounding
+rung by default (`identifier_grounding`, default on): note identifiers absent
+from the source block the note, and identifiers landing outside the note's
+owned source slice raise a non-blocking advisory. The full calibrated grounding
+certificate remains opt-in via `grounding_gate` plus a calibration artifact
+named by `TESSELLUM_GROUNDING_CALIBRATION`; without a verifier the grounding
+rung fails closed rather than silently admitting. With the default policy, one
+informed LLM fix round may repair a format failure. Composer backends remain
+tool-free.
 
 All agent-supplied materializer paths must be relative and resolve beneath the
 vault root. Multi-edit responses preflight every target before the first write.
@@ -261,8 +292,19 @@ death. Changed input, changed skill, or modified artifacts also re-execute
 rather than trapping a leaf in a terminal manifest row.
 
 Artifacts live at `runs/runtime/artifacts/<job-id>/`: source metadata,
-`manifest.json`, Composer events and statistics, the final `plan.json`, and
-generation-scoped `vault-effects/` journals while publication is unaccepted.
+`manifest.json`, Composer events and statistics, the final `plan.json` (a
+verifiable projection whose heavy fields are paged to `artifacts/` as the
+durable of-record bytes, recorded by digest), a `runs/` episodic surface
+(phase checkpoints, attempt journal, per-step traces, lease-renewal journal)
+that `runtime status` reads, and generation-scoped `vault-effects/` journals
+while publication is unaccepted.
+
+`plan.json` doubles as forensics for halted runs, so it carries its own
+`_sign_off` acceptance stamp — presence is not approval. A re-claimed job
+resumes execute-only (never re-planning) only when the stamp records an
+approved sign-off and the plan projection still hash-matches its durable
+of-record artifacts; anything else — missing, unstamped, `accepted: false`,
+drifted artifacts — fails closed back into the full pipeline.
 
 ## Cancellation, retry, and dead letter
 
@@ -271,8 +313,16 @@ immediately. A leased job records `cancel_requested`; the supervisor checks it
 before execution, between digestion phases, during dynamic leaf dispatch, and
 before entering the commit tail. The commit tail itself is not interruptible,
 so a request arriving after commit begins does not roll back authored notes.
+`cancel --force` is the escalation past the cooperative signal: it bumps the
+lease generation and clears the owner, so a wedged worker that never reaches a
+check fails its next fenced write with `LeaseLostError` — the
+SIGTERM-to-SIGKILL ladder for jobs.
 
-Failures use Composer's existing error classifier and full-jitter backoff.
+Failures use Composer's existing error classifier and full-jitter backoff. A
+run-level circuit breaker (on by default) aborts an execute wave once 80% of
+dispatched leaves — or ten leaves absolutely — fail with the same systemic
+error class (auth or rate limit), so a credential or throttling wall surfaces
+as one classified failure instead of consuming the whole invocation budget.
 `transient`, `rate_limit`, `auth`, and `crash` failures are scheduled in
 `retry_wait` until the policy's attempt limit is reached. Due retries are
 promoted to `ready`. Cancellation wins over failure scheduling, and cancelled
@@ -340,8 +390,11 @@ independently authorized and audited broker.
 ## Operating surfaces
 
 The CLI exposes `tessellum runtime` with `init`, `submit`, `work`, `serve`,
-`get`, `list`, `cancel`, `retry`, and `doctor`. `work` processes at most one
-claim; `serve` is the polling scanner plus supervisor loop.
+`get`, `list`, `status`, `cancel`, `plan`, `promote`, `reject`, `retry`, and
+`doctor`. `work` processes at most one claim; `serve` is the polling scanner
+plus supervisor loop. `status` is the live task-manager view (job phase,
+per-leaf manifest status, composer attempt tail); `plan`, `promote`, and
+`reject` operate the inspect-before-execute pause point.
 
 The MCP server exposes five matching job-control tools:
 `tessellum_submit_job`, `tessellum_get_job`, `tessellum_list_jobs`,

@@ -7,7 +7,7 @@ API, symbols, constants, rules, and CLI surface for the note-format layer. For t
 | File | Role |
 |------|------|
 | `parser.py` | Frozen `Note` dataclass + `parse_note` / `parse_text`. Regex-splits `---` frontmatter, `yaml.safe_load`s it, keeps `raw_frontmatter`. Raises `FrontmatterParseError` if frontmatter isn't a YAML mapping. |
-| `frontmatter_spec.py` | Closed enums, soft minima, regexes, required/forbidden field sets. `VALID_BUILDING_BLOCKS` is re-exported from `bb.types.VALID_BB_TYPE_VALUES`, not defined locally. |
+| `frontmatter_spec.py` | The single source of truth for the vault frontmatter contract (P19): closed enums, soft minima, regexes, required/optional/forbidden field sets, consumed by the validator and by the eval/scorer golden facts. `VALID_BUILDING_BLOCKS` is re-exported from `bb.types.VALID_BB_TYPE_VALUES`, not defined locally. |
 | `validator.py` | The rule engine: `validate` / `is_valid` + per-rule `_check_*` helpers. Owns YAML-\*, TESS-001/002/003, YAML-100/101, the two BB-graph-aware rules TESS-004/005, and the TESS-010 section advisory (`_check_required_sections`). Delegates LINK-\* to `link_checker`. |
 | `link_checker.py` | `check_links(note)` → LINK-001/002/003/006 (all WARNING). Owns the skip lists. |
 | `issue.py` | `Severity` (str-Enum) + frozen `Issue`. Own module to avoid a `validator` ↔ `link_checker` import cycle. |
@@ -51,7 +51,10 @@ All coerce to `str` / `list[str]` and tolerate missing/mistyped fields (return `
 | `VALID_BUILDING_BLOCKS` | Re-export of `bb.types.VALID_BB_TYPE_VALUES` (8 BB types) |
 | `VALID_STATUSES` | `frozenset`, 21: `active`, `draft`, `archived`, `deprecated`, `superseded`, `stub`, `placeholder`, `template`, `wip`, `in_progress`, `production`, `proposal`, `development`, `planning`, `legacy`, `disabled`, `research`, `review`, `pending`, `completed`, `cancelled` |
 | `REQUIRED_FIELDS` | tuple, 7: `tags`, `keywords`, `topics`, `language`, `date of note`, `status`, `building_block` |
-| `FORBIDDEN_FIELDS` | `frozenset`, 1: `note_second_category` |
+| `FORBIDDEN_FIELDS` | `frozenset`, 7: `note_second_category` (→ tags[1]), `title` (→ the H1), `category` (→ tags), `created` (→ `date of note`), `updated` (→ `last_updated`), `source` (→ `source_url`), `parent` (→ `folgezettel_parent`) |
+| `OPTIONAL_COMMON_FIELDS` | `frozenset`, 4: `last_updated`, `author`, `related_wiki`, `access_control_group` — permitted, neither required nor forbidden |
+| `TYPE_SPECIFIC_REQUIRED_FIELDS` | dict keyed on tags[1] flavor: `documentation` / `aws_docs` / `dev_tool_docs` → (`source_url`,). Not consumed by the validator (no YAML rule fires on a missing `source_url`); it is the eval/scorer contract |
+| `required_fields_for(second_category)` | the 7 universal `REQUIRED_FIELDS` plus any type-specific extras; `None` → the universal 7 |
 | `MIN_TAGS_REQUIRED` | `2` |
 | `MIN_KEYWORDS_RECOMMENDED` | `3` |
 | `MIN_TOPICS_RECOMMENDED` | `2` |
@@ -94,7 +97,7 @@ Enum, date, and list-min checks **skip when the value is absent** (presence is o
 |------|-------|----------|-----------|
 | TESS-001 | `folgezettel_parent` | E | `folgezettel` set without `folgezettel_parent`/`fz_parent` |
 | TESS-002 | `folgezettel` | E | parent set without `folgezettel` |
-| TESS-003 | forbidden field | E | any `FORBIDDEN_FIELDS` member present (bespoke message for `note_second_category`) |
+| TESS-003 | forbidden field | E | any `FORBIDDEN_FIELDS` member present (bespoke message for `note_second_category`; the other 6 get a generic "field is forbidden by the spec") |
 | YAML-100 | (none) | E | `[[...]]` wiki link found in `raw_frontmatter` (scanned line-by-line, offset starts at 2) |
 | YAML-101 | (none) | E | `[..](..)` markdown link found in `raw_frontmatter` |
 

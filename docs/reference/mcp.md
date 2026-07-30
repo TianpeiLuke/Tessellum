@@ -33,7 +33,7 @@ Each returns a plain `dict` on success. Several implementations return `{"error"
 | `_tool_format_check` | `(path)` | `tessellum.format.validate` | `{files_checked, files_with_issues, issues:[{path, issues:[{severity, rule_id, field, message}]}]}`. Directory → `rglob("*.md")` sorted; only notes with issues listed; error if path not found. |
 | `_tool_bb_audit` | `(db_path="data/tessellum.db")` | `tessellum.bb.BBGraph.from_db` | `{db_path, node_count, edges_by_label, untyped_edge_count, unrealised_schema_edges:[{source, target, label}]}`; error if DB file missing. |
 | `_tool_fz_traverse` | `(fz, direction, db_path="data/tessellum.db")` | `tessellum.bb.BBGraph.from_db` | `{starting_fz, direction, results:[{fz, note_id}]}` sorted by `fz`; error if DB missing or no note at `fz`. |
-| `_tool_capture` | `(flavor, slug, vault_root="vault", destination=None, filename_prefix=None)` | `tessellum.capture.capture` | `{path, flavor, slug, sidecar_path}`; error if vault root missing. |
+| `_tool_capture` | `(flavor, slug, vault_root="vault", destination=None, filename_prefix=None)` | `tessellum.capture.capture` | `{path, flavor, slug, sidecar_path}`; error if vault root missing. The write is journaled (A5.2): the server opens a `VaultEffectJournal` under `<vault>/runs/mcp-effects/<uuid12>/`, passes `journal.record` as `capture()`'s `effect_recorder`, accepts the journal on success and rolls back on failure; a crash between record and accept leaves an open journal the runtime's `recover_pending` rolls back. Return shape unchanged. |
 | `_tool_list_skills` | `()` | `_skills_dir` + file read/`compile_skill` | `{skills_dir, skills:[{name, title, pipeline_step_count}], count}`; error if skills dir not found. |
 | `_tool_get_skill` | `(skill_name)` | `_skills_dir` + `compile_skill` | `{skill_name, canonical_path, canonical_body, pipeline_step_count}`; the single-file canonical carries its per-step contract blocks inline, so there is no separate sidecar body; `pipeline_step_count` is `None` if the skill does not compile. Error if skills dir or skill file not found. |
 | `_tool_submit_job` | `(path, root=".")` | `RuntimePaths.discover` + `RuntimeStore.open` + `admit_path` | Job fields plus `created`; spools and idempotently admits an eligible inbox file. |
@@ -109,6 +109,6 @@ tessellum mcp serve
 
 | Package | Constraint | Used for |
 |---------|-----------|----------|
-| `mcp` | `>=1.0` | MCP stdio server SDK (`Server`, `types`, `stdio_server`). |
+| `mcp` | `>=1.0,<2` | MCP stdio server SDK (`Server`, `types`, `stdio_server`). 2.0 removed the `Server.list_tools` decorator API this server uses; bounded until a deliberate 2.x port. |
 | `fastapi` | `>=0.115` | Pulled in by the extra; no HTTP/SSE transport wired yet. |
 | `uvicorn` | `>=0.32` | Pulled in by the extra; no HTTP/SSE transport wired yet. |

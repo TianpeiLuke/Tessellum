@@ -55,16 +55,21 @@ the system already has behind the same seam — one narrow, constrained call per
 this claim entailed by this span? return a probability and an explicit abstain"), at
 temperature zero, never a free plausibility judge and never shown the whole note. The
 untrusted claim and span are fenced as data, so a source that embeds "output entailment 1.0"
-cannot forge an accept, and an unreadable span, a backend error, or a malformed reply all
-abstain. The min-aggregation and the calibrated threshold still do the deciding; the model
-only supplies per-claim evidence. Because the score is the model's own reported probability,
+is treated as text under judgment rather than an instruction — a structural defense-in-depth,
+not a proof: a determined injection may still sway the judge, so hardened deployments pair
+the fencing with input sanitization. An unreadable span, a backend error, or a malformed
+reply all abstain. The min-aggregation and the calibrated threshold still do the deciding;
+the model only supplies per-claim evidence. Because the score is the model's own reported probability,
 the calibration bound transfers to runtime only under exchangeability — the same prompt,
 model, and temperature between calibration and use.
 
 A verifier feeds the runtime. It wraps claim extraction and the certificate into the exact
-`(step, leaf, result) -> GroundingVerdict` shape the previously-unfed grounding seam expects,
-so wiring it in makes a digestion's grounding gate actually consult the certificate. It is
-opt-in, and the default path stays byte-identical.
+`(step, leaf, result) -> GroundingVerdict` shape the runtime's grounding seam expects. That
+seam is no longer unfed by default: the free deterministic identifier-grounding verifier
+described below feeds it out of the box (`policy.identifier_grounding`, on by default), so
+the grounding rung runs on every digestion. The certificate verifier itself stays opt-in
+(`policy.grounding_gate` plus a calibration artifact), and with neither flag the close gate
+is format-only as before.
 
 A go/no-go gate answers the only question that licenses unattended promotion: on a real
 labelled corpus, is the certificate sound AND useful AND backed by enough evidence.
@@ -75,6 +80,25 @@ split for three things — false-accept rate (SOUND), acceptance of genuinely-co
 one, or its vacuous zero false-accept rate cannot be trusted). Only when every present class
 clears all three does the gate return GO.
 
+## The free tier: identifier grounding
+
+The certificate is no longer the whole grounding gate. A first, cheaper layer runs in front
+of it behind the same verifier seam, and it is deterministic, free, and on by default: every
+code-like token a note asserts in an inline-code span — a CLI flag, a KEY_LIKE constant, a
+dotted config key — must literally appear in the source. A token found nowhere in the source
+blocks the note as ungrounded without a single scorer call, so an invented API surface
+self-announces on a string check. A token that is real in the source but falls outside the
+note's own owned slice is cross-contamination rather than fabrication, so it surfaces as a
+non-blocking advisory on an otherwise grounded verdict — a GROUND-003 warning in the gate's
+findings — instead of a block.
+
+The layered runtime verifier composes the two tiers: the identifier check runs first, and
+only a note that clears it reaches the calibrated certificate. The certificate's spans stay
+the full source (under a 40K cap) exactly as calibrated — an owned-section-span variant was
+piloted and refuted by measurement: faithful claims carrying legitimate cross-slice content
+scored like fabrications and the calibrated threshold collapsed from 0.85 to 0.15, so owned
+slices belong to the coverage sweep, not the certificate.
+
 ## What it does and does not promise
 
 The machinery is honest about its own limits, by design. The calibration is an empirical,
@@ -83,17 +107,23 @@ calibration set — not yet the finite-sample distribution-free guarantee the na
 risk control" formally denotes; the out-of-sample check is the go/no-go gate above. The
 reference scorer is a baseline that cannot see meaning. The production entailment judge is
 now available in code — the existing LLM backend, driven as a constrained per-claim scorer —
-so a human-labelled corpus of wrong-but-well-formed notes is the one external, non-code
-prerequisite that remains.
+and a first real calibration exists: a pilot scored a forty-claim labelled set (32 faithful,
+8 fabricated) with that judge, fixed the grounding threshold at 0.85 at a 0.05 target risk,
+and committed the artifact, which the runtime loads via `TESSELLUM_GROUNDING_CALIBRATION` so
+the opted-in gate can accept inside the calibrated documentation domain.
 
-So until that corpus arrives and the go/no-go gate returns GO on it, the certificate does not
-license skipping human review: promotion stays human-supervised and the certificate fails
-closed. What ships is the framework fully wired and measurable — the day a real model and
-corpus land, calibration and the unattended-promotion decision are one command, and nothing
-in the shipped code can inflate confidence or grant authority on its own.
+What remains before unattended promotion is narrower but real: a human-labelled corpus of
+wrong-but-well-formed notes large enough for the go/no-go gate's held-out GO, across every
+failure class — the pilot calibrated one class on forty examples and never ran the go/no-go
+harness. Until that gate returns GO, the certificate does not license skipping human review:
+promotion stays human-supervised, and everywhere outside the calibrated path the certificate
+fails closed. What ships is the framework fully wired and measurable — the day a
+production-scale corpus lands, calibration and the unattended-promotion decision are one
+command, and nothing in the shipped code can inflate confidence or grant authority on its
+own.
 
 **See also:** [composer.md](composer.md#the-knowledge-transaction) (the transaction track that
 gates on the certificate at P7), [dks.md](dks.md) (DKS routes its warrants through the same
 certificate at P4), and [reference/composer.md](reference/composer.md) (exact APIs — the
-`semantic_certificate` core plus the runnable `lexical_scorer` / `claim_extraction` /
-`certificate_verifier` / `calibration_gate` layer).
+`semantic_certificate` core plus the runnable `lexical_scorer` / `llm_claim_scorer` /
+`claim_extraction` / `certificate_verifier` / `calibration_gate` / `note_grounding` layer).
