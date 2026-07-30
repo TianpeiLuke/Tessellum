@@ -1,0 +1,310 @@
+[
+  {
+    "source_section": "Connect Claude Code to tools via MCP",
+    "maps_to_note": "cc_mcp_overview.md"
+  },
+  {
+    "source_section": "What you can do with MCP",
+    "maps_to_note": "cc_mcp_overview.md"
+  },
+  {
+    "source_section": "Find and build MCP servers",
+    "maps_to_note": "cc_mcp_overview.md"
+  },
+  {
+    "source_section": "Next steps",
+    "maps_to_note": "cc_mcp_overview.md"
+  },
+  {
+    "source_section": "Practical examples",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Example: Monitor errors with Sentry",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Example: Connect to GitHub for code reviews",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Example: Query your PostgreSQL database",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Connect to MCP servers",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Before you begin",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Add and verify a server",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Additional MCP server examples",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Add a local server",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Connect a server that requires sign-in",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Connect from other surfaces",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Troubleshooting",
+    "maps_to_note": "cc_mcp_quickstart.md"
+  },
+  {
+    "source_section": "Installing MCP servers",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Option 1: Add a remote HTTP server",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Option 2: Add a remote SSE server",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Option 3: Add a local stdio server",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Option 4: Add a remote WebSocket server",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Add MCP servers from JSON configuration",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Import MCP servers from Claude Desktop",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Edit .mcp.json directly",
+    "maps_to_note": "cc_mcp_transports.md"
+  },
+  {
+    "source_section": "Managing your servers",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "Dynamic tool updates",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "Automatic reconnection",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "Push messages with channels",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "Plugin-provided MCP servers",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "MCP output limits and warnings",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "Raise the limit for a specific tool",
+    "maps_to_note": "cc_mcp_server_management.md"
+  },
+  {
+    "source_section": "MCP installation scopes",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Local scope",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Project scope",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "User scope",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Scope hierarchy and precedence",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Environment variable expansion in `.mcp.json`",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Where servers are saved",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Find your configuration on disk",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Change server scope",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Use a server in all your projects",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Share a server with your team",
+    "maps_to_note": "cc_mcp_installation_scopes.md"
+  },
+  {
+    "source_section": "Authenticate with remote MCP servers",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Use a fixed OAuth callback port",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Use pre-configured OAuth credentials",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Override OAuth metadata discovery",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Restrict OAuth scopes",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Use dynamic headers for custom authentication",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Use MCP servers from Claude.ai",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Use Claude Code as an MCP server",
+    "maps_to_note": "cc_mcp_authentication.md"
+  },
+  {
+    "source_section": "Respond to MCP elicitation requests",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Use MCP resources",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Reference MCP resources",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Scale with MCP Tool Search",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "How it works",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "For MCP server authors",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Configure tool search",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Exempt a server from deferral",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Use MCP prompts as commands",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Execute MCP prompts",
+    "maps_to_note": "cc_mcp_tool_search.md"
+  },
+  {
+    "source_section": "Control MCP server access for your organization",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Choose a pattern",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Exclusive control with managed-mcp.json",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Authenticate with per-user credentials",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Validate the configuration",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Disable MCP entirely",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Allow claude.ai connectors alongside the managed set",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Policy-based control with allowlists and denylists",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Match servers by URL, command, or name",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "How a server is evaluated",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Example configuration",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Restrict the allowlist to managed settings only",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "How restrictions appear to users",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Monitor MCP usage",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Configuration summary",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Related resources",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  },
+  {
+    "source_section": "Managed MCP configuration",
+    "maps_to_note": "cc_managed_mcp_configuration.md"
+  }
+]
