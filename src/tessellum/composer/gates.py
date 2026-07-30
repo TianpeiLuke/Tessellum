@@ -720,15 +720,22 @@ def plan_sections_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
     if len(present) >= 0.9 * len(stems):
         return []
     missing = [s for s in stems if s.lower() not in low]
+    # Run 9 (F13's discovery run): ONE issue per missing stem, not one
+    # aggregate line — the revise loop's convergence metric and P24's
+    # revert-to-best both compare FAILURE COUNTS, so an aggregate hides
+    # within-gate progress (10/14 → 9/14 read as "same one failure") and a
+    # partially-improved round trips the same-failure short-circuit.
+    # Per-stem issues make magnitude visible to both.
     return [
         Issue(
             Severity.ERROR,
             "PLAN-009",
             "plan_sections",
-            f"only {len(present)}/{len(stems)} mandatory sections present "
-            f"(threshold >=90%); missing stems: {missing} — add each as a "
-            f"section (equivalent names under the same stem count)",
+            f"mandatory section missing: '{s}' "
+            f"({len(present)}/{len(stems)} present, threshold >=90%) — add it "
+            f"as a section (an equivalent name under the same stem counts)",
         )
+        for s in missing
     ]
 
 

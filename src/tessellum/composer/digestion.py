@@ -1046,6 +1046,89 @@ def _reconcile_planned_notes_table(plan_doc: dict[str, Any]) -> None:
     plan_doc["plan_text"] = pt[:start] + new_section + pt[end:]
 
 
+def _reconcile_generated_sections(plan_doc: dict[str, Any]) -> None:
+    """F13 (FZ 20k9c1a1a1b7c2k2a3a — sweep run 9, the F11 class generalized):
+    mandatory sections whose content is DETERMINISTIC DATA are code-generated
+    projections, appended when the writer omits them.
+
+    Run 9 burned all three rounds on exactly this: the writer reliably
+    authored the ten judgment sections and reliably OMITTED the four
+    derivable ones — ``Source Pages`` (the pages ledger), ``Summary
+    Statistics & Building Block Distribution`` (the planned-notes tallies),
+    ``Per-Phase Validation Gate`` (the gate registry), ``Review Sign-Off``
+    (the sign-off ladder) — through F8 conditioning that NAMED them and a
+    reviewer that flagged them, and PLAN-009 terminally rejected. A model
+    should never be the source of sections code can derive (F11's lesson);
+    generate-if-missing so an authored section still wins.
+
+    Scoped like PLAN-009: coverage-map-bearing plans only (the full
+    digestion contract); no plan_text → no-op.
+    """
+    pt = plan_doc.get("plan_text")
+    cmap = plan_doc.get("section_coverage_map")
+    if not (isinstance(pt, str) and pt and isinstance(cmap, list) and cmap):
+        return
+    low = pt.lower()
+    blocks: list[str] = []
+
+    if "source pages" not in low:
+        pages = plan_doc.get("pages")
+        if isinstance(pages, list) and pages:
+            rows = ["## Source Pages", "",
+                    "| Source | Measured Words | Code Blocks | Headings |",
+                    "|---|---|---|---|"]
+            for pg in pages:
+                if not isinstance(pg, dict):
+                    continue
+                rows.append(
+                    f"| {pg.get('source_id') or pg.get('url') or ''} "
+                    f"| {pg.get('measured_words', '')} "
+                    f"| {pg.get('code_blocks', '')} "
+                    f"| {len(pg.get('headings') or [])} |"
+                )
+            rows.append("")
+            rows.append("(code-measured ledger — the of-record `pages[]`)")
+            blocks.append("\n".join(rows))
+
+    if "summary statistics" not in low:
+        notes = plan_doc.get("planned_notes")
+        if isinstance(notes, list) and notes:
+            bb: dict[str, int] = {}
+            for n in notes:
+                if isinstance(n, dict):
+                    key = str(n.get("building_block") or "unspecified")
+                    bb[key] = bb.get(key, 0) + 1
+            lines = ["## Summary Statistics & Building Block Distribution", "",
+                     f"Total planned notes: {len(notes)}", ""]
+            lines += [f"- {k}: {v}" for k, v in sorted(bb.items())]
+            lines.append("")
+            lines.append("(derived from the structured `planned_notes` inventory)")
+            blocks.append("\n".join(lines))
+
+    if "per-phase validation gate" not in low:
+        blocks.append(
+            "## Per-Phase Validation Gate\n\n"
+            "Deterministic gates enforced by the pipeline (not authored "
+            "here): plan scope — structure, mandatory sections (PLAN-009), "
+            "coverage (PLAN-006), density band (PLAN-004/PLAN-008) at "
+            "sign-off; session scope — format + grounding at each note's "
+            "close gate; wave scope — dedup + owned-section coverage after "
+            "the wave."
+        )
+
+    if "review sign-off" not in low:
+        blocks.append(
+            "## Review Sign-Off\n\n"
+            "Pending — decided by the sign-off ladder (deterministic plan "
+            "gate + the review skill's typed verdict); the decision is "
+            "recorded on the run's sign-off result, not authored in this "
+            "plan."
+        )
+
+    if blocks:
+        plan_doc["plan_text"] = pt.rstrip("\n") + "\n\n" + "\n\n".join(blocks) + "\n"
+
+
 def _rematerialize_plan_file(
     plan_doc: dict[str, Any],
     vault_root: Path,
@@ -1864,6 +1947,7 @@ def run_digestion_pipeline(
                 if code_source_excerpt:
                     plan_doc["source_excerpt"] = code_source_excerpt
                 _reconcile_planned_notes_table(plan_doc)
+                _reconcile_generated_sections(plan_doc)
                 checkpoint_seq = cp_seq
                 resumed_phase = cp_phase
                 plan_doc["_resumed_from_checkpoint"] = {
@@ -1901,6 +1985,11 @@ def run_digestion_pipeline(
         # F11: the prose Planned-Notes table is regenerated from the
         # structured list after EVERY fold — one inventory, by construction.
         _reconcile_planned_notes_table(plan_doc)
+        # F13: the deterministic mandatory sections (Source Pages, Summary
+        # Statistics, Per-Phase Validation Gate, Review Sign-Off) are
+        # code-generated when the writer omits them — run 9 burned all three
+        # rounds failing to author sections whose content is plan_doc data.
+        _reconcile_generated_sections(plan_doc)
         if linear_runs_dir is not None:
             checkpoint_seq += 1
             _checkpoint_plan_doc(linear_runs_dir, checkpoint_seq, phase, plan_doc)
