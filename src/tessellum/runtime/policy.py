@@ -93,7 +93,9 @@ class RuntimePolicy:
             # staleness, and journals every beat, and the schedule test
             # proves a blocked call 2.5x the TTL survives under it. History
             # of the wrong turn: R5.2's corrected record in the CHANGELOG.
-            return cls(max_review_rounds=2)
+            # k2a4a run 18: the identifier gate's true catch needed more
+            # than one repair attempt — converge gives the fixer two.
+            return cls(max_review_rounds=2, max_fix_rounds=2)
         if profile != "default":
             raise ValueError(f"unknown runtime policy profile: {profile!r}")
         return cls()

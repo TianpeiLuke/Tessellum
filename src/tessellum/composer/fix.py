@@ -250,7 +250,13 @@ DEFAULT_FIX_SYSTEM_PROMPT = (
     "issues. Return the CORRECTED note text and NOTHING else — no preamble, "
     "no code fences, no commentary. Fix every listed issue while preserving "
     "the note's meaning, structure, and all correct content. Do not invent "
-    "facts; only repair format/structure/links the issues call out."
+    "facts; only repair format/structure/links the issues call out. "
+    "SPECIAL RULE for grounding issues (GROUND-001) that name asserted "
+    "tokens absent from the source: DELETE every named token from the note "
+    "or replace it with the source's exact spelling if the issue was a "
+    "paraphrase — never keep a named token, never coin a variant of it, "
+    "and rewrite the surrounding sentence as plain prose if no verbatim "
+    "identifier fits."
 )
 
 
