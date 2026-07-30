@@ -1,0 +1,148 @@
+{
+  "mode": "per-note-scoped-dual-context",
+  "notes_scored": 10,
+  "notes_skipped": 0,
+  "dimensions": {
+    "relevance": 3.1,
+    "completeness": 3.1,
+    "accuracy": 3.0,
+    "clarity": 4.0,
+    "structural_integrity": 3.7,
+    "epistemic_congruence": 2.8
+  },
+  "overall": 3.283,
+  "overall_pct": 65.7,
+  "notes_with_owned_spans": 10,
+  "per_note": [
+    {
+      "note": "openclaw-agent-primitives.md",
+      "owned_sections": 9,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 4,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.667
+    },
+    {
+      "note": "openclaw-configuration.md",
+      "owned_sections": 8,
+      "scores": {
+        "relevance": 1,
+        "completeness": 1,
+        "accuracy": 1,
+        "clarity": 3,
+        "structural_integrity": 2,
+        "epistemic_congruence": 1
+      },
+      "mean": 1.5
+    },
+    {
+      "note": "openclaw-hooks-streaming-tools.md",
+      "owned_sections": 12,
+      "scores": {
+        "relevance": 2,
+        "completeness": 2,
+        "accuracy": 1,
+        "clarity": 3,
+        "structural_integrity": 3,
+        "epistemic_congruence": 1
+      },
+      "mean": 2.0
+    },
+    {
+      "note": "openclaw-memory.md",
+      "owned_sections": 6,
+      "scores": {
+        "relevance": 1,
+        "completeness": 1,
+        "accuracy": 1,
+        "clarity": 3,
+        "structural_integrity": 2,
+        "epistemic_congruence": 1
+      },
+      "mean": 1.5
+    },
+    {
+      "note": "openclaw-overview.md",
+      "owned_sections": 11,
+      "scores": {
+        "relevance": 1,
+        "completeness": 1,
+        "accuracy": 1,
+        "clarity": 3,
+        "structural_integrity": 2,
+        "epistemic_congruence": 1
+      },
+      "mean": 1.5
+    },
+    {
+      "note": "openclaw-protocol.md",
+      "owned_sections": 13,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    },
+    {
+      "note": "openclaw-request-lifecycle.md",
+      "owned_sections": 5,
+      "scores": {
+        "relevance": 1,
+        "completeness": 1,
+        "accuracy": 2,
+        "clarity": 3,
+        "structural_integrity": 3,
+        "epistemic_congruence": 1
+      },
+      "mean": 1.833
+    },
+    {
+      "note": "openclaw-runtime.md",
+      "owned_sections": 6,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    },
+    {
+      "note": "openclaw-workspace-migration.md",
+      "owned_sections": 6,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.833
+    },
+    {
+      "note": "openclaw-workspace.md",
+      "owned_sections": 8,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    }
+  ]
+}

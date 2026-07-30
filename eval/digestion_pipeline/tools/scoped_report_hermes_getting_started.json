@@ -1,0 +1,161 @@
+{
+  "mode": "per-note-scoped-dual-context",
+  "notes_scored": 11,
+  "notes_skipped": 0,
+  "dimensions": {
+    "relevance": 3.818,
+    "completeness": 3.455,
+    "accuracy": 3.364,
+    "clarity": 4.0,
+    "structural_integrity": 4.0,
+    "epistemic_congruence": 3.364
+  },
+  "overall": 3.667,
+  "overall_pct": 73.3,
+  "notes_with_owned_spans": 11,
+  "per_note": [
+    {
+      "note": "hermes-android-termux.md",
+      "owned_sections": 17,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    },
+    {
+      "note": "hermes-installation.md",
+      "owned_sections": 12,
+      "scores": {
+        "relevance": 0,
+        "completeness": 0,
+        "accuracy": 0,
+        "clarity": 0,
+        "structural_integrity": 0,
+        "epistemic_congruence": 0
+      },
+      "mean": 0.0
+    },
+    {
+      "note": "hermes-nix-architecture.md",
+      "owned_sections": 14,
+      "scores": {
+        "relevance": 4,
+        "completeness": 3,
+        "accuracy": 3,
+        "clarity": 4,
+        "structural_integrity": 4,
+        "epistemic_congruence": 3
+      },
+      "mean": 3.5
+    },
+    {
+      "note": "hermes-nix-configuration.md",
+      "owned_sections": 21,
+      "scores": {
+        "relevance": 3,
+        "completeness": 2,
+        "accuracy": 2,
+        "clarity": 4,
+        "structural_integrity": 4,
+        "epistemic_congruence": 2
+      },
+      "mean": 2.833
+    },
+    {
+      "note": "hermes-nix-plugins.md",
+      "owned_sections": 9,
+      "scores": {
+        "relevance": 3,
+        "completeness": 2,
+        "accuracy": 2,
+        "clarity": 3,
+        "structural_integrity": 3,
+        "epistemic_congruence": 2
+      },
+      "mean": 2.5
+    },
+    {
+      "note": "hermes-nix-setup.md",
+      "owned_sections": 27,
+      "scores": {
+        "relevance": 4,
+        "completeness": 3,
+        "accuracy": 3,
+        "clarity": 4,
+        "structural_integrity": 4,
+        "epistemic_congruence": 3
+      },
+      "mean": 3.5
+    },
+    {
+      "note": "hermes-nix-troubleshooting.md",
+      "owned_sections": 14,
+      "scores": {
+        "relevance": 5,
+        "completeness": 4,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 4.833
+    },
+    {
+      "note": "hermes-overview.md",
+      "owned_sections": 17,
+      "scores": {
+        "relevance": 3,
+        "completeness": 4,
+        "accuracy": 3,
+        "clarity": 4,
+        "structural_integrity": 4,
+        "epistemic_congruence": 3
+      },
+      "mean": 3.5
+    },
+    {
+      "note": "hermes-quickstart.md",
+      "owned_sections": 30,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    },
+    {
+      "note": "hermes-troubleshooting.md",
+      "owned_sections": 10,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 4,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.667
+    },
+    {
+      "note": "hermes-update-uninstall.md",
+      "owned_sections": 33,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    }
+  ]
+}

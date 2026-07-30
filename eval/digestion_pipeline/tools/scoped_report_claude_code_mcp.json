@@ -1,0 +1,148 @@
+{
+  "mode": "per-note-scoped-dual-context",
+  "notes_scored": 10,
+  "notes_skipped": 0,
+  "dimensions": {
+    "relevance": 4.8,
+    "completeness": 4.3,
+    "accuracy": 3.8,
+    "clarity": 4.8,
+    "structural_integrity": 4.8,
+    "epistemic_congruence": 3.8
+  },
+  "overall": 4.383,
+  "overall_pct": 87.7,
+  "notes_with_owned_spans": 10,
+  "per_note": [
+    {
+      "note": "mcp-advanced-features.md",
+      "owned_sections": 12,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    },
+    {
+      "note": "mcp-authentication.md",
+      "owned_sections": 7,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 5
+      },
+      "mean": 5.0
+    },
+    {
+      "note": "mcp-connect-servers-gui.md",
+      "owned_sections": 15,
+      "scores": {
+        "relevance": 4,
+        "completeness": 4,
+        "accuracy": 3,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 3
+      },
+      "mean": 4.0
+    },
+    {
+      "note": "mcp-installing-servers.md",
+      "owned_sections": 11,
+      "scores": {
+        "relevance": 5,
+        "completeness": 3,
+        "accuracy": 3,
+        "clarity": 4,
+        "structural_integrity": 4,
+        "epistemic_congruence": 3
+      },
+      "mean": 3.667
+    },
+    {
+      "note": "mcp-managing-servers.md",
+      "owned_sections": 10,
+      "scores": {
+        "relevance": 5,
+        "completeness": 4,
+        "accuracy": 4,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.5
+    },
+    {
+      "note": "mcp-org-access-control.md",
+      "owned_sections": 16,
+      "scores": {
+        "relevance": 4,
+        "completeness": 3,
+        "accuracy": 1,
+        "clarity": 4,
+        "structural_integrity": 4,
+        "epistemic_congruence": 2
+      },
+      "mean": 3.0
+    },
+    {
+      "note": "mcp-overview-and-concepts.md",
+      "owned_sections": 5,
+      "scores": {
+        "relevance": 5,
+        "completeness": 4,
+        "accuracy": 4,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.5
+    },
+    {
+      "note": "mcp-practical-examples.md",
+      "owned_sections": 5,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 4,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.667
+    },
+    {
+      "note": "mcp-scopes-and-env-vars.md",
+      "owned_sections": 8,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 5,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.833
+    },
+    {
+      "note": "mcp-tool-search.md",
+      "owned_sections": 7,
+      "scores": {
+        "relevance": 5,
+        "completeness": 5,
+        "accuracy": 4,
+        "clarity": 5,
+        "structural_integrity": 5,
+        "epistemic_congruence": 4
+      },
+      "mean": 4.667
+    }
+  ]
+}
