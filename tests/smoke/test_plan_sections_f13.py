@@ -74,12 +74,34 @@ def test_reconcile_fills_derivable_sections_from_of_record_data() -> None:
     assert plan_sections_predicate(d) == []  # the gate now passes
 
 
-def test_reconcile_keeps_authored_sections() -> None:
-    authored = "# Plan\n\n## Source Pages\n\nMY OWN TABLE\n\n" + _AUTHORED
+def test_f15_pure_data_sections_regenerated_always() -> None:
+    """F15 (run 11): the writer AUTHORED a Summary Statistics section with
+    invented tallies ('Digest notes planned: 26' vs the of-record 9) and
+    generate-if-missing let it stand. Pure-data sections are now REPLACED
+    with the projection, heading normalized to the canonical stem."""
+    authored = (
+        "# Plan\n\n## Source Pages\n\nMY OWN TABLE\n\n"
+        "## Summary Statistics\n\n| Digest notes planned | 26 |\n\n" + _AUTHORED
+    )
     d = _doc(authored)
     _reconcile_generated_sections(d)
-    assert d["plan_text"].count("## Source Pages") == 1
-    assert "MY OWN TABLE" in d["plan_text"]
+    text = d["plan_text"]
+    assert "MY OWN TABLE" not in text and "26" not in text
+    assert text.count("## Source Pages") == 1
+    assert "| p1 | 51 | 2 | 1 |" in text
+    # the variant heading is normalized to the full canonical stem
+    assert "## Summary Statistics & Building Block Distribution" in text
+    assert "Total planned notes: 3" in text
+
+
+def test_f15_boilerplate_sections_still_authored_wins() -> None:
+    authored = (
+        "# Plan\n\n## Per-Phase Validation Gate\n\nMY GATE TABLE\n\n" + _AUTHORED
+    )
+    d = _doc(authored)
+    _reconcile_generated_sections(d)
+    assert "MY GATE TABLE" in d["plan_text"]
+    assert d["plan_text"].count("## Per-Phase Validation Gate") == 1
 
 
 def test_reconcile_noop_out_of_scope() -> None:

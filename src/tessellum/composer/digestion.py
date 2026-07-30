@@ -1046,20 +1046,41 @@ def _reconcile_planned_notes_table(plan_doc: dict[str, Any]) -> None:
     plan_doc["plan_text"] = pt[:start] + new_section + pt[end:]
 
 
-def _reconcile_generated_sections(plan_doc: dict[str, Any]) -> None:
-    """F13 (FZ 20k9c1a1a1b7c2k2a3a — sweep run 9, the F11 class generalized):
-    mandatory sections whose content is DETERMINISTIC DATA are code-generated
-    projections, appended when the writer omits them.
+def _replace_or_none(pt: str, heading_prefix: str, body: str) -> str | None:
+    """Replace the BODY of the first H2 whose normalized title starts with
+    ``heading_prefix`` (name variants included) with ``body`` — heading line
+    normalized to ``body``'s own first line. ``None`` when no such section
+    exists (caller appends instead)."""
+    for m in re.finditer(r"(?m)^##\s+(.+?)\s*$", pt):
+        title = " ".join(m.group(1).lower().split())
+        if not title.startswith(heading_prefix):
+            continue
+        start = m.start()
+        nxt = re.search(r"(?m)^##\s+", pt[m.end():])
+        end = m.end() + (nxt.start() if nxt else len(pt) - m.end())
+        return pt[:start] + body + "\n" + pt[end:]
+    return None
 
-    Run 9 burned all three rounds on exactly this: the writer reliably
-    authored the ten judgment sections and reliably OMITTED the four
-    derivable ones — ``Source Pages`` (the pages ledger), ``Summary
-    Statistics & Building Block Distribution`` (the planned-notes tallies),
-    ``Per-Phase Validation Gate`` (the gate registry), ``Review Sign-Off``
-    (the sign-off ladder) — through F8 conditioning that NAMED them and a
-    reviewer that flagged them, and PLAN-009 terminally rejected. A model
-    should never be the source of sections code can derive (F11's lesson);
-    generate-if-missing so an authored section still wins.
+
+def _reconcile_generated_sections(plan_doc: dict[str, Any]) -> None:
+    """F13 + F15 (FZ 20k9c1a1a1b7c2k2a3a — sweep runs 9 and 11, the F11 class
+    generalized then completed): mandatory sections whose content is
+    DETERMINISTIC DATA are code-generated projections.
+
+    Run 9 (F13): the writer reliably authored the ten judgment sections and
+    reliably OMITTED the four derivable ones, through F8 conditioning that
+    NAMED them — so the derivable sections are generated when missing. Run
+    11 (F15): generate-if-missing was NOT enough for the strictly-data
+    sections — the writer AUTHORED a "Summary Statistics" section carrying
+    invented tallies ("Digest notes planned: 26" against the of-record 9),
+    and the incomplete authored section beat the complete generated one. So
+    the two PURE-DATA sections (``Source Pages``, ``Summary Statistics &
+    Building Block Distribution``) are now REGENERATED ALWAYS — authored
+    bodies replaced, heading normalized to the canonical stem (F11's
+    write-time binding, whole-section scope); the two boilerplate sections
+    (``Per-Phase Validation Gate``, ``Review Sign-Off``) stay
+    generate-if-missing, since an authored version can carry legitimate
+    plan-specific content.
 
     Scoped like PLAN-009: coverage-map-bearing plans only (the full
     digestion contract); no plan_text → no-op.
@@ -1068,42 +1089,50 @@ def _reconcile_generated_sections(plan_doc: dict[str, Any]) -> None:
     cmap = plan_doc.get("section_coverage_map")
     if not (isinstance(pt, str) and pt and isinstance(cmap, list) and cmap):
         return
+
+    pages = plan_doc.get("pages")
+    if isinstance(pages, list) and pages:
+        rows = ["## Source Pages", "",
+                "| Source | Measured Words | Code Blocks | Headings |",
+                "|---|---|---|---|"]
+        for pg in pages:
+            if not isinstance(pg, dict):
+                continue
+            rows.append(
+                f"| {pg.get('source_id') or pg.get('url') or ''} "
+                f"| {pg.get('measured_words', '')} "
+                f"| {pg.get('code_blocks', '')} "
+                f"| {len(pg.get('headings') or [])} |"
+            )
+        rows.append("")
+        rows.append("(code-measured ledger — the of-record `pages[]`)")
+        block = "\n".join(rows)
+        replaced = _replace_or_none(pt, "source pages", block)
+        pt = replaced if replaced is not None else (
+            pt.rstrip("\n") + "\n\n" + block + "\n"
+        )
+
+    notes = plan_doc.get("planned_notes")
+    if isinstance(notes, list) and notes:
+        bb: dict[str, int] = {}
+        for n in notes:
+            if isinstance(n, dict):
+                key = str(n.get("building_block") or "unspecified")
+                bb[key] = bb.get(key, 0) + 1
+        lines = ["## Summary Statistics & Building Block Distribution", "",
+                 f"Total planned notes: {len(notes)}", ""]
+        lines += [f"- {k}: {v}" for k, v in sorted(bb.items())]
+        lines.append("")
+        lines.append("(derived from the structured `planned_notes` inventory)")
+        block = "\n".join(lines)
+        replaced = _replace_or_none(pt, "summary statistics", block)
+        pt = replaced if replaced is not None else (
+            pt.rstrip("\n") + "\n\n" + block + "\n"
+        )
+
+    plan_doc["plan_text"] = pt
     low = pt.lower()
     blocks: list[str] = []
-
-    if "source pages" not in low:
-        pages = plan_doc.get("pages")
-        if isinstance(pages, list) and pages:
-            rows = ["## Source Pages", "",
-                    "| Source | Measured Words | Code Blocks | Headings |",
-                    "|---|---|---|---|"]
-            for pg in pages:
-                if not isinstance(pg, dict):
-                    continue
-                rows.append(
-                    f"| {pg.get('source_id') or pg.get('url') or ''} "
-                    f"| {pg.get('measured_words', '')} "
-                    f"| {pg.get('code_blocks', '')} "
-                    f"| {len(pg.get('headings') or [])} |"
-                )
-            rows.append("")
-            rows.append("(code-measured ledger — the of-record `pages[]`)")
-            blocks.append("\n".join(rows))
-
-    if "summary statistics" not in low:
-        notes = plan_doc.get("planned_notes")
-        if isinstance(notes, list) and notes:
-            bb: dict[str, int] = {}
-            for n in notes:
-                if isinstance(n, dict):
-                    key = str(n.get("building_block") or "unspecified")
-                    bb[key] = bb.get(key, 0) + 1
-            lines = ["## Summary Statistics & Building Block Distribution", "",
-                     f"Total planned notes: {len(notes)}", ""]
-            lines += [f"- {k}: {v}" for k, v in sorted(bb.items())]
-            lines.append("")
-            lines.append("(derived from the structured `planned_notes` inventory)")
-            blocks.append("\n".join(lines))
 
     if "per-phase validation gate" not in low:
         blocks.append(
@@ -1126,7 +1155,9 @@ def _reconcile_generated_sections(plan_doc: dict[str, Any]) -> None:
         )
 
     if blocks:
-        plan_doc["plan_text"] = pt.rstrip("\n") + "\n\n" + "\n\n".join(blocks) + "\n"
+        plan_doc["plan_text"] = (
+            pt.rstrip("\n") + "\n\n" + "\n\n".join(blocks) + "\n"
+        )
 
 
 def _rematerialize_plan_file(
