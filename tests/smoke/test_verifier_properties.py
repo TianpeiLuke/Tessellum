@@ -154,3 +154,24 @@ def test_materializer_still_fails_loud_on_truly_missing_frontmatter(tmp_path: Pa
             "body_markdown_frontmatter_to_file", "# Just a body, no frontmatter\n",
             vault_root=tmp_path, dry_run=False,
         )
+
+
+def test_materializer_normalizes_kebab_tags_to_the_vault_alphabet(tmp_path: Path) -> None:
+    """F10 (the openclaw sweep): kebab tags from kebab-heavy sources blocked
+    7/9 leaves at the close gate (YAML-015) — the same tag in a different
+    rendering, absorbed deterministically at write time."""
+    from tessellum.composer.materializer import materialize
+
+    doc = (
+        "---\n"
+        "output_path: platforms/openclaw/demo2.md\n"
+        "tags: [resource, concept, active-memory, AI Agents]\n"
+        "---\n\n# D\n\nBody.\n"
+    )
+    materialize(
+        "body_markdown_frontmatter_to_file", doc,
+        vault_root=tmp_path, dry_run=False,
+    )
+    content = (tmp_path / "platforms/openclaw/demo2.md").read_text(encoding="utf-8")
+    assert "active_memory" in content and "active-memory" not in content
+    assert "ai_agents" in content

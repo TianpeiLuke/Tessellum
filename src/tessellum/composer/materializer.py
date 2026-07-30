@@ -265,6 +265,18 @@ def _body_markdown_frontmatter_to_file(
         raise MaterializerError(
             f"frontmatter must be a YAML mapping, got {type(fm).__name__}"
         )
+    # F10 (FZ 20k9c1a1a1b7c2k2a — the openclaw sweep): the vault's tag
+    # alphabet is lowercase/digits/underscores (YAML-015); writers digesting
+    # kebab-case-heavy sources naturally emit kebab tags ('active-memory'),
+    # which blocked 7 of 9 leaves at the close gate. A hyphenated tag is the
+    # SAME tag in a different rendering — per the canonical-form contract the
+    # code side absorbs it deterministically; genuinely alien values still
+    # fail the validator downstream.
+    if isinstance(fm.get("tags"), list):
+        fm["tags"] = [
+            re.sub(r"[^a-z0-9_]+", "_", str(t).strip().lower()).strip("_") or str(t)
+            for t in fm["tags"]
+        ]
     output_path = fm.get("output_path")
     if not output_path:
         raise MaterializerError("frontmatter missing required `output_path` field")

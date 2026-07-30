@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — F10: kebab tags normalized to the vault alphabet at write time (FZ 20k9c1a1a1b7c2k2a) — 2026-07-29
+
+Openclaw sweep run 5 carried the full pipeline to the wave (F9's absorption confirmed live — the fenced frontmatter materialized cleanly) and then the close gate blocked 7 of 9 leaves on YAML-015: kebab-case tags (`active-memory`) — writers digesting a kebab-heavy source naturally emit kebab tags, and the fix loop did not converge them (mechanism verified by reconstructing a rolled-back note from the attempts journal's content_head and running the REAL validator on it). Per the canonical-form contract: the materializer now normalizes `tags` deterministically to lowercase/digits/underscores (the same tag in a different rendering; alien values still fail the validator), and the writer prose pins the alphabet at the generator side. +1 test (suite 2154).
+
 ### Composer — F9: the materializer absorbs fenced-frontmatter renderings (FZ 20k9c1a1a1b7c2k2a) — 2026-07-29
 
 Openclaw sweep run 2 cleared F8 (gate-in-loop passed, wave dispatched) and then EVERY writer failed the materializer identically: ```yaml-fenced frontmatter instead of bare `---` (mechanism verified from the attempts journal's content_head — three leaves quoted; run 8's retries had converged to bare `---` by luck, openclaw's never did — structural absorption beats mandates, the F1-vs-F2 lesson again). Per the R4.3 canonical-form contract applied at document level, `_absorb_frontmatter_rendering` normalizes the meaning-identical renderings (a leading ```yaml fence → the frontmatter; an optional whole-doc ```markdown wrapper unwrapped) before the strict check, which still fails loudly on truly missing frontmatter; the canonical form is what lands on disk. +2 tests (suite 2153).
