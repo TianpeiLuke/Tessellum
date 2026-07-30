@@ -1483,6 +1483,10 @@ def _run_close_gate(
             f"close-gate blocked ({loop.cause}): "
             f"{loop.final_score} blocking issue(s)"
             + (" [reverted to best]" if loop.reverted else "")
+            # k2a4a observability: carry the first issue MESSAGE — run 17's
+            # terminal grounding block was undiagnosable after rollback.
+            + (f" — {str(loop.final_issues[0])[:200]}"
+               if getattr(loop, "final_issues", ()) else "")
         ),
         error_class="validation",
     )

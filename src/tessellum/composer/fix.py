@@ -96,6 +96,10 @@ class FixLoopResult:
     cause: str | None = None
     reverted: bool = False
     attempts: tuple[AttemptOutcome, ...] = ()
+    final_issues: tuple = ()
+    """k2a4a observability: the LAST evaluation's issues — run 17's terminal
+    grounding block surfaced only "1 blocking issue(s)" with the offending
+    tokens unrecoverable after rollback; the messages must survive."""
 
 
 # A gate evaluator: () -> (passed, cause, issues). The caller closes over
@@ -163,6 +167,7 @@ def run_fix_loop(
             rounds_used=0,
             final_score=score_issues(issues),
             cause=cause,
+            final_issues=tuple(issues),
         )
 
     best = _Snapshot(content=_read_bytes(note_path), score=score_issues(issues))
@@ -232,6 +237,7 @@ def run_fix_loop(
         cause=last_cause,
         reverted=reverted,
         attempts=tuple(history),
+        final_issues=tuple(issues),
     )
 
 
