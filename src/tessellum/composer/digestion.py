@@ -964,12 +964,17 @@ def _existing_notes_context(
     plan_doc: dict, related_notes_db: "Path | str | None", vault_root: Path
 ) -> str:
     """W3.2 (FZ 20k9c1a1a1b7c2k2a4): the plan phase's SEMANTIC-tier read —
-    a retrieval sample from the live index (titles + paths keyed on the
-    source head, plus one sibling note's head as a format sample) rendered
-    for the `route`/`cross_references` steps, replacing the "search the
-    vault" role-play their prose used to demand. "" on a bootstrap vault
-    (no index) or any retrieval failure — fail-soft, the prose handles an
-    empty block explicitly."""
+    a retrieval sample from the live index rendered for the
+    `route`/`cross_references` steps, replacing "search the vault"
+    role-play. "" on a bootstrap vault or any failure — fail-soft.
+
+    F17 (run 15): the sample must be DIRECTORY-DIVERSE and routing-NEUTRAL.
+    A flat top-K over a term-heavy vault returned an all-term sample, whose
+    format sample the router faithfully followed — routing a documentation
+    digestion into the term dictionary. Now: hits grouped by directory
+    (≤2 per directory, ≤5 directories, machinery dirs excluded), one
+    format-sample head PER DIRECTORY, and the block states explicitly that
+    sample composition reflects retrieval, never a routing recommendation."""
     if related_notes_db is None:
         return ""
     try:
@@ -984,26 +989,42 @@ def _existing_notes_context(
             target_path="resources/documentation/context.md",
             db_path=related_notes_db,
         )
-        rows = list(getattr(result, "related", ()) or ())[:10]
+        rows = list(getattr(result, "related", ()) or ())
         if not rows:
             return ""
-        lines = ["EXISTING NOTES (top retrieval matches — title, vault path):"]
-        sample_text = ""
+        by_dir: dict[str, list] = {}
         for r in rows:
-            name = getattr(r, "note_name", None) or getattr(r, "note_id", "")
-            nid = getattr(r, "note_id", "")
-            lines.append(f"- {name} ({nid})")
-            if not sample_text and nid:
-                candidate = vault_root / nid
-                try:
-                    sample_text = candidate.read_text(encoding="utf-8")[:1500]
-                except OSError:
-                    sample_text = ""
-        if sample_text:
-            lines.append("")
-            lines.append("SIBLING FORMAT SAMPLE (head of the top match — copy "
-                         "its YAML field order and H2 conventions):")
-            lines.append(sample_text)
+            nid = str(getattr(r, "note_id", "") or "")
+            if not nid or nid.startswith("resources/skills/"):
+                continue
+            d = nid.rsplit("/", 1)[0] if "/" in nid else "."
+            bucket = by_dir.setdefault(d, [])
+            if len(bucket) < 2:
+                bucket.append(r)
+        if not by_dir:
+            return ""
+        lines = [
+            "EXISTING NOTES (a retrieval sample grouped by directory — the "
+            "composition of this sample reflects what retrieval found, NOT a "
+            "routing recommendation; choose the target directory by the "
+            "routing principles, then use the format sample under YOUR "
+            "chosen directory, or bootstrap if it has none):",
+        ]
+        for d, bucket in list(by_dir.items())[:5]:
+            lines.append(f"\nDIRECTORY {d}:")
+            sample_text = ""
+            for r in bucket:
+                name = getattr(r, "note_name", None) or getattr(r, "note_id", "")
+                nid = getattr(r, "note_id", "")
+                lines.append(f"- {name} ({nid})")
+                if not sample_text and nid:
+                    try:
+                        sample_text = (vault_root / nid).read_text(encoding="utf-8")[:800]
+                    except OSError:
+                        sample_text = ""
+            if sample_text:
+                lines.append(f"  format sample (head of {bucket[0].note_id}):")
+                lines.append("  " + sample_text.replace("\n", "\n  "))
         return "\n".join(lines)
     except Exception:
         return ""
