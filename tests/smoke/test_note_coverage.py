@@ -164,19 +164,33 @@ def test_wave_gate_extension_advisory_passes_with_findings(tmp_path: Path) -> No
     }
     note = _write_note(tmp_path, "start.md", "# Note\n\nUnrelated.")
     suite = extend_wave_gate_with_note_coverage(build_wave_gate(), plan_doc, _SOURCE)
-    assert [g.gate_id for g in suite.gates] == ["dedup", "note_coverage"]
+    assert [g.gate_id for g in suite.gates] == ["dedup", "note_coverage", "link_resolution"]
     composite = suite.evaluate([str(note)], short_circuit=False)
     assert composite.passed  # advisory: WARNING never blocks
     cov = next(r for r in composite.results if r.gate_id == "note_coverage")
     assert cov.passed and len(cov.issues) == 1  # ...but the finding is carried
 
 
-def test_wave_gate_extension_identity_without_map() -> None:
+def test_wave_gate_extension_without_map_adds_only_link_sweep() -> None:
+    """W4 changed the no-map identity: the link_resolution sweep is added
+    UNCONDITIONALLY (it needs only written paths); note_coverage still
+    requires the map + source."""
     base = build_wave_gate()
-    assert extend_wave_gate_with_note_coverage(base, {}, _SOURCE) is base
-    assert extend_wave_gate_with_note_coverage(
-        base, {"section_coverage_map": []}, _SOURCE
-    ) is base
-    assert extend_wave_gate_with_note_coverage(
-        base, {"section_coverage_map": [{"source_section": "X"}]}, ""
-    ) is base
+    for suite in (
+        extend_wave_gate_with_note_coverage(base, {}, _SOURCE),
+        extend_wave_gate_with_note_coverage(base, {"section_coverage_map": []}, _SOURCE),
+        extend_wave_gate_with_note_coverage(base, {"section_coverage_map": [{"source_section": "X"}]}, ""),
+    ):
+        assert [g.gate_id for g in suite.gates] == ["dedup", "link_resolution"]
+
+
+def test_link_resolution_sweep_flags_unresolved_after_wave(tmp_path: Path) -> None:
+    from tessellum.composer.gates import link_resolution_predicate
+
+    a = tmp_path / "a.md"
+    b = tmp_path / "b.md"
+    a.write_text("# A\n\nsee [B](b.md) and [ghost](missing.md)\n", encoding="utf-8")
+    b.write_text("# B\n\nback to [A](a.md)\n", encoding="utf-8")
+    issues = list(link_resolution_predicate([a, b]))
+    assert len(issues) == 1
+    assert issues[0].severity is Severity.WARNING and "missing.md" in issues[0].message

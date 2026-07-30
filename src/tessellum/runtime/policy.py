@@ -65,6 +65,13 @@ class RuntimePolicy:
     # the two external kills and the credit wall each re-paid ~15 min of
     # linear work the checkpoints already contained.
     resume_from_checkpoint: bool = True
+    # W2 (FZ 20k9c1a1a1b7c2k2a4) — the FREE deterministic identifier layer,
+    # ON by default: no calibration artifact, no scorer calls, precision-
+    # allowlisted, two-tier (absent-from-source blocks; outside-owned-slice
+    # is advisory). The calibrated certificate stays opt-in behind
+    # `grounding_gate` + its artifact. Before this, the fabrication defense
+    # was deployed but never enabled live (runs 9–13 all ran without it).
+    identifier_grounding: bool = True
 
     @classmethod
     def for_profile(cls, profile: str) -> "RuntimePolicy":

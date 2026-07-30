@@ -20,11 +20,14 @@ from tessellum.runtime.policy import RuntimePolicy
 
 
 def test_default_policy_is_format_only():
-    """Default (grounding_gate=False) → the format gate ONLY (byte-identical to
-    the pre-P8 runtime — the grounding check is not run)."""
+    """W2 (FZ 20k9c1a1a1b7c2k2a4) CHANGED the default: identifier_grounding
+    defaults ON, so the grounding rung runs with the free deterministic
+    verifier. Format-only remains reachable by turning it off."""
     gate = _close_gate_for(RuntimePolicy())
     assert gate is not None
-    assert [g.gate_id for g in gate.gates] == ["format"]
+    assert [g.gate_id for g in gate.gates] == ["format", "grounding"]
+    off = _close_gate_for(RuntimePolicy(identifier_grounding=False))
+    assert [g.gate_id for g in off.gates] == ["format"]
 
 
 def test_grounding_gate_on_adds_grounding_predicate():

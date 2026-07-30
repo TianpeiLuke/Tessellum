@@ -162,6 +162,28 @@ def compute_note_coverage(
     return covered, uncovered, unverifiable
 
 
+def owned_span_words(
+    planned_notes: Sequence, coverage_map: Sequence, source_text: str
+) -> dict[str, tuple[int, int]]:
+    """W1.3 (FZ 20k9c1a1a1b7c2k2a4): per-note owned-span size — filename →
+    (measured words, section count) over the note's owned slice. The
+    note-count band constrains the TOTAL; nothing constrained the per-note
+    allocation, and run 13 showed notes owning 11–17 sections diluting to
+    ~1.7 completeness beside 4.5–5.0 for notes owning 6–8."""
+    sections = split_sections(source_text)
+    out: dict[str, tuple[int, int]] = {}
+    for pn in planned_notes:
+        if not isinstance(pn, dict):
+            continue
+        name = str(pn.get("filename") or pn.get("note") or "").strip()
+        if not name:
+            continue
+        owned = owned_sections_for(name, coverage_map, sections)
+        words = sum(len(sec.split()) for sec in owned.values())
+        out[name] = (words, len(owned))
+    return out
+
+
 def make_note_coverage_predicate(plan_doc: dict, source_text: str, *, strict: bool = False):
     """A wave-scope predicate over the wave's written note paths.
 
@@ -207,19 +229,37 @@ def make_note_coverage_predicate(plan_doc: dict, source_text: str, *, strict: bo
 def extend_wave_gate_with_note_coverage(
     suite, plan_doc: dict, source_text: str, *, strict: bool = False
 ):
-    """Append the ``note_coverage`` sweep to an existing wave-gate suite when
-    the plan carries a coverage map and the source is available; identity
-    otherwise (parity for toy/degenerate plans)."""
-    from tessellum.composer.gates import Gate, GateSuite
+    """Append the post-wave sweeps to an existing wave-gate suite: the
+    ``note_coverage`` sweep when the plan carries a coverage map and source
+    (identity otherwise — parity for toy/degenerate plans), and the W4
+    ``link_resolution`` sweep unconditionally (it needs only the written
+    paths — the computed replacement for the LLM verify step's asserted
+    link checking)."""
+    from tessellum.composer.gates import Gate, GateSuite, link_resolution_predicate
 
+    gates = tuple(suite.gates)
     cmap = plan_doc.get("section_coverage_map") if isinstance(plan_doc, dict) else None
-    if not (isinstance(cmap, list) and cmap and source_text and source_text.strip()):
-        return suite
-    gate = Gate(
-        gate_id="note_coverage",
-        kind="sweep",
-        scope="wave",
-        predicate=make_note_coverage_predicate(plan_doc, source_text, strict=strict),
-        cause="note_coverage",
+    if isinstance(cmap, list) and cmap and source_text and source_text.strip():
+        gates = gates + (
+            Gate(
+                gate_id="note_coverage",
+                kind="sweep",
+                scope="wave",
+                predicate=make_note_coverage_predicate(
+                    plan_doc, source_text, strict=strict
+                ),
+                cause="note_coverage",
+            ),
+        )
+    gates = gates + (
+        Gate(
+            gate_id="link_resolution",
+            kind="sweep",
+            scope="wave",
+            predicate=link_resolution_predicate,
+            cause="link_resolution",
+        ),
     )
-    return GateSuite(gates=tuple(suite.gates) + (gate,))
+    if gates == tuple(suite.gates):
+        return suite
+    return GateSuite(gates=gates)

@@ -73,6 +73,8 @@ expected_output_schema:
 inputs:
 - name: leaf.plan_path
   required: false
+- name: artifact.plan_text
+  required: false
 ```
 
 You are the master orchestrator verifying that a digestion plan is
@@ -81,11 +83,15 @@ ready to execute.
 LEAF METADATA
 - plan_path: {{leaf.plan_path}}
 
+PLAN TEXT (the of-record plan, provided by reference — the ONLY thing
+you judge; you have no file or network access):
+{{artifact.plan_text}}
+
 Follow this procedure:
 
-Confirm the plan is executable before any agent runs. The plan file must exist and its frontmatter must declare `status: ready`. Refuse to start if the status is `pending` or `in-progress` (review sign-off has not happened), if the plan is missing its Planned Notes table (or, for a master plan, its Sub-Plans Index table), or if a HEAD-check on one or two source URLs shows they are unreachable. A master plan is never executed directly — this skill operates on exactly ONE ready sub-plan at a time, in priority order. Emit a structured go/no-go verdict recording the plan path, its measured status, the planned-note count, and any refusal reason. Note the entry-point timing rule: for master+sub-plans, the dedicated `entry_<slug>.md` hub is created as a standalone pre-step BEFORE the first sub-plan executes, so every new note can receive its back-link. Confirm the plan exists, its
-frontmatter status is `ready`, it has a Planned Notes table, and its
-source URLs HEAD-check reachable. Return ONLY the JSON object
+Confirm the plan is executable before any agent runs — judging ONLY the PLAN TEXT provided above; the deterministic pre-flight (`preflight_execute_wave`) already enforces the structural invariants in code, so your verdict transcribes what the provided text shows, never an independent fetch. Refuse to start if the provided text's frontmatter declares `status: pending` or `in-progress` (review sign-off has not happened), or if the Planned Notes table (or, for a master plan, its Sub-Plans Index table) is absent from the provided text. Source-URL reachability is NOT your check — you have no fetch tool; the runtime owns it. A master plan is never executed directly — this skill operates on exactly ONE ready sub-plan at a time, in priority order. Emit a structured go/no-go verdict recording the plan path, its measured status, the planned-note count, and any refusal reason. Note the entry-point timing rule: for master+sub-plans, the dedicated `entry_<slug>.md` hub is created as a standalone pre-step BEFORE the first sub-plan executes, so every new note can receive its back-link. Judge only the provided
+plan text: frontmatter status `ready` and the Planned Notes table
+present. Return ONLY the JSON object
 specified by expected_output_schema; no prose.
 
 ## Boot and Amend — Master Reads Plan, Spot-Checks Source, Corrects <!-- :: section_id = boot_and_amend :: -->
@@ -157,6 +163,10 @@ expected_output_schema:
 inputs:
 - name: upstream.preflight_report
   required: true
+- name: artifact.plan_text
+  required: true
+- name: artifact.pages
+  required: false
 ```
 
 You are the master orchestrator booting the plan and applying
@@ -167,8 +177,7 @@ PREFLIGHT_REPORT (from the preflight step)
 
 Follow this procedure:
 
-The master orchestrator reads the ready plan start to finish AND spot-checks one or two of the densest source pages with the same tool the plan used, then records a Plan Boot Report (pages spot-checked, measured word count vs. the plan's estimate, and any defects such as placeholder strings, mismatched section counts, or missing required fields). The master then applies amendments the plan author could not have foreseen. Density corrections (split or merge a note), building-block re-classification, and reference-mapping corrections are auto-applied and recorded in a `## Plan Amendments` table, each traced to a concrete observation (never a stylistic preference). Re-routing to a different directory, dropping a planned note, changing a source URL, or adding a brand-new note are PAUSE-for-user-approval actions — report and wait. The rule is correct the plan, do not redesign it: if the plan's structure is fundamentally wrong (e.g. wrong source of truth), stop and route back to augment/plan rather than patching it here. Read the prior preflight verdict from `{{upstream.preflight_report}}`. Read the plan end to end,
-spot-check the densest source page(s), and auto-apply density / BB /
+The master orchestrator reads the PLAN TEXT provided below start to finish AND compares the provided code-measured ledger (the of-record per-page word counts) against the plan's own estimates, then records a Plan Boot Report (pages compared, measured word count vs. the plan's estimate, and any defects such as placeholder strings, mismatched section counts, or missing required fields). The master then applies amendments the plan author could not have foreseen. Density corrections (split or merge a note), building-block re-classification, and reference-mapping corrections are auto-applied and recorded in a `## Plan Amendments` table, each traced to a concrete observation (never a stylistic preference). Re-routing to a different directory, dropping a planned note, changing a source URL, or adding a brand-new note are PAUSE-for-user-approval actions — report and wait. The rule is correct the plan, do not redesign it: if the plan's structure is fundamentally wrong (e.g. wrong source of truth), stop and route back to augment/plan rather than patching it here. Read the prior preflight verdict from `{{upstream.preflight_report}}`, the plan from `{{artifact.plan_text}}`, and the ledger from `{{artifact.pages}}`. Compare measured vs planned density, and auto-apply density / BB /
 reference-mapping corrections (recording each in ## Plan Amendments);
 queue re-route / drop / source-change / new-note changes for user
 approval. Correct the plan, do NOT redesign it. Return ONLY the JSON
@@ -243,6 +252,8 @@ expected_output_schema:
 inputs:
 - name: upstream.boot_report
   required: true
+- name: artifact.plan_text
+  required: true
 ```
 
 You are the master orchestrator extracting per-batch sub-agent
@@ -253,7 +264,7 @@ BOOT_REPORT (from the boot_and_amend step)
 
 Follow this procedure:
 
-Project the amended plan into the self-contained briefs each writer sub-agent will actually receive. Build one shared contract per run by extracting the plan's Note Format Definition (the YAML template + forbidden fields), Pacing Rules, per-phase Gate tables, Important Constraints (BB atomicity, density caps, no fabrication, verbatim code), source provenance with measured word counts, and the worked-example pilot path that anchors quality. Add the non-negotiable absolute rules (read source first; no fabrication — use the sanctioned honest markers when a fact is absent; no forbidden placeholder strings; return split-needed rather than writing an over-dense or mixed-BB note) and the structured return schema each sub-agent must emit. Then, for each batch in the plan's batch table, extract the per-note rows (note, target path, source path/URL, related notes, inlinks) into a per-batch assignment. Extraction is a faithful projection only: it may NOT introduce content absent from the plan — if a required cross-reference is missing, return to the amend step and fix the plan first. Read the boot report from `{{upstream.boot_report}}`. Build the one-per-run shared
+Project the amended plan into the self-contained briefs each writer sub-agent will actually receive. Build one shared contract per run by extracting the plan's Note Format Definition (the YAML template + forbidden fields), Pacing Rules, per-phase Gate tables, Important Constraints (BB atomicity, density caps, no fabrication, verbatim code), source provenance with measured word counts, and the worked-example pilot path that anchors quality. Add the non-negotiable absolute rules (each writer works from its PROVIDED source excerpt and owned slice first; no fabrication — use the sanctioned honest markers when a fact is absent; no forbidden placeholder strings; return split-needed rather than writing an over-dense or mixed-BB note) and the structured return schema each sub-agent must emit. Then, for each batch in the plan's batch table, extract the per-note rows (note, target path, source path/URL, related notes, inlinks) into a per-batch assignment. Extraction is a faithful projection only: it may NOT introduce content absent from the plan — if a required cross-reference is missing, return to the amend step and fix the plan first. Read the boot report from `{{upstream.boot_report}}` and the amended plan from `{{artifact.plan_text}}`. Build the one-per-run shared
 contract (YAML template + forbidden fields, pacing rules, gate spec,
 absolute rules, structured return schema, pilot worked-example path)
 and one assignment brief per batch. Faithful projection only — if a
@@ -290,6 +301,8 @@ inputs:
   required: false
 - name: leaf.owned_sections_md
   required: false
+- name: leaf.owned_source_slice
+  required: false
 - name: artifact.plan_text
   required: true
 - name: artifact.source_excerpt
@@ -316,13 +329,21 @@ your scope — cover them in this note. An empty block means the plan
 carried no per-note coverage rows; fall back to the plan's own mapping):
 {{leaf.owned_sections_md}}
 
+YOUR OWNED SOURCE (the VERBATIM text of the sections this note owns —
+your needle, extracted by code from the source. TRANSCRIBE every literal
+— CLI flags, config keys, env vars, commands — from THIS text exactly as
+written; a paraphrased or remembered literal is a defect. An empty block
+means the sections did not resolve — then transcribe literals from the
+full SOURCE MATERIAL below):
+{{leaf.owned_source_slice}}
+
 PLAN OF RECORD (read by reference from the run's working store — use it
 for cross-note context and the format definition; NEVER re-emit it):
 {{artifact.plan_text}}
 
-SOURCE MATERIAL (read by reference from the run's working store — read
-this FIRST and ground every claim in it; it is the single of-record
-source copy all writers share):
+SOURCE MATERIAL (the full of-record source all writers share — use it
+for CROSS-SLICE context your owned sections reference; when your OWNED
+SOURCE block above is non-empty, literals still come from that block):
 {{artifact.source_excerpt}}
 
 RELATED NOTES (retrieved per-note by relevance to THIS note's thesis;
@@ -425,25 +446,34 @@ expected_output_schema:
 inputs:
 - name: upstream.note_body
   required: true
-- name: leaf.related_references_md
-  required: false
 ```
 
-You are running the independent post-hoc verification sweep over the
-full output set — the backstop that does not trust the wave's
-self-report.
+You are the NON-AUTHORITATIVE narration step over the wave's results.
+W4 (FZ 20k9c1a1a1b7c2k2a4): the checks this step used to CLAIM are all
+computed by code and recorded in the run events — the per-note close
+gate (format + grounding), the wave-scope sweeps (duplicate targets,
+owned-section coverage, post-wave link resolution), and the commit
+tail's index rebuild + ghost handling. You have no tools; your report
+is a TRANSCRIPTION of the upstream dispatch results provided below,
+never an independent measurement, and nothing downstream treats your
+`overall_ok` as authority.
 
 WRITTEN NOTES (from the per-leaf dispatch_notes step)
 {{upstream.note_body}}
 
 Follow this procedure:
 
-The wave's "all batches passed" is a claim, not proof; this cross-leaf step is the independent backstop that runs once over the full output set on disk, regardless of what any in-loop validator reported. Re-run the plan's full gate suite across ALL new notes (not per batch), run the format check, run the broken-link check (must report zero), rebuild the database and query for ghost references from the new notes (must be zero), and run the G8 discoverability check (every new note must have at least one inbound link from OUTSIDE its own folder — any graph-island note fails). ALSO run the OUTBOUND-reference check: every new note must have a `## Related Notes` section with at least one resolvable relative markdown link to an existing vault note (these outbound links are what the indexer turns into knowledge-graph edges) — a note with an empty/absent `## Related Notes` section is an `outbound_reference_gap` and must be patched by adding the relevant links the enrichment surfaced (`{{leaf.related_references_md}}`) or grounded from the plan's cross-reference mapping. Deduplication, ghost-reference, and coverage findings are surfaced here. Any residual issue is patched in place and re-verified; the run is NOT complete while broken, ghost, format, graph-island, or outbound-reference issues remain. Emit a `verify_report` rollup (notes created vs. planned, gate results, broken-link count, ghost count, graph-island count, outbound-reference-gap count, and an overall pass/fail) so the orchestrator has an auditable completion record. Read the written note set from `{{upstream.note_body}}`. Re-run the plan's full gate
-suite across ALL new notes, run the format check, the broken-link
-check, rebuild the DB and query ghost references, and run the G8
-outside-folder inbound-link check; surface dedup / coverage findings.
-Patch any residual issue in place and re-verify. Return ONLY the JSON
-object specified by expected_output_schema; no prose.
+Count the notes the upstream dispatch results show as written and roll
+them up against the preflight's planned count. For every count field
+the schema requires that you CANNOT derive from the provided upstream
+results (format_errors, broken_links, ghost_references,
+graph_island_notes, outbound_reference_gaps), report 0 and rely on the
+computed record — the wave-gate events and close-gate results are the
+of-record verification, not this narration. Set `overall_ok` solely
+from what the provided upstream results show (every planned note
+present in the dispatch output). Do NOT claim to have run any check.
+Return ONLY the JSON object specified by expected_output_schema; no
+prose.
 
 ## Related skills <!-- :: section_id = related_skills :: -->
 

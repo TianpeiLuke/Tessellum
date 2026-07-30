@@ -805,6 +805,27 @@ def compute_review_exhibits(plan_doc: dict) -> str:
                 f"(ceiling {PLAN_NOTE_MAX_WORDS}, over-split floor "
                 f"{PLAN_OVERSPLIT_MIN_WORDS})"
             )
+        # BALANCE (W1.3, FZ k2a4) — per-note OWNED-SPAN size: the run-13
+        # residual (a note owning 17 sections dilutes at cap). Advisory:
+        # the reviewer judges over it; PLAN-010 warns at 2× the ceiling.
+        cmap = plan_doc.get("section_coverage_map")
+        source = plan_doc.get("source_excerpt")
+        if isinstance(cmap, list) and cmap and isinstance(source, str) and source:
+            from tessellum.composer.note_coverage import owned_span_words
+
+            spans = owned_span_words(notes, cmap, source)
+            if spans:
+                heavy = {n: ws for n, ws in spans.items()
+                         if ws[0] > 2 * PLAN_NOTE_MAX_WORDS}
+                sizes = sorted(ws[0] for ws in spans.values())
+                parts.append(
+                    f"BALANCE (computed): owned-span words per note "
+                    f"min={sizes[0]} max={sizes[-1]} over {len(spans)} notes"
+                    + (f"; OVER 2x ceiling ({2 * PLAN_NOTE_MAX_WORDS}): "
+                       + ", ".join(f"{n}={ws[0]}w/{ws[1]}sec"
+                                   for n, ws in sorted(heavy.items()))
+                       if heavy else " (balanced)")
+                )
     return "\n".join(parts)
 
 
@@ -937,6 +958,71 @@ def _ensure_source_excerpt(plan_doc: dict) -> None:
         excerpt, _refs = _joined_source_excerpt(plan_doc)
         if excerpt:
             plan_doc["source_excerpt"] = excerpt
+
+
+def _existing_notes_context(
+    plan_doc: dict, related_notes_db: "Path | str | None", vault_root: Path
+) -> str:
+    """W3.2 (FZ 20k9c1a1a1b7c2k2a4): the plan phase's SEMANTIC-tier read —
+    a retrieval sample from the live index (titles + paths keyed on the
+    source head, plus one sibling note's head as a format sample) rendered
+    for the `route`/`cross_references` steps, replacing the "search the
+    vault" role-play their prose used to demand. "" on a bootstrap vault
+    (no index) or any retrieval failure — fail-soft, the prose handles an
+    empty block explicitly."""
+    if related_notes_db is None:
+        return ""
+    try:
+        from tessellum.composer.related_notes import enrich_related_notes
+
+        source = str(plan_doc.get("source_excerpt") or plan_doc.get("source_content") or "")
+        query = source[:500] or str(plan_doc.get("source_name") or "")
+        if not query.strip():
+            return ""
+        result = enrich_related_notes(
+            thesis=query,
+            target_path="resources/documentation/context.md",
+            db_path=related_notes_db,
+        )
+        rows = list(getattr(result, "related", ()) or ())[:10]
+        if not rows:
+            return ""
+        lines = ["EXISTING NOTES (top retrieval matches — title, vault path):"]
+        sample_text = ""
+        for r in rows:
+            name = getattr(r, "note_name", None) or getattr(r, "note_id", "")
+            nid = getattr(r, "note_id", "")
+            lines.append(f"- {name} ({nid})")
+            if not sample_text and nid:
+                candidate = vault_root / nid
+                try:
+                    sample_text = candidate.read_text(encoding="utf-8")[:1500]
+                except OSError:
+                    sample_text = ""
+        if sample_text:
+            lines.append("")
+            lines.append("SIBLING FORMAT SAMPLE (head of the top match — copy "
+                         "its YAML field order and H2 conventions):")
+            lines.append(sample_text)
+        return "\n".join(lines)
+    except Exception:
+        return ""
+
+
+def _owned_source_slice(filename: str, plan_doc: dict) -> str:
+    """W1 (FZ 20k9c1a1a1b7c2k2a4): the VERBATIM text of the sections this
+    note owns — coverage map ⨝ the fence-aware section split of the joined
+    source, via the one canonical join in :mod:`note_coverage`. Returns ""
+    when the plan has no usable map/source or no sections resolve (the
+    caller's prompt falls back to the full source)."""
+    cmap = plan_doc.get("section_coverage_map")
+    source = plan_doc.get("source_excerpt")
+    if not (isinstance(cmap, list) and cmap and isinstance(source, str) and source):
+        return ""
+    from tessellum.composer.note_coverage import owned_sections_for, split_sections
+
+    owned = owned_sections_for(filename, cmap, split_sections(source))
+    return "\n\n".join(owned.values())
 
 
 def _owned_sections_md(filename: str, plan_doc: dict) -> str:
@@ -1323,6 +1409,14 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
             },
             "artifact_refs": dict(artifact_refs),
             "owned_sections_md": _owned_sections_md(name, plan_doc),
+            # W1 (FZ 20k9c1a1a1b7c2k2a4): the writer's NEEDLE — the verbatim
+            # text of the sections this note owns, resolved with the same
+            # canonical fence-aware join the coverage sweep and scoped judge
+            # use. Slices are near-disjoint across notes, so the total inline
+            # bytes ≈ one source copy (not the O(plan×N) re-carry A3 killed).
+            # Empty when sections don't resolve — the writer falls back to
+            # the full source, byte-identical to pre-W1.
+            "owned_source_slice": _owned_source_slice(name, plan_doc),
             "target_path": f"{note_dir}/{name}",
             "source_ref": source_refs,
         })
@@ -1952,6 +2046,13 @@ def run_digestion_pipeline(
     # re-emission (the E12/E16 class under a new key).
     _ensure_source_excerpt(plan_doc)
     code_source_excerpt = plan_doc.get("source_excerpt")
+    # W3.2 (FZ 20k9c1a1a1b7c2k2a4): the plan phase's semantic-tier read —
+    # retrieval-backed existing-notes context for route/cross_references,
+    # replacing their "search the vault" role-play. "" without an index.
+    plan_doc.setdefault(
+        "existing_notes_context",
+        _existing_notes_context(plan_doc, related_notes_db, Path(vault_root)),
+    )
     # M0 review (medium): a corpus_wide {{leaf.X}} that now resolves (the
     # _corpus_leaf fix) can render a large value — e.g. {{leaf.members}} /
     # {{leaf.source_refs}} — that, with NO assembler, trips the executor's

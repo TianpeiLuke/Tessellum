@@ -88,3 +88,76 @@ def test_placeholders_and_universal_tokens_are_not_violations() -> None:
     )
     v = identifier_violations(note, "source with no identifiers at all")
     assert v == ["--memory", "agents.defaults.memory.lancedb"]
+
+
+# ── W2 (FZ 20k9c1a1a1b7c2k2a4): the free two-tier identifier verifier ───────
+
+
+class _Written:
+    def __init__(self, path):
+        self.materialized = type("M", (), {"files_written": (path,), "files_applied": ()})()
+
+
+def _note(tmp_path, text):
+    p = tmp_path / "n.md"
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+def test_identifier_verifier_blocks_invented_tokens(tmp_path):
+    from tessellum.composer.note_grounding import make_identifier_verifier
+
+    v = make_identifier_verifier("run `tool --real-flag` here")
+    note = _note(tmp_path, "use `tool --invented-flag`")
+    verdict = v(None, {}, _Written(note))
+    assert verdict.status == "ungrounded" and "--invented-flag" in verdict.detail
+
+
+def test_identifier_verifier_advisory_on_cross_slice(tmp_path):
+    from tessellum.composer.note_grounding import make_identifier_verifier
+
+    source = "# A\n\nuse `--alpha-flag`\n\n# B\n\nuse `--beta-flag`\n"
+    v = make_identifier_verifier(source)
+    note = _note(tmp_path, "use `--beta-flag`")
+    leaf = {"owned_source_slice": "# A\n\nuse `--alpha-flag`\n"}
+    verdict = v(None, leaf, _Written(note))
+    assert verdict.status == "grounded"
+    assert "--beta-flag" in (verdict.advisory or "")  # advisory, not a block
+
+
+def test_identifier_verifier_clean_in_owned_slice(tmp_path):
+    from tessellum.composer.note_grounding import make_identifier_verifier
+
+    source = "# A\n\nuse `--alpha-flag`\n"
+    v = make_identifier_verifier(source)
+    note = _note(tmp_path, "use `--alpha-flag`")
+    verdict = v(None, {"owned_source_slice": source}, _Written(note))
+    assert verdict.status == "grounded" and not verdict.advisory
+
+
+def test_grounding_predicate_advisory_is_warning_not_block(tmp_path):
+    from tessellum.composer.gates import GroundingVerdict, build_close_gate
+    from tessellum.format import Severity
+
+    note = _note(tmp_path, "---\ntags:\n  - x\n---\n\n# N\n\nbody\n")
+    suite = build_close_gate()
+    composite = suite.evaluate(
+        note, verdict=GroundingVerdict("grounded", advisory="cross-contamination: ..."),
+        short_circuit=False,
+    )
+    ground = next(r for r in composite.results if r.gate_id == "grounding")
+    assert ground.passed  # WARNING never blocks
+    assert any(i.severity is Severity.WARNING and i.rule_id == "GROUND-003"
+               for i in ground.issues)
+
+
+def test_policy_identifier_grounding_default_on_and_gate_selection():
+    from tessellum.runtime.executor import _close_gate_for
+    from tessellum.runtime.policy import RuntimePolicy
+
+    p = RuntimePolicy()
+    assert p.identifier_grounding is True
+    gate = _close_gate_for(p)
+    assert [g.gate_id for g in gate.gates] == ["format", "grounding"]
+    off = RuntimePolicy(identifier_grounding=False)
+    assert [g.gate_id for g in _close_gate_for(off).gates] == ["format"]

@@ -154,7 +154,7 @@ def test_service_path_canary_full_digestion(tmp_path: Path) -> None:
             # Insertion order matters: the post-hoc verify step's prompt embeds
             # the WRITTEN notes ({{upstream.note_body}}), so its distinctive
             # opening must match BEFORE the per-leaf filename keys below.
-            "independent post-hoc verification sweep": json.dumps(_SUPERSET),
+            "NON-AUTHORITATIVE narration step": json.dumps(_SUPERSET),
             "demo_a.md": _NOTE_MD,
             "demo_b.md": _NOTE_MD.replace("demo_a.md", "demo_b.md")
                                  .replace("(demo_b.md)", "(demo_a.md)"),

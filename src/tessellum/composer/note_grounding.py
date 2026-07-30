@@ -72,6 +72,72 @@ def identifier_violations(note_text: str, source_text: str) -> list[str]:
     )
 
 
+def cross_slice_identifiers(
+    note_text: str, owned_slice: str, source_text: str
+) -> list[str]:
+    """W2's advisory tier (FZ 20k9c1a1a1b7c2k2a4): identifiers the note
+    asserts that exist in the FULL source but NOT in the note's owned slice
+    — the cross-contamination class a full-source-only check silently passes
+    (a literal borrowed from another page's tool: present in the corpus,
+    wrong in context). Advisory, never blocking — B3b proved notes
+    legitimately carry cross-slice content."""
+    if not owned_slice or not source_text:
+        return []
+    return sorted(
+        ident for ident in extract_note_identifiers(note_text)
+        if ident in source_text
+        and ident not in owned_slice
+        and ident not in _UNIVERSAL_TOKENS
+        and not _PLACEHOLDER_RE.match(ident)
+    )
+
+
+def make_identifier_verifier(source_text: str) -> Callable[[Any, dict, Any], Any]:
+    """W2 (FZ 20k9c1a1a1b7c2k2a4): the FREE deterministic layer alone — no
+    calibration artifact, no scorer calls — suitable for default-ON.
+
+    Two-tier verdict: an asserted identifier found nowhere in the source
+    BLOCKS (``ungrounded``, tokens named); found in the source but not in
+    the note's owned slice (``leaf['owned_source_slice']``, W1's stamp) is
+    an ADVISORY cross-contamination warning carried on a ``grounded``
+    verdict's detail; clean is clean. Without an owned slice the check is
+    single-tier full-source (pre-W1 leaves, whole-plan fallback leaves)."""
+    from tessellum.composer.gates import GroundingVerdict
+
+    def _verify(step: Any, leaf: dict, result: Any) -> Any:
+        paths = list(getattr(result.materialized, "files_written", ())) + list(
+            getattr(result.materialized, "files_applied", ())
+        )
+        if not paths:
+            return GroundingVerdict("grounded")
+        try:
+            note_text = paths[0].read_text(encoding="utf-8")
+        except OSError:
+            note_text = ""
+        blocked = identifier_violations(note_text, source_text)
+        if blocked:
+            return GroundingVerdict(
+                "ungrounded",
+                detail=(
+                    "identifier grounding: asserted tokens absent from "
+                    f"the source: {blocked[:8]}"
+                ),
+            )
+        owned = str(leaf.get("owned_source_slice") or "") if isinstance(leaf, dict) else ""
+        advisory = cross_slice_identifiers(note_text, owned, source_text)
+        if advisory:
+            return GroundingVerdict(
+                "grounded",
+                advisory=(
+                    "cross-contamination: tokens present in the source but "
+                    f"absent from this note's owned slice: {advisory[:8]}"
+                ),
+            )
+        return GroundingVerdict("grounded")
+
+    return _verify
+
+
 def make_grounded_verifier(
     backend: LLMBackend,
     thresholds: ConformalThresholds,

@@ -179,6 +179,8 @@ expected_output_schema:
 inputs:
 - name: upstream.source_assessment
   required: true
+- name: leaf.existing_notes_context
+  required: false
 ```
 
 You are running Phase 1, step 2 (route) of tessellum-plan-digestion.
@@ -186,18 +188,23 @@ You are running Phase 1, step 2 (route) of tessellum-plan-digestion.
 SOURCE_ASSESSMENT (from step 1)
 {{upstream.source_assessment}}
 
+EXISTING NOTES CONTEXT (a retrieval sample from the live index keyed on
+this source's topic — titles, paths, and a sibling format sample; empty
+on a bootstrap vault):
+{{leaf.existing_notes_context}}
+
 Follow this procedure:
 
 Read `{{upstream.source_assessment}}` and decide where the planned notes will live, so nothing is duplicated and the format matches the neighbourhood.
 
-- **Check existing notes first** to avoid duplication — search the vault for the source's topic/keywords; any note that already covers the same ground is referenced, never re-created.
+- **Check existing notes first** to avoid duplication — consult the EXISTING NOTES CONTEXT block provided below (a retrieval sample from the live index keyed on this source's topic); any listed entry that already covers the same ground is referenced, never re-created. An empty block means a bootstrap vault: record an empty duplication list, never invent one.
 - **Determine the target directory + file prefix** by applying the routing principles: the 3-Criterion Rule (source novelty, operational tasks, maintenance cadence — 0–1 novel routes into an existing folder, 2–3 novel proposes a new subfolder), Context Affinity (notes from one source stay close), and Content TYPE over SOURCE (route by what the content IS). A sequential user guide routes to a tutorials folder; a reference/inventory routes to the platform subfolder. A cohesive series of >15 notes justifies a dedicated subfolder.
-- **Derive the Note Format Definition from ≥2 existing notes** in the routed directory (or the closest sibling folder) — do NOT invent a format. Copy the exact YAML field order, the dominant H2 conventions, and the forbidden-field list, and state which example note the format was derived from.
+- **Take the Note Format Definition from the sibling sample in the EXISTING NOTES CONTEXT below** — do NOT invent a format. Copy the exact YAML field order, the dominant H2 conventions, and the forbidden-field list, and state which sample entry the format came from. An empty block means a bootstrap vault: use the flavor's documented template and state `derived_from: bootstrap`.
 
 Emit a `routing_decision` (target location, file prefix, existing notes to NOT duplicate, and the derived Note Format Definition).
 Check for existing notes to avoid duplication, choose the target
 directory + file prefix via the 3-Criterion Rule / Context Affinity /
-Content-TYPE-over-SOURCE, and DERIVE the Note Format Definition from >=2
+Content-TYPE-over-SOURCE, and TAKE the Note Format Definition from the provided sample of
 existing notes in the routed directory (do NOT invent it) — record which
 note it was derived from.
 
@@ -302,7 +309,7 @@ Read `{{upstream.routing_decision}}` and break the source into atomic notes, one
 
 - **GROUND the coverage map in the ACTUAL source sections.** The `pages[].headings` list in `{{upstream.source_assessment}}` is the authoritative, measured inventory of every real H1/H2/H3 in the source. The Section Coverage Map MUST be built from THAT list — every heading in `source_assessment.pages[].headings` is a row in the coverage map, mapped to a planned note. Do NOT invent, rename, or infer section names from your own knowledge of the topic: use the source's real headings verbatim. (This is content grounding — the plan gate PLAN-006 + gate G3 compare the coverage map against these measured headings and reject the plan if any real section is unmapped.)
 - **PLAN WITHIN THE COMPUTED NOTE-COUNT BAND.** The driver derives the acceptable note-count range from the measured source and the density gates — PLANNED NOTE COUNT BAND (computed): {{leaf.note_count_band}} — plan a note count INSIDE this band; a plan outside it fails the deterministic PLAN-004/PLAN-008 gates at sign-off, so exceeding it wastes the whole run.
-- **AIM each note at the density TARGET BAND, not the minimum.** A note should carry roughly 60–90% of the 1,800-word ceiling (~1,100–1,600 words of mapped source); split ONLY when a note's mapped share EXCEEDS the ceiling, never preemptively — over-splitting a 12,000-word source into 20+ thin notes fails the eval's note-count ratio just as surely as under-splitting fails density. Derive the expected note count as measured-total ÷ ~1,500 and justify deviations in Split Decisions.
+- **AIM each note at the density TARGET BAND, not the minimum.** A note should carry roughly 60–90% of the 1,800-word ceiling (~1,100–1,600 words of mapped source); split ONLY when a note's mapped share EXCEEDS the ceiling, never preemptively — over-splitting a 12,000-word source into 20+ thin notes fails the eval's note-count ratio just as surely as under-splitting fails density. Compute the expected count as measured-total ÷ ~1,500 (from the provided ledger) and justify deviations in Split Decisions.
 - **The Planned Notes table and the `planned_notes` list are ONE inventory.** Every structured `planned_notes` entry appears as a row in the plan's Planned Notes table and vice versa — equal counts, same filenames; a divergence means the execute wave materializes a different set than the plan document promises (the r4 finding: 8 table rows, 18 materialized notes).
 - **COPY the measured figures verbatim — never re-estimate — and write them as BARE DIGITS (12813, not 12,813): no thousands separators anywhere a measured figure appears.** Every word-count, code-block, and heading figure you state (the Source table, per-note `approx_words`, density decisions) MUST be copied from `source_assessment.pages[].measured_words` / `code_blocks` / `headings` — do NOT re-derive, round down, or re-estimate from memory; a Source figure below the measured value is a grounding failure the review's CP7 ledger check rejects. Per-note `approx_words` must SUM to approximately the measured total (the mapped sections' share of `measured_words`), not to an independent guess.
 - **Classify each source section by building block**: definitions/terminology → concept; step-by-step instructions/commands → procedure; architecture/components/data flow → model; claims-with-evidence/design rationale → argument; observed behaviour/metrics/demos → empirical_observation; testable predictions → hypothesis; limitations/risks/critiques → counter_argument; index/routing structures → navigation.
@@ -418,6 +425,10 @@ expected_output_schema:
 inputs:
 - name: upstream.note_breakdown
   required: true
+- name: leaf.existing_notes_context
+  required: false
+- name: artifact.source_excerpt
+  required: false
 ```
 
 You are running Phase 1, step 4 (cross_references) of
@@ -426,14 +437,21 @@ tessellum-plan-digestion.
 NOTE_BREAKDOWN (from step 3)
 {{upstream.note_breakdown}}
 
+EXISTING NOTES CONTEXT (a retrieval sample from the live index; empty on
+a bootstrap vault):
+{{leaf.existing_notes_context}}
+
+SOURCE TEXT (the of-record source, for the undigested-terms scan):
+{{artifact.source_excerpt}}
+
 Follow this procedure:
 
 Read `{{upstream.note_breakdown}}` and plan how each note connects to the rest of the vault.
 
-- **Per-note related-notes mapping**: for each planned note, search the vault for related notes and list the top matches. Every planned note's mapping must include **≥8 relevant term-dictionary term notes**, selected by content relevancy (not padded with unrelated terms); other related notes (tools/repos/areas/entry points) are additional, not a substitute.
+- **Per-note related-notes mapping**: for each planned note, select the top matches from the EXISTING NOTES CONTEXT provided below (the execute wave enriches each writer with its own per-note retrieval; an empty block means a bootstrap vault — plan the contract, list nothing invented). Every planned note's mapping must include **≥8 relevant term-dictionary term notes**, selected by content relevancy (not padded with unrelated terms); other related notes (tools/repos/areas/entry points) are additional, not a substitute.
 - **Entry-point decision, size-driven**: <15 notes → UPDATE the most relevant existing entry point (1–3 rows or a new H2). 15–30 notes → CREATE a dedicated entry point plus a back-link row in the parent hub. >30 notes → CREATE a dedicated entry point (required) mirroring the master plan's sub-plans index.
 - **Inlinks**: name which existing notes should get backlinks pointing TO the new notes so the new cluster is discoverable, not an island.
-- **Undigested terms (three-way pre-flight)**: scan the source for acronyms, method/estimator names, and concepts on first use; for each candidate check the term dictionary and classify it — no matching note → capture as a full term note; a stub exists → fill the stub; a substantive note exists → do NOT re-capture, just link it. Assign each undigested term a best-fit acronym glossary and a capture phase (Pattern A pre-digest stubs when ≤10 terms; Pattern B interleaved per sub-plan when >10, with a corpus-wide ownership sweep so no cross-cutting term is unowned). No term may be captured AFTER the digest — that ships ghost references.
+- **Undigested terms (three-way pre-flight)**: scan the SOURCE TEXT provided below for acronyms, method/estimator names, and concepts on first use; for each candidate check the term dictionary and classify it — no matching note → capture as a full term note; a stub exists → fill the stub; a substantive note exists → do NOT re-capture, just link it. Assign each undigested term a best-fit acronym glossary and a capture phase (Pattern A pre-digest stubs when ≤10 terms; Pattern B interleaved per sub-plan when >10, with a corpus-wide ownership sweep so no cross-cutting term is unowned). No term may be captured AFTER the digest — that ships ghost references.
 - **Validation gates**: define the per-phase gate table (format, grounding, density, coverage, cross-ref, ghost-reference detection, broken-link repair, discoverability) that execution will enforce.
 
 Emit a `cross_ref_plan` (per-note related-notes mapping, entry-point action, inlink plan, the Undigested Terms Plan, and the gate table). For each planned note build a related-

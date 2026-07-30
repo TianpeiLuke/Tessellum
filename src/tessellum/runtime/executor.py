@@ -32,6 +32,7 @@ from tessellum.composer.digestion import (
 )
 from tessellum.composer.fix import make_llm_fixer
 from tessellum.composer.gates import GateSuite, build_close_gate, build_wave_gate
+from tessellum.composer.note_grounding import make_identifier_verifier
 from tessellum.composer.llm import LLMBackend
 from tessellum.runtime.models import Job, Lease
 from tessellum.runtime.paths import RuntimePaths
@@ -631,17 +632,18 @@ def _close_gate_for(policy: RuntimePolicy) -> GateSuite | None:
     """The per-session close gate for a policy (P8/F6; FZ 20k9c1a1a1b7c2e).
 
     - ``close_gate`` off → ``None`` (no gating).
-    - ``grounding_gate`` off (default) → format-only (the pre-P8 behaviour):
-      the note-level GROUNDING predicate is NOT run.
-    - ``grounding_gate`` on → the FULL close gate (format + grounding). With no
-      injected ``grounding_verifier`` the grounding predicate fails CLOSED (a
-      note without a grounding verdict is blocked, never silently admitted) —
-      which is why the flag defaults off until a calibrated certificate exists.
-      This is the F6 fix: the grounding check is no longer structurally sliced
-      away; a deployment with a calibrated certificate turns it on."""
+    - ``grounding_gate`` OR ``identifier_grounding`` on → the FULL close gate
+      (format + grounding). With no injected ``grounding_verifier`` the
+      grounding predicate fails CLOSED (a note without a grounding verdict
+      is blocked, never silently admitted). W2 (FZ 20k9c1a1a1b7c2k2a4):
+      ``identifier_grounding`` defaults ON with the free deterministic
+      verifier, so the grounding rung finally RUNS by default.
+    - both off → format-only (the pre-P8 behaviour)."""
     if not policy.close_gate:
         return None
-    return build_close_gate() if policy.grounding_gate else _format_only_gate()
+    if policy.grounding_gate or policy.identifier_grounding:
+        return build_close_gate()
+    return _format_only_gate()
 
 
 @dataclass
@@ -812,7 +814,11 @@ class DigestionExecutor:
                 # without a calibration (the existing loud semantics).
                 grounding_verifier=(
                     self._build_grounding_verifier(source_content)
-                    if policy.grounding_gate else None
+                    if policy.grounding_gate
+                    else (
+                        make_identifier_verifier(source_content)
+                        if policy.identifier_grounding else None
+                    )
                 ),
                 # J1 (FZ 20k9c1a1a1b7c2k2): one episodic surface — the composer's
                 # checkpoints/, attempts.jsonl and per-step traces land under the

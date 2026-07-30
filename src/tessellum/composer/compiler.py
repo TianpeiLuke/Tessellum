@@ -962,11 +962,44 @@ def audit_input_closure(pipeline: "CompiledPipeline") -> list[str]:
     return findings
 
 
+# W3 (FZ 20k9c1a1a1b7c2k2a4): the verb list widened past its illusion — the
+# five audited steps used search/scan/spot-check/derive/project, all outside
+# the original read/fetch/browse alternation, so "audits clean" was true of
+# the lint and false of the property (the R1.2 correction).
 _ACQUISITION_RE = re.compile(
-    r"\b(re-?read|read|fetch|browse|crawl)\b[^.\n]{0,60}\b"
-    r"(page|pages|file|files|url|urls|site|sites|source|draft|vault|document)\b",
+    # verb not in noun position ("the re-read"), window stopping at sentence
+    # AND clause boundaries so "derive X; a Source..." cannot false-pair.
+    r"(?<!the )(?<!a )(?<!-)\b(re-?read|read|fetch|browse|crawl|search|scan|spot-?check|derive"
+    r"|project|look\s+up|consult|locate)\b[^.;:()\n]{0,60}\b"
+    r"(pages?|files?|urls?|sites?|source|draft|vault|documents?|notes?"
+    r"|plans?|director(?:y|ies))\b",
     re.IGNORECASE,
 )
+# Per-DEMAND binding map (W3): the demanded noun class must map to a binding
+# that can actually CARRY it — any-`{{upstream.X}}`-counts let extract_contracts
+# pass on a boot_report that cannot contain the plan its prose demanded.
+_DEMAND_BINDINGS: dict[str, str] = {
+    "source": r"\{\{\s*(artifact\.source_excerpt|leaf\.(?:source_excerpt|source_content|pages|members|owned_source_slice))\s*\}\}",
+    "page": r"\{\{\s*(artifact\.(?:source_excerpt|pages)|leaf\.(?:pages|source_excerpt|source_content|members))\s*\}\}",
+    "document": r"\{\{\s*(artifact\.source_excerpt|leaf\.(?:source_excerpt|source_content|members))\s*\}\}",
+    "file": r"\{\{\s*(artifact\.[a-z0-9_]+|leaf\.(?:source_excerpt|source_content|plan_text))\s*\}\}",
+    "draft": r"\{\{\s*artifact\.plan_text\s*\}\}",
+    "plan": r"\{\{\s*artifact\.plan_text\s*\}\}",
+    "vault": r"\{\{\s*leaf\.(?:existing_notes_context|related_references_md|related_notes)\s*\}\}",
+    "note": r"\{\{\s*leaf\.(?:existing_notes_context|related_references_md|related_notes|note)\s*\}\}",
+    "directory": r"\{\{\s*leaf\.(?:existing_notes_context|related_references_md)\s*\}\}",
+}
+
+
+def _demand_key(noun: str) -> str:
+    n = noun.lower().rstrip("s")
+    if n.startswith("director"):
+        return "directory"
+    if n in ("url", "site"):
+        return "file"
+    return n
+
+
 _CONTENT_HOLE_RE = re.compile(
     r"\{\{\s*(artifact\.[a-z0-9_]+|upstream\.[a-z0-9_]+"
     r"|leaf\.(?:pages|source_excerpt|source_content|plan_text|members))\s*\}\}"
@@ -984,11 +1017,24 @@ def audit_acquisition_prose(pipeline: "CompiledPipeline") -> list[str]:
     findings: list[str] = []
     for step in pipeline.steps:
         prompt = step.prompt_section_text or ""
-        m = _ACQUISITION_RE.search(prompt)
-        if m and not _CONTENT_HOLE_RE.search(prompt):
-            findings.append(
-                f"step {step.section_id!r}: acquisition prose "
-                f"({m.group(0)!r}) with NO content-bearing binding — "
-                f"role-play bait on a tool-free backend"
-            )
+        for m in _ACQUISITION_RE.finditer(prompt):
+            key = _demand_key(m.group(2))
+            binding = _DEMAND_BINDINGS.get(key)
+            if binding is None:
+                # unmapped noun class: fall back to the coarse check
+                if _CONTENT_HOLE_RE.search(prompt):
+                    continue
+                findings.append(
+                    f"step {step.section_id!r}: acquisition prose "
+                    f"({m.group(0)!r}) with NO content-bearing binding — "
+                    f"role-play bait on a tool-free backend"
+                )
+                continue
+            if not re.search(binding, prompt):
+                findings.append(
+                    f"step {step.section_id!r}: acquisition prose "
+                    f"({m.group(0)!r}) demands {key!r} but no binding that "
+                    f"can carry it renders in the prompt — role-play bait "
+                    f"on a tool-free backend"
+                )
     return findings

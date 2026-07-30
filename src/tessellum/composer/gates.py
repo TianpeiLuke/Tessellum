@@ -228,6 +228,20 @@ def grounding_predicate(
             )
         ]
     if verdict.status == "grounded":
+        # W2 (FZ 20k9c1a1a1b7c2k2a4): a grounded verdict may carry an
+        # ADVISORY (the cross-contamination tier — tokens present in the
+        # source but outside the note's owned slice). Non-blocking
+        # (WARNING < block_on=ERROR), carried for diagnostics. `detail`
+        # remains purely informational and produces no issue.
+        if verdict.advisory:
+            return [
+                Issue(
+                    Severity.WARNING,
+                    "GROUND-003",
+                    "grounding",
+                    f"advisory: {verdict.advisory}",
+                )
+            ]
         return []
     if verdict.status == "auth_blocked":
         return [
@@ -267,6 +281,10 @@ class GroundingVerdict:
 
     status: Literal["grounded", "ungrounded", "auth_blocked"]
     detail: str | None = None
+    advisory: str | None = None
+    """W2 (FZ 20k9c1a1a1b7c2k2a4): a non-blocking finding carried on a
+    grounded verdict (the cross-contamination tier). ``detail`` stays the
+    informational channel; only ``advisory`` produces a WARNING issue."""
 
 
 # ── Wave-scope cross-set predicate ──────────────────────────────────────────
@@ -296,6 +314,40 @@ def duplicate_target_predicate(paths: Sequence[Path | str], /, **_) -> Sequence[
         for key, n in sorted(seen.items())
         if n > 1
     ]
+
+
+_MD_LINK_RE = __import__("re").compile(r"\[([^\]]+)\]\(([^)\s]+\.md)\)")
+_FENCE_STRIP_RE = __import__("re").compile(r"(?ms)^```.*?^```\s*$")
+
+
+def link_resolution_predicate(paths: Sequence[Path | str], /, **_) -> Sequence[Issue]:
+    """W4 (FZ 20k9c1a1a1b7c2k2a4): the post-wave LINK sweep — the one check
+    the per-note close gate structurally cannot time right (a link to a
+    sibling written LATER in the wave is unresolvable at close and fine at
+    wave end; one still unresolved after the whole wave is a real break).
+    Replaces the LLM ``verify`` step's asserted link checking with computed
+    evidence. ADVISORY (WARNING) per the report-first rule — findings reach
+    the run events via the wave-gate composite."""
+    issues: list[Issue] = []
+    for p in paths:
+        path = Path(p)
+        try:
+            body = _FENCE_STRIP_RE.sub("", path.read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        for m in _MD_LINK_RE.finditer(body):
+            target = (path.parent / m.group(2)).resolve()
+            if not target.exists():
+                issues.append(
+                    Issue(
+                        Severity.WARNING,
+                        "WAVE-003",
+                        "link_resolution",
+                        f"unresolved link after the wave: {m.group(2)} "
+                        f"(in {path.name})",
+                    )
+                )
+    return issues
 
 
 # ── The DIGEST_GATES registry, parameterized by scope ───────────────────────
@@ -739,6 +791,42 @@ def plan_sections_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
     ]
 
 
+def plan_balance_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
+    """PLAN-010 (W1.3, FZ 20k9c1a1a1b7c2k2a4): per-note owned-span BALANCE —
+    ADVISORY. The note-count band constrains the plan's TOTAL; nothing
+    constrained the per-note allocation, and run 13's bimodal Tier-3 showed
+    notes owning 11–17 sections diluting to ~1.7 completeness while notes
+    owning 6–8 scored 4.5–5.0. A note whose owned slice measures more than
+    2× the density ceiling cannot treat its sections deeply at cap — flagged
+    as WARNING (never blocking until calibrated; the report-first rule)."""
+    if not isinstance(plan_doc, dict):
+        return []
+    cmap = plan_doc.get("section_coverage_map")
+    planned = plan_doc.get("planned_notes")
+    source = plan_doc.get("source_excerpt")
+    if not (isinstance(cmap, list) and cmap and isinstance(planned, list)
+            and planned and isinstance(source, str) and source):
+        return []
+    from tessellum.composer.note_coverage import owned_span_words
+
+    ceiling = 2 * PLAN_NOTE_MAX_WORDS
+    return [
+        Issue(
+            Severity.WARNING,
+            "PLAN-010",
+            "plan_balance",
+            f"note {name!r} owns {words} measured source words across "
+            f"{nsec} sections — over {ceiling} (2× the {PLAN_NOTE_MAX_WORDS}"
+            f"-word density ceiling); it cannot cover them deeply at cap — "
+            f"consider re-allocating the coverage map",
+        )
+        for name, (words, nsec) in sorted(
+            owned_span_words(planned, cmap, source).items()
+        )
+        if words > ceiling
+    ]
+
+
 def build_plan_gate() -> GateSuite:
     """The plan-scope structural pre-filter (the sign-off ladder's rung 1).
 
@@ -768,6 +856,16 @@ def build_plan_gate() -> GateSuite:
                 scope="plan",
                 predicate=plan_atomicity_predicate,
                 cause="plan_atomicity",
+            ),
+            # PLAN-010 emits only WARNINGs (< block_on=ERROR) — the gate
+            # always passes; the findings ride the composite for exhibits
+            # and diagnostics until the threshold is calibrated.
+            Gate(
+                gate_id="plan_balance",
+                kind="preflight",
+                scope="plan",
+                predicate=plan_balance_predicate,
+                cause="plan_balance",
             ),
         )
     )

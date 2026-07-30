@@ -136,6 +136,40 @@ def test_acquisition_lint_flags_ungrounded_read_prose(tmp_path: Path) -> None:
     assert findings and "role-play bait" in findings[0]
 
 
+def test_acquisition_lint_is_demand_specific(tmp_path: Path) -> None:
+    """W3 (FZ 20k9c1a1a1b7c2k2a4): the R1.2 illusion closed — an upstream
+    binding that cannot CARRY the demanded content no longer satisfies the
+    lint (extract_contracts passed on {{upstream.boot_report}} while its
+    prose demanded the plan), and the widened verb list catches
+    search/scan/spot-check/derive/project."""
+    skill = tmp_path / "skill_demand.md"
+    skill.write_text(
+        "# Demand\n\n"
+        "## Step <!-- :: section_id = s1 :: -->\n\n"
+        "```yaml\n"
+        "role: CORE\naggregation: corpus_wide\nbatchable: false\ndepends_on: []\n"
+        "materializer: no_op\noutput_key: o\n"
+        "```\n\n"
+        "Search the vault for similar notes. Uses {{upstream.report}}.\n",
+        encoding="utf-8",
+    )
+    findings = audit_acquisition_prose(compile_skill(skill))
+    assert findings and "no binding that can carry it" in findings[0]
+    # the same demand WITH a carrying binding is clean
+    skill2 = tmp_path / "skill_ok.md"
+    skill2.write_text(
+        "# OK\n\n"
+        "## Step <!-- :: section_id = s1 :: -->\n\n"
+        "```yaml\n"
+        "role: CORE\naggregation: corpus_wide\nbatchable: false\ndepends_on: []\n"
+        "materializer: no_op\noutput_key: o\n"
+        "```\n\n"
+        "Search the vault for similar notes in {{leaf.existing_notes_context}}.\n",
+        encoding="utf-8",
+    )
+    assert audit_acquisition_prose(compile_skill(skill2)) == []
+
+
 # ── R1.3: dispatch-time required-input validation ────────────────────────────
 
 def test_required_input_missing_refuses_dispatch(tmp_path: Path) -> None:
