@@ -348,7 +348,15 @@ def test_heartbeat_loss_reaches_running_execution(
     ).work_once()
 
     assert outcome.status == "lease_lost"
-    assert time.monotonic() - started < 0.5
+    # Promptness bound, DERIVED not guessed (the timing-algebra rule): it
+    # must sit strictly inside the executor's 2.0s natural deadline — the
+    # `completed_normally is False` assertion below already proves the loss
+    # INTERRUPTED the execution; this bound only adds "early, not at the
+    # boundary". 1.5s = 3/4 of the natural deadline, with headroom over
+    # loaded-CI jitter (a shared py3.11 runner measured 0.60s where local
+    # runs measure tens of ms — the old hard-coded 0.5 was a wall-clock
+    # guess that flaked there).
+    assert time.monotonic() - started < 1.5
     assert executor.completed_normally is False
     current = store.get(admitted.job_id)
     assert current is not None
