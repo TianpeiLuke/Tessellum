@@ -1025,6 +1025,23 @@ def _owned_source_slice(filename: str, plan_doc: dict) -> str:
     return "\n\n".join(owned.values())
 
 
+_GOLDEN_CODE_CAP = 6
+"""The eval rubric's per-note code-block ceiling (N5)."""
+
+
+def _code_block_budget(filename: str, plan_doc: dict) -> int:
+    """k2a4a: the per-note CODE BUDGET, computed — min(the golden cap, the
+    owned slice's measured fence pairs). A note whose slice carries 2 code
+    blocks gets budget 2 (no padding); a code-heavy slice is capped at the
+    rubric ceiling and the writer selects representatives. Falls back to
+    the cap when no slice resolves."""
+    slice_text = _owned_source_slice(filename, plan_doc)
+    if not slice_text:
+        return _GOLDEN_CODE_CAP
+    fences = len(_FENCE_RE.findall(slice_text)) // 2
+    return min(_GOLDEN_CODE_CAP, max(fences, 0)) or 0
+
+
 def _owned_sections_md(filename: str, plan_doc: dict) -> str:
     """E2.3 (FZ 20k9c1a1a1b7c2k1a1b1): the per-note ledger slice — the
     ``section_coverage_map`` rows this note owns, joined with the code-measured
@@ -1069,14 +1086,8 @@ def _owned_sections_md(filename: str, plan_doc: dict) -> str:
             lines.append(f"- {section} (source: {page})")
         else:
             lines.append(f"- {section}")
-    if lines:
-        # Phase 3 (FZ b7c2k2a3a): the code-block budget rides the slice —
-        # N5's cap made explicit where the writer decides what to include.
-        lines.append(
-            "- BUDGET: at most 6 code blocks in this note — select the "
-            "REPRESENTATIVE snippets from your sections, do not transcribe "
-            "every block."
-        )
+    # k2a4a: the flat prose budget retired — the per-note computed
+    # `code_block_budget` (a number on the leaf) replaced it.
     return "\n".join(lines)
 
 
@@ -1390,6 +1401,20 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
         if val
     }
 
+    # k2a4a: resolve every planned filename ONCE so each leaf can carry the
+    # verbatim sibling list — the writer links siblings by their ACTUAL
+    # planned names instead of inventing topical guesses (run 14's 82-ghost
+    # class: the plan text held the names, but 37K chars deep — the needle
+    # pattern applied to links).
+    all_names: list[str] = []
+    for pn in planned:
+        if isinstance(pn, dict):
+            fn = str(pn.get("filename") or pn.get("note") or "").strip().strip("/")
+            if fn:
+                if not fn.endswith(".md"):
+                    fn += ".md"
+                all_names.append(fn if fn.startswith(prefix) else f"{prefix}{fn}")
+
     leaves: list[dict] = []
     for pn in planned:
         if not isinstance(pn, dict):
@@ -1417,6 +1442,14 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
             # Empty when sections don't resolve — the writer falls back to
             # the full source, byte-identical to pre-W1.
             "owned_source_slice": _owned_source_slice(name, plan_doc),
+            # k2a4a: the sibling list, verbatim — the ONLY legal same-run
+            # link targets; plus the ledger-derived per-note code budget
+            # (min of the golden cap and the owned slice's measured fence
+            # pairs) as a NUMBER, not prose.
+            "planned_siblings_md": "\n".join(
+                f"- {n}" for n in all_names if n != name
+            ),
+            "code_block_budget": _code_block_budget(name, plan_doc),
             "target_path": f"{note_dir}/{name}",
             "source_ref": source_refs,
         })

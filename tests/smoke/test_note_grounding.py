@@ -158,6 +158,6 @@ def test_policy_identifier_grounding_default_on_and_gate_selection():
     p = RuntimePolicy()
     assert p.identifier_grounding is True
     gate = _close_gate_for(p)
-    assert [g.gate_id for g in gate.gates] == ["format", "grounding"]
+    assert [g.gate_id for g in gate.gates] == ["format", "grounding", "code_density"]
     off = RuntimePolicy(identifier_grounding=False)
     assert [g.gate_id for g in _close_gate_for(off).gates] == ["format"]

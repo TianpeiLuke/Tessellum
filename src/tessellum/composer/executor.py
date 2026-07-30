@@ -564,6 +564,7 @@ def execute_step(
             dry_run=dry_run,
             effect_guard=effect_guard,
             effect_recorder=effect_recorder,
+            leaf=leaf,
         )
     except MaterializerError as e:
         # Don't override an earlier schema-validation error message.

@@ -14,10 +14,10 @@ cp vault/resources/skills/skill_tessellum_{plan_digestion,augment_digestion_plan
 # actually earn the xref floor). N3 needs NO seeding (BB_SPECS is in code —
 # openclaw scored N3=1.0 on an empty vault; the earlier 'harness artifact'
 # claim for N3 was wrong and is corrected in the trail).
+# N6 v2 (FZ k2a4a): seed the FULL term dictionary — a 5-term semantic tier
+# cannot host any term-link floor; the metric must have headroom to measure.
 mkdir -p "$ROOT/vault/resources/term_dictionary"
-for t in term_llm term_api term_cli term_yaml term_sqlite; do
-  [ -f "vault/resources/term_dictionary/$t.md" ] && cp "vault/resources/term_dictionary/$t.md" "$ROOT/vault/resources/term_dictionary/"
-done
+cp vault/resources/term_dictionary/term_*.md "$ROOT/vault/resources/term_dictionary/" 2>/dev/null || true
 PYTHONPATH=src python3 -m tessellum.cli.main runtime init --root "$ROOT" > /dev/null
 mkdir -p "$ROOT/data"
 PYTHONPATH=src python3 -m tessellum.cli.main index build --vault "$ROOT/vault" --db "$ROOT/data/tessellum.db" --no-dense > /dev/null 2>&1 || true

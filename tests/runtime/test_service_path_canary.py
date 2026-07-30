@@ -155,9 +155,13 @@ def test_service_path_canary_full_digestion(tmp_path: Path) -> None:
             # the WRITTEN notes ({{upstream.note_body}}), so its distinctive
             # opening must match BEFORE the per-leaf filename keys below.
             "NON-AUTHORITATIVE narration step": json.dumps(_SUPERSET),
-            "demo_a.md": _NOTE_MD,
-            "demo_b.md": _NOTE_MD.replace("demo_a.md", "demo_b.md")
-                                 .replace("(demo_b.md)", "(demo_a.md)"),
+            # k2a4a: keys must be UNIQUE to the leaf's own prompt — the
+            # PLANNED SIBLINGS block puts every OTHER filename into each
+            # writer's prompt, so bare filenames misroute. target_path is
+            # unique per leaf.
+            "demo/demo_a.md": _NOTE_MD,
+            "demo/demo_b.md": _NOTE_MD.replace("demo_a.md", "demo_b.md")
+                                      .replace("(demo_b.md)", "(demo_a.md)"),
         },
         default=json.dumps(_SUPERSET),
     )

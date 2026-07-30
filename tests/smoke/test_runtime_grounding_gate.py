@@ -25,7 +25,7 @@ def test_default_policy_is_format_only():
     verifier. Format-only remains reachable by turning it off."""
     gate = _close_gate_for(RuntimePolicy())
     assert gate is not None
-    assert [g.gate_id for g in gate.gates] == ["format", "grounding"]
+    assert [g.gate_id for g in gate.gates] == ["format", "grounding", "code_density"]
     off = _close_gate_for(RuntimePolicy(identifier_grounding=False))
     assert [g.gate_id for g in off.gates] == ["format"]
 

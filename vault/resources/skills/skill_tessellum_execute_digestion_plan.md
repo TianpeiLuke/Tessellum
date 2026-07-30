@@ -303,6 +303,10 @@ inputs:
   required: false
 - name: leaf.owned_source_slice
   required: false
+- name: leaf.planned_siblings_md
+  required: false
+- name: leaf.code_block_budget
+  required: false
 - name: artifact.plan_text
   required: true
 - name: artifact.source_excerpt
@@ -346,10 +350,27 @@ for CROSS-SLICE context your owned sections reference; when your OWNED
 SOURCE block above is non-empty, literals still come from that block):
 {{artifact.source_excerpt}}
 
+PLANNED SIBLINGS (the OTHER notes this run is writing, by their exact
+planned filenames — the ONLY legal same-run link targets. Link a sibling
+by copying its filename VERBATIM from this list; a sibling link with any
+other spelling is a broken link by construction):
+{{leaf.planned_siblings_md}}
+
+CODE BUDGET: at most {{leaf.code_block_budget}} fenced code blocks in
+this note (computed from your owned slice's measured code). Select the
+REPRESENTATIVE snippets; do not exceed the number.
+
 RELATED NOTES (retrieved per-note by relevance to THIS note's thesis;
 each is an EXISTING vault note with a path already resolved relative to
 this note's target_path — ready to paste as a markdown link):
 {{leaf.related_references_md}}
+
+LINK CONTRACT (binding): every markdown link in this note MUST target
+either an entry in RELATED NOTES above (copy the resolved path), or a
+PLANNED SIBLING (copy the filename verbatim). Do NOT invent term-note,
+repo, or snippet links — a link to a note that does not exist is a ghost
+reference and fails verification. If no provided target fits, write the
+concept as plain text, not a link.
 
 NOTE-TYPE CONTRACT (resolved from this note's target_path → its template
 flavor; the required `## H2` sections + reference rule for THIS note's

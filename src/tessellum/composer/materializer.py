@@ -128,6 +128,7 @@ def materialize(
     dry_run: bool = False,
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
+    leaf: dict | None = None,
 ) -> MaterializedOutput:
     """Dispatch ``response_text`` to the materializer for ``materializer_key``.
 
@@ -152,6 +153,18 @@ def materialize(
         raise MaterializerError(
             f"unknown materializer key {materializer_key!r}. "
             f"Known: {sorted(_DISPATCH)}"
+        )
+    # k2a4a: sibling-link healing at write time (the F9/F10 absorption
+    # pattern applied to links) — only for note-body materializers, only
+    # when the leaf carries the planned-sibling list.
+    if (
+        isinstance(leaf, dict)
+        and leaf.get("planned_siblings_md")
+        and materializer_key in ("body_markdown_to_file",
+                                 "body_markdown_frontmatter_to_file")
+    ):
+        response_text = _heal_sibling_links(
+            response_text, str(leaf["planned_siblings_md"])
         )
     return handler(
         response_text,
@@ -211,6 +224,44 @@ _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 # whole-document ```markdown wrapper is unwrapped first.
 _FENCED_DOC_RE = re.compile(r"^```(?:markdown|md)\s*\n(.*)\n```\s*$", re.DOTALL)
 _FENCED_YAML_RE = re.compile(r"^```(?:yaml|yml)\s*\n(.*?)\n```\s*\n?(.*)$", re.DOTALL)
+
+
+def _heal_sibling_links(text: str, siblings_md: str) -> str:
+    """k2a4a: deterministic sibling-link healing — the F9/F10 absorption
+    pattern applied to links. A relative .md link whose basename does not
+    match any planned sibling but whose NORMALIZED stem (kebab and snake
+    collapse to one alphabet) matches exactly ONE sibling is rewritten to
+    that sibling's verbatim filename. Conservative: ambiguous or unmatched
+    targets are left for the wave's link_resolution sweep to report."""
+    if not siblings_md:
+        return text
+    siblings = [ln[2:].strip() for ln in siblings_md.splitlines()
+                if ln.startswith("- ") and ln.strip().endswith(".md")]
+    if not siblings:
+        return text
+    sib_set = set(siblings)
+
+    def norm(name: str) -> str:
+        return name.lower().replace("-", "_")
+
+    by_norm: dict[str, list[str]] = {}
+    for sib in siblings:
+        by_norm.setdefault(norm(sib), []).append(sib)
+
+    import re as _re
+
+    def _fix(m: "_re.Match[str]") -> str:
+        target = m.group(2)
+        base = target.rsplit("/", 1)[-1]
+        if base in sib_set:
+            return m.group(0)
+        candidates = by_norm.get(norm(base), [])
+        if len(candidates) == 1:
+            healed = target[: len(target) - len(base)] + candidates[0]
+            return f"[{m.group(1)}]({healed})"
+        return m.group(0)
+
+    return _re.sub(r"\[([^\]]+)\]\(([^)\s]+\.md)\)", _fix, text)
 
 
 def _absorb_frontmatter_rendering(text: str) -> str:

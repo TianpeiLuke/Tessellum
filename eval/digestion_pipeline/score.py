@@ -87,20 +87,48 @@ def score_note(text: str, golden: dict) -> dict:
     }
 
 
-def score_notes(notes_dir: Path, golden_facts: dict) -> dict:
+def _xref_availability(vault: Path | None) -> dict:
+    """N6 v2 (FZ 20k9c1a1a1b7c2k2a4a): what the vault can actually HOST per
+    link class. A floor above availability measures the harness, not the
+    writer (the openclaw slice demanded 8 term + 10 snippet links per note
+    against a vault holding 5 terms and 0 snippets)."""
+    if vault is None:
+        return {}
+    return {
+        "term_dictionary": len(list((vault / "resources/term_dictionary").glob("term_*.md"))),
+        "code_repos": len(list(vault.rglob("code_repos/repo_*.md"))),
+        "code_snippets": len(list(vault.rglob("code_snippets/snippet_*.md"))),
+    }
+
+
+def score_notes(notes_dir: Path, golden_facts: dict, vault: Path | None = None) -> dict:
     golden = golden_facts["golden_output"]
     floor = golden_facts["golden_plan"]["xref_floor_per_note"]
+    availability = _xref_availability(vault)
     note_files = sorted(notes_dir.glob("*.md"))
     if not note_files:
         return {"error": f"no .md notes found in {notes_dir}"}
+    note_names = {f.name for f in note_files}
     per = {}
     bb_hist = {}
     for f in note_files:
         s = score_note(f.read_text(encoding="utf-8"), golden)
-        # N6 xref floor per declared class
+        # N6 v2: floors scaled to vault availability when --vault is given
+        # (min(declared, hostable)); unchanged without it (comparability).
+        # Sibling links (resolvable, same-run notes) are measured as their
+        # own class — first-class cross-references for the graph.
         lc = s["_measured"]["link_classes"]
-        s["N6_xref_floor_met"] = all(lc.get(cls, 0) >= n for cls, n in floor.items()
-                                     if cls in ("term_dictionary", "code_repos", "code_snippets"))
+        text = f.read_text(encoding="utf-8")
+        lc["siblings"] = sum(
+            1 for m in re.finditer(r"\]\(([^)\s]+\.md)\)", text)
+            if m.group(1).rsplit("/", 1)[-1] in note_names
+            and m.group(1).rsplit("/", 1)[-1] != f.name
+        )
+        s["N6_xref_floor_met"] = all(
+            lc.get(cls, 0) >= (min(n, availability[cls]) if cls in availability else n)
+            for cls, n in floor.items()
+            if cls in ("term_dictionary", "code_repos", "code_snippets")
+        )
         per[f.stem] = s
         bb = s["_measured"]["building_block"]
         bb_hist[bb] = bb_hist.get(bb, 0) + 1
@@ -158,6 +186,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("slice_dir", type=Path)
     ap.add_argument("--notes", type=Path, help="dir of generated notes to score (Tier 2)")
+    ap.add_argument("--vault", type=Path, default=None, help="vault root for N6 availability scaling (v2)")
     ap.add_argument("--plan", type=Path, help="generated plan .md to score (Tier 1)")
     args = ap.parse_args()
 
@@ -171,7 +200,7 @@ def main() -> int:
     if args.plan and args.plan.exists():
         report["tier1_plan"] = score_plan(args.plan.read_text(encoding="utf-8"), golden_facts)
     if args.notes:
-        report["tier2_notes"] = score_notes(args.notes, golden_facts)
+        report["tier2_notes"] = score_notes(args.notes, golden_facts, vault=args.vault)
 
     # Verdict: a supplied plan must pass >= 6/7 tier-1 metrics AND (if notes were
     # supplied) tier-2 mean >= 0.9 with N2/N4 at 100%. Neither tier is skipped

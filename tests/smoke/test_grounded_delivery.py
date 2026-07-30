@@ -80,3 +80,59 @@ def test_balance_exhibit_renders():
     d["_pages_code_measured"] = True
     ex = compute_review_exhibits(d)
     assert "BALANCE (computed):" in ex
+
+
+# ── k2a4a: link constraint, sibling healing, code budget ────────────────────
+
+
+def test_leaves_carry_siblings_and_budget():
+    d = _doc()
+    leaves = _project_planned_notes_to_leaves(d)
+    by = {lf["note"]["filename"]: lf for lf in leaves}
+    assert "- beta.md" in by["alpha.md"]["planned_siblings_md"]
+    assert "alpha.md" not in by["alpha.md"]["planned_siblings_md"]
+    # alpha owns Alpha+Gamma (0 fences) -> budget 0; beta owns Beta (0 fences)
+    assert by["alpha.md"]["code_block_budget"] == 0
+
+
+def test_code_block_budget_caps_and_counts():
+    from tessellum.composer.digestion import _code_block_budget
+
+    d = _doc()
+    d["source_excerpt"] = (
+        "# Alpha\n\n" + "```py\nx\n```\n\n" * 9 + "\n# Beta\n\nno code\n"
+    )
+    assert _code_block_budget("alpha.md", d) == 6   # capped at the rubric ceiling
+    assert _code_block_budget("beta.md", d) == 0    # no padding
+    d.pop("section_coverage_map")
+    assert _code_block_budget("alpha.md", d) == 6   # no slice -> the cap
+
+
+def test_heal_sibling_links_kebab_to_snake_unique():
+    from tessellum.composer.materializer import _heal_sibling_links
+
+    siblings = "- openclaw_memory_system.md\n- openclaw_workspace.md"
+    text = (
+        "see [memory](../x/openclaw-memory-system.md) and "
+        "[ghost](../x/openclaw-model-selection.md) and "
+        "[ok](openclaw_workspace.md)"
+    )
+    healed = _heal_sibling_links(text, siblings)
+    assert "../x/openclaw_memory_system.md" in healed        # unique normalized match
+    assert "openclaw-model-selection.md" in healed           # unmatched: left for the sweep
+    assert "(openclaw_workspace.md)" in healed               # verbatim: untouched
+
+
+def test_code_density_close_gate_advisory(tmp_path):
+    from tessellum.composer.gates import build_close_gate, code_density_predicate
+    from tessellum.composer.gates import GroundingVerdict
+    from tessellum.format import Severity
+
+    note = tmp_path / "n.md"
+    note.write_text("# N\n\n" + "```\nx\n```\n\n" * 8, encoding="utf-8")
+    issues = list(code_density_predicate(note))
+    assert issues and issues[0].severity is Severity.WARNING and "8 fenced" in issues[0].message
+    suite = build_close_gate()
+    comp = suite.evaluate(note, verdict=GroundingVerdict("grounded"), short_circuit=False)
+    dens = next(r for r in comp.results if r.gate_id == "code_density")
+    assert dens.passed and dens.issues  # advisory: carried, never blocks

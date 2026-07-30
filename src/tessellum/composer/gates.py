@@ -353,6 +353,33 @@ def link_resolution_predicate(paths: Sequence[Path | str], /, **_) -> Sequence[I
 # ── The DIGEST_GATES registry, parameterized by scope ───────────────────────
 
 
+_CODE_FENCE_RE = __import__("re").compile(r"(?m)^```")
+_GOLDEN_CODE_CAP = 6
+
+
+def code_density_predicate(target: Path | str, /, **_) -> Sequence[Issue]:
+    """k2a4a: the per-note CODE-DENSITY check, computed at close — N5's cap
+    finally enforced by code instead of prose. ADVISORY (WARNING) per the
+    report-first rule; the fix loop and the writer's numeric budget do the
+    prevention, this check does the accounting."""
+    try:
+        text = Path(target).read_text(encoding="utf-8")
+    except OSError:
+        return []
+    blocks = len(_CODE_FENCE_RE.findall(text)) // 2
+    if blocks <= _GOLDEN_CODE_CAP:
+        return []
+    return [
+        Issue(
+            Severity.WARNING,
+            "NOTE-005",
+            "code_density",
+            f"{blocks} fenced code blocks — over the {_GOLDEN_CODE_CAP}-block "
+            f"cap (N5); select representative snippets",
+        )
+    ]
+
+
 def build_close_gate() -> GateSuite:
     """The per-session close-gate: the format + grounding predicates.
 
@@ -385,6 +412,15 @@ def build_close_gate() -> GateSuite:
                 scope="session",
                 predicate=grounding_predicate,
                 cause="grounding",
+            ),
+            # k2a4a: advisory code-density accounting (WARNINGs only — the
+            # gate always passes; findings ride the composite).
+            Gate(
+                gate_id="code_density",
+                kind="checkpoint",
+                scope="session",
+                predicate=code_density_predicate,
+                cause="code_density",
             ),
         )
     )
