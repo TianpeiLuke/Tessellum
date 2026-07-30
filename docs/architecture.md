@@ -167,47 +167,55 @@ And underneath the reasoning ontology, one more invariant makes growth possible 
 
 ## 8. Key modules and abstractions
 
-| File | Role |
-|---|---|
-| `bb/types.py` | Source of truth for the 8 `BBType` values, `EpistemicEdgeType`, the composed `BB_SCHEMA` (~16 edges), `BB_SCHEMA_VERSION`, and event-sourced schema growth (`SchemaEditEvent`, `fold_schema_events`, `BB_SCHEMA_AT_VERSION`). |
-| `bb/graph.py` | Corpus (instance) BB graph. `BBGraph.schema` = the 8-node type graph; `BBGraph.from_db` streams the vault's BB-typed notes + edges from the index (read-only). |
-| `format/parser.py` | Parse a `.md` note into frontmatter + body (`parse_note`, `Note`). |
-| `format/validator.py` | `validate` / `is_valid` — YAML-0xx, LINK-00x, TESS-00x rules. The vault-side gatekeeper. |
-| `format/frontmatter_spec.py` | The YAML spec data (valid PARA buckets, statuses, `VALID_BUILDING_BLOCKS` derived from `BBType`, forbidden fields). |
-| `indexer/schema.sql` | The one DDL: `notes`, `note_links`, `notes_vec` (vec0, 384-dim cosine), `notes_fts` (FTS5, porter+unicode61). |
-| `indexer/build.py` | `build` — walk vault, parse notes, extract links w/ broken-path detection, write all four tables in one transaction. Drop+recreate (idempotent). |
-| `indexer/db.py` | `Database` — read-oriented typed query wrapper (`NoteRow`, `LinkRow`). |
-| `retrieval/{metadata,graph,bm25,dense,hybrid}.py` | The five retrieval surfaces (see §9). `router.py` = heuristic query→surface classifier. |
-| `composer/compiler.py` | Skill canonical (per-section contract blocks) → typed `CompiledPipeline` DAG. Zero LLM. |
-| `composer/contracts.py` | Typed registries: `MATERIALIZER_CONTRACTS`, `BACKEND_CONTRACTS`, `MCP_CONTRACTS`; `ContractViolation`. |
-| `composer/scheduler.py` | `run_pipeline` (serial reference) + `run_pipeline_dynamic` (wave-parallel, self-claiming). |
-| `composer/executor.py` | `execute_step` unit op: placeholder resolve → dispatch → schema-validate → materialize; retry ladders. |
-| `composer/materializer.py` | Five materializers (no_op, body_markdown_to_file, body_markdown_frontmatter_to_file, edits_apply_to_files, edits_apply_xml_tags) — the D→P authoring seam. |
-| `composer/gates.py` | One `Gate` abstraction at plan/session/wave scope. Pure predicates; never call an LLM. |
-| `composer/fix.py` | Non-regressive close-gate repair (checkpoint bytes, keep best snapshot). |
-| `composer/manifest.py` | Per-leaf/per-attempt verified resume ledger; safe to discard, but verified skip is not rebuildable from file existence alone. |
-| `composer/llm.py` | `LLMBackend` protocol + 4 backends: `MockBackend`, `AnthropicBackend`, `BedrockBackend`, `PooledBackend`. |
-| `composer/credential_pool.py` | Same-provider key pool (leasing, error-class rotation, cooldowns) + `RunBudget` (invocation/cost caps). |
-| `composer/{planning,signoff,eval}.py` | Selective planning depth + $0 change-detection pre-gate; plan→execute approval ladder; scenario assertions + LLMJudge rubric. |
-| `composer/{proposals,knowledge_plan,overlay,overlay_index}.py` | **Transaction P0–P3:** typed change proposals + content-addressed merge; the `NoteIntentGraph` plan + writer-leaf projection; the create-only staging overlay; the read-through `OverlayIndex` over base ⊕ delta. |
-| `composer/write_closure.py` | **Transaction P4:** exact write closure from typed invariants + boundary witness + bounded validation heuristic + capsule partition. |
-| `composer/publication.py` | **Transaction P5:** `VersionedVault` — three-phase atomic commit with snapshot CAS, crash recovery, and generation GC. |
-| `composer/structural_gates.py` | **Transaction P6:** capsule-level structural gate suite (no LLM) + `supervised_admit` (structural pass + a capsule-bound human approval). |
-| `composer/semantic_certificate.py` | **Transaction P7:** calibrated semantic certificate — pluggable scorer, per-class empirical thresholds, fail-closed abstain. |
-| `composer/planner_loop.py` | **Transaction P8:** bounded planner loop with a proven halt (ℕ-valued deficit + three hard stops). |
-| `runtime/{models,store}.py` / `runtime/schema.sql` | Durable job state machine, event journal, transactional claims, lease-generation fencing, retry, and cancellation. |
-| `runtime/{admission,inbox,routing,policy}.py` | Stable-file spool-before-admit, deterministic eight-lane scanning/routing, and unattended policy profiles. |
-| `runtime/{executor,supervisor,service,commit_tail}.py` | Native Composer digestion adapter, heartbeat supervision, polling service, atomic index replacement, and source acknowledgement. |
-| `runtime/tool_broker.py` | Standalone bounded tool broker; deliberately outside Composer and not yet wired to the runtime audit table. |
-| `dks/core.py` | `DKSCycle` (7-component loop) + `DKSRunner` (multi-cycle) + the 7 typed component dataclasses + FZ allocator. |
-| `dks/dung.py` | `DungAF` + `grounded_labelling` — multi-perspective survivorship. |
-| `dks/fsm.py` | Generic FSM walker over `BB_SCHEMA` (additive dispatcher). |
-| `dks/confidence.py` | Confidence gate (`ConstantConfidence`, `CalibratedConfidence`). |
-| `dks/persistence.py` | `WarrantRegistry` (current set) + `WarrantHistory` (append-only JSONL log). |
-| `dks/retrieval_client.py` | R-Cross read-through client wrapping `hybrid_search`; no path back to P. |
-| `cli/main.py` | Dispatcher wiring the 12 top-level subparsers; bare `tessellum` prints the capability banner. |
-| `mcp/server.py` | `build_server` / `run_stdio` — 12 tools over stdio (see §9). |
-| `composer-ts/src/{bridge,dag}.ts` | TS control-flow bridge: shells the composer CLI (`bridge.ts`) + pure DAG-walk helpers (`dag.ts`). Zero contract logic. |
+The code-grounded system map organizes the modules into five bands — actors and access at the top, then **CONTROL** (the operational plane), **ENGINES** (the knowledge producers and their checks), **AUTHORITY** (what may exist and where truth lives), and **PROJECTION** (the read side). Solid boxes are live on the default path; dashed (**TRANSACTIONS**) is built and opt-in; dotted-orange (**PUBLISHING**) is the one recorded deferred wiring.
+
+![The code-grounded system map: CONTROL supervises, ENGINES produce and verify, AUTHORITY holds truth, PROJECTION serves reads.](assets/tessellum_architecture.png)
+
+### Actors and access
+
+| Component | Files | Role and practical use |
+|---|---|---|
+| **SOURCE** (Inputs) | `runtime/{inbox,admission}.py` | Where work enters: eight explicit `inbox/` lanes, scanned deterministically; admission spools stable bytes into a SHA-256-addressed store *before* recording a job, so the payload of admitted work is fixed and verifiable. |
+| **USERS** (Commands) | `cli/main.py` + `cli/<cmd>.py` | Humans drive everything through 12 top-level subcommands (`runtime submit/work`, `composer digest`, `search`, `index build`, …); bare `tessellum` prints the capability banner. |
+| **MODELS** (Generation) | `composer/llm.py`, `composer/credential_pool.py` | The only place LLMs live: the `LLMBackend` protocol with `MockBackend` / `AnthropicBackend` / `BedrockBackend` / `PooledBackend`, explicit `httpx` timeouts with `max_retries=0` (the ladder owns retries), plus key leasing/rotation and `RunBudget` caps. Injected by callers — never buried in control logic. |
+| **INTERFACES** (Access) | `cli/`, `mcp/server.py`, `composer-ts/src/{bridge,dag}.ts` | The three front doors: the CLI for humans, 12 deterministic MCP tools over stdio for agents, and the zero-dependency TypeScript control bridge. All route into the same Python surfaces below. |
+
+### CONTROL — the operational plane
+
+| Component | Files | Role and practical use |
+|---|---|---|
+| **RUNTIME** (Supervision) | `runtime/{supervisor,service,executor,store,models,routing}.py`, `runtime/schema.sql` | The durable job state machine: transactional claims, ordered event journal, dead-letter + linked `retry`, cooperative cancellation, and the supervisor's work loop. The executor adapts a claimed job onto the native composer digestion driver; an execute-only resume is refused unless the persisted plan carries a positive sign-off stamp (presence is not approval — F14). In practice: `runtime submit` then `runtime work` runs one unattended digestion end-to-end. |
+| **POLICY** (Profiles) | `runtime/policy.py` | One `RuntimePolicy` dataclass gating every behavior switch — workers, budgets, gates on/off, `stop_after`, revise-round budget, checkpoint-resume — with named profiles (`default`/`fast`/`inspect`/`converge`); unknown profiles fail closed. |
+| **LEASES** (Renewal) | `runtime/store.py` (leases, generations), `runtime/supervisor.py` (`_heartbeat`), `runtime/timing.py` | Ownership and liveness: owner + monotonic lease generation fence stale workers; the hardened renewal actor beats at ttl/3 with transient retry, staleness escalation, and a `heartbeats.jsonl` journal; `timing.py` is the machine-checked invariant table (two beats per TTL, watchdog derived from read-timeout, detector constants never workload bounds). |
+| **MEMORY** (Tiers) | `composer/agent_memory.py` | The four-tier naming facade over existing seams: WORKING (durable artifact store), EPISODIC (timestamped JSONL journals under the run dir), SEMANTIC (hybrid retrieval), PROCEDURAL (`compile_skill`). No new behavior — each method delegates to the seam that owns its tier; use it when you want the memory-model view of a run. |
+| **COMMIT** (Publication) | `runtime/commit_tail.py`, `runtime/locking.py` | The ordered, idempotent commit tail: cross-process vault lock, generation-scoped effect journal (preimage bytes + postimage hashes fsynced before mutation), incremental index rebuild proven equal to from-scratch, atomic publication, source archive/acknowledge, job complete last. Crash anywhere → recovery restores known states and resumes only the tail. |
+
+### ENGINES — producers and their checks
+
+| Component | Files | Role and practical use |
+|---|---|---|
+| **COMPOSER** (Orchestration) | `composer/{compiler,scheduler,executor,materializer,fix,manifest,digestion}.py` | The five-stage engine: compile a skill's per-section contracts into a typed DAG (zero LLM), schedule it (serial reference or wave-parallel), materialize outputs (the D→P authoring seam), repair non-regressively, and record for verified resume. `digestion.py` is the flagship pipeline (`plan → augment → review → execute`) and the home of the projection law: code-computed ledger and band, the reconciled Planned-Notes table (F11), code-generated data sections (F13/F15), the code-owned section self-assessment (F16), review exhibits, the F8 gate-in-loop, checkpoint-resume. |
+| **GATES** (Verification) | `composer/gates.py`, `format/validator.py` | One `Gate` abstraction at plan/session/wave scope — pure predicates that never call a model (IDENT-3): plan structure/coverage/density/mandatory-sections (PLAN-009), the per-note close gate (format + grounding), the wave sweep (dedup + note coverage). The plan gate is the sign-off ladder's program rung and, since F8, also vetoes reviewer false-accepts inside the revise loop. |
+| **DKS** (Dialectics) | `dks/{core,dung,fsm,confidence,persistence,retrieval_client}.py` (+ `autonomy`, `capability`, `elevation`, `ontology`, `validation`, `meta/`) | The reasoning engine: seven-component dialectic cycles that deposit typed argument subtrees into the vault, Dung grounded semantics for multi-perspective conflict, confidence gating, event-sourced warrant history, and the R-Cross read-through client (reads D, writes only new P). |
+| **COVERAGE** (Sections) | `composer/note_coverage.py` | The canonical coverage-map ⨝ fence-aware-section join (shared by the wave sweep, the E2.3 slices, and the scoped Tier-3 judge) plus the deterministic per-note owned-section coverage sweep at the wave gate — completeness as a written-note property. Advisory by default (findings land in the run events); `strict=True` is the calibrated promotion path. |
+| **CERTIFICATE** (Grounding) | `composer/{semantic_certificate,certificate_verifier,llm_claim_scorer,note_grounding,calibration_gate}.py` | The fabrication defense: conformal-calibrated claim certificates (per-class empirical thresholds, fail-closed abstain), the C3 adapter to the close gate, and the two-layer note verifier — deterministic identifier grounding first (asserted code tokens must exist in the source; free), then the calibrated certificate on the full-source span (owned-span calibration was run and REFUTED — grounding is a full-source property). Wired via `TESSELLUM_GROUNDING_CALIBRATION` + `policy.grounding_gate`. |
+| **TRANSACTIONS** (Atomicity — opt-in) | `composer/{proposals,knowledge_plan,overlay,overlay_index,write_closure,structural_gates,planner_loop}.py` | The knowledge-transaction track (P0–P9): typed proposals → `NoteIntentGraph` plan → create-only staging overlay over a pinned snapshot → exact write closure with boundary proof → structural gates + the calibrated certificate → bounded planner loop with a proven halt. Byte-identical when off. |
+
+### AUTHORITY — what may exist, and where truth lives
+
+| Component | Files | Role and practical use |
+|---|---|---|
+| **CONTRACTS** (Registry) | `composer/contracts.py`, `bb/types.py`, `format/frontmatter_spec.py` | The registries that define what may exist: materializer/backend/MCP contracts and step input manifests (`StepInput`, closure lint), the mandatory-section stems and artifact keys, the eight `BBType`s with ~16 typed edges and event-sourced schema growth, and the YAML frontmatter spec. Compilation validates against these before anything runs. |
+| **VAULT** (Authority) | `vault/` + `format/{parser,validator}.py`, `bb/graph.py` | The single source of truth: typed markdown notes, parsed and validated at every write (`YAML-0xx`/`LINK-00x`/`TESS-0xx`). Nothing writes vault-authoritative state from anywhere else; engines author NEW notes only. |
+| **PUBLISHING** (Deferred) | `composer/publication.py` | `VersionedVault` — three-phase atomic vault commit with snapshot CAS, crash recovery, and generation GC (transaction P5). Built and verified, but not yet the runtime's live commit path: a runtime digestion still publishes note-by-note through the commit tail. Wiring this in as the accept point is the one recorded deferred step — the dotted box in the map. |
+
+### PROJECTION — the read side
+
+| Component | Files | Role and practical use |
+|---|---|---|
+| **INDEXER** (Incremental) | `indexer/build.py` | `build` (drop+recreate, idempotent) and `build_incremental` (changed-notes delta, proven table-for-table equal to a from-scratch rebuild) — invoked by `index build` and by the runtime commit tail under the vault lock. |
+| **INDEX** (Storage) | `indexer/schema.sql`, `indexer/db.py` | The one DDL — `notes`, `note_links`, `notes_vec` (384-dim cosine), `notes_fts` (FTS5) — and the deliberately read-oriented `Database` wrapper: callers who want to change a row are told to rebuild instead. |
+| **RETRIEVAL** (Hybrid) | `retrieval/{metadata,graph,bm25,dense,hybrid,router}.py` | The five ways to find a note — structured filter, best-first BFS over links, FTS5 lexical, dense cosine, RRF hybrid (the default) — plus the heuristic query router. Consumed by the CLI, MCP, DKS's R-Cross client, and the composer's related-notes enrichment. |
 
 ## 9. Public surfaces
 
