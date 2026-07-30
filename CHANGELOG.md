@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — F11: the Planned-Notes table becomes a code-generated projection (FZ 20k9c1a1a1b7c2k2a — closing b7c4's oldest residual) — 2026-07-29
+
+Openclaw run 6's loop worked exactly as designed (exhibit-cited round-1 rejection, F8's revise conditioning, a final rejection) — and the final blocker was the trail's OLDEST recurring residual: the prose `## Planned Notes` table drifting from the structured `planned_notes` (12 vs 9 here; b7c4's 23-vs-13, run 8's 16-vs-10, hermes' 15-vs-11 before it). Every prior defense was DETECTION (the INVENTORY exhibit, the one-inventory prose mandate, the revise loop); the drift kept recurring because two inventories existed. `_reconcile_planned_notes_table` now regenerates the table FROM the structured list after every fold — write-time binding: only one inventory exists, so the class is unrepresentable; surrounding prose preserved, cell-safe rendering, no-op without a section/list. Also fixes the P1 prose-count scoring residual across every slice. +2 tests (suite 2156).
+
 ### Composer — F10: kebab tags normalized to the vault alphabet at write time (FZ 20k9c1a1a1b7c2k2a) — 2026-07-29
 
 Openclaw sweep run 5 carried the full pipeline to the wave (F9's absorption confirmed live — the fenced frontmatter materialized cleanly) and then the close gate blocked 7 of 9 leaves on YAML-015: kebab-case tags (`active-memory`) — writers digesting a kebab-heavy source naturally emit kebab tags, and the fix loop did not converge them (mechanism verified by reconstructing a rolled-back note from the attempts journal's content_head and running the REAL validator on it). Per the canonical-form contract: the materializer now normalizes `tags` deterministically to lowercase/digits/underscores (the same tag in a different rendering; alien values still fail the validator), and the writer prose pins the alphabet at the generator side. +1 test (suite 2154).

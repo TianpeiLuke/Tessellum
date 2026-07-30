@@ -175,3 +175,48 @@ def test_materializer_normalizes_kebab_tags_to_the_vault_alphabet(tmp_path: Path
     content = (tmp_path / "platforms/openclaw/demo2.md").read_text(encoding="utf-8")
     assert "active_memory" in content and "active-memory" not in content
     assert "ai_agents" in content
+
+
+def test_planned_notes_table_reconciles_from_the_structured_list() -> None:
+    """F11: the prose table is a code-generated projection of planned_notes —
+    a drifted 5-row table collapses to the structured list's 2 rows after any
+    fold, surrounding prose preserved; the INVENTORY exhibit reads consistent."""
+    from tessellum.composer.digestion import (
+        _reconcile_planned_notes_table,
+        compute_review_exhibits,
+    )
+
+    doc = {
+        "planned_notes": [
+            {"filename": "a.md", "building_block": "concept",
+             "approx_words": 900, "description": "A"},
+            {"filename": "b.md", "building_block": "procedure",
+             "approx_words": 800, "description": "B | pipes"},
+        ],
+        "total_notes": 2,
+        "plan_text": (
+            "# Plan\n\nIntro prose.\n\n## Planned Notes\n\nLead-in sentence.\n\n"
+            "| # | Note |\n|---|---|\n| 1 | x.md |\n| 2 | y.md |\n| 3 | z.md |\n"
+            "| 4 | w.md |\n| 5 | v.md |\n\nTrailing prose.\n\n## Next Section\n\nz\n"
+        ),
+    }
+    _reconcile_planned_notes_table(doc)
+    pt = doc["plan_text"]
+    assert pt.count("| a.md |") == 1 and pt.count("| b.md |") == 1
+    assert "x.md" not in pt and "v.md" not in pt        # drifted rows gone
+    assert "Lead-in sentence." in pt and "Trailing prose." in pt
+    assert "## Next Section" in pt
+    assert "B / pipes" in pt                             # cell-safe description
+    exhibits = compute_review_exhibits(doc)
+    assert "INVENTORY" not in exhibits or "MISMATCH" not in exhibits
+
+
+def test_reconcile_noop_without_section_or_list() -> None:
+    from tessellum.composer.digestion import _reconcile_planned_notes_table
+
+    doc = {"planned_notes": [], "plan_text": "# P\n\n## Planned Notes\n\n| 1 |\n"}
+    _reconcile_planned_notes_table(doc)
+    assert "| 1 |" in doc["plan_text"]  # empty list → untouched
+    doc2 = {"planned_notes": [{"filename": "a.md"}], "plan_text": "# P\nno section\n"}
+    _reconcile_planned_notes_table(doc2)
+    assert doc2["plan_text"] == "# P\nno section\n"
