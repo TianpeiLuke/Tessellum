@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — F9: the materializer absorbs fenced-frontmatter renderings (FZ 20k9c1a1a1b7c2k2a) — 2026-07-29
+
+Openclaw sweep run 2 cleared F8 (gate-in-loop passed, wave dispatched) and then EVERY writer failed the materializer identically: ```yaml-fenced frontmatter instead of bare `---` (mechanism verified from the attempts journal's content_head — three leaves quoted; run 8's retries had converged to bare `---` by luck, openclaw's never did — structural absorption beats mandates, the F1-vs-F2 lesson again). Per the R4.3 canonical-form contract applied at document level, `_absorb_frontmatter_rendering` normalizes the meaning-identical renderings (a leading ```yaml fence → the frontmatter; an optional whole-doc ```markdown wrapper unwrapped) before the strict check, which still fails loudly on truly missing frontmatter; the canonical form is what lands on disk. +2 tests (suite 2153).
+
 ### Composer — F8: the deterministic gate drives the revise loop (FZ 20k9c1a1a1b7c2k2a) — 2026-07-29
 
 Found by the openclaw service-path sweep, mechanism VERIFIED under the incident protocol: the reviewer approved a plan whose own COVERAGE exhibit named 4 computed orphans ('Required config', 'Commands', 'What changes', 'What does not change' — reproduced locally: `compute_coverage_orphans` and the PLAN-006 gate agree exactly), so the reviewer UNDER-enforced against cited evidence; the sign-off gate then rejected TERMINALLY with both revise rounds unused. The loop's continue-condition trusted only the LLM verdict. Now: reviewer-ready + plan-gate-fail + rounds-remaining converts the gate's blocking issues into the next round's revise conditioning — the deterministic authority works in BOTH directions (it vetoes false accepts in the loop exactly as the contradiction guard vetoes fabricated rejects). +1 test (suite 2151).

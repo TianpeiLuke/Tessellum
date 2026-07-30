@@ -201,6 +201,33 @@ def _no_op(
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 
+# F9 (FZ 20k9c1a1a1b7c2k2a — the openclaw sweep): writers naturally render
+# the frontmatter as a ```yaml fence (every wave leaf emitted it; run 8's
+# retries happened to converge to bare ---, openclaw's did not — structural
+# absorption beats mandates, the F1-vs-F2 lesson again). The fenced form is
+# MEANING-IDENTICAL rendering variance, so per the canonical-form contract
+# (R4.3) the code side absorbs it: a leading ```yaml fence becomes the
+# frontmatter, the remainder after the closing fence the body. An optional
+# whole-document ```markdown wrapper is unwrapped first.
+_FENCED_DOC_RE = re.compile(r"^```(?:markdown|md)\s*\n(.*)\n```\s*$", re.DOTALL)
+_FENCED_YAML_RE = re.compile(r"^```(?:yaml|yml)\s*\n(.*?)\n```\s*\n?(.*)$", re.DOTALL)
+
+
+def _absorb_frontmatter_rendering(text: str) -> str:
+    """Normalize known meaning-identical frontmatter renderings to the
+    canonical ``---``-delimited form. Pure; unknown shapes pass through
+    untouched (the strict check still fails them loudly)."""
+    stripped = text.strip()
+    doc = _FENCED_DOC_RE.match(stripped)
+    if doc:
+        stripped = doc.group(1).strip()
+    if stripped.startswith("---"):
+        return stripped
+    fenced = _FENCED_YAML_RE.match(stripped)
+    if fenced:
+        return f"---\n{fenced.group(1)}\n---\n{fenced.group(2)}"
+    return stripped
+
 
 def _body_markdown_frontmatter_to_file(
     text: str,
@@ -222,7 +249,7 @@ def _body_markdown_frontmatter_to_file(
     The materializer extracts ``output_path``, strips it from the
     frontmatter, and writes the remaining frontmatter + body to disk.
     """
-    m = _FRONTMATTER_RE.match(text)
+    m = _FRONTMATTER_RE.match(_absorb_frontmatter_rendering(text))
     if not m:
         raise MaterializerError(
             "body_markdown_frontmatter_to_file: response missing YAML frontmatter "

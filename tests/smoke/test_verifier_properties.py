@@ -116,3 +116,41 @@ def test_canonical_figure_contract_binds_both_sides() -> None:
     for rendering in FIGURE_ABSORBED_RENDERINGS:
         assert rendering == "thousands commas"
         assert _figure_present(12813, "12,813")  # matcher absorbs it
+
+
+# ── F9: the materializer absorbs fenced-frontmatter renderings ───────────────
+
+def test_materializer_absorbs_fenced_yaml_frontmatter(tmp_path: Path) -> None:
+    """F9 (the openclaw sweep): every wave writer emitted ```yaml-fenced
+    frontmatter and the retries did not converge — the fenced form is
+    meaning-identical rendering variance the CODE side absorbs (R4.3 at the
+    document level)."""
+    from tessellum.composer.materializer import materialize
+
+    fenced = (
+        "```yaml\n"
+        "output_path: platforms/openclaw/demo.md\n"
+        "tags: [resource, concept]\n"
+        "```\n\n# Demo\n\nBody text.\n"
+    )
+    out = materialize(
+        "body_markdown_frontmatter_to_file", fenced,
+        vault_root=tmp_path, dry_run=False,
+    )
+    written = tmp_path / "platforms/openclaw/demo.md"
+    assert written.is_file()
+    content = written.read_text(encoding="utf-8")
+    assert content.startswith("---\n")           # canonical form on disk
+    assert "# Demo" in content
+
+
+def test_materializer_still_fails_loud_on_truly_missing_frontmatter(tmp_path: Path) -> None:
+    import pytest as _pytest
+
+    from tessellum.composer.materializer import MaterializerError, materialize
+
+    with _pytest.raises(MaterializerError, match="missing YAML frontmatter"):
+        materialize(
+            "body_markdown_frontmatter_to_file", "# Just a body, no frontmatter\n",
+            vault_root=tmp_path, dry_run=False,
+        )
