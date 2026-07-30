@@ -823,6 +823,11 @@ class DigestionExecutor:
                 # of-record semantics; only generations of the SAME job share it).
                 runs_dir=artifact_dir / "runs",
                 durable_artifact_dir=artifact_dir / "artifacts",
+                # Phase 4 (FZ 20k9c1a1a1b7c2k2a3a): a re-claimed generation of
+                # the SAME job finds its predecessor's checkpoints under this
+                # very runs_dir and skips the already-paid linear phases (the
+                # composer verifies source identity via the code ledger).
+                resume_from_checkpoint=policy.resume_from_checkpoint,
             )
         except BaseException:
             self.rollback_uncommitted()

@@ -343,6 +343,39 @@ def _checkpoint_plan_doc(
         pass
 
 
+def load_latest_checkpoint(
+    runs_dir: Path | str,
+) -> tuple[int, str, dict[str, Any]] | None:
+    """Phase 4 (FZ 20k9c1a1a1b7c2k2a3a): the read side of A1.2 — the
+    highest-sequence checkpoint under ``<runs_dir>/checkpoints/``, as
+    ``(seq, phase, plan_doc)``, or ``None`` when there is nothing to resume.
+
+    Fail-soft mirror of the writer: an unreadable/corrupt checkpoint file is
+    skipped (the next-best one wins), never an error — resume is an
+    optimization and the caller can always start fresh."""
+    cp_dir = Path(runs_dir) / "checkpoints"
+    best: tuple[int, str, dict[str, Any]] | None = None
+    try:
+        candidates = sorted(cp_dir.glob("*_*.json"))
+    except OSError:
+        return None
+    for path in candidates:
+        stem = path.stem
+        seq_s, _, phase = stem.partition("_")
+        if not (seq_s.isdigit() and phase):
+            continue
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(doc, dict):
+            continue
+        seq = int(seq_s)
+        if best is None or seq > best[0]:
+            best = (seq, phase, doc)
+    return best
+
+
 def _build_artifact_store(
     plan_doc: dict[str, Any], durable_dir: Path | None = None
 ) -> dict[str, Any]:
@@ -1643,6 +1676,7 @@ def run_digestion_pipeline(
     max_review_rounds: int = 0,
     run_id: str | None = None,
     durable_artifact_dir: Path | None = None,
+    resume_from_checkpoint: bool = False,
     **execute_kwargs: Any,
 ) -> DigestionResult:
     """Run the native plan → augment → review → execute digestion pipeline.
@@ -1675,6 +1709,12 @@ def run_digestion_pipeline(
             sub-objective to an accepted plan_doc here, then M4 executes them as
             separate transactions. ``None`` (default) → the shipped
             plan→augment→review→execute behavior is byte-identical.
+        resume_from_checkpoint: **Phase 4 (FZ 20k9c1a1a1b7c2k2a3a)** — when
+            ``True`` and ``runs_dir`` holds A1.2 checkpoints whose
+            code-measured ledger matches THIS source, fold the latest
+            checkpoint and skip the already-paid linear phases (a ready
+            review fold goes straight to sign-off). Source mismatch or no
+            checkpoint → fresh start, byte-identical. Default ``False``.
         max_review_rounds: **P15 (FZ 20k9c1a1a1b7c2h)** — the review-revise loop
             budget. When ``>0``, a review that returns ``not ready`` re-runs
             ``augment → review`` with the review's ``failures`` injected as
@@ -1793,6 +1833,49 @@ def run_digestion_pipeline(
     # crash mid-run resumes from the last accepted fold instead of restarting.
     checkpoint_seq = 0
 
+    # Phase 4 (FZ 20k9c1a1a1b7c2k2a3a): checkpoint-resume — the claim path
+    # consumes the A1.2 checkpoints instead of re-paying the linear phases
+    # (two external kills + the credit wall each re-ran ~15 min of work the
+    # checkpoints already contained). Opt-in; guarded by SOURCE IDENTITY —
+    # the checkpoint's code-measured ledger must equal the one just computed
+    # from THIS source (deterministic ⇒ same source, same ledger), so a
+    # runs_dir reused across different sources refuses the resume and starts
+    # fresh (fail-soft). The resumed doc is re-stamped with the code-owned
+    # keys (ledger, source excerpt, reconciled table) — the checkpoint never
+    # overrides measured-by-code. Revise-round budget resets on resume (a
+    # fresh attempt gets a fresh budget, deliberately).
+    resumed_phase: str | None = None
+    if resume_from_checkpoint and linear_runs_dir is not None:
+        loaded = load_latest_checkpoint(linear_runs_dir)
+        if loaded is not None:
+            cp_seq, cp_phase, cp_doc = loaded
+            cp_pages = cp_doc.get("pages")
+            same_source = (
+                bool(code_ledger)
+                and isinstance(cp_pages, list)
+                and [
+                    (p.get("source_id"), p.get("measured_words"))
+                    for p in cp_pages if isinstance(p, dict)
+                ]
+                == [
+                    (p.get("source_id"), p.get("measured_words"))
+                    for p in code_ledger
+                ]
+            )
+            if same_source:
+                plan_doc.update(cp_doc)
+                _normalize_plan_doc_keys(plan_doc)
+                plan_doc["pages"] = code_ledger
+                plan_doc["_pages_code_measured"] = True
+                if code_source_excerpt:
+                    plan_doc["source_excerpt"] = code_source_excerpt
+                _reconcile_planned_notes_table(plan_doc)
+                checkpoint_seq = cp_seq
+                resumed_phase = cp_phase
+                plan_doc["_resumed_from_checkpoint"] = {
+                    "seq": cp_seq, "phase": cp_phase,
+                }
+
     def _run_one_phase(phase: str, leaf: dict) -> RunResult | None:
         """Run one linear phase; append its outcome; merge + normalize. Returns
         the RunResult, or None if it errored (caller returns a halt result)."""
@@ -1836,9 +1919,10 @@ def run_digestion_pipeline(
             contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
         )
 
-    # plan (once)
-    if _run_one_phase("plan", dict(plan_doc)) is None:
-        return _halt("plan")
+    # plan (once) — skipped on resume: any checkpoint implies a plan fold.
+    if resumed_phase is None:
+        if _run_one_phase("plan", dict(plan_doc)) is None:
+            return _halt("plan")
 
     # augment → review, with the P15 revise loop
     # P24 (FZ 20k9c1a1a1b7c2h/g): revert-to-BEST — the same safety property
@@ -1854,7 +1938,19 @@ def run_digestion_pipeline(
     def _score(failures: list) -> int:
         return len(failures)
 
-    while True:
+    # Phase 4 fast path: a resumed REVIEW fold whose typed verdict is ready
+    # AND whose deterministic plan gate passes (both re-checked here, free —
+    # no LLM) goes straight to sign-off; anything less re-enters the loop,
+    # with the checkpointed failures conditioning the first re-augment.
+    skip_revise_loop = False
+    if resumed_phase == "review":
+        ready, failures = _review_verdict(plan_doc)
+        if ready and build_plan_gate().evaluate(plan_doc).passed:
+            skip_revise_loop = True
+        elif failures:
+            review_failures = failures
+
+    while not skip_revise_loop:
         aug_leaf = dict(plan_doc)
         if review_failures:
             # P15.2: condition the re-augment on the prior review's specific gaps.

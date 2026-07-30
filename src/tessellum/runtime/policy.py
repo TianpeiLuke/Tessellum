@@ -56,6 +56,15 @@ class RuntimePolicy:
     # golden count (the API runs' 17→16→8) was unreachable under the
     # supervisor. ``0`` (default) → single-pass, byte-identical to pre-J3.
     max_review_rounds: int = 0
+    # Phase 4 (FZ 20k9c1a1a1b7c2k2a3a) — checkpoint-resume at claim. The job
+    # dir is the run scope on the service path (only generations of the SAME
+    # job share it), so a re-claimed retry finds its predecessor's A1.2
+    # checkpoints in place and skips the already-paid linear phases; the
+    # composer additionally refuses a resume whose code-measured ledger does
+    # not match the claimed source (fail-soft fresh start). ON by default —
+    # the two external kills and the credit wall each re-paid ~15 min of
+    # linear work the checkpoints already contained.
+    resume_from_checkpoint: bool = True
 
     @classmethod
     def for_profile(cls, profile: str) -> "RuntimePolicy":
