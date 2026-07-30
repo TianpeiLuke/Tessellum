@@ -1025,6 +1025,48 @@ def _existing_notes_context(
             if sample_text:
                 lines.append(f"  format sample (head of {bucket[0].note_id}):")
                 lines.append("  " + sample_text.replace("\n", "\n  "))
+        # F17 follow-through (run 16): the router's real questions — what
+        # directories EXIST and what format they use — are STRUCTURAL vault
+        # properties, not similarity queries; a term-heavy vault answers any
+        # retrieval with terms, so the landscape must come from a scan.
+        seen_dirs = set(by_dir)
+        landscape: list[str] = []
+        try:
+            candidates = sorted(
+                {md.parent for md in vault_root.rglob("*.md")
+                 if len(md.relative_to(vault_root).parts) <= 4}
+            )
+            for d in candidates:
+                rel = d.relative_to(vault_root).as_posix()
+                base = d.name
+                if base in ("term_dictionary", "skills", "templates", "plans") or rel in seen_dirs:
+                    continue
+                notes = sorted(d.glob("*.md"))
+                if not notes:
+                    continue
+                landscape.append(f"- {rel}/ ({len(notes)} notes)")
+                if len(landscape) <= 2:
+                    try:
+                        head = notes[0].read_text(encoding="utf-8")[:600]
+                        landscape.append(
+                            f"  format sample (head of {notes[0].name}):"
+                        )
+                        landscape.append("  " + head.replace("\n", "\n  "))
+                    except OSError:
+                        pass
+                if len(landscape) >= 12:
+                    break
+        except OSError:
+            pass
+        if landscape:
+            lines.append(
+                "\nDIRECTORY LANDSCAPE (a structural scan of the vault's "
+                "note directories beyond the retrieval hits — route by "
+                "content TYPE into the fitting directory, or propose a new "
+                "sibling directory; glossary directories host single-concept "
+                "term notes, never a multi-note digestion):"
+            )
+            lines.extend(landscape)
         return "\n".join(lines)
     except Exception:
         return ""

@@ -863,6 +863,37 @@ def plan_balance_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
     ]
 
 
+def plan_routing_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
+    """PLAN-011 (F17 follow-through, FZ 20k9c1a1a1b7c2k2a4a): a multi-note
+    digestion routed into a GLOSSARY directory is a category error — term
+    dictionaries host single-concept term notes. ADVISORY (runs 15/16 both
+    sailed through the ladder this way; the reviewer had no signal)."""
+    if not isinstance(plan_doc, dict):
+        return []
+    total = plan_doc.get("total_notes")
+    if not isinstance(total, int) or total < 5:
+        return []
+    routing = plan_doc.get("routing_decision")
+    target = str(
+        plan_doc.get("target_directory")
+        or (routing.get("target_directory") if isinstance(routing, dict) else "")
+        or ""
+    )
+    if target.rstrip("/").endswith("term_dictionary"):
+        return [
+            Issue(
+                Severity.WARNING,
+                "PLAN-011",
+                "plan_routing",
+                f"{total}-note digestion routed into a glossary directory "
+                f"({target!r}) — term dictionaries host single-concept term "
+                f"notes; route by content type into a documentation "
+                f"directory or a new sibling",
+            )
+        ]
+    return []
+
+
 def build_plan_gate() -> GateSuite:
     """The plan-scope structural pre-filter (the sign-off ladder's rung 1).
 
@@ -902,6 +933,13 @@ def build_plan_gate() -> GateSuite:
                 scope="plan",
                 predicate=plan_balance_predicate,
                 cause="plan_balance",
+            ),
+            Gate(
+                gate_id="plan_routing",
+                kind="preflight",
+                scope="plan",
+                predicate=plan_routing_predicate,
+                cause="plan_routing",
             ),
         )
     )

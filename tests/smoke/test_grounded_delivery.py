@@ -198,3 +198,21 @@ def test_close_gate_advisory_event_emitted(tmp_path):
     assert events and events[0]["event"] == "close_gate_advisory"
     ids = {i["rule_id"] for i in events[0]["issues"]}
     assert {"GROUND-003", "NOTE-005"} <= ids
+
+
+def test_plan_routing_advisory_flags_glossary_digestion():
+    from tessellum.composer.gates import plan_routing_predicate
+    from tessellum.format import Severity
+
+    d = {"total_notes": 9, "target_directory": "resources/term_dictionary"}
+    issues = plan_routing_predicate(d)
+    assert issues and issues[0].severity is Severity.WARNING
+    assert plan_routing_predicate({"total_notes": 2, "target_directory": "resources/term_dictionary"}) == []
+    assert plan_routing_predicate({"total_notes": 9, "target_directory": "resources/documentation"}) == []
+
+
+def test_existing_notes_context_includes_directory_landscape(tmp_path):
+    from tessellum.composer.digestion import _existing_notes_context
+
+    # no retrieval db -> "" (fail-soft, landscape only rides a live sample)
+    assert _existing_notes_context({}, None, tmp_path) == ""

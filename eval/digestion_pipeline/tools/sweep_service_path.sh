@@ -18,6 +18,11 @@ cp vault/resources/skills/skill_tessellum_{plan_digestion,augment_digestion_plan
 # cannot host any term-link floor; the metric must have headroom to measure.
 mkdir -p "$ROOT/vault/resources/term_dictionary"
 cp vault/resources/term_dictionary/term_*.md "$ROOT/vault/resources/term_dictionary/" 2>/dev/null || true
+# F17 follow-through: seed docs-flavor DIRECTORIES too, so the routing
+# landscape is representative (a term-only vault steers the router).
+mkdir -p "$ROOT/vault/resources/digest" "$ROOT/vault/resources/how_to"
+ls vault/resources/digest/*.md 2>/dev/null | head -3 | xargs -I{} cp {} "$ROOT/vault/resources/digest/" || true
+ls vault/resources/how_to/*.md 2>/dev/null | head -3 | xargs -I{} cp {} "$ROOT/vault/resources/how_to/" || true
 PYTHONPATH=src python3 -m tessellum.cli.main runtime init --root "$ROOT" > /dev/null
 mkdir -p "$ROOT/data"
 PYTHONPATH=src python3 -m tessellum.cli.main index build --vault "$ROOT/vault" --db "$ROOT/data/tessellum.db" --no-dense > /dev/null 2>&1 || true
