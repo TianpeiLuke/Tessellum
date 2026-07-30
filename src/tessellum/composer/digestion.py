@@ -1004,6 +1004,48 @@ def _reconcile_planned_notes_table(plan_doc: dict[str, Any]) -> None:
     plan_doc["plan_text"] = pt[:start] + new_section + pt[end:]
 
 
+def _rematerialize_plan_file(
+    plan_doc: dict[str, Any],
+    vault_root: Path,
+    effect_guard: "Callable[[], ContextManager[None]] | None",
+    effect_recorder: "Callable[[Path], None] | None",
+) -> None:
+    """Phase-1 instrument fix (FZ 20k9c1a1a1b7c2k2a3a): the on-disk plan file
+    is a PROJECTION of the of-record ``plan_doc`` and must track it. The final
+    revise round's materializer writes the file BEFORE the fold, so F11's
+    reconciled inventory (and every fold-time normalization) never reached the
+    last round's file — openclaw's Tier-1 scored stale prose because of
+    exactly this seam. Called after SIGN-OFF APPROVAL: if the approved
+    ``plan_text`` differs from the file at ``plan_path``, rewrite it through
+    the same effect machinery the original write used (journaled, guarded).
+    Fail-soft: a projection refresh must never fail an approved run."""
+    try:
+        plan_path = plan_doc.get("plan_path")
+        plan_text = plan_doc.get("plan_text")
+        if not (isinstance(plan_path, str) and plan_path
+                and isinstance(plan_text, str) and plan_text):
+            return
+        target = (Path(vault_root) / plan_path).resolve()
+        try:
+            target.relative_to(Path(vault_root).resolve())
+        except ValueError:
+            return  # never write outside the vault
+        if not target.is_file():
+            return  # the run never materialized a plan file (e.g. tests)
+        if target.read_text(encoding="utf-8") == plan_text:
+            return
+        if effect_recorder is not None:
+            effect_recorder(target)
+        ctx = effect_guard() if effect_guard is not None else None
+        if ctx is not None:
+            with ctx:
+                target.write_text(plan_text, encoding="utf-8")
+        else:
+            target.write_text(plan_text, encoding="utf-8")
+    except Exception:
+        pass
+
+
 def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
     """Project an LLM-authored plan's ``planned_notes`` into per-note writer
     leaves — the native execute-wave fan-out (FZ 20k9c1a1a1b7c2b).
@@ -1886,6 +1928,12 @@ def run_digestion_pipeline(
             review_rounds=review_rounds, run_id=run_id,
             contradicted_failures=tuple(plan_doc.get("contradicted_failures") or ()),
         )
+
+    # Phase-1 instrument fix (FZ b7c2k2a3a): the APPROVED plan_doc is the
+    # of-record; refresh the on-disk plan file so every projection (the file
+    # the scorer reads, the file a human inspects) carries the reconciled
+    # plan_text — F11's single inventory included.
+    _rematerialize_plan_file(plan_doc, vault_root, effect_guard, effect_recorder)
 
     if stop_after == "review":
         # M3: the plan is ACCEPTED but not executed — the corpus planning wave

@@ -220,3 +220,31 @@ def test_reconcile_noop_without_section_or_list() -> None:
     doc2 = {"planned_notes": [{"filename": "a.md"}], "plan_text": "# P\nno section\n"}
     _reconcile_planned_notes_table(doc2)
     assert doc2["plan_text"] == "# P\nno section\n"
+
+
+def test_approved_plan_file_tracks_the_reconciled_plan_doc(tmp_path: Path) -> None:
+    """Phase-1 instrument fix (FZ b7c2k2a3a): after approval the on-disk plan
+    file is refreshed to the of-record plan_text (F11's reconciled inventory
+    included) — the seam that made openclaw's T1 score stale prose."""
+    from tessellum.composer.digestion import _rematerialize_plan_file
+
+    plan_file = tmp_path / "plans" / "plan_digest_demo.md"
+    plan_file.parent.mkdir(parents=True)
+    plan_file.write_text("# STALE pre-fold text", encoding="utf-8")
+    recorded = []
+    doc = {"plan_path": "plans/plan_digest_demo.md",
+           "plan_text": "# RECONCILED of-record text"}
+    _rematerialize_plan_file(doc, tmp_path, None, recorded.append)
+    assert plan_file.read_text(encoding="utf-8") == "# RECONCILED of-record text"
+    assert recorded == [plan_file.resolve()]
+
+    # identical content → no rewrite, no effect recorded
+    recorded.clear()
+    _rematerialize_plan_file(doc, tmp_path, None, recorded.append)
+    assert recorded == []
+
+    # escape attempts and absent files are no-ops
+    _rematerialize_plan_file(
+        {"plan_path": "../outside.md", "plan_text": "x"}, tmp_path, None, None
+    )
+    assert not (tmp_path.parent / "outside.md").exists()
