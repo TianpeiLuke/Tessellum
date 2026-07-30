@@ -1746,6 +1746,25 @@ def run_digestion_pipeline(
             return _halt("review")
 
         ready, failures = _review_verdict(plan_doc)
+        # F8 (FZ 20k9c1a1a1b7c2k2a — the openclaw sweep): a reviewer may
+        # UNDER-enforce against its own cited exhibit (it approved a plan whose
+        # COVERAGE exhibit named 4 computed orphans; the deterministic
+        # sign-off gate then rejected TERMINALLY with revise rounds unused).
+        # The design's own rule — only verified quantities drive control flow
+        # — applies to the LOOP's continue-condition too: when the reviewer
+        # says ready but the DETERMINISTIC plan gate fails and rounds remain,
+        # the gate's blocking issues become the revise conditioning instead of
+        # a doomed sign-off. The gate is the authority in BOTH directions now:
+        # it vetoes false accepts here exactly as the contradiction guard
+        # vetoes fabricated rejects.
+        if ready and review_rounds < max_review_rounds:
+            composite = build_plan_gate().evaluate(plan_doc)
+            if not composite.passed:
+                gate_failures = [str(i) for i in composite.blocking_issues] or [
+                    str(composite.first_failure_cause)
+                ]
+                ready = False
+                failures = gate_failures
         # P24 revert-to-BEST: remember the best plan_doc seen so far.
         if best_failure_count is None or _score(failures) < best_failure_count:
             best_failure_count = _score(failures)

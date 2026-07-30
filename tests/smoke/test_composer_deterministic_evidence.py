@@ -602,3 +602,36 @@ def test_gating_checkpoints_unaffected_by_demotion():
     doc = {"ready": False, "failures": ["CP2 FAIL - gate table missing G7"]}
     ready, failures = _review_verdict(doc)
     assert ready is False and failures
+
+
+def test_gate_failure_reenters_the_revise_loop_despite_reviewer_ready(tmp_path, monkeypatch):
+    """F8 (the openclaw sweep): the reviewer approved a plan whose own
+    COVERAGE exhibit named 4 computed orphans; the deterministic sign-off gate
+    then rejected terminally with revise rounds UNUSED. Now: reviewer-ready +
+    gate-fail + rounds-remaining converts the gate's blocking issues into the
+    next round's revise conditioning — deterministic authority in BOTH
+    directions."""
+    from tessellum.composer.digestion import _review_verdict
+    from tessellum.composer.gates import build_plan_gate
+
+    # a plan the reviewer calls ready but whose coverage map omits a measured
+    # heading (the PLAN-006 class that killed the openclaw run)
+    doc = {
+        "ready": True, "failures": [],
+        "_pages_code_measured": True,
+        "plan_path": "plans/plan_digest_demo.md",
+        "plan_text": "# Plan\n\n## Objective\n",
+        "total_notes": 1,
+        "planned_notes": [{"filename": "a.md", "building_block": "concept",
+                           "approx_words": 900}],
+        "pages": [{"measured_words": 1200,
+                   "headings": ["Mapped Section", "Omitted Section"]}],
+        "section_coverage_map": [
+            {"source_section": "Mapped Section", "maps_to_note": "a.md"},
+        ],
+    }
+    ready, _ = _review_verdict(doc)
+    assert ready is True                       # the reviewer's (wrong) verdict
+    composite = build_plan_gate().evaluate(doc)
+    assert not composite.passed                # the deterministic authority
+    assert any("Omitted Section" in str(i) for i in composite.blocking_issues)

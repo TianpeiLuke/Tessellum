@@ -4,6 +4,10 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Composer — F8: the deterministic gate drives the revise loop (FZ 20k9c1a1a1b7c2k2a) — 2026-07-29
+
+Found by the openclaw service-path sweep, mechanism VERIFIED under the incident protocol: the reviewer approved a plan whose own COVERAGE exhibit named 4 computed orphans ('Required config', 'Commands', 'What changes', 'What does not change' — reproduced locally: `compute_coverage_orphans` and the PLAN-006 gate agree exactly), so the reviewer UNDER-enforced against cited evidence; the sign-off gate then rejected TERMINALLY with both revise rounds unused. The loop's continue-condition trusted only the LLM verdict. Now: reviewer-ready + plan-gate-fail + rounds-remaining converts the gate's blocking issues into the next round's revise conditioning — the deterministic authority works in BOTH directions (it vetoes false accepts in the loop exactly as the contradiction guard vetoes fabricated rejects). +1 test (suite 2151).
+
 ### Eval — the grounding-gate calibration pilot: threshold fixed, admit/block verified live (B3, FZ 20k9c1a1a1b7c2k1a) — 2026-07-29
 
 `runs/eval/b3_calibration_pilot.py` + the committed artifact `eval/digestion_pipeline/calibration_grounding.json`: 32 faithful claims (golden-note sentences) + 8 handcrafted fabrications scored by the REAL `make_llm_claim_scorer` on the designated scorer model (haiku — recorded in the artifact; thresholds are scorer-specific by construction) against the claude_code_mcp source; `calibrate(alpha=0.05)` fixes the grounding threshold at **0.85** (n=40, zero abstains), and the live `certify` verification PASSED — the faithful claim-set ACCEPTS, a set carrying one fabrication ABSTAINS (min_score 0.0; the scorer put every fabrication at ≤ the threshold with clean separation). Remaining follow-on, recorded in the artifact: the runtime flip — loading these thresholds in the close gate with a `span_text_of` over the note's owned sections (E2.3's slices are the natural spans).
