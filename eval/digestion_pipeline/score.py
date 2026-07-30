@@ -124,9 +124,18 @@ def score_notes(notes_dir: Path, golden_facts: dict, vault: Path | None = None) 
             if m.group(1).rsplit("/", 1)[-1] in note_names
             and m.group(1).rsplit("/", 1)[-1] != f.name
         )
+        # N6 v2 (complete): planned-sibling links are FIRST-CLASS
+        # cross-references (the k2a4a criterion reflection) — they count
+        # toward the term-class floor, since both are resolvable
+        # knowledge-graph edges the indexer turns into note_links.
+        def _floor_met(cls: str, n: int) -> bool:
+            eff = min(n, availability[cls]) if cls in availability else n
+            have = lc.get(cls, 0)
+            if cls == "term_dictionary":
+                have += lc.get("siblings", 0)
+            return have >= eff
         s["N6_xref_floor_met"] = all(
-            lc.get(cls, 0) >= (min(n, availability[cls]) if cls in availability else n)
-            for cls, n in floor.items()
+            _floor_met(cls, n) for cls, n in floor.items()
             if cls in ("term_dictionary", "code_repos", "code_snippets")
         )
         per[f.stem] = s
