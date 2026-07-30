@@ -133,7 +133,7 @@ def test_materializer_absorbs_fenced_yaml_frontmatter(tmp_path: Path) -> None:
         "tags: [resource, concept]\n"
         "```\n\n# Demo\n\nBody text.\n"
     )
-    out = materialize(
+    materialize(
         "body_markdown_frontmatter_to_file", fenced,
         vault_root=tmp_path, dry_run=False,
     )
