@@ -13,7 +13,6 @@ Usage: PYTHONPATH=src python3 runs/eval/tier3_scoped_judge.py <run_root> <job_id
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -24,30 +23,13 @@ DIMENSIONS = (
     "relevance", "completeness", "accuracy",
     "clarity", "structural_integrity", "epistemic_congruence",
 )
-_HEADING_RE = re.compile(r"(?m)^(#{1,3})\s+(.+)$")
-
-
-def _norm(s: str) -> str:
-    return " ".join(s.lower().split())
-
-
-def _name_match(a: str, b: str) -> bool:
-    if a == b:
-        return True
-    if len(a) > len(b) and a.endswith(b):
-        return a[-len(b) - 1] in ("_", "-", "/", ".")
-    return False
-
-
-def _split_sections(corpus: str) -> dict[str, str]:
-    """Heading (normalized) → its section text (heading line up to the next
-    heading of ANY level — the same H1–H3 family the code ledger measures)."""
-    matches = list(_HEADING_RE.finditer(corpus))
-    out: dict[str, str] = {}
-    for i, m in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(corpus)
-        out.setdefault(_norm(m.group(2)), corpus[m.start():end])
-    return out
+# Canonical section-split / name-match helpers (moved to the composer so the
+# wave-scope note_coverage sweep and this judge share ONE join implementation).
+from tessellum.composer.note_coverage import (  # noqa: E402
+    name_match as _name_match,
+    norm_heading as _norm,
+    split_sections as _split_sections,
+)
 
 
 def main() -> int:

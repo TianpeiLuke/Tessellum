@@ -70,6 +70,7 @@ from tessellum.composer.knowledge_plan import (
     project_note_intent_graph,
 )
 from tessellum.composer.llm import LLMBackend
+from tessellum.composer.note_coverage import extend_wave_gate_with_note_coverage
 from tessellum.composer.scheduler import (
     RunResult,
     run_pipeline,
@@ -1583,6 +1584,17 @@ def run_execute_wave(
     # store has the joined source even for direct callers (corpus / runtime
     # promote) that skip the pipeline's early ensure.
     _ensure_source_excerpt(plan_doc)
+    # Phase-3 residue (FZ 20k9c1a1a1b7c2k2a3a): when a wave gate is on and the
+    # plan carries a coverage map, extend it with the deterministic per-note
+    # owned-section coverage sweep (ADVISORY — WARNINGs reach the run events,
+    # nothing blocks until the check is calibrated strict). Identity when the
+    # caller passed no wave gate or the plan has no map — parity preserved.
+    incoming_wave_gate = execute_kwargs.get("wave_gate")
+    if incoming_wave_gate is not None:
+        coverage_source, _refs = _joined_source_excerpt(plan_doc)
+        execute_kwargs["wave_gate"] = extend_wave_gate_with_note_coverage(
+            incoming_wave_gate, plan_doc, coverage_source
+        )
     artifacts = execute_kwargs.pop("artifacts", None) or _build_artifact_store(plan_doc)
     return run_pipeline_dynamic(
         compiled,

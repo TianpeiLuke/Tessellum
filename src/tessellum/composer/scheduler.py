@@ -52,7 +52,7 @@ from tessellum.composer.executor import (
 from tessellum.composer.context_assembler import ContextAssembler
 from tessellum.composer.credential_pool import ErrorClassBreaker, RunBudget
 from tessellum.composer.fix import FixContext, run_fix_loop
-from tessellum.composer.gates import GateSuite, GroundingVerdict
+from tessellum.composer.gates import CompositeGateResult, GateSuite, GroundingVerdict
 from tessellum.composer.llm import LLMBackend, LLMResponse
 from tessellum.composer.manifest import ArtifactRecord, AttemptRecord, Manifest
 from tessellum.composer.materializer import MaterializedOutput
@@ -1210,7 +1210,27 @@ def run_pipeline_dynamic(
     # None (the default) this is skipped — parity preserved.
     if wave_gate is not None:
         pre_wave_results = step_results
-        step_results = _apply_wave_gate(pre_wave_results, wave_gate)
+        step_results, wave_composite = _apply_wave_gate(pre_wave_results, wave_gate)
+        # Surface the wave-gate verdict — INCLUDING advisory (non-blocking)
+        # findings like note_coverage WARNINGs, which change no result — in
+        # the run events, so report-first checks are visible without blocking.
+        if wave_composite is not None:
+            _record_event(
+                {
+                    "event": "wave_gate",
+                    "passed": wave_composite.passed,
+                    "issues": [
+                        {
+                            "severity": i.severity.value,
+                            "rule_id": i.rule_id,
+                            "gate_id": r.gate_id,
+                            "message": i.message,
+                        }
+                        for r in wave_composite.results
+                        for i in r.issues
+                    ],
+                }
+            )
         if manifest is not None:
             finalized = list(step_results)
             with lock:
@@ -1306,7 +1326,7 @@ def run_pipeline_dynamic(
 def _apply_wave_gate(
     step_results: list[StepResult],
     wave_gate: GateSuite,
-) -> list[StepResult]:
+) -> tuple[list[StepResult], "CompositeGateResult | None"]:
     """Run the per-wave cross-set gate over all written note paths.
 
     The gate's predicates take the *list* of every note path a clean
@@ -1315,7 +1335,10 @@ def _apply_wave_gate(
     is rewritten to an errored ``StepResult`` (cause ``wave_gate``), so the
     cross-set violation surfaces in ``error_count`` and ``classify_outcome``
     exactly like a per-session gate failure. Results that already errored,
-    or wrote no file, are untouched.
+    or wrote no file, are untouched. Returns the composite verdict alongside
+    the results (``None`` when no paths were written) so advisory findings
+    reach the run events even on PASS. Evaluated without short-circuit —
+    a sweep is a full diagnostic pass, not a fail-fast ladder.
     """
     note_paths: list[str] = []
     for r in step_results:
@@ -1324,11 +1347,11 @@ def _apply_wave_gate(
         for p in list(r.materialized.files_written) + list(r.materialized.files_applied):
             note_paths.append(str(p))
     if not note_paths:
-        return step_results
+        return step_results, None
 
-    composite = wave_gate.evaluate(note_paths)
+    composite = wave_gate.evaluate(note_paths, short_circuit=False)
     if composite.passed:
-        return step_results
+        return step_results, composite
 
     # Collect the offending paths named in the blocking issues (the dedup
     # predicate puts the path in the issue message; match by substring).
@@ -1353,7 +1376,7 @@ def _apply_wave_gate(
             )
         else:
             patched.append(r)
-    return patched
+    return patched, composite
 
 
 def _run_close_gate(
