@@ -46,7 +46,12 @@ class _InspectExecutor:
         art.mkdir(parents=True, exist_ok=True)
         (art / "plan.json").write_text(
             json.dumps({"plan_text": "# Plan", "total_notes": 1,
-                        "planned_notes": [{"filename": "n1", "building_block": "concept"}]}),
+                        "planned_notes": [{"filename": "n1", "building_block": "concept"}],
+                        # F14: the real executor stamps acceptance on the dump;
+                        # the routing check requires it (presence != approval).
+                        "_sign_off": {"accepted": True, "decision": "approved",
+                                      "stopped_at": "review_accepted",
+                                      "completed": True}}),
             encoding="utf-8",
         )
         (art / "source_leaf.json").write_text(
@@ -360,3 +365,74 @@ def test_heartbeat_context_releases_with_profile_ttl_immediately(tmp_path) -> No
         assert row.lease is not None
         # extended to ~now+900 immediately, not left at the 120s claim window
         assert row.lease.expires_at - _time.time() > 600.0
+
+
+# ── F14 (FZ 20k9c1a1a1b7c2k2a3a — run 10's resume): presence != approval ────
+
+
+def test_halted_plan_dump_does_not_route_to_resume_execute(tmp_path: Path) -> None:
+    """F14 regression: a crashed attempt's forensic plan.json (no acceptance
+    stamp / accepted=false) must NOT satisfy the routing check — the re-claim
+    takes the FULL pipeline, where review + sign-off actually run. Run 10's
+    resume executed an unreviewed plan through the old existence check."""
+    paths, store, source = _runtime(tmp_path)
+    admitted, _ = admit_path(source, paths=paths, store=store, policy_profile="inspect")
+    art = paths.job_artifacts(admitted.job_id)
+    art.mkdir(parents=True, exist_ok=True)
+    sup = Supervisor(
+        store=store, paths=paths, executor=_InspectExecutor(paths),  # type: ignore[arg-type]
+        owner_id="w", rebuild_index=False,
+    )
+    # the halted-run dump: full plan content, negative stamp
+    (art / "plan.json").write_text(
+        json.dumps({"plan_text": "# Plan", "total_notes": 1,
+                    "_sign_off": {"accepted": False, "decision": None,
+                                  "stopped_at": "augment", "completed": False}}),
+        encoding="utf-8",
+    )
+    assert sup._has_accepted_plan(admitted.job_id) is False
+    # legacy unstamped dump → also refused (fail-closed)
+    (art / "plan.json").write_text(
+        json.dumps({"plan_text": "# Plan", "total_notes": 1}), encoding="utf-8"
+    )
+    assert sup._has_accepted_plan(admitted.job_id) is False
+    # corrupt dump → refused, never an exception
+    (art / "plan.json").write_text("{corrupt", encoding="utf-8")
+    assert sup._has_accepted_plan(admitted.job_id) is False
+    # the stamped accepted dump is the ONLY thing that routes to resume
+    (art / "plan.json").write_text(
+        json.dumps({"plan_text": "# Plan", "total_notes": 1,
+                    "_sign_off": {"accepted": True, "decision": "approved",
+                                  "stopped_at": "review_accepted",
+                                  "completed": True}}),
+        encoding="utf-8",
+    )
+    assert sup._has_accepted_plan(admitted.job_id) is True
+
+
+def test_resume_execute_refuses_unaccepted_plan(tmp_path: Path) -> None:
+    """F14 defense-in-depth: even if routing mis-fires, resume_execute itself
+    refuses a plan.json without a positive acceptance stamp."""
+    import pytest
+
+    from tessellum.runtime.executor import DigestionExecutor, DigestionIncompleteError
+    from tessellum.runtime.policy import RuntimePolicy
+
+    paths, store, source = _runtime(tmp_path)
+    admitted, _ = admit_path(source, paths=paths, store=store, policy_profile="inspect")
+    art = paths.job_artifacts(admitted.job_id)
+    art.mkdir(parents=True, exist_ok=True)
+    (art / "plan.json").write_text(
+        json.dumps({"plan_text": "# Plan", "total_notes": 1,
+                    "_sign_off": {"accepted": False, "decision": None,
+                                  "stopped_at": "augment", "completed": False}}),
+        encoding="utf-8",
+    )
+    (art / "source_leaf.json").write_text(
+        json.dumps({"source_content": "evidence"}), encoding="utf-8"
+    )
+    executor = DigestionExecutor(paths=paths, backend=None)  # type: ignore[arg-type]
+    job = store.get(admitted.job_id)
+    with pytest.raises(DigestionIncompleteError, match="not an ACCEPTED plan"):
+        executor.resume_execute(job, lease=None, route=None,  # type: ignore[arg-type]
+                                policy=RuntimePolicy.for_profile("inspect"))

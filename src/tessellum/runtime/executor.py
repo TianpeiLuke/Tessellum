@@ -841,12 +841,23 @@ class DigestionExecutor:
         # J2 (FZ 20k9c1a1a1b7c2k2): the dump also pages the final heavy fields
         # to artifacts/ and records their digests (_artifact_refs), making the
         # durable store the of-record and plan.json a verifiable projection.
+        slim = _slim_plan_with_refs(result.plan_doc, artifact_dir / "artifacts")
+        # F14 (FZ 20k9c1a1a1b7c2k2a3a — run 10's resume): the dump doubles as
+        # FORENSICS for halted runs, so it must carry its own acceptance
+        # signal — presence is not approval. A re-claimed retry previously
+        # routed to execute-only resume on plan.json EXISTENCE, executing a
+        # crashed attempt's unreviewed plan with no sign-off. The stamp is
+        # what the supervisor's routing and resume_execute now require.
+        slim["_sign_off"] = {
+            "accepted": bool(
+                result.sign_off and result.sign_off.decision == "approved"
+            ),
+            "decision": result.sign_off.decision if result.sign_off else None,
+            "stopped_at": result.stopped_at,
+            "completed": result.completed,
+        }
         (artifact_dir / "plan.json").write_text(
-            json.dumps(
-                _slim_plan_with_refs(result.plan_doc, artifact_dir / "artifacts"),
-                indent=2, sort_keys=True, default=str,
-            )
-            + "\n",
+            json.dumps(slim, indent=2, sort_keys=True, default=str) + "\n",
             encoding="utf-8",
         )
         return result
@@ -915,6 +926,19 @@ class DigestionExecutor:
             )
         plan_doc = json.loads(plan_path.read_text(encoding="utf-8"))
         source_leaf = json.loads(source_leaf_path.read_text(encoding="utf-8"))
+        # F14 (FZ 20k9c1a1a1b7c2k2a3a): execute-only resume runs a plan under
+        # a PRIOR approval — so the plan must PROVE it was approved. A halted
+        # attempt's forensic dump carries `accepted: false` (or, pre-stamp,
+        # nothing) and is refused fail-closed; the job then re-enters the
+        # full pipeline, where checkpoint-resume (phase 4) picks up the paid
+        # phases and the review→sign-off ladder actually runs.
+        stamp = plan_doc.get("_sign_off")
+        if not (isinstance(stamp, dict) and stamp.get("accepted")):
+            raise DigestionIncompleteError(
+                f"promote: plan.json for job {job.job_id} is not an ACCEPTED "
+                f"plan (sign-off stamp: {stamp!r}) — refusing execute-only "
+                f"resume; the full pipeline must run review + sign-off"
+            )
         # J2 (FZ 20k9c1a1a1b7c2k2): fail-closed integrity gate BEFORE anything
         # executes under the human's approval — prove plan.json still matches
         # the durable of-record artifacts it was projected from.

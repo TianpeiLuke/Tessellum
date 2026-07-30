@@ -386,12 +386,27 @@ class Supervisor:
         }
 
     def _has_accepted_plan(self, job_id: str) -> bool:
-        """True iff a prior stop_after=review run persisted an accepted plan for
-        this job (T3, FZ 20k9d6a) — the signal that a re-claimed RUNNING job was
-        inspected + promoted and must resume execute-only, not re-plan. A fresh
-        job has not written plan.json yet (the executor writes it at the end of
-        a full run), so this is False on the first claim."""
-        return (self.paths.job_artifacts(job_id) / "plan.json").is_file()
+        """True iff this job's persisted plan.json carries a POSITIVE sign-off
+        stamp (T3, FZ 20k9d6a) — the signal that a re-claimed job holds an
+        inspected/approved plan and must resume execute-only, not re-plan.
+
+        F14 (FZ 20k9c1a1a1b7c2k2a3a — run 10's resume): presence is NOT
+        approval. The executor dumps plan.json for HALTED runs too (forensics
+        — A1.5), so a crashed attempt's unreviewed plan used to satisfy the
+        old existence check and get executed with no review or sign-off. Now
+        the dump's own `_sign_off.accepted` stamp is required; anything else
+        (missing file, unparseable, unstamped legacy, `accepted: false`)
+        routes to the FULL pipeline, where checkpoint-resume picks up the
+        paid phases and the ladder actually runs. Fail-closed."""
+        path = self.paths.job_artifacts(job_id) / "plan.json"
+        if not path.is_file():
+            return False
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        stamp = doc.get("_sign_off") if isinstance(doc, dict) else None
+        return bool(isinstance(stamp, dict) and stamp.get("accepted"))
 
     def _resume_commit(self, job: Job, lease: Lease) -> WorkOutcome:
         """Resume only the idempotent commit tail for accepted output."""
