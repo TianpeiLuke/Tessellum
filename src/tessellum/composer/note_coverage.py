@@ -27,7 +27,7 @@ from typing import Sequence
 from tessellum.composer.note_grounding import _IDENTIFIER_RES
 from tessellum.format import Issue, Severity
 
-_HEADING_RE = re.compile(r"(?m)^(#{1,3})\s+(.+)$")
+_HEADING_LINE_RE = re.compile(r"^#{1,3} +(.+?)\s*$")
 _FENCE_RE = re.compile(r"(?ms)^```[^\n]*\n(.*?)^```\s*$")
 _CODE_SPAN_RE = re.compile(r"`([^`\n]{2,200})`")
 
@@ -52,14 +52,54 @@ def name_match(a: str, b: str) -> bool:
     return False
 
 
+def extract_headings(source_text: str) -> list[str]:
+    """H1–H3 heading titles in document order, FENCE-AWARE (F12): a line
+    inside a ``` fenced block is code (a shell comment, not structure) and
+    can never be a heading. On the mcp corpus the fence-blind regex counted
+    21 in-fence ``# comment`` lines among 67 "headings"."""
+    out: list[str] = []
+    in_fence = False
+    for line in source_text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _HEADING_LINE_RE.match(line)
+        if m:
+            out.append(m.group(1))
+    return out
+
+
 def split_sections(source_text: str) -> dict[str, str]:
     """Normalized H1–H3 heading → its section text (heading line up to the
-    next heading of ANY level — the code ledger's heading family)."""
-    matches = list(_HEADING_RE.finditer(source_text))
+    next heading of ANY level — the code ledger's heading family).
+
+    FENCE-AWARE (F12): an in-fence ``# comment`` line neither opens a
+    section nor truncates the one it sits in, so a section carries its code
+    blocks whole. First occurrence wins on duplicate headings."""
     out: dict[str, str] = {}
-    for i, m in enumerate(matches):
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(source_text)
-        out.setdefault(norm_heading(m.group(2)), source_text[m.start():end])
+    current: str | None = None
+    buf: list[str] = []
+    in_fence = False
+
+    def flush() -> None:
+        if current is not None:
+            out.setdefault(current, "\n".join(buf))
+
+    for line in source_text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            buf.append(line)
+            continue
+        m = None if in_fence else _HEADING_LINE_RE.match(line)
+        if m:
+            flush()
+            current = norm_heading(m.group(1))
+            buf = [line]
+        else:
+            buf.append(line)
+    flush()
     return out
 
 

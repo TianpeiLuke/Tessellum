@@ -40,6 +40,34 @@ def test_split_sections_h1_to_h3() -> None:
     assert "--init-vault" in sections["quick start"]
 
 
+_FENCED = (
+    "# Real Title\n\nprose\n\n"
+    "## Setup\n\nRun this:\n\n```bash\n# Basic syntax\ntool add x\n# Real example\ntool add y\n```\n\ntail prose\n\n"
+    "## Next\n\nmore\n"
+)
+
+
+def test_f12_in_fence_comments_are_not_headings() -> None:
+    from tessellum.composer.note_coverage import extract_headings
+
+    assert extract_headings(_FENCED) == ["Real Title", "Setup", "Next"]
+
+
+def test_f12_sections_keep_their_code_blocks_whole() -> None:
+    sections = split_sections(_FENCED)
+    assert set(sections) == {"real title", "setup", "next"}
+    # the fence-blind splitter truncated "Setup" at `# Basic syntax`
+    assert "tool add y" in sections["setup"] and "tail prose" in sections["setup"]
+
+
+def test_f12_ledger_headings_fence_aware() -> None:
+    from tessellum.composer.digestion import compute_source_ledger
+
+    ledger = compute_source_ledger([{"source_id": "p", "excerpt": _FENCED}])
+    assert ledger[0]["headings"] == ["Real Title", "Setup", "Next"]
+    assert ledger[0]["code_blocks"] == 1
+
+
 def test_name_match_is_boundary_aware() -> None:
     assert name_match("a.md", "a.md")
     assert name_match("howto_a.md", "a.md")

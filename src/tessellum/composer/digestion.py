@@ -70,7 +70,10 @@ from tessellum.composer.knowledge_plan import (
     project_note_intent_graph,
 )
 from tessellum.composer.llm import LLMBackend
-from tessellum.composer.note_coverage import extend_wave_gate_with_note_coverage
+from tessellum.composer.note_coverage import (
+    extend_wave_gate_with_note_coverage,
+    extract_headings,
+)
 from tessellum.composer.scheduler import (
     RunResult,
     run_pipeline,
@@ -251,7 +254,6 @@ def _derive_step_budgets(
     return dataclasses.replace(compiled, steps=tuple(new_steps))
 
 
-_HEADING_RE = re.compile(r"^#{1,3} +(.+?)\s*$", re.MULTILINE)
 _FENCE_RE = re.compile(r"^```", re.MULTILINE)
 
 
@@ -280,7 +282,11 @@ def compute_source_ledger(members: list) -> list[dict[str, Any]]:
             "source_id": m.get("source_id") or m.get("name") or "",
             "measured_words": len(text.split()),
             "code_blocks": fences // 2,
-            "headings": _HEADING_RE.findall(text),
+            # F12: fence-aware — an in-fence `# comment` is code, not a
+            # heading; the fence-blind regex inflated the ledger (21 of 67
+            # on the mcp corpus) and PLAN-006 then demanded coverage of
+            # pseudo-headings.
+            "headings": extract_headings(text),
         })
     return ledger
 
