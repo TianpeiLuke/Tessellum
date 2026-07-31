@@ -4,6 +4,8 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+## [1.13.0] — 2026-07-30
+
 ### Eval — run 19 COMPLETES the Tier-2 gauntlet: T2 0.926, T3 98.9%, the cure validated (FZ 20k9c1a1a1b7c2k2a4a) — 2026-07-30
 
 Run 19 (linked retry with the strengthened cure) ran the full ladder clean: approved stamp, 9 notes into `resources/digest`, ZERO wave issues (ghosts stayed dead), no grounding block (the `ok.features.events` class did not recur under the GROUND-001 fix rule — writers + two-round fixer clean). Scores on the 9 notes: **T1 2/3, T2 0.926, T3 98.9%** (scoped judge; the 99.6 band holding). One scorer completion landed with the scoring: N6 v2's declared criterion ("planned-sibling links are first-class cross-references" — k2a4a) had been measured but not COUNTED; siblings now count toward the term-class floor, moving N6 from 8-fail/9 to 8-pass/9 — a completion of the pre-registered criterion, stated transparently, not a post-hoc adjustment. Per-metric verdict vs the k2a4a prediction: N6 approached 9/9 as predicted (writers now link ~5 real terms + ~4 siblings per note, from ~0.2 and 0); N5 did NOT reach 9/9 — the computed budget + advisory check informs but does not bind (a 16-block note sailed past), so the prediction's N5 assumption was wrong and strict promotion (with six runs of advisory data) is the recorded next step. T2 0.778 → 0.926: direction confirmed, magnitude short exactly by the N5 gap.
@@ -54,6 +56,11 @@ Run 11 (F13+F14 live, full ladder enforced) rejected at sign-off with the machin
 ### Runtime — F14: presence is not approval — the execute-only resume now requires a sign-off stamp (FZ 20k9c1a1a1b7c2k2a3a — run 10's resume) — 2026-07-30
 
 Run 10 hit the credit wall mid-augment; the resume COMPLETED — and the artifact forensics show it completed WRONGLY: `_has_accepted_plan` (T3's promote routing) tested only that `plan.json` EXISTS, while the executor dumps plan.json unconditionally (A1.5 — the halted-run dump is deliberate forensics), so the re-claimed retry routed into `resume_execute` and ran the execute wave over the crashed attempt's UNREVIEWED plan — no review, no sign-off, no plan gate; 8 notes committed under an approval that never happened (mtime proof: plan.json written at the crash timestamp, no review trace or attempt records exist, the resumed attempt's journal shows only execute-skill steps). It also explains why phase-4 checkpoint-resume never fired: the presence check hijacked the claim before the pipeline could run. Fix at both layers, fail-closed: the dump now carries its own `_sign_off` stamp (`accepted` = sign-off decision == approved, plus decision/stopped_at/completed — forensics preserved, approval explicit); `_has_accepted_plan` parses and requires the stamp (missing file, corrupt JSON, unstamped legacy, `accepted: false` → the FULL pipeline, where checkpoint-resume picks up the paid phases and the ladder actually runs); and `resume_execute` independently refuses an unaccepted plan (defense in depth, loud). NOTE: the earlier run-4 credit-wall "resume confirmed" datum is now suspect for the same mechanism (its artifacts were recycled; recorded as a hypothesis in the trail). +2 tests (suite 2189).
+
+### Tests/CI — the heartbeat-loss promptness bound is DERIVED, not hand-set (timing-algebra rule) — 2026-07-30
+
+`test_heartbeat_loss_reaches_running_execution` flaked on the shared py3.11 CI runner at 0.60s against a hard-coded 0.5s wall-clock bound (local runs measure tens of milliseconds; the failing commit touched no runtime code). The real discriminator is `completed_normally=False` — the loss interrupted the execution; the timing bound only adds promptness, and per the timing-algebra rule it is now DERIVED: 1.5s = 3/4 of the executor's 2.0s natural deadline, 2.5× headroom over the observed CI worst case.
+
 
 ### Composer — F13: deterministic mandatory sections are code-generated projections; PLAN-009 reports per stem (FZ 20k9c1a1a1b7c2k2a3a — sweep run 9) — 2026-07-30
 
