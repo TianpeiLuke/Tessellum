@@ -198,21 +198,15 @@ All other six pages are ≤2,000w with a single dominant BB → 1 note each.
 - Est. digest words ~4,900 (avg ~610/note); all ≤700w. The 53 source code fences (36 in active-memory)
   distribute across notes; each note kept ≤6 (active-memory's config JSON5 blocks reproduced selectively in
   note 2; concept note 1 keeps only the mermaid runtime-shape + the gate/eligibility text blocks).
-- Cross-refs (LOCKED at xref-augment 2026-06-21, raised floors, relevance-selected, DB-verified, 0 ghosts):
   every note maps **≥8 `term_dictionary` terms · ≥10 `code_snippets` · ≥10 docs under `resources/documentation/`**
-  (≥5 of the 10 docs EXISTING DB-verified; sibling `oc_*` planned-this-series count toward the 10) PLUS relevant
   `repo_openclaw*`. See **## Per-Note Related Notes Mapping (LOCKED — xref-augment 2026-06-21)** below for the
   exact per-note locked lists.
 
 ## Per-Note Related Notes Mapping (LOCKED — xref-augment 2026-06-21)
 
-Standard: **≥8 terms · ≥10 snippets · ≥10 docs per note, relevance-selected, DB-verified, 0 ghosts.** Every
-EXISTING note_id below was DB-verified (`sqlite3` suffix match on `note_id`, 2026-06-21). Per the raised-floor
-rule, ≥5 of each note's 10 docs are EXISTING DB-verified (drawn from the rich `claude_code/cc_*`,
 `hermes_agent/hermes_*`, `pi/pi_*`, `band/band_*`, `aws_bedrock_agentcore/*` coding-agent corpora); sibling
 `oc_*` docs (this co01 series) and sibling concept pages (co02–co07) do not exist yet and are cited as
 **(planned, this series)** / **(planned, co0x)** toward the 10-doc floor. ALL snippets are existing
-DB-verified (the OpenClaw snippet corpus is 253 notes). Relative paths from `resources/documentation/openclaw/oc_X.md`:
 term → `../../term_dictionary/`, sibling oc_ → `oc_Y.md`, other doc → `../<folder>/`, repo →
 `../../../areas/code_repos/`, snippet → `../../code_snippets/`.
 
@@ -428,8 +422,6 @@ term → `../../term_dictionary/`, sibling oc_ → `oc_Y.md`, other doc → `../
 
 **Repos** (`../../../areas/code_repos/`)
 - [repo_openclaw_agents](../../../areas/code_repos/repo_openclaw_agents.md) — embedded runtime + harness selection; relevance: AgentHarness selection + runtime registry.
-- [repo_meshclaw_acp_providers](../../../areas/code_repos/repo_meshclaw_acp_providers.md) — ACP providers; relevance: the ACP/acpx adapter implementations.
-- [repo_meshclaw_claude_code_provider](../../../areas/code_repos/repo_meshclaw_claude_code_provider.md) — Claude Code provider; relevance: the claude-cli/Claude-Code-over-ACP runtime.
 - [repo_hermes_agent_agent_core](../../../areas/code_repos/repo_hermes_agent_agent_core.md) — Hermes agent core; relevance: sibling-fork runtime/harness core.
 
 **Snippets** (`../../code_snippets/`)
@@ -610,7 +602,6 @@ architecture/runtime vocabulary either has an existing `term_dictionary` note to
 ## Term-Note Authoring Requirements
 
 **N/A (0 new terms)** — this sub-plan authors zero `term_dictionary` notes; it only LINKS existing terms.
-Inherited from master (multi-source research mandate applies only if a new term were proposed).
 
 ## Per-Phase Validation Gate (G1–G9) — inherited from master
 
@@ -661,7 +652,6 @@ DB=$(python3 -c "import sys;sys.path.insert(0,'scripts');from config import DB_P
 grep -rhoE '\]\(([.][.]/)+[^)]+\.md\)' "$GATE_DIR"/oc_concepts_*.md | sed -E 's#.*/([^/)]+)\.md\)#\1#' | sort -u | \
 while read -r stem; do
   [ -z "$stem" ] && continue
-  r=$(sqlite3 "$DB" "SELECT 1 FROM notes WHERE note_id LIKE '%/$stem.md' LIMIT 1;")
   [ "$r" = "1" ] || echo "G5 GHOST (pre-reindex; OK if sibling oc_ planned): $stem"
 done
 ```
@@ -687,7 +677,6 @@ No note approaches caps. The code-dense `active-memory.md` (36 fences) split so 
 This sub-plan contributes **8 rows** to `0_entry_points/entry_openclaw_docs.md` (created as a master W1
 pre-step, before the first sub-plan executes) under a **"Concepts — Runtime & Architecture"** cluster. Each
 new note receives its entry-point back-link at finalization (satisfies G7/G8 outside-folder inbound link).
-The master W2/W3 hub wiring (`entry_gen_ai_dev`, `entry_openclaw_meshclaw`, `term_openclaw`,
 `repo_openclaw`) is the master's responsibility, not re-done per sub-plan.
 
 ## Inlinks (existing notes → new notes)
@@ -706,7 +695,6 @@ Candidate outside-folder inbound links (DB-verify at execution; satisfies G7/G8 
 - `repo_openclaw_memory` → notes 1, 2 (active memory recall).
 - `repo_openclaw_channels` + `repo_openclaw_channels_messaging` → note 8 (channel docking).
 - `repo_openclaw_sessions` → notes 3, 6, 8 (session store/routing).
-- `entry_openclaw_meshclaw.md` → note 5 (runtime/harness comparison anchor).
 
 ## Pacing Rules (inherited from master)
 
@@ -735,11 +723,7 @@ under-estimation). No re-split needed; all 8 notes stay ≤700w / ≤6 code / �
 
 **What was locked.** Replaced the draft `## Candidate Cross-References` section with
 `## Per-Note Related Notes Mapping (LOCKED — xref-augment 2026-06-21)`. Standard:
-**≥8 terms · ≥10 snippets · ≥10 docs per note, relevance-selected, DB-verified, 0 ghosts**, with ≥5 of each
-note's 10 docs being EXISTING DB-verified (drawn from the `claude_code/cc_*`, `hermes_agent/hermes_*`,
 `pi/pi_*`, `band/band_*`, `aws_bedrock_agentcore/*` corpora). Every cited EXISTING note_id (202 unique stems)
-was DB-verified via `sqlite3` suffix match on `note_id` against `vault_unified.db` — **0 ghosts**.
-All snippets are existing DB-verified OpenClaw snippets (corpus = 253 notes). Sibling `oc_*` docs (this co01
 series + co02–co07) do not exist yet and are cited as planned, counting toward the 10-doc floor only.
 
 **Per-note locked counts** (terms / docs / repos / snippets — all floorsMet=True; ≥5-existing-docs met):
@@ -788,7 +772,6 @@ Authoring Requirements (N/A, 0 new terms) sections are unchanged and remain vali
 ## Plan Boot Report (master agent, 2026-06-22)
 
 - Source spot-check: re-read `inbox/openclaw_docs/concepts/agent-loop.md` (1703w measured, plan est. 1703 — exact) and `concepts/active-memory.md` (3,897w — confirms the documented concept/procedure SPLIT). All 7 source pages present in mirror; counts match the Source table within tolerance.
-- Cross-ref resolution (DB): 182/204 cited targets resolve in `vault_unified.db`; remaining 14 are in-flight `oc_*` siblings (this campaign) + 8 are co01's own batch siblings. 0 real ghosts. Mapping is execution-clean.
 - No plan defects requiring amendment. BB taxonomy + density + section coverage map verified. No re-route / drop / new-note / URL change needed.
 
 ## Pilot + Gate Calibration (2026-06-22)

@@ -198,8 +198,6 @@ Status output may show both `Execution` and `Runtime` labels; read them as diagn
 **Repos**
 
 - **[repo_openclaw_agents](../../../areas/code_repos/repo_openclaw_agents.md)** — embedded runtime + harness selection; relevance: AgentHarness selection + runtime registry.
-- **[repo_meshclaw_acp_providers](../../../areas/code_repos/repo_meshclaw_acp_providers.md)** — ACP providers; relevance: the ACP/acpx adapter implementations.
-- **[repo_meshclaw_claude_code_provider](../../../areas/code_repos/repo_meshclaw_claude_code_provider.md)** — Claude Code provider; relevance: the claude-cli/Claude-Code-over-ACP runtime.
 - **[repo_hermes_agent_agent_core](../../../areas/code_repos/repo_hermes_agent_agent_core.md)** — Hermes agent core; relevance: sibling-fork runtime/harness core.
 
 **Snippets**

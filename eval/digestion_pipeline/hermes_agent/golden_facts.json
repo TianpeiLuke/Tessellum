@@ -1,0 +1,5409 @@
+{
+  "slice": "hermes_agent",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "59bdae36c",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "",
+  "source_url_pattern": "",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 345,
+    "pages": [
+      "developer-guide/acp-internals.md",
+      "developer-guide/adding-platform-adapters.md",
+      "developer-guide/adding-providers.md",
+      "developer-guide/adding-tools.md",
+      "developer-guide/agent-loop.md",
+      "developer-guide/architecture.md",
+      "developer-guide/browser-supervisor.md",
+      "developer-guide/context-compression-and-caching.md",
+      "developer-guide/context-engine-plugin.md",
+      "developer-guide/contributing.md",
+      "developer-guide/creating-skills.md",
+      "developer-guide/cron-internals.md",
+      "developer-guide/extending-the-cli.md",
+      "developer-guide/gateway-internals.md",
+      "developer-guide/image-gen-provider-plugin.md",
+      "developer-guide/memory-provider-plugin.md",
+      "developer-guide/model-provider-plugin.md",
+      "developer-guide/plugin-llm-access.md",
+      "developer-guide/programmatic-integration.md",
+      "developer-guide/prompt-assembly.md",
+      "developer-guide/provider-runtime.md",
+      "developer-guide/session-storage.md",
+      "developer-guide/tools-runtime.md",
+      "developer-guide/trajectory-format.md",
+      "developer-guide/video-gen-provider-plugin.md",
+      "developer-guide/web-search-provider-plugin.md",
+      "getting-started/installation.md",
+      "getting-started/learning-path.md",
+      "getting-started/nix-setup.md",
+      "getting-started/quickstart.md",
+      "getting-started/termux.md",
+      "getting-started/updating.md",
+      "guides/automate-with-cron.md",
+      "guides/automation-blueprints.md",
+      "guides/aws-bedrock.md",
+      "guides/azure-foundry.md",
+      "guides/build-a-hermes-plugin.md",
+      "guides/cron-script-only.md",
+      "guides/cron-troubleshooting.md",
+      "guides/daily-briefing-bot.md",
+      "guides/delegation-patterns.md",
+      "guides/github-pr-review-agent.md",
+      "guides/google-gemini.md",
+      "guides/local-llm-on-mac.md",
+      "guides/local-ollama-setup.md",
+      "guides/microsoft-graph-app-registration.md",
+      "guides/migrate-from-openclaw.md",
+      "guides/minimax-oauth.md",
+      "guides/oauth-over-ssh.md",
+      "guides/operate-teams-meeting-pipeline.md",
+      "guides/pipe-script-output.md",
+      "guides/python-library.md",
+      "guides/run-hermes-with-nous-portal.md",
+      "guides/run-nemotron-3-ultra-free.md",
+      "guides/team-telegram-assistant.md",
+      "guides/tips.md",
+      "guides/use-mcp-with-hermes.md",
+      "guides/use-soul-with-hermes.md",
+      "guides/use-voice-mode-with-hermes.md",
+      "guides/webhook-github-pr-review.md",
+      "guides/work-with-skills.md",
+      "guides/xai-grok-oauth.md",
+      "integrations/index.md",
+      "integrations/nous-portal.md",
+      "integrations/providers.md",
+      "reference/cli-commands.md",
+      "reference/environment-variables.md",
+      "reference/faq.md",
+      "reference/mcp-config-reference.md",
+      "reference/model-catalog.md",
+      "reference/optional-skills-catalog.md",
+      "reference/profile-commands.md",
+      "reference/skills-catalog.md",
+      "reference/slash-commands.md",
+      "reference/tools-reference.md",
+      "reference/toolsets-reference.md",
+      "user-guide/checkpoints-and-rollback.md",
+      "user-guide/cli.md",
+      "user-guide/configuration.md",
+      "user-guide/configuring-models.md",
+      "user-guide/desktop.md",
+      "user-guide/docker.md",
+      "user-guide/features/acp.md",
+      "user-guide/features/api-server.md",
+      "user-guide/features/batch-processing.md",
+      "user-guide/features/browser.md",
+      "user-guide/features/built-in-plugins.md",
+      "user-guide/features/code-execution.md",
+      "user-guide/features/codex-app-server-runtime.md",
+      "user-guide/features/computer-use.md",
+      "user-guide/features/context-files.md",
+      "user-guide/features/context-references.md",
+      "user-guide/features/credential-pools.md",
+      "user-guide/features/cron.md",
+      "user-guide/features/curator.md",
+      "user-guide/features/delegation.md",
+      "user-guide/features/deliverable-mode.md",
+      "user-guide/features/extending-the-dashboard.md",
+      "user-guide/features/fallback-providers.md",
+      "user-guide/features/goals.md",
+      "user-guide/features/honcho.md",
+      "user-guide/features/hooks.md",
+      "user-guide/features/image-generation.md",
+      "user-guide/features/kanban-tutorial.md",
+      "user-guide/features/kanban-worker-lanes.md",
+      "user-guide/features/kanban.md",
+      "user-guide/features/lsp.md",
+      "user-guide/features/mcp.md",
+      "user-guide/features/memory-providers.md",
+      "user-guide/features/memory.md",
+      "user-guide/features/overview.md",
+      "user-guide/features/personality.md",
+      "user-guide/features/plugins.md",
+      "user-guide/features/provider-routing.md",
+      "user-guide/features/skills.md",
+      "user-guide/features/skins.md",
+      "user-guide/features/spotify.md",
+      "user-guide/features/subscription-proxy.md",
+      "user-guide/features/tool-gateway.md",
+      "user-guide/features/tool-search.md",
+      "user-guide/features/tools.md",
+      "user-guide/features/tts.md",
+      "user-guide/features/vision.md",
+      "user-guide/features/voice-mode.md",
+      "user-guide/features/web-dashboard.md",
+      "user-guide/features/web-search.md",
+      "user-guide/features/x-search.md",
+      "user-guide/git-worktrees.md",
+      "user-guide/managed-scope.md",
+      "user-guide/messaging/bluebubbles.md",
+      "user-guide/messaging/dingtalk.md",
+      "user-guide/messaging/discord.md",
+      "user-guide/messaging/email.md",
+      "user-guide/messaging/feishu.md",
+      "user-guide/messaging/google_chat.md",
+      "user-guide/messaging/homeassistant.md",
+      "user-guide/messaging/index.md",
+      "user-guide/messaging/line.md",
+      "user-guide/messaging/matrix.md",
+      "user-guide/messaging/mattermost.md",
+      "user-guide/messaging/msgraph-webhook.md",
+      "user-guide/messaging/ntfy.md",
+      "user-guide/messaging/open-webui.md",
+      "user-guide/messaging/photon.md",
+      "user-guide/messaging/qqbot.md",
+      "user-guide/messaging/raft.md",
+      "user-guide/messaging/signal.md",
+      "user-guide/messaging/simplex.md",
+      "user-guide/messaging/slack.md",
+      "user-guide/messaging/sms.md",
+      "user-guide/messaging/teams-meetings.md",
+      "user-guide/messaging/teams.md",
+      "user-guide/messaging/telegram.md",
+      "user-guide/messaging/webhooks.md",
+      "user-guide/messaging/wecom-callback.md",
+      "user-guide/messaging/wecom.md",
+      "user-guide/messaging/weixin.md",
+      "user-guide/messaging/whatsapp-cloud.md",
+      "user-guide/messaging/whatsapp.md",
+      "user-guide/messaging/yuanbao.md",
+      "user-guide/multi-profile-gateways.md",
+      "user-guide/profile-distributions.md",
+      "user-guide/profiles.md",
+      "user-guide/secrets/bitwarden.md",
+      "user-guide/secrets/index.md",
+      "user-guide/security.md",
+      "user-guide/sessions.md",
+      "user-guide/skills/bundled/apple/apple-apple-notes.md",
+      "user-guide/skills/bundled/apple/apple-apple-reminders.md",
+      "user-guide/skills/bundled/apple/apple-findmy.md",
+      "user-guide/skills/bundled/apple/apple-imessage.md",
+      "user-guide/skills/bundled/apple/apple-macos-computer-use.md",
+      "user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-claude-code.md",
+      "user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-codex.md",
+      "user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-hermes-agent.md",
+      "user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-kanban-codex-lane.md",
+      "user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-opencode.md",
+      "user-guide/skills/bundled/creative/creative-architecture-diagram.md",
+      "user-guide/skills/bundled/creative/creative-ascii-art.md",
+      "user-guide/skills/bundled/creative/creative-ascii-video.md",
+      "user-guide/skills/bundled/creative/creative-baoyu-infographic.md",
+      "user-guide/skills/bundled/creative/creative-claude-design.md",
+      "user-guide/skills/bundled/creative/creative-comfyui.md",
+      "user-guide/skills/bundled/creative/creative-design-md.md",
+      "user-guide/skills/bundled/creative/creative-excalidraw.md",
+      "user-guide/skills/bundled/creative/creative-humanizer.md",
+      "user-guide/skills/bundled/creative/creative-manim-video.md",
+      "user-guide/skills/bundled/creative/creative-p5js.md",
+      "user-guide/skills/bundled/creative/creative-popular-web-designs.md",
+      "user-guide/skills/bundled/creative/creative-pretext.md",
+      "user-guide/skills/bundled/creative/creative-sketch.md",
+      "user-guide/skills/bundled/creative/creative-songwriting-and-ai-music.md",
+      "user-guide/skills/bundled/creative/creative-touchdesigner-mcp.md",
+      "user-guide/skills/bundled/data-science/data-science-jupyter-live-kernel.md",
+      "user-guide/skills/bundled/devops/devops-kanban-orchestrator.md",
+      "user-guide/skills/bundled/devops/devops-kanban-worker.md",
+      "user-guide/skills/bundled/dogfood/dogfood-dogfood.md",
+      "user-guide/skills/bundled/email/email-himalaya.md",
+      "user-guide/skills/bundled/github/github-codebase-inspection.md",
+      "user-guide/skills/bundled/github/github-github-auth.md",
+      "user-guide/skills/bundled/github/github-github-code-review.md",
+      "user-guide/skills/bundled/github/github-github-issues.md",
+      "user-guide/skills/bundled/github/github-github-pr-workflow.md",
+      "user-guide/skills/bundled/github/github-github-repo-management.md",
+      "user-guide/skills/bundled/media/media-gif-search.md",
+      "user-guide/skills/bundled/media/media-heartmula.md",
+      "user-guide/skills/bundled/media/media-songsee.md",
+      "user-guide/skills/bundled/media/media-youtube-content.md",
+      "user-guide/skills/bundled/mlops/mlops-evaluation-lm-evaluation-harness.md",
+      "user-guide/skills/bundled/mlops/mlops-evaluation-weights-and-biases.md",
+      "user-guide/skills/bundled/mlops/mlops-huggingface-hub.md",
+      "user-guide/skills/bundled/mlops/mlops-inference-llama-cpp.md",
+      "user-guide/skills/bundled/mlops/mlops-inference-vllm.md",
+      "user-guide/skills/bundled/mlops/mlops-models-audiocraft.md",
+      "user-guide/skills/bundled/mlops/mlops-models-segment-anything.md",
+      "user-guide/skills/bundled/note-taking/note-taking-obsidian.md",
+      "user-guide/skills/bundled/productivity/productivity-airtable.md",
+      "user-guide/skills/bundled/productivity/productivity-google-workspace.md",
+      "user-guide/skills/bundled/productivity/productivity-maps.md",
+      "user-guide/skills/bundled/productivity/productivity-nano-pdf.md",
+      "user-guide/skills/bundled/productivity/productivity-notion.md",
+      "user-guide/skills/bundled/productivity/productivity-ocr-and-documents.md",
+      "user-guide/skills/bundled/productivity/productivity-powerpoint.md",
+      "user-guide/skills/bundled/productivity/productivity-teams-meeting-pipeline.md",
+      "user-guide/skills/bundled/research/research-arxiv.md",
+      "user-guide/skills/bundled/research/research-blogwatcher.md",
+      "user-guide/skills/bundled/research/research-llm-wiki.md",
+      "user-guide/skills/bundled/research/research-polymarket.md",
+      "user-guide/skills/bundled/research/research-research-paper-writing.md",
+      "user-guide/skills/bundled/smart-home/smart-home-openhue.md",
+      "user-guide/skills/bundled/social-media/social-media-xurl.md",
+      "user-guide/skills/bundled/software-development/software-development-hermes-agent-skill-authoring.md",
+      "user-guide/skills/bundled/software-development/software-development-node-inspect-debugger.md",
+      "user-guide/skills/bundled/software-development/software-development-plan.md",
+      "user-guide/skills/bundled/software-development/software-development-python-debugpy.md",
+      "user-guide/skills/bundled/software-development/software-development-requesting-code-review.md",
+      "user-guide/skills/bundled/software-development/software-development-simplify-code.md",
+      "user-guide/skills/bundled/software-development/software-development-spike.md",
+      "user-guide/skills/bundled/software-development/software-development-systematic-debugging.md",
+      "user-guide/skills/bundled/software-development/software-development-test-driven-development.md",
+      "user-guide/skills/bundled/yuanbao/yuanbao-yuanbao.md",
+      "user-guide/skills/google-workspace.md",
+      "user-guide/skills/optional/autonomous-ai-agents/autonomous-ai-agents-antigravity-cli.md",
+      "user-guide/skills/optional/autonomous-ai-agents/autonomous-ai-agents-blackbox.md",
+      "user-guide/skills/optional/autonomous-ai-agents/autonomous-ai-agents-grok.md",
+      "user-guide/skills/optional/autonomous-ai-agents/autonomous-ai-agents-honcho.md",
+      "user-guide/skills/optional/autonomous-ai-agents/autonomous-ai-agents-openhands.md",
+      "user-guide/skills/optional/blockchain/blockchain-evm.md",
+      "user-guide/skills/optional/blockchain/blockchain-hyperliquid.md",
+      "user-guide/skills/optional/blockchain/blockchain-solana.md",
+      "user-guide/skills/optional/communication/communication-one-three-one-rule.md",
+      "user-guide/skills/optional/creative/creative-baoyu-article-illustrator.md",
+      "user-guide/skills/optional/creative/creative-baoyu-comic.md",
+      "user-guide/skills/optional/creative/creative-blender-mcp.md",
+      "user-guide/skills/optional/creative/creative-concept-diagrams.md",
+      "user-guide/skills/optional/creative/creative-creative-ideation.md",
+      "user-guide/skills/optional/creative/creative-hyperframes.md",
+      "user-guide/skills/optional/creative/creative-kanban-video-orchestrator.md",
+      "user-guide/skills/optional/creative/creative-meme-generation.md",
+      "user-guide/skills/optional/creative/creative-pixel-art.md",
+      "user-guide/skills/optional/devops/devops-cli.md",
+      "user-guide/skills/optional/devops/devops-docker-management.md",
+      "user-guide/skills/optional/devops/devops-hermes-s6-container-supervision.md",
+      "user-guide/skills/optional/devops/devops-pinggy-tunnel.md",
+      "user-guide/skills/optional/devops/devops-watchers.md",
+      "user-guide/skills/optional/dogfood/dogfood-adversarial-ux-test.md",
+      "user-guide/skills/optional/email/email-agentmail.md",
+      "user-guide/skills/optional/finance/finance-3-statement-model.md",
+      "user-guide/skills/optional/finance/finance-comps-analysis.md",
+      "user-guide/skills/optional/finance/finance-dcf-model.md",
+      "user-guide/skills/optional/finance/finance-excel-author.md",
+      "user-guide/skills/optional/finance/finance-lbo-model.md",
+      "user-guide/skills/optional/finance/finance-merger-model.md",
+      "user-guide/skills/optional/finance/finance-pptx-author.md",
+      "user-guide/skills/optional/finance/finance-stocks.md",
+      "user-guide/skills/optional/gaming/gaming-minecraft-modpack-server.md",
+      "user-guide/skills/optional/gaming/gaming-pokemon-player.md",
+      "user-guide/skills/optional/health/health-fitness-nutrition.md",
+      "user-guide/skills/optional/health/health-neuroskill-bci.md",
+      "user-guide/skills/optional/mcp/mcp-fastmcp.md",
+      "user-guide/skills/optional/mcp/mcp-mcporter.md",
+      "user-guide/skills/optional/migration/migration-openclaw-migration.md",
+      "user-guide/skills/optional/mlops/mlops-accelerate.md",
+      "user-guide/skills/optional/mlops/mlops-chroma.md",
+      "user-guide/skills/optional/mlops/mlops-clip.md",
+      "user-guide/skills/optional/mlops/mlops-faiss.md",
+      "user-guide/skills/optional/mlops/mlops-flash-attention.md",
+      "user-guide/skills/optional/mlops/mlops-guidance.md",
+      "user-guide/skills/optional/mlops/mlops-huggingface-tokenizers.md",
+      "user-guide/skills/optional/mlops/mlops-inference-outlines.md",
+      "user-guide/skills/optional/mlops/mlops-instructor.md",
+      "user-guide/skills/optional/mlops/mlops-lambda-labs.md",
+      "user-guide/skills/optional/mlops/mlops-llava.md",
+      "user-guide/skills/optional/mlops/mlops-modal.md",
+      "user-guide/skills/optional/mlops/mlops-nemo-curator.md",
+      "user-guide/skills/optional/mlops/mlops-obliteratus.md",
+      "user-guide/skills/optional/mlops/mlops-peft.md",
+      "user-guide/skills/optional/mlops/mlops-pinecone.md",
+      "user-guide/skills/optional/mlops/mlops-pytorch-fsdp.md",
+      "user-guide/skills/optional/mlops/mlops-pytorch-lightning.md",
+      "user-guide/skills/optional/mlops/mlops-qdrant.md",
+      "user-guide/skills/optional/mlops/mlops-research-dspy.md",
+      "user-guide/skills/optional/mlops/mlops-saelens.md",
+      "user-guide/skills/optional/mlops/mlops-simpo.md",
+      "user-guide/skills/optional/mlops/mlops-slime.md",
+      "user-guide/skills/optional/mlops/mlops-stable-diffusion.md",
+      "user-guide/skills/optional/mlops/mlops-tensorrt-llm.md",
+      "user-guide/skills/optional/mlops/mlops-torchtitan.md",
+      "user-guide/skills/optional/mlops/mlops-training-axolotl.md",
+      "user-guide/skills/optional/mlops/mlops-training-trl-fine-tuning.md",
+      "user-guide/skills/optional/mlops/mlops-training-unsloth.md",
+      "user-guide/skills/optional/mlops/mlops-whisper.md",
+      "user-guide/skills/optional/payments/payments-mpp-agent.md",
+      "user-guide/skills/optional/payments/payments-stripe-link-cli.md",
+      "user-guide/skills/optional/payments/payments-stripe-projects.md",
+      "user-guide/skills/optional/productivity/productivity-canvas.md",
+      "user-guide/skills/optional/productivity/productivity-here-now.md",
+      "user-guide/skills/optional/productivity/productivity-memento-flashcards.md",
+      "user-guide/skills/optional/productivity/productivity-shop.md",
+      "user-guide/skills/optional/productivity/productivity-shopify.md",
+      "user-guide/skills/optional/productivity/productivity-siyuan.md",
+      "user-guide/skills/optional/productivity/productivity-telephony.md",
+      "user-guide/skills/optional/research/research-bioinformatics.md",
+      "user-guide/skills/optional/research/research-darwinian-evolver.md",
+      "user-guide/skills/optional/research/research-domain-intel.md",
+      "user-guide/skills/optional/research/research-drug-discovery.md",
+      "user-guide/skills/optional/research/research-duckduckgo-search.md",
+      "user-guide/skills/optional/research/research-gitnexus-explorer.md",
+      "user-guide/skills/optional/research/research-osint-investigation.md",
+      "user-guide/skills/optional/research/research-parallel-cli.md",
+      "user-guide/skills/optional/research/research-qmd.md",
+      "user-guide/skills/optional/research/research-scrapling.md",
+      "user-guide/skills/optional/research/research-searxng-search.md",
+      "user-guide/skills/optional/security/security-1password.md",
+      "user-guide/skills/optional/security/security-godmode.md",
+      "user-guide/skills/optional/security/security-oss-forensics.md",
+      "user-guide/skills/optional/security/security-sherlock.md",
+      "user-guide/skills/optional/security/security-web-pentest.md",
+      "user-guide/skills/optional/software-development/software-development-code-wiki.md",
+      "user-guide/skills/optional/software-development/software-development-rest-graphql-debug.md",
+      "user-guide/skills/optional/software-development/software-development-subagent-driven-development.md",
+      "user-guide/skills/optional/web-development/web-development-page-agent.md",
+      "user-guide/tui.md",
+      "user-guide/windows-native.md",
+      "user-guide/windows-wsl-quickstart.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_hermes_agent_docs_master.md",
+    "subplan": "",
+    "planned_note_count": 14,
+    "gate_count": 8,
+    "xref_floor_per_note": {},
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/hermes_agent",
+    "note_prefix": "hermes_",
+    "note_count": 226,
+    "bb_distribution": {
+      "procedure": 158,
+      "model": 48,
+      "navigation": 11,
+      "concept": 8,
+      "empirical_observation": 1
+    },
+    "word_count": {
+      "min": 525,
+      "median": 1408,
+      "max": 2064
+    },
+    "term_links": {
+      "min": 0,
+      "median": 0
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "hermes_acp_editor_integration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Hermes exposes in ACP mode",
+          "Installation",
+          "Launching the ACP server",
+          "Editor setup",
+          "Registry manifest",
+          "Configuration and credentials",
+          "Session behavior",
+          "Working directory behavior",
+          "Approvals",
+          "Troubleshooting"
+        ],
+        "word_count": 1331,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_acp_internals": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Boot flow",
+          "Major components",
+          "Session lifecycle",
+          "Provider/auth behavior",
+          "Working directory binding",
+          "Duplicate same-name tool calls",
+          "Approval callback restoration",
+          "Current limitations"
+        ],
+        "word_count": 822,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_adding_built_in_tool": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1: Create the Built-in Tool File",
+          "Step 2: Add the Built-in Tool to a Toolset",
+          "Async Handlers",
+          "Handlers That Need task_id",
+          "Agent-Loop Intercepted Tools",
+          "Optional: Setup Wizard Integration",
+          "Checklist"
+        ],
+        "word_count": 1029,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_adding_inference_provider": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The mental model",
+          "Choose the implementation path first",
+          "Fast path: Simple API-key providers",
+          "Full path: Steps 1–10",
+          "Checklists, pitfalls, and search targets"
+        ],
+        "word_count": 1608,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_adding_platform_adapter_builtin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Architecture Overview",
+          "Step-by-Step Checklist (Built-in Path)",
+          "Parity Audit",
+          "Common Patterns",
+          "Reference Implementations"
+        ],
+        "word_count": 1353,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_adding_platform_adapter_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Architecture Overview",
+          "Plugin Path (Recommended)",
+          "What the Plugin System Handles Automatically",
+          "Env-Driven Auto-Configuration",
+          "YAML→env Config Bridge",
+          "Cron Delivery",
+          "Surfacing Env Vars in `hermes config`",
+          "Platform-Specific Slow-LLM UX",
+          "Reference Implementations (Plugin Path)"
+        ],
+        "word_count": 1949,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_agent_loop": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Two Entry Points",
+          "API Modes",
+          "Turn Lifecycle",
+          "Interruptible API Calls",
+          "Tool Execution",
+          "Callback Surfaces",
+          "Budget and Fallback Behavior",
+          "Compression and Persistence",
+          "Key Source Files"
+        ],
+        "word_count": 1465,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_api_server_endpoints": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Endpoints",
+          "Runs API (streaming-friendly alternative)",
+          "Jobs API (background scheduled work)",
+          "Sessions API (session control over REST)",
+          "Skills and Toolsets Discovery",
+          "Long-term Memory Scoping (`X-Hermes-Session-Key`)",
+          "System Prompt Handling"
+        ],
+        "word_count": 1621,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_api_server_setup_auth": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start",
+          "Authentication",
+          "Configuration",
+          "Security Headers",
+          "CORS",
+          "Compatible Frontends",
+          "Multi-User Setup with Profiles",
+          "Limitations",
+          "Proxy Mode"
+        ],
+        "word_count": 1057,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_architecture": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "System Overview",
+          "Directory Structure",
+          "Data Flow",
+          "Recommended Reading Order",
+          "Major Subsystems",
+          "Design Principles",
+          "File Dependency Chain"
+        ],
+        "word_count": 1372,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 8
+      },
+      "hermes_automation_blueprints_event": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Automatic PR Code Review",
+          "GitHub Event Automations",
+          "Generic API Webhooks",
+          "Multi-Skill Workflows",
+          "Webhook Template Variables"
+        ],
+        "word_count": 1266,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_automation_blueprints_scheduled": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three Trigger Types",
+          "Development Workflow",
+          "DevOps & Monitoring (schedule-triggered)",
+          "Research & Intelligence",
+          "Multi-Skill Workflows (schedule-triggered)",
+          "Quick Reference"
+        ],
+        "word_count": 1329,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_batch_processing": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start",
+          "Dataset Format",
+          "Configuration Options",
+          "Toolset Distributions",
+          "Output Format",
+          "Checkpointing",
+          "Quality Filtering",
+          "Statistics",
+          "Use Cases"
+        ],
+        "word_count": 1050,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_browser_automation_backends": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Backend Modes",
+          "Overview (Accessibility-Tree Representation)",
+          "Available Tools",
+          "Session Recording",
+          "Stealth Features",
+          "Session Management",
+          "Limitations"
+        ],
+        "word_count": 1439,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_browser_automation_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Nous Subscribers — Tool Gateway (no API keys)",
+          "Cloud Modes — Browserbase / Browser Use / Firecrawl",
+          "Hybrid Routing — Cloud for Public URLs, Local for LAN",
+          "Camofox Local Mode",
+          "Local Chromium-family via CDP (`/browser connect`)",
+          "WSL2 + Windows Chrome — Prefer MCP",
+          "Local Browser Mode, Env Vars, and Install",
+          "Practical Examples"
+        ],
+        "word_count": 1513,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_browser_supervisor": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Backend support",
+          "Architecture",
+          "Agent surface",
+          "Cross-origin iframe interaction",
+          "File layout",
+          "Non-goals",
+          "Testing"
+        ],
+        "word_count": 1235,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_build_plugin_tutorial": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What you're building",
+          "Step 1: Create the plugin directory",
+          "Step 2: Write the manifest",
+          "Step 3: Write the tool schemas",
+          "Step 4: Write the tool handlers",
+          "Step 5: Write the registration",
+          "Step 6: Test it",
+          "Your plugin's final structure"
+        ],
+        "word_count": 1256,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_built_in_plugins": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How discovery works",
+          "Bundled plugins are opt-in",
+          "Currently shipped",
+          "Adding a bundled plugin"
+        ],
+        "word_count": 1732,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_checkpoints_rollback": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enabling Checkpoints",
+          "What Triggers a Checkpoint",
+          "Quick Reference",
+          "How Checkpoints Work",
+          "Configuration",
+          "Listing and Inspecting",
+          "Previewing and Restoring",
+          "Safety and Performance Guards",
+          "Where Checkpoints Live",
+          "Best Practices"
+        ],
+        "word_count": 1358,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_cli_commands_chat_provider": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Global entrypoint",
+          "Top-level commands",
+          "`hermes chat`",
+          "`hermes model`",
+          "`hermes gateway`",
+          "`hermes lsp`",
+          "`hermes setup`",
+          "`hermes portal`",
+          "`hermes proxy`",
+          "`hermes fallback`",
+          "`hermes security`"
+        ],
+        "word_count": 1430,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "hermes_cli_commands_ops_maintenance_auth": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`hermes auth`",
+          "`hermes secrets`",
+          "`hermes pairing`",
+          "`hermes cron`",
+          "`hermes webhook`",
+          "`hermes hooks`",
+          "`hermes mcp`",
+          "`hermes acp` & `hermes plugins`",
+          "`hermes migrate`, `hermes claw` & `hermes computer-use`",
+          "`hermes backup`, `hermes import` & `hermes checkpoints`",
+          "`hermes logs`",
+          "`hermes send`, `hermes whatsapp` & `hermes slack`",
+          "`hermes update`, Maintenance & `hermes completion`",
+          "`hermes dashboard`"
+        ],
+        "word_count": 1869,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_cli_commands_session_ops": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`hermes status`, `hermes sessions`, `hermes insights`",
+          "`hermes config`",
+          "`hermes skills`",
+          "`hermes bundles`, `hermes curator`, `hermes memory`",
+          "`hermes tools` and `hermes kanban`",
+          "`hermes prompt-size`, `hermes doctor`, `hermes dump`, `hermes debug`"
+        ],
+        "word_count": 1249,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_cli_interface": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Running the CLI",
+          "Interface Layout",
+          "Keybindings",
+          "Slash Commands",
+          "Quick Commands",
+          "Preloading Skills at Launch",
+          "Skill Slash Commands",
+          "Personalities",
+          "Multi-line Input",
+          "Interrupting the Agent",
+          "Tool Progress Display",
+          "Quiet Mode"
+        ],
+        "word_count": 2005,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "hermes_cli_session_background": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Session Management",
+          "Background Sessions"
+        ],
+        "word_count": 811,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "hermes_code_execution": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Works",
+          "When the Agent Uses This",
+          "Practical Examples",
+          "Execution Mode",
+          "Resource Limits",
+          "How Tool Calls Work Inside Scripts",
+          "Error Handling",
+          "Security",
+          "execute_code vs terminal",
+          "Platform Support"
+        ],
+        "word_count": 1645,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_codex_runtime_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Enabling",
+          "How Approvals Work",
+          "Permission Profiles",
+          "Self-Improvement Loop (Memory + Skill Nudges)",
+          "Auxiliary Tasks and ChatGPT Subscription Token Cost",
+          "Editing `~/.codex/config.toml` Safely",
+          "MCP Server Migration",
+          "Native Codex Plugin Migration",
+          "Multi-Profile / Multi-Tenant Setups and HOME Passthrough",
+          "Disabling",
+          "Limitations"
+        ],
+        "word_count": 1768,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_codex_runtime_tools": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why",
+          "What Tools the Model Actually Has",
+          "Workflow Features (`/goal`, kanban, cron)",
+          "Trade-offs",
+          "Hermes Tool Callback (the MCP server)",
+          "Architecture"
+        ],
+        "word_count": 1857,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_computer_use_macos": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How it works",
+          "Enabling",
+          "Keeping cua-driver up to date",
+          "Quick example",
+          "Provider compatibility",
+          "Safety",
+          "Token efficiency",
+          "Limitations",
+          "Configuration",
+          "Troubleshooting"
+        ],
+        "word_count": 1149,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_config_files_precedence": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Directory Structure",
+          "Managing Configuration",
+          "Configuration Precedence",
+          "Environment Variable Substitution",
+          "Update Behavior",
+          "Working Directory"
+        ],
+        "word_count": 874,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_configuring_models_dashboard": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Models Page",
+          "Setting the Main Model",
+          "Setting Auxiliary Models",
+          "The \"Use as\" Shortcut",
+          "What Gets Written to `config.yaml`",
+          "When Does It Take Effect?",
+          "Troubleshooting",
+          "Alternative Methods"
+        ],
+        "word_count": 1616,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_context_compression_caching": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Pluggable Context Engine",
+          "Dual Compression System",
+          "Configuration",
+          "Compression Algorithm",
+          "Prompt Caching (Anthropic)",
+          "Context Pressure Warnings"
+        ],
+        "word_count": 1791,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_context_engine_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How it works",
+          "Directory structure",
+          "The ContextEngine ABC",
+          "Engine tools",
+          "Registration",
+          "Lifecycle",
+          "Configuration",
+          "Testing"
+        ],
+        "word_count": 968,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_context_files": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Supported Context Files",
+          "AGENTS.md",
+          "Architecture",
+          "Conventions",
+          "Important Notes",
+          "SOUL.md",
+          ".cursorrules",
+          "How Context Files Are Loaded",
+          "AGENTS.md",
+          ".cursorrules",
+          "Security: Prompt Injection Protection",
+          "Size Limits",
+          "Tips for Effective Context Files"
+        ],
+        "word_count": 1327,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_context_references": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Supported References",
+          "Usage Examples",
+          "CLI Tab Completion",
+          "Line Ranges",
+          "Size Limits",
+          "Security",
+          "Platform Availability",
+          "Interaction with Context Compression",
+          "Common Patterns",
+          "Error Handling"
+        ],
+        "word_count": 841,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_contributing_dev_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Contribution Priorities",
+          "Common contribution paths",
+          "Development Setup",
+          "Code Style",
+          "Cross-Platform Compatibility",
+          "Security Considerations",
+          "Pull Request Process",
+          "Reporting Issues, Community & License"
+        ],
+        "word_count": 1331,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "hermes_creating_skill_format": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Should it be a Skill or a Tool?",
+          "Skill Directory Structure",
+          "SKILL.md Format",
+          "When to Use",
+          "Quick Reference",
+          "Procedure",
+          "Pitfalls",
+          "Verification",
+          "Secure Setup on Load"
+        ],
+        "word_count": 1461,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_creating_skill_publish": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Skill Guidelines",
+          "Where Should the Skill Live?",
+          "Blueprints: skills that are also automations",
+          "Suggested Cron Jobs",
+          "Publishing Skills",
+          "Security Scanning"
+        ],
+        "word_count": 1432,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_credential_pools": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Pools vs. Fallback Providers",
+          "How It Works",
+          "Quick Start",
+          "Interactive Management",
+          "CLI Commands",
+          "Rotation Strategies",
+          "Error Recovery",
+          "Custom Endpoint Pools",
+          "Auto-Discovery",
+          "Delegation & Subagent Sharing",
+          "Thread Safety",
+          "Architecture",
+          "Storage"
+        ],
+        "word_count": 1397,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_cron_advanced_jobs": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "No-Agent Mode (Script-Only Jobs)",
+          "Script Timeout",
+          "Skipping the Agent Entirely: `wakeAgent`",
+          "Chaining Jobs with `context_from`",
+          "Toolsets Available to Cron Jobs (`enabled_toolsets`)",
+          "Provider Recovery",
+          "Silent Suppression (`[SILENT]`)"
+        ],
+        "word_count": 1516,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_cron_internals": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Key Files",
+          "Scheduling Model",
+          "Job Storage",
+          "Scheduler Runtime",
+          "Skill-Backed Jobs",
+          "Delivery Model",
+          "Recursion Guard",
+          "Locking",
+          "CLI Interface"
+        ],
+        "word_count": 1785,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_cron_scheduling": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Cron Can Do Now",
+          "Creating Scheduled Tasks",
+          "Skill-backed Cron Jobs",
+          "Running a Job Inside a Project Directory (`workdir`)",
+          "Editing Jobs",
+          "Lifecycle Actions",
+          "How It Works (Gateway Scheduler)",
+          "Delivery Options",
+          "Schedule Formats",
+          "Repeat Behavior",
+          "Self-contained Prompts and Security",
+          "Job Storage"
+        ],
+        "word_count": 1726,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_dashboard_auth_remote": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When the Gate Engages",
+          "Fail-Closed Semantics",
+          "The Three Bundled Providers",
+          "Provider Configuration",
+          "Writing Your Own Provider",
+          "OAuth Flow, Cookies, Logout & Audit Log",
+          "Public URL Override (Behind a Reverse Proxy)",
+          "Verifying the Gate",
+          "Connecting Hermes Desktop to a Remote Backend"
+        ],
+        "word_count": 1970,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_dashboard_extension_api": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Plugin SDK Surface",
+          "The Registration Globals",
+          "API Reference — Endpoints",
+          "API Reference — SDK on `window`"
+        ],
+        "word_count": 1027,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_dashboard_plugins": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start — your first plugin",
+          "Directory layout",
+          "Manifest reference",
+          "The Plugin SDK and calling backends",
+          "Shell slots and page-scoped slots",
+          "tab.override and tab.hidden",
+          "Backend API routes",
+          "Plugin discovery, reload & load lifecycle",
+          "Combined theme + plugin demo",
+          "Troubleshooting"
+        ],
+        "word_count": 1858,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_dashboard_rest_api": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Profile-scoped endpoints",
+          "Read/write endpoint families",
+          "Admin endpoints",
+          "CORS",
+          "Development",
+          "Automatic Build on Update"
+        ],
+        "word_count": 1198,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_dashboard_themes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start — your first theme",
+          "Palette, typography, layout",
+          "Layout variants",
+          "Theme assets (images as CSS vars)",
+          "Component chrome overrides",
+          "Color overrides",
+          "Raw `customCSS`",
+          "Built-in themes",
+          "Full theme YAML reference"
+        ],
+        "word_count": 1646,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_deliverable_mode": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How it works",
+          "Supported file extensions",
+          "Encouraging the agent to produce artifacts",
+          "Kanban: artifacts ride completion notifications",
+          "Connecting more services with MCP",
+          "Comparison to Perplexity Computer in Slack"
+        ],
+        "word_count": 926,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_desktop_app": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Which Interface Is Which",
+          "Install",
+          "What's in the App",
+          "Updating",
+          "Uninstalling",
+          "CLI Reference: `hermes desktop`",
+          "How It Works",
+          "Building from Source"
+        ],
+        "word_count": 1754,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_desktop_remote_backend": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Picking a Provider",
+          "On the Backend (the Remote Machine)",
+          "In the App",
+          "Remote-Backend Troubleshooting",
+          "App Troubleshooting (Boot Logs, Electron Download, Resets)"
+        ],
+        "word_count": 1403,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_discord_advanced": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Discord Gateway Model",
+          "Session Model in Discord",
+          "Configuration Reference",
+          "Slash Command Access Control",
+          "Native Slash Commands for Skills",
+          "Sending and Receiving Media",
+          "Interactive Prompts (clarify) and Home Channel",
+          "Voice Messages and `voice_fx`",
+          "Forum Channels"
+        ],
+        "word_count": 1907,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_discord_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes Behaves",
+          "Step 1: Create a Discord Application",
+          "Step 2: Create the Bot",
+          "Step 3: Enable Privileged Gateway Intents",
+          "Step 4: Get the Bot Token",
+          "Step 5: Generate the Invite URL",
+          "Step 6: Invite to Your Server",
+          "Step 7: Find Your Discord User ID",
+          "Step 8: Configure Hermes Agent",
+          "Troubleshooting",
+          "Security"
+        ],
+        "word_count": 1781,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 8
+      },
+      "hermes_docker_run_modes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start (first-run setup wizard)",
+          "Running in gateway mode",
+          "Running the dashboard",
+          "Running interactively (CLI chat)",
+          "Environment variable forwarding",
+          "Docker Compose example",
+          "Upgrading",
+          "Resource limits"
+        ],
+        "word_count": 1167,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_docker_tools_local_inference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installing more tools in the container",
+          "Connecting to local inference servers (vLLM, Ollama, etc.)",
+          "Optional: Linux desktop audio bridge",
+          "Troubleshooting"
+        ],
+        "word_count": 1504,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_docker_volumes_supervision": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Persistent Volumes",
+          "Multi-profile Support",
+          "Where the Logs Go",
+          "What the Dockerfile Does",
+          "Skills and Credential Files"
+        ],
+        "word_count": 1991,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_env_vars_providers_auth_tools": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "LLM Providers",
+          "Provider Auth (OAuth)",
+          "Tool APIs"
+        ],
+        "word_count": 1056,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_env_vars_runtime_messaging_behavior": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Terminal, SSH & Container Backends",
+          "Messaging Gateway & Per-Platform Variables",
+          "Agent Behavior, Interface & Session",
+          "Config-Only Sections: Compression, Fallback, Routing"
+        ],
+        "word_count": 962,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_event_hooks": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Gateway Event Hooks",
+          "Plugin Hooks (system boundary)",
+          "Shell Hooks"
+        ],
+        "word_count": 1616,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_extending_cli_wrapper": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Extension points",
+          "Quick start: a wrapper CLI",
+          "Hook reference",
+          "Layout diagram",
+          "Tips"
+        ],
+        "word_count": 906,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_fallback_providers": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three Layers of Resilience",
+          "Primary Model Fallback",
+          "Auxiliary Task Fallback",
+          "Auxiliary Capacity-Error Fallback",
+          "Context Compression Fallback",
+          "Delegation & Cron Provider Inheritance",
+          "Summary"
+        ],
+        "word_count": 1916,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_faq_install_provider_terminal": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Frequently Asked Questions",
+          "Troubleshooting — Installation Issues",
+          "Troubleshooting — Provider & Model Issues",
+          "Troubleshooting — Terminal Issues"
+        ],
+        "word_count": 1720,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_faq_messaging_perf_profiles_workflows": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Messaging Issues",
+          "Performance Issues",
+          "MCP Issues",
+          "Profiles",
+          "Workflows & Patterns"
+        ],
+        "word_count": 1500,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_features_overview": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Core",
+          "Automation",
+          "Media & Web",
+          "Integrations",
+          "Customization"
+        ],
+        "word_count": 897,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_gateway_dingtalk_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes Behaves",
+          "Prerequisites",
+          "Step 1: Create a DingTalk App",
+          "Step 2: Enable the Robot Capability",
+          "Step 3: Find Your DingTalk User ID",
+          "Step 4: Configure Hermes Agent",
+          "Features",
+          "Troubleshooting",
+          "Security",
+          "Notes"
+        ],
+        "word_count": 1548,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_gateway_feishu_features": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Bot Identity",
+          "Bot-to-Bot Messaging",
+          "Interactive Card Actions",
+          "Document Comment Intelligent Reply",
+          "Meeting Invitation Events",
+          "Media Support",
+          "Markdown Rendering and Post Fallback",
+          "Processing Status Reactions",
+          "Burst Protection and Batching",
+          "Rate Limiting (Webhook Mode)",
+          "WebSocket Tuning",
+          "Deduplication",
+          "All Environment Variables",
+          "Toolset"
+        ],
+        "word_count": 2026,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_gateway_feishu_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes Behaves",
+          "Step 1: Create a Feishu / Lark App",
+          "Step 2: Choose a Connection Mode",
+          "Step 3: Configure Hermes",
+          "Step 4: Start the Gateway",
+          "Home Chat",
+          "Security",
+          "Group Message Policy",
+          "Per-Group Access Control",
+          "Troubleshooting"
+        ],
+        "word_count": 1387,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "hermes_gateway_internals": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Key Files",
+          "Architecture Overview",
+          "Message Flow",
+          "Authorization",
+          "Slash Command Dispatch",
+          "Config Sources",
+          "Platform Adapters",
+          "Delivery Path",
+          "Hooks",
+          "Memory Provider Integration",
+          "Background Maintenance",
+          "Process Management"
+        ],
+        "word_count": 1434,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_gateway_operations": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Setup",
+          "Gateway Commands",
+          "Chat Commands (Inside Messaging)",
+          "Security",
+          "Interrupting the Agent",
+          "Tool Progress Notifications",
+          "Background Sessions",
+          "Service Management",
+          "Operating a multi-platform gateway"
+        ],
+        "word_count": 1808,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_gateway_qqbot_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Configuration",
+          "Environment Variables",
+          "Advanced Configuration",
+          "Voice Messages (STT)",
+          "Troubleshooting"
+        ],
+        "word_count": 824,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_gateway_wecom_callback_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Works",
+          "Prerequisites",
+          "Setup",
+          "Configuration Reference",
+          "Multi-App Routing",
+          "Access Control",
+          "Endpoints",
+          "Encryption",
+          "Limitations",
+          "Troubleshooting"
+        ],
+        "word_count": 1051,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_gateway_wecom_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Features",
+          "Configuration Options",
+          "Access Policies",
+          "Media Support",
+          "Reply-Mode Responses",
+          "Connection and Reconnection",
+          "All Environment Variables",
+          "Troubleshooting"
+        ],
+        "word_count": 1617,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_gateway_weixin_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Features",
+          "Configuration Options",
+          "Access Policies",
+          "Media Support",
+          "Context Token Persistence",
+          "Markdown and Message Chunking",
+          "Typing Indicators",
+          "Long-Poll Connection",
+          "All Environment Variables",
+          "Troubleshooting"
+        ],
+        "word_count": 1916,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_gateway_yuanbao_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Features",
+          "Configuration Options",
+          "Home Channel",
+          "Usage Tips",
+          "Troubleshooting",
+          "Access Control",
+          "Advanced Configuration",
+          "Integration with Other Features"
+        ],
+        "word_count": 1368,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_git_worktree_isolation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why Use Worktrees with Hermes?",
+          "Quick Start: Creating a Worktree",
+          "Running Multiple Agents in Parallel",
+          "Cleaning Up Worktrees Safely",
+          "Best Practices",
+          "Using `hermes -w` (Automatic Worktree Mode)",
+          "Putting It All Together"
+        ],
+        "word_count": 859,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_google_workspace_skill": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Setup",
+          "Gmail",
+          "Calendar",
+          "Drive, Sheets, Docs & Contacts",
+          "Output Format",
+          "Troubleshooting"
+        ],
+        "word_count": 930,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_guide_automate_with_cron": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Pattern 1: Website Change Monitor",
+          "Pattern 2: Weekly Report",
+          "Pattern 3: GitHub Repository Watcher",
+          "Pattern 4: Data Collection Pipeline",
+          "Pattern 5: Multi-Skill Workflow",
+          "Managing Your Jobs",
+          "Delivery Targets",
+          "Tips"
+        ],
+        "word_count": 1374,
+        "term_links": 3,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 10
+      },
+      "hermes_guide_cron_script_only": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to Use It",
+          "Create One from Chat",
+          "Create One from the CLI",
+          "How Script Output Maps to Delivery",
+          "Script Rules, Schedule Syntax & Delivery Targets",
+          "Worked Example & When to Use OS Cron Instead"
+        ],
+        "word_count": 1430,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_guide_cron_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Jobs Not Firing",
+          "Delivery Failures",
+          "Skill Loading Failures",
+          "Job Errors and Failures",
+          "Performance Issues",
+          "Diagnostic Commands",
+          "Getting More Help"
+        ],
+        "word_count": 1378,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_guide_daily_briefing_bot": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What We're Building",
+          "Prerequisites",
+          "Step 1: Test the Workflow Manually",
+          "Step 2: Create the Cron Job",
+          "Step 3: Customize the Briefing",
+          "Step 4: Manage Your Jobs",
+          "Going Further"
+        ],
+        "word_count": 1265,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_guide_delegation_patterns": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to Delegate",
+          "Pattern: Parallel Research",
+          "Pattern: Code Review",
+          "Pattern: Compare Alternatives & Multi-File Refactoring",
+          "Pattern: Gather Then Analyze",
+          "Toolset Selection",
+          "Constraints & Tuning",
+          "Tips"
+        ],
+        "word_count": 1359,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_guide_github_pr_review_cron": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1: Verify the Setup",
+          "Step 2: Try a Manual Review",
+          "Step 3: Create a Review Skill",
+          "What to Check",
+          "Output Format",
+          "Rules",
+          "Step 4: Teach It Your Conventions",
+          "Step 5: Create the Automated Cron Job",
+          "PR Reviews — today",
+          "Step 6: Run It On Demand",
+          "Going Further",
+          "Troubleshooting",
+          "What's Next?"
+        ],
+        "word_count": 1327,
+        "term_links": 9,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 12
+      },
+      "hermes_guide_github_pr_review_webhook": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1 — Enable the webhook platform",
+          "Step 2 — Start the gateway",
+          "Step 3 — Register the webhook on GitHub",
+          "Step 4 — Open a test PR",
+          "Local testing with ngrok",
+          "Filtering to specific actions",
+          "Using a skill for consistent review style",
+          "Sending responses to Slack or Discord instead",
+          "GitLab support",
+          "Security notes",
+          "Troubleshooting & full config reference"
+        ],
+        "word_count": 1575,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_guide_operate_teams_meeting_pipeline": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Core Operator Commands",
+          "Automating Subscription Renewal (REQUIRED for production)",
+          "Routine Runbook",
+          "Failure Triage",
+          "Go-Live Checklist",
+          "Delivery-Mode Decision Guide",
+          "Operator & Change Review Worksheets"
+        ],
+        "word_count": 1135,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_guide_pipe_script_output": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start",
+          "Argument Reference",
+          "Message Body Resolution",
+          "Real-World Examples",
+          "Does `hermes send` Need the Gateway Running?",
+          "Listing and Discovering Targets",
+          "Comparison with Other Approaches"
+        ],
+        "word_count": 1372,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_guide_team_telegram_assistant": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1: Create a Telegram Bot",
+          "Step 2: Configure the Gateway",
+          "Step 3: Start the Gateway",
+          "Step 4: Set Up Team Access",
+          "Step 5: Configure the Bot",
+          "Step 6: Set Up Scheduled Tasks",
+          "Production Tips"
+        ],
+        "word_count": 1329,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_image_gen_provider_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How discovery works",
+          "Directory structure",
+          "The ImageGenProvider ABC",
+          "plugin.yaml",
+          "ABC reference",
+          "Response format and base64 vs URL output",
+          "User overrides and testing",
+          "Reference implementations and distribute via pip"
+        ],
+        "word_count": 1183,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_image_generation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Supported Models",
+          "Setup",
+          "Usage",
+          "Image-to-Image / Editing",
+          "Aspect Ratios",
+          "Automatic Upscaling",
+          "How It Works Internally",
+          "Debugging",
+          "Platform Delivery",
+          "Limitations"
+        ],
+        "word_count": 1402,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_inference_providers_cloud": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Inference Providers Catalog",
+          "Two Commands for Model Management",
+          "Nous Portal (Recommended)",
+          "Anthropic (Native)",
+          "GitHub Copilot",
+          "First-Class API-Key Providers",
+          "xAI Grok (Responses API + Prompt Caching)",
+          "OAuth Catalog: Qwen, MiniMax, Gemini",
+          "AWS Bedrock",
+          "NVIDIA NIM, GMI Cloud, StepFun, Hugging Face, Ollama Cloud"
+        ],
+        "word_count": 1922,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_install_nix_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three Levels of Nix Integration",
+          "Prerequisites",
+          "Quick Start (Any Nix User)",
+          "Messaging Platforms: `#messaging` / `#full` Variants",
+          "Post-Install Workflow"
+        ],
+        "word_count": 804,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 10
+      },
+      "hermes_install_nixos_module": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "NixOS Module — Add the Flake Input",
+          "Configuration — Declarative Settings",
+          "Secrets Management (sops-nix / agenix)",
+          "MCP Servers (Declarative)",
+          "Plugins (Declarative)",
+          "Development — Dev Shell"
+        ],
+        "word_count": 1437,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_install_termux_android": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What is supported in the tested path?",
+          "What is not part of the tested path yet?",
+          "Option 1: One-line installer",
+          "Option 2: Manual install (fully explicit)",
+          "Recommended follow-up setup",
+          "Troubleshooting",
+          "Known limitations on phones"
+        ],
+        "word_count": 909,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_install_windows_native": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick install",
+          "What the installer actually does",
+          "Running the gateway at Windows login",
+          "Data layout",
+          "Uninstall",
+          "Where to go next"
+        ],
+        "word_count": 1620,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_install_windows_wsl2": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to Pick WSL2 vs Native",
+          "Why WSL2 (vs Native Windows)",
+          "Install WSL2",
+          "Filesystem: Crossing the Windows ↔ WSL2 Boundary",
+          "Networking: WSL ↔ Windows",
+          "Running Hermes Services Long-Term on Windows",
+          "GPU Passthrough (Local Models)",
+          "Common Pitfalls"
+        ],
+        "word_count": 2061,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_installation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Install",
+          "Prerequisites",
+          "Manual / Developer Installation",
+          "Non-Sudo / System Service User Installs",
+          "Troubleshooting",
+          "Install Method Auto-Detection"
+        ],
+        "word_count": 1091,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_integrations_overview": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "AI Providers & Routing",
+          "Tool Servers (MCP)",
+          "Web Search Backends",
+          "Browser Automation",
+          "Voice & TTS Providers",
+          "IDE & Editor Integration",
+          "Programmatic Access",
+          "Memory & Personalization",
+          "Messaging Platforms",
+          "Home Automation",
+          "Plugins",
+          "Training & Evaluation"
+        ],
+        "word_count": 874,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_kanban_dashboard_cli": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Dashboard (GUI)",
+          "CLI command reference",
+          "`/kanban` slash command"
+        ],
+        "word_count": 1988,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_kanban_multi_agent_board": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Kanban vs. `delegate_task`",
+          "Core concepts",
+          "Boards (multi-project)",
+          "File attachments",
+          "Runs — one row per attempt",
+          "Event reference",
+          "Out of scope",
+          "Design spec"
+        ],
+        "word_count": 1823,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_kanban_tutorial_walkthrough": {
+        "building_block": "empirical_observation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Setup",
+          "The Board at a Glance",
+          "Story 1 — Solo Dev Shipping a Feature",
+          "Story 2 — Fleet Farming",
+          "Story 3 — Role Pipeline with Retry",
+          "Story 4 — Circuit Breaker and Crash Recovery",
+          "Structured Handoff — Why `summary` and `metadata` Matter",
+          "Inspecting a Task Currently Running",
+          "Next Steps"
+        ],
+        "word_count": 1994,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_kanban_worker_lanes": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Hierarchy",
+          "What a Lane Provides",
+          "Outputs and the Review-Required Convention",
+          "Logs and Audit Trail",
+          "Existing Lane Shapes",
+          "Adding an External CLI Worker Lane",
+          "Failure Modes the Dispatcher Handles"
+        ],
+        "word_count": 1500,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_kanban_worker_orchestrator": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "How workers interact with the board",
+          "Multi-tenant usage",
+          "Collaboration patterns"
+        ],
+        "word_count": 1985,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_learning_path": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How to Use This Page",
+          "By Experience Level",
+          "By Use Case",
+          "Key Features at a Glance"
+        ],
+        "word_count": 525,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "hermes_local_self_hosted_llm": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "General Setup",
+          "Switching Models with `/model`",
+          "Ollama — Local Models, Zero Config",
+          "vLLM, SGLang, and llama.cpp — GPU & Local Inference Servers",
+          "LM Studio — Desktop App with Local Models",
+          "WSL2 Networking (Windows Users)",
+          "Troubleshooting Local Models"
+        ],
+        "word_count": 1538,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_lsp_diagnostics": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When LSP runs",
+          "Supported languages",
+          "CLI",
+          "Configuration",
+          "Installation locations",
+          "Performance characteristics",
+          "Disabling",
+          "Troubleshooting"
+        ],
+        "word_count": 1314,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_managed_scope": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What It Is (vs a Package-Manager–Locked Install)",
+          "Where It Lives",
+          "Precedence",
+          "Seeing What's Managed",
+          "Setting Up a Managed Scope (Administrators)",
+          "Security Model and Limitations (v1)"
+        ],
+        "word_count": 974,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_mcp_concept_config": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What MCP gives you",
+          "Quick start",
+          "Catalog: one-click install for Nous-approved MCPs",
+          "Two kinds of MCP servers",
+          "mTLS / client certificates",
+          "Basic configuration reference",
+          "Built-in presets"
+        ],
+        "word_count": 1835,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_mcp_config_reference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Root config shape",
+          "Server keys",
+          "`tools` policy keys and filtering semantics",
+          "Utility-tool policy",
+          "Example configs",
+          "Reloading, tool naming, and sanitization",
+          "OAuth 2.1 authentication"
+        ],
+        "word_count": 1162,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_mcp_filtering_serving": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes registers MCP tools",
+          "MCP utility tools",
+          "Per-server filtering",
+          "Runtime behavior",
+          "Security model",
+          "Example use cases",
+          "Troubleshooting",
+          "Parallel Tool Calls",
+          "MCP Sampling Support",
+          "Running Hermes as an MCP server"
+        ],
+        "word_count": 1766,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_memory_provider_catalog": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "OpenViking",
+          "Mem0",
+          "Hindsight",
+          "Holographic",
+          "RetainDB",
+          "ByteRover",
+          "Supermemory",
+          "Memori",
+          "Provider Comparison",
+          "Profile Isolation",
+          "Building a Memory Provider"
+        ],
+        "word_count": 1296,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_memory_provider_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Directory Structure",
+          "The MemoryProvider ABC",
+          "Required Methods",
+          "Config Schema",
+          "Save Config",
+          "Plugin Entry Point and plugin.yaml",
+          "Threading Contract",
+          "Profile Isolation",
+          "Testing",
+          "Adding CLI Commands",
+          "Single Provider Rule"
+        ],
+        "word_count": 1107,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_memory_providers_honcho": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Provider System",
+          "Honcho: What It Adds",
+          "Architecture",
+          "Recall Modes & Configuration",
+          "Multi-Peer Model & Observation",
+          "Gateway Identity Mapping",
+          "Tools & CLI"
+        ],
+        "word_count": 1612,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_messaging_bluebubbles_imessage": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "How It Works",
+          "Environment Variables",
+          "Features",
+          "Private API",
+          "Troubleshooting"
+        ],
+        "word_count": 919,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_messaging_email": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1: Configure Hermes",
+          "Step 2: Start the Gateway",
+          "How It Works",
+          "Access Control",
+          "Troubleshooting",
+          "Security",
+          "Environment Variables Reference"
+        ],
+        "word_count": 1206,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_gateway_architecture": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Platform Comparison",
+          "Architecture",
+          "Intentional Silence Tokens",
+          "Session Management",
+          "Platform-Specific Toolsets"
+        ],
+        "word_count": 1255,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_messaging_google_chat": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Steps 1–8: GCP project, APIs, Service Account, Pub/Sub, IAM, app config, install",
+          "Step 9: Configure Hermes",
+          "Formatting and capabilities",
+          "Step 10: Native attachment delivery (optional, per-user OAuth)",
+          "Troubleshooting",
+          "Security notes"
+        ],
+        "word_count": 1756,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_homeassistant": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Setup",
+          "Available Tools",
+          "Gateway Platform: Real-Time Events",
+          "Security",
+          "Example Automations",
+          "Troubleshooting"
+        ],
+        "word_count": 1230,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_line": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How the Bot Responds",
+          "Step 1: Create a LINE Messaging API Channel",
+          "Step 2: Expose the Webhook Port",
+          "Step 3: Configure Hermes",
+          "Step 4: Set the Webhook URL",
+          "Step 5: Run the Gateway",
+          "Slow LLM Responses (Postback-Button State Machine)",
+          "Cron / Notification Delivery",
+          "Environment Variable Reference",
+          "Troubleshooting",
+          "Limitations"
+        ],
+        "word_count": 1468,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_messaging_matrix": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes Behaves",
+          "Capability Matrix",
+          "Step 1: Create a Bot Account",
+          "Step 2: Get an Access Token",
+          "Step 3: Find Your Matrix User ID",
+          "Step 4: Configure Hermes Agent",
+          "Private Deployment Hardening",
+          "Home Room",
+          "Room allowlist (`allowed_rooms`)",
+          "Commands in Matrix",
+          "Matrix Tools and Controls",
+          "Media Limits",
+          "Troubleshooting",
+          "Security",
+          "Notes"
+        ],
+        "word_count": 2014,
+        "term_links": 0,
+        "snippet_links": 1,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_messaging_matrix_e2ee": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Requirements",
+          "Enable E2EE",
+          "Synapse Integration Tests",
+          "Cross-Signing Verification (Recommended)",
+          "Deleting the Crypto Store (Recovery)",
+          "Upgrading from a Previous Version with E2EE",
+          "Troubleshooting: \"could not decrypt event\""
+        ],
+        "word_count": 1179,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_messaging_matrix_proxy_mode": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Works",
+          "Step 1: Configure the Host (macOS)",
+          "Step 2: Configure the Docker Container (Linux VM)",
+          "Step 3: Start Both",
+          "Configuration Reference",
+          "Works for Any Platform",
+          "Troubleshooting: Sync"
+        ],
+        "word_count": 1055,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_mattermost": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes Behaves",
+          "Step 1: Enable Bot Accounts",
+          "Step 2: Create a Bot Account",
+          "Step 3: Add the Bot to Channels",
+          "Step 4: Find Your Mattermost User ID",
+          "Step 5: Configure Hermes Agent",
+          "Home Channel",
+          "Reply Mode",
+          "Mention Behavior",
+          "Channel allowlist (`allowed_channels`)",
+          "Troubleshooting",
+          "Per-Channel Prompts",
+          "Security",
+          "Notes"
+        ],
+        "word_count": 1684,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_media_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "TTS Configuration",
+          "Display Settings",
+          "Speech-to-Text (STT) and Voice Mode",
+          "Streaming",
+          "Group Chat Session Isolation",
+          "Unauthorized DM Behavior",
+          "Quick Commands",
+          "Human Delay",
+          "Web Search Backends",
+          "Browser",
+          "Timezone",
+          "Discord",
+          "Privacy (link-out)"
+        ],
+        "word_count": 2064,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_messaging_ntfy": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Configure Hermes",
+          "Identity Model — Read This Before Deploying",
+          "Quick Start — Talk to Your Agent From Your Phone",
+          "Using ntfy With Cron Jobs",
+          "Self-Hosting ntfy",
+          "Markdown Formatting",
+          "Outgoing-Only Setup (Notifications Without Inbound)",
+          "Limits",
+          "Troubleshooting"
+        ],
+        "word_count": 1149,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_raft": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Division of Labor",
+          "Prerequisites",
+          "Setup",
+          "How It Works",
+          "Bridge",
+          "Environment Variables"
+        ],
+        "word_count": 674,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_signal": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1: Link Your Signal Account",
+          "Step 2: Start the signal-cli Daemon",
+          "Step 3: Configure Hermes",
+          "Access Control",
+          "Features",
+          "Troubleshooting",
+          "Security",
+          "Environment Variables Reference"
+        ],
+        "word_count": 1476,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_messaging_simplex": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Install simplex-chat",
+          "Start the daemon",
+          "Configure Hermes",
+          "Find your contact ID or display name",
+          "Authorization",
+          "Group chats",
+          "Attachments",
+          "Using SimpleX with cron jobs",
+          "Privacy notes",
+          "Troubleshooting"
+        ],
+        "word_count": 885,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_slack": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1: Create a Slack App",
+          "Step 2: Configure Bot Token Scopes",
+          "Step 3: Enable Socket Mode",
+          "Step 4: Subscribe to Events",
+          "Step 5: Enable the Messages Tab",
+          "Step 6: Install App to Workspace",
+          "Step 7: Find User IDs for the Allowlist",
+          "Step 8: Configure Hermes",
+          "Step 9: Invite the Bot to Channels",
+          "Slash Commands",
+          "How the Bot Responds",
+          "Troubleshooting",
+          "Security"
+        ],
+        "word_count": 1843,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_messaging_slack_config": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Thread & Reply Behavior",
+          "Session Isolation",
+          "Mention & Trigger Behavior",
+          "Channel allowlist (`allowed_channels`)",
+          "Unauthorized User Handling",
+          "Voice Transcription",
+          "Full Example",
+          "Home Channel",
+          "Multi-Workspace Support",
+          "Voice Messages",
+          "Per-Channel Prompts",
+          "Per-Channel Skill Bindings"
+        ],
+        "word_count": 1694,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_messaging_sms_twilio": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1: Get Your Twilio Credentials",
+          "Step 2: Configure Hermes",
+          "Step 3: Configure Twilio Webhook",
+          "Step 4: Start the Gateway",
+          "Environment Variables",
+          "SMS-Specific Behavior",
+          "Security",
+          "Troubleshooting"
+        ],
+        "word_count": 1060,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_teams_bot": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How the Bot Responds",
+          "Step 1: Install the Teams CLI",
+          "Step 2: Expose the Webhook Port",
+          "Step 3: Create the Bot",
+          "Step 4: Configure Environment Variables",
+          "Step 5: Start the Gateway",
+          "Step 6: Install the App in Teams",
+          "Configuration Reference",
+          "Features",
+          "Production Deployment",
+          "Troubleshooting",
+          "Security"
+        ],
+        "word_count": 1517,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_messaging_teams_meetings_pipeline": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What This Feature Does",
+          "Prerequisites",
+          "Step 1: Add Microsoft Graph Credentials",
+          "Step 2: Enable the Graph Webhook Listener",
+          "Step 3: Configure Teams Delivery and Pipeline Behavior",
+          "Teams Delivery Modes",
+          "Step 4: Start the Gateway",
+          "Step 5: Create Graph Subscriptions",
+          "Validation",
+          "Troubleshooting"
+        ],
+        "word_count": 900,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_messaging_whatsapp_baileys": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Two Modes",
+          "Prerequisites",
+          "Step 1: Run the Setup Wizard",
+          "Step 2: Getting a Second Phone Number (Bot Mode)",
+          "Step 3: Configure Hermes",
+          "Session Persistence & Re-pairing",
+          "Voice Messages",
+          "Message Formatting & Delivery",
+          "Troubleshooting",
+          "Security"
+        ],
+        "word_count": 1593,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_messaging_whatsapp_cloud_model": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configuration reference",
+          "Features",
+          "Known limitations",
+          "Comparison to the Baileys bridge"
+        ],
+        "word_count": 1448,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_messaging_whatsapp_cloud_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Prerequisites",
+          "Creating the Meta app",
+          "Permanent token (production)",
+          "Exposing Hermes to the internet",
+          "Configuring the webhook on Meta's side",
+          "Recipient whitelist (Meta-side)",
+          "Allowlist (Hermes-side)",
+          "Polishing your bot's WhatsApp profile",
+          "Troubleshooting (graph errors)",
+          "Security notes"
+        ],
+        "word_count": 1737,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_migrate_from_openclaw": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Options",
+          "What gets migrated",
+          "Archived (no direct Hermes equivalent)",
+          "API key resolution",
+          "SecretRef handling",
+          "After migration",
+          "Troubleshooting"
+        ],
+        "word_count": 1188,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_model_aux_provider_config": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Provider Timeouts",
+          "Credential Pool Strategies",
+          "Prompt caching",
+          "Auxiliary Models",
+          "Reasoning Effort",
+          "Tool-Use Enforcement"
+        ],
+        "word_count": 2003,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_model_catalog_reference": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Live manifest URL",
+          "Schema",
+          "Fetch behavior",
+          "Config",
+          "Updating the manifest"
+        ],
+        "word_count": 621,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_model_provider_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How discovery works",
+          "Directory structure",
+          "Minimal example — a simple API-key provider",
+          "ProviderProfile fields",
+          "Overridable hooks",
+          "User overrides — replace a built-in without editing the repo",
+          "api_mode selection",
+          "Auth types",
+          "Discovery timing, Testing, and General PluginManager integration",
+          "Distribute via pip"
+        ],
+        "word_count": 1494,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_msgraph_app_registration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1: Create the App Registration",
+          "Step 2: Create a Client Secret",
+          "Step 3: Grant Graph API Permissions",
+          "Step 4: (Recommended) Scope the App with an Application Access Policy",
+          "Step 5: Write the Credentials to Your Env File",
+          "Step 6: Verify the Token Flow",
+          "Rotating the Client Secret",
+          "Next Steps"
+        ],
+        "word_count": 1081,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_msgraph_webhook_listener": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Quick Start",
+          "Configuration",
+          "Security Hardening",
+          "Troubleshooting"
+        ],
+        "word_count": 1069,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_nixos_container_mode": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choosing a Deployment Mode",
+          "Container Architecture",
+          "What Persists Across What",
+          "GC Root Protection",
+          "Directory Layout (Container Mode)",
+          "Options Reference (Container)",
+          "Updating",
+          "Troubleshooting"
+        ],
+        "word_count": 1327,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_nous_portal_subscription": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What's in the subscription",
+          "A note on Hermes 4",
+          "Setup",
+          "Using the Portal day-to-day",
+          "Configuration reference",
+          "Token handling",
+          "Troubleshooting",
+          "See also"
+        ],
+        "word_count": 1546,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_oauth_over_ssh": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "TL;DR",
+          "Browser-only remote (Cloud Shell / Codespaces / EC2 Instance Connect)",
+          "Which Providers Need This",
+          "MCP Servers",
+          "Why the listener can't just bind 0.0.0.0",
+          "Step-by-step: single SSH hop",
+          "Step-by-step: through a jump box",
+          "Mosh, tmux, ssh ControlMaster",
+          "Troubleshooting"
+        ],
+        "word_count": 1585,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_open_webui_integration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Architecture",
+          "Quick Setup",
+          "Docker Compose Setup",
+          "Configuring via the Admin UI",
+          "API Type: Chat Completions vs Responses",
+          "How It Works",
+          "Configuration Reference",
+          "Troubleshooting",
+          "Multi-User Setup with Profiles",
+          "Linux Docker (no Docker Desktop)"
+        ],
+        "word_count": 1725,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_optional_skills_catalog": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installing Optional Skills",
+          "Skill Categories",
+          "Contributing Optional Skills"
+        ],
+        "word_count": 963,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_persistent_goals": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Commands",
+          "Adding criteria mid-goal: `/subgoal`",
+          "Behavior details",
+          "Configuration",
+          "Example walkthrough",
+          "When the judge gets it wrong"
+        ],
+        "word_count": 1460,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_persistent_memory": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Works",
+          "How Memory Appears in the System Prompt",
+          "Memory Tool Actions",
+          "Two Targets Explained",
+          "What to Save vs Skip",
+          "Capacity Management",
+          "Duplicate Prevention",
+          "Security Scanning",
+          "Session Search",
+          "Configuration",
+          "Controlling Memory Writes (`write_approval`)",
+          "Controlling Skill Writes (`skills.write_approval`)",
+          "External Memory Providers"
+        ],
+        "word_count": 1617,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_personality_soul": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How SOUL.md Works Now",
+          "Why This Design",
+          "What Should Go in SOUL.md",
+          "Style",
+          "What to avoid",
+          "Technical posture",
+          "What Hermes Injects + Security Scanning",
+          "SOUL.md vs AGENTS.md vs /personality",
+          "Built-in Personalities + Switching",
+          "Custom Personalities in Config",
+          "How Personality Interacts With the Full Prompt",
+          "CLI Appearance vs Conversational Personality"
+        ],
+        "word_count": 1131,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_photon_imessage": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Architecture",
+          "Prerequisites",
+          "First-time setup",
+          "Authorizing users",
+          "Start the gateway",
+          "Status & troubleshooting",
+          "Limits today",
+          "Env vars"
+        ],
+        "word_count": 1214,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_plugin_extensions_hooks": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Ship data files and bundle skills",
+          "Gate, lazy-install, and singleton-cache",
+          "Conditional availability and overriding built-ins",
+          "Lifecycle hooks and `pre_llm_call` context injection",
+          "Register CLI commands, slash commands, and dispatch tools",
+          "Handle Slack Block Kit button clicks"
+        ],
+        "word_count": 1319,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_plugin_hook_reference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "General Rules for All Hooks",
+          "Quick Reference",
+          "Tool-Loop Hooks",
+          "Session-Lifecycle Hooks",
+          "Orchestration & Gateway-Flow Hooks",
+          "Transform Hooks (Content Rewriters)",
+          "Tutorial: BOOT.md — A Gateway-Startup Checklist Hook",
+          "Shell-Hook Worked Examples"
+        ],
+        "word_count": 2002,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_plugin_llm_access": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The smallest possible call",
+          "Structured output",
+          "What this lane gives you",
+          "Quick start",
+          "When to use which",
+          "API surface",
+          "Trust gate",
+          "What the host owns vs the plugin owns",
+          "Where this fits in the plugin surface"
+        ],
+        "word_count": 1678,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_plugin_types_surfaces": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "If you want to add… (routing map)",
+          "Specialized plugin types",
+          "Non-Python extension surfaces",
+          "Distribute via pip",
+          "Distribute for NixOS",
+          "Common mistakes"
+        ],
+        "word_count": 1258,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_plugins_management": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The opt-in allow-list and the three toggle commands",
+          "The `hermes plugins` command set",
+          "Interactive UI",
+          "Enabled vs. disabled vs. neither",
+          "NixOS declarative plugins"
+        ],
+        "word_count": 863,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_plugins_system": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Overview — Plugin Layout",
+          "What Plugins Can Do — the `ctx.*` API",
+          "Plugin Discovery",
+          "Plugins Are Opt-In (with a Few Exceptions)",
+          "Available Hooks",
+          "Plugin Types",
+          "Pluggable Interfaces — Where to Go for Each",
+          "Injecting Messages"
+        ],
+        "word_count": 1762,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 8
+      },
+      "hermes_profile_commands_reference": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`hermes profile`",
+          "`hermes profile create` and `describe`",
+          "`hermes profile export` / `import`",
+          "Distribution commands",
+          "`hermes -p` / `hermes --profile`",
+          "`hermes completion`"
+        ],
+        "word_count": 1423,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_profile_distribution_model": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Distribution-owned vs user-owned",
+          "What's NOT in a distribution (ever)",
+          "Security and trust",
+          "Under the hood",
+          "See also (source)"
+        ],
+        "word_count": 1011,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_profile_distributions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What this means",
+          "Why git?",
+          "When should you use a distribution?",
+          "For authors: publishing a distribution",
+          "For installers: using a distribution",
+          "Use cases and patterns",
+          "Recipes"
+        ],
+        "word_count": 1722,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "hermes_profile_gateways_services": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Running a Gateway Per Profile",
+          "Safety: Token-Conflict Locks",
+          "Quick Start: Many Profiles",
+          "Start / Stop / Restart All At Once",
+          "Alternative: One Gateway for All Profiles (Multiplexing)",
+          "Service Files, Logs, and Identifying What Runs",
+          "Keeping the Host Awake",
+          "Troubleshooting"
+        ],
+        "word_count": 1440,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_profiles_multi_agent": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Creating a profile",
+          "Using profiles",
+          "Profiles vs workspaces vs sandboxing",
+          "Configuring profiles",
+          "Updating, managing, and deleting",
+          "How it works (`HERMES_HOME` vs `HOME` / `home_mode`)"
+        ],
+        "word_count": 1420,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_programmatic_integration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Three Protocols",
+          "ACP (Agent Client Protocol)",
+          "TUI Gateway JSON-RPC",
+          "OpenAI-Compatible API Server",
+          "Which One Should I Use?",
+          "Model Hot-Swapping",
+          "A Note on `--mode rpc`"
+        ],
+        "word_count": 1039,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_prompt_assembly": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Cached system prompt layers",
+          "Persistent Memory",
+          "Skills (mandatory)",
+          "AGENTS.md",
+          "Customizing platform hints",
+          "How SOUL.md appears in the prompt",
+          "How context files are injected",
+          "API-call-time-only layers",
+          "Memory snapshots",
+          "Supported prompt customization surfaces",
+          "Why prompt assembly is split this way"
+        ],
+        "word_count": 1381,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_provider_aws_bedrock": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Quick Start",
+          "Configuration",
+          "Available Models",
+          "Switching Models Mid-Session",
+          "Diagnostics",
+          "Gateway (Messaging Platforms)",
+          "Troubleshooting",
+          "One-Click AWS Deployment"
+        ],
+        "word_count": 874,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_provider_azure_foundry_entra_id": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why use Entra ID?",
+          "One-time setup (Azure side)",
+          "One-time setup (Hermes side)",
+          "Configuration written to `config.yaml`",
+          "Credential resolution order",
+          "Deployment patterns",
+          "Health checks",
+          "Limitations",
+          "Environment variables",
+          "Troubleshooting (Entra-specific)"
+        ],
+        "word_count": 1604,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_provider_azure_foundry_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Quick Start",
+          "Configuration (written to `config.yaml`)",
+          "OpenAI-style endpoints (GPT, Llama, etc.)",
+          "Anthropic-style endpoints (Claude via Microsoft Foundry)",
+          "Alternative: `provider: anthropic` + Azure base URL",
+          "Model discovery",
+          "Troubleshooting"
+        ],
+        "word_count": 1413,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_provider_google_gemini": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Quick Start",
+          "Configuration",
+          "Available Models",
+          "Switching Models Mid-Session",
+          "Diagnostics",
+          "Gateway (Messaging Platforms)",
+          "Troubleshooting"
+        ],
+        "word_count": 1261,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_provider_local_llm_mac": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choosing a model",
+          "Option A: llama.cpp",
+          "Option B: MLX via omlx",
+          "Benchmarks: llama.cpp vs MLX",
+          "Connect to Hermes",
+          "Timeouts"
+        ],
+        "word_count": 1173,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_provider_minimax_oauth": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Quick Start",
+          "Logging In Manually",
+          "The OAuth Flow",
+          "Checking Login Status",
+          "Switching Models, Configuration & Aliases",
+          "Environment Variables & Models",
+          "Troubleshooting & Logging Out"
+        ],
+        "word_count": 1098,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 8
+      },
+      "hermes_provider_ollama_local": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What You Need",
+          "Step 1: Install Ollama",
+          "Step 2: Pull a Model",
+          "Step 3: Configure Hermes",
+          "Step 4: Start Using Hermes",
+          "Step 5: Pick the Right Model for Your Task",
+          "Step 6: Optimize for Speed",
+          "Step 7: Run as a Gateway Bot (Optional)",
+          "Step 8: Set Up Fallbacks (Optional)",
+          "Troubleshooting",
+          "Cost Comparison",
+          "What Works Well Locally / What's Better with Cloud Models"
+        ],
+        "word_count": 1459,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_provider_routing": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configuration",
+          "Options",
+          "Practical Examples",
+          "How It Works",
+          "Default Behavior",
+          "Provider Routing vs. Fallback Models"
+        ],
+        "word_count": 731,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_provider_routing_proxies": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "LiteLLM Proxy — Multi-Provider Gateway",
+          "ClawRouter — Cost-Optimized Routing",
+          "Other Compatible Providers",
+          "Context Length Detection",
+          "Named Custom Providers",
+          "Cookbook: Together AI, Groq, Perplexity",
+          "Choosing the Right Setup",
+          "Optional API Keys",
+          "OpenRouter Provider Routing",
+          "OpenRouter Pareto Code Router",
+          "Fallback Providers"
+        ],
+        "word_count": 1769,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_provider_runtime": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Resolution precedence",
+          "Providers",
+          "Output of runtime resolution",
+          "Why this matters",
+          "OpenRouter and custom OpenAI-compatible base URLs",
+          "Native Anthropic path",
+          "OpenAI Codex path",
+          "Auxiliary model routing",
+          "Fallback models"
+        ],
+        "word_count": 1169,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_provider_xai_grok_oauth": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Overview Table",
+          "Prerequisites",
+          "Quick Start",
+          "Logging In Manually",
+          "How the Login Works",
+          "Checking Login Status",
+          "Switching Models",
+          "Configuration Reference",
+          "Direct-to-xAI Tools (TTS / Image / Video / Transcription / X Search)",
+          "Environment Variables",
+          "Troubleshooting",
+          "Logging Out"
+        ],
+        "word_count": 1604,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_python_library_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installation",
+          "Basic Usage",
+          "Full Conversation Control",
+          "Configuring Tools",
+          "Multi-turn Conversations",
+          "Saving Trajectories & Custom System Prompts",
+          "Batch Processing",
+          "Integration Examples",
+          "Key Constructor Parameters",
+          "Important Notes"
+        ],
+        "word_count": 1133,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_quickstart_first_chat": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Fastest Path",
+          "1. Install Hermes Agent",
+          "2. Choose a Provider",
+          "3. Run Your First Chat",
+          "4. Verify Sessions Work",
+          "Quick Reference"
+        ],
+        "word_count": 951,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_quickstart_next_layer": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "5. Try Key Features",
+          "6. Add the Next Layer",
+          "Common Failure Modes",
+          "Recovery Toolkit"
+        ],
+        "word_count": 1013,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_run_nemotron_3_ultra_free": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Option A — Desktop app (recommended)",
+          "Option B — Command line",
+          "Switching to it later",
+          "Troubleshooting",
+          "See also"
+        ],
+        "word_count": 748,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "hermes_runtime_context_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Context Compression",
+          "Context Engine",
+          "Iteration Budget Pressure",
+          "Context Pressure Warnings",
+          "File Read Safety",
+          "Tool Output Truncation Limits",
+          "Global Toolset Disable",
+          "Git Worktree Isolation"
+        ],
+        "word_count": 1848,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_secrets_bitwarden": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How it works",
+          "Why machine accounts (and why no 2FA prompt)",
+          "Setup",
+          "CLI",
+          "Configuration",
+          "Failure modes",
+          "Security notes",
+          "When NOT to use this"
+        ],
+        "word_count": 1326,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_security_command_approval": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Overview (Seven Security Layers)",
+          "Dangerous Command Approval",
+          "User Authorization (Gateway)",
+          "Tirith Pre-Exec Security Scanning",
+          "Context File Injection Protection"
+        ],
+        "word_count": 1777,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_security_isolation_credentials": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Container Isolation",
+          "Terminal Backend Security Comparison",
+          "Environment Variable Passthrough",
+          "MCP Credential Handling",
+          "Best Practices for Production Deployment",
+          "Supply-chain advisory checking"
+        ],
+        "word_count": 1806,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "hermes_security_skill_memory_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Skill Settings",
+          "Memory Configuration",
+          "Privacy",
+          "Code Execution",
+          "Security",
+          "Website Blocklist",
+          "Smart Approvals",
+          "Checkpoints",
+          "Delegation",
+          "Clarify",
+          "Context Files (SOUL.md, AGENTS.md)"
+        ],
+        "word_count": 1793,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_session_search_storage": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Session Search Tool",
+          "Per-Platform Session Tracking",
+          "Storage Locations",
+          "Session Expiry and Cleanup"
+        ],
+        "word_count": 1347,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_session_storage": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Architecture Overview",
+          "SQLite Schema",
+          "Schema Version and Migrations",
+          "Write Contention Handling",
+          "Common Operations",
+          "Full-Text Search",
+          "Session Lineage",
+          "Export, Cleanup, and Database Location"
+        ],
+        "word_count": 1448,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_sessions_lifecycle_resume": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Sessions Work",
+          "CLI Session Resume",
+          "Cross-Platform Handoff",
+          "Session Naming",
+          "Session Management Commands"
+        ],
+        "word_count": 1829,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_setup_with_nous_portal": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "1–2. Subscribe and Run the One-Shot Setup",
+          "3–4. Verify It Worked, Then Run Your First Conversation",
+          "5. Pick the Model You Actually Want",
+          "6–8. Customize Gateway Routing, Voice, and Cron",
+          "Profiles and Multi-User Setups",
+          "Troubleshooting",
+          "What This Gets You"
+        ],
+        "word_count": 1468,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_skill_curator": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Runs",
+          "Configuration",
+          "CLI",
+          "Backups and Rollback",
+          "What \"Agent-Created\" Means",
+          "Pinning a Skill",
+          "Usage Telemetry",
+          "Per-Run Reports",
+          "Restoring and Disabling"
+        ],
+        "word_count": 1798,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_skill_md_format_bundles": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "SKILL.md Format",
+          "When to Use",
+          "Procedure",
+          "Pitfalls",
+          "Verification",
+          "Skill Output and Media Delivery",
+          "Conditional Activation (Fallback Skills)",
+          "Skill Directory Structure",
+          "Skill Bundles"
+        ],
+        "word_count": 1561,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_skills_catalog_bundled": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "apple",
+          "autonomous-ai-agents",
+          "creative",
+          "data-science",
+          "devops",
+          "dogfood",
+          "email",
+          "github",
+          "media",
+          "mlops",
+          "note-taking",
+          "productivity",
+          "research",
+          "smart-home",
+          "social-media",
+          "software-development",
+          "yuanbao",
+          "Automation Blueprints Gallery"
+        ],
+        "word_count": 1759,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_skills_hub_agent_managed": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Agent-Managed Skills (skill_manage tool)",
+          "Skills Hub",
+          "Bundled skill updates (`hermes skills reset`)",
+          "Slash commands (inside chat)"
+        ],
+        "word_count": 1836,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_skills_system": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What a Skill Is",
+          "Starting with a Blank Slate",
+          "Using Skills",
+          "Progressive Disclosure",
+          "Secure Setup on Load",
+          "External Skill Directories"
+        ],
+        "word_count": 1068,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_skins_themes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Change skins",
+          "Built-in skins",
+          "Complete list of configurable keys",
+          "Custom skins",
+          "Hermes Mod — visual skin editor",
+          "Operational notes"
+        ],
+        "word_count": 1245,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_slash_commands_interactive_cli": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Permissions and admin/user split",
+          "Interactive CLI slash commands",
+          "Dynamic CLI slash commands",
+          "Quick Commands",
+          "Custom model aliases",
+          "Alias Resolution"
+        ],
+        "word_count": 1043,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_slash_commands_messaging": {
+        "building_block": "navigation",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Messaging slash commands",
+          "Notes — surface matrix (CLI-only / messaging-only / both)",
+          "Confirmation prompts for destructive commands"
+        ],
+        "word_count": 1326,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_spotify_integration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Verify",
+          "Using it — the 7 tools",
+          "Scheduling: Spotify + cron",
+          "Sign out",
+          "Advanced: custom scopes / client ID / redirect URI",
+          "Troubleshooting",
+          "Where things live"
+        ],
+        "word_count": 1628,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_stt_transcription": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Built-in Providers",
+          "Configuration",
+          "Provider Details",
+          "Fallback Behavior",
+          "STT Custom Command Providers",
+          "Python Plugin Providers (STT)"
+        ],
+        "word_count": 1605,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_subagent_delegation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Single Task",
+          "Parallel Batch",
+          "How Subagent Context Works",
+          "Practical Examples",
+          "Batch Mode Details",
+          "Model Override",
+          "Toolset Selection Tips",
+          "Max Iterations and Child Timeout",
+          "Monitoring Running Subagents (`/agents`)",
+          "Depth Limit and Nested Orchestration",
+          "Lifetime and Durability",
+          "Key Properties",
+          "Delegation vs execute_code",
+          "Configuration"
+        ],
+        "word_count": 1736,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_subscription_proxy": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Subscription Proxy vs API Server",
+          "Quick Start",
+          "Available Providers",
+          "Check Status",
+          "Allowed Paths",
+          "Configuring OpenViking to Use Portal",
+          "Configuring Karakeep (or Any Bookmark/Summarizer App)",
+          "Exposing on LAN",
+          "Rate Limits",
+          "Architecture",
+          "Future: More OAuth Providers"
+        ],
+        "word_count": 956,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_telegram_advanced": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Sending Generated Files (`MEDIA:`)",
+          "Voice Messages (STT / TTS)",
+          "Large Files (>20MB) via Local Bot API Server",
+          "Group Triggering and Multi-Bot Fleets",
+          "DM Topics, `/topic`, and Group Forum Skill Binding",
+          "Streaming, Rich Messages, and Access Control",
+          "Other Interaction Surfaces"
+        ],
+        "word_count": 1509,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_telegram_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1: Create a Bot via BotFather",
+          "Step 2: Customize Your Bot (Optional)",
+          "Step 3: Privacy Mode (Critical for Groups)",
+          "Step 4: Find Your User ID",
+          "Step 5: Configure Hermes",
+          "Webhook Mode",
+          "Proxy Support",
+          "Home Channel",
+          "DNS-over-HTTPS Fallback IPs",
+          "Troubleshooting",
+          "Security"
+        ],
+        "word_count": 1591,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "hermes_terminal_backends": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Terminal Backend Configuration",
+          "Backend Overview",
+          "Local Backend and `home_mode`",
+          "Docker Backend, Lifecycle, and Hardening",
+          "SSH, Modal, Daytona, and Singularity Backends",
+          "Remote-to-Host File Sync and Persistent Shell"
+        ],
+        "word_count": 2059,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_tips_best_practices": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Getting the Best Results",
+          "CLI Power User Tips",
+          "Context Files",
+          "Memory & Skills",
+          "Performance & Cost",
+          "Messaging Tips",
+          "Security"
+        ],
+        "word_count": 1335,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_tool_gateway": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What's included",
+          "Why it's here",
+          "Get started",
+          "Eligibility",
+          "Mix and match",
+          "Using individual image models",
+          "Configuration reference",
+          "FAQ"
+        ],
+        "word_count": 1481,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_tool_search": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Works",
+          "When Does It Activate?",
+          "Configuration",
+          "When NOT to Use It",
+          "Trade-offs That Don't Go Away",
+          "Implementation Details"
+        ],
+        "word_count": 1095,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_tools_reference_core": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Counts (current registry)",
+          "MCP Dynamic Tools",
+          "`file` toolset",
+          "`terminal` toolset",
+          "`code_execution` toolset",
+          "`cronjob` toolset",
+          "`delegation` toolset",
+          "`memory` toolset",
+          "`session_search` toolset",
+          "`skills` toolset",
+          "`todo`, `clarify`, `moa`, `vision` toolsets"
+        ],
+        "word_count": 1224,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_tools_reference_platform_media": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`browser` toolset",
+          "`computer_use` toolset",
+          "Media toolsets — `image_gen`, `video`, `video_gen`, `vision`, `tts`",
+          "Web & search toolsets — `web`, `x_search`",
+          "`kanban` toolset",
+          "Messaging & smart-home — `messaging`, `homeassistant`",
+          "Platform toolsets — Discord, Spotify, Feishu, Yuanbao"
+        ],
+        "word_count": 1910,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_tools_runtime": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Tool registration model",
+          "Tool availability checking (`check_fn`)",
+          "Toolset resolution",
+          "Dispatch",
+          "The DANGEROUS_PATTERNS approval flow",
+          "Terminal/runtime environments",
+          "Concurrency"
+        ],
+        "word_count": 1329,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_tools_toolsets": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Available Tools",
+          "Using Toolsets",
+          "Terminal Backends",
+          "Background Process Management",
+          "Sudo Support"
+        ],
+        "word_count": 974,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_toolsets_reference": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Toolsets Work",
+          "Configuring Toolsets",
+          "Core Toolsets",
+          "Platform Toolsets",
+          "Dynamic Toolsets",
+          "Relationship to `hermes tools`"
+        ],
+        "word_count": 1404,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_trajectory_format": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "File Naming Convention",
+          "JSONL Entry Format",
+          "Conversations Array (ShareGPT Format)",
+          "Normalization Rules",
+          "Loading Trajectories",
+          "Controlling Trajectory Saving"
+        ],
+        "word_count": 1196,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_tts_providers": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Text-to-Speech Providers",
+          "Platform Delivery",
+          "Configuration",
+          "Gemini Persona Prompts",
+          "Gemini Audio Tags",
+          "Input Length Limits",
+          "Telegram Voice Bubbles & ffmpeg",
+          "xAI Custom Voices and Piper",
+          "Custom Command Providers",
+          "Python Plugin Providers"
+        ],
+        "word_count": 1894,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_tui_interface": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Launch",
+          "Why the TUI",
+          "Requirements",
+          "Keybindings & Slash Commands",
+          "Live Session Switcher",
+          "Rendering, Theming & Indicators",
+          "Auto-resume & Status Line",
+          "Configuration",
+          "Sessions",
+          "How the TUI Talks to Its Gateway",
+          "Reverting to the Classic CLI"
+        ],
+        "word_count": 1531,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_updating_uninstalling": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Updating",
+          "What Happens During an Update (git installs)",
+          "Update Flags",
+          "Local Changes on Non-Interactive Updates",
+          "Windows: Another `hermes.exe` Is Running",
+          "Recommended Post-Update Validation",
+          "Terminal Disconnect Mid-Update",
+          "Updating from Messaging Platforms & Manually",
+          "Rollback",
+          "Uninstalling"
+        ],
+        "word_count": 1576,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_use_mcp_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When should you use MCP?",
+          "Mental model",
+          "Step 1: install MCP support",
+          "Step 2: add one server first",
+          "Step 3: verify MCP loaded",
+          "Step 4: start filtering immediately",
+          "What does filtering actually affect?",
+          "Common patterns",
+          "Tutorial: end-to-end setup with filtering",
+          "WSL2: bridge Hermes in WSL to Windows Chrome",
+          "Safe usage recommendations",
+          "Troubleshooting by symptom",
+          "Recommended first MCP setups"
+        ],
+        "word_count": 1427,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_use_soul_md_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What SOUL.md is (and is not) for",
+          "Where it lives",
+          "First-run behavior",
+          "How Hermes uses it",
+          "A good first edit and example styles",
+          "SOUL.md vs /personality vs AGENTS.md",
+          "How to edit it and a practical workflow",
+          "Troubleshooting"
+        ],
+        "word_count": 876,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_use_voice_mode_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What voice mode is good for",
+          "Choose your voice mode setup",
+          "Step 1: make sure normal Hermes works first",
+          "Step 2: install the right extras",
+          "Step 3: install system dependencies",
+          "Step 4: choose STT and TTS providers",
+          "Step 5: recommended config",
+          "Use case 1: CLI voice mode",
+          "Tuning CLI behavior",
+          "Use case 2: voice replies in Telegram or Discord",
+          "Use case 3: Discord voice channels",
+          "Voice quality recommendations",
+          "Common failure modes",
+          "Suggested first-week setup"
+        ],
+        "word_count": 1381,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_video_gen_provider_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The unified surface (one tool, two modalities)",
+          "How discovery works",
+          "Directory structure",
+          "The VideoGenProvider ABC",
+          "The plugin manifest",
+          "The `video_generate` schema",
+          "Model families and endpoint routing (the FAL pattern)",
+          "Selection precedence",
+          "Response shape",
+          "Where to save artifacts",
+          "Testing"
+        ],
+        "word_count": 1045,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "hermes_vision_image_paste": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How It Works",
+          "Paste Methods",
+          "Platform Compatibility",
+          "Platform-Specific Setup",
+          "SSH & Remote Sessions",
+          "Why Terminals Can't Paste Images",
+          "Supported Models",
+          "Image Routing (Vision-Capable vs Text-Only Models)"
+        ],
+        "word_count": 1599,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_voice_gateway_discord_vc": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Gateway Voice Reply (Telegram & Discord)",
+          "Discord Voice Channels",
+          "Troubleshooting (Gateway & Voice Channel)"
+        ],
+        "word_count": 1356,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "hermes_voice_mode_cli": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Requirements",
+          "CLI Voice Mode",
+          "Configuration Reference",
+          "Troubleshooting"
+        ],
+        "word_count": 1241,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "hermes_web_dashboard_overview": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start",
+          "Managing multiple profiles",
+          "Prerequisites",
+          "Pages",
+          "`/reload` Slash Command",
+          "Themes & plugins (summary)"
+        ],
+        "word_count": 1410,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 17
+      },
+      "hermes_web_search_extract": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Backends",
+          "How `web_extract` handles long pages",
+          "Setup",
+          "Configuration",
+          "Verify your setup",
+          "Troubleshooting",
+          "Optional skill: `searxng-search`"
+        ],
+        "word_count": 1624,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_web_search_provider_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How discovery works",
+          "Directory structure",
+          "The WebSearchProvider ABC",
+          "plugin.yaml",
+          "ABC reference",
+          "Response shape",
+          "Capability flags",
+          "How Hermes wires it into the tools",
+          "Lazy-installing optional dependencies",
+          "Reference implementations and pip distribution"
+        ],
+        "word_count": 1381,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_webhooks_routes_security": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configuring Routes",
+          "Delivery Options",
+          "Security"
+        ],
+        "word_count": 1408,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "hermes_webhooks_routing_delivery": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start",
+          "Setup",
+          "GitHub PR Review (Step by Step)",
+          "GitLab Webhook Setup",
+          "Direct Delivery Mode",
+          "Dynamic Subscriptions (CLI)",
+          "Troubleshooting",
+          "Environment Variables"
+        ],
+        "word_count": 1528,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_windows_native_runtime": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Feature matrix",
+          "How Hermes runs shell commands on Windows",
+          "UTF-8 console on Windows",
+          "The editor (`Ctrl-X Ctrl-E`, `/edit`)",
+          "`Ctrl+Enter` for newline in the CLI",
+          "Browser tool",
+          "Running Hermes on Windows — practical notes",
+          "Process management internals",
+          "Common pitfalls"
+        ],
+        "word_count": 1900,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "hermes_work_with_skills_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Finding Skills",
+          "Using a Skill",
+          "Installing from the Hub",
+          "Plugin-Provided Skills",
+          "Configuring Skill Settings",
+          "Creating Your Own Skill",
+          "When to Use",
+          "Procedure",
+          "Pitfalls",
+          "Verification",
+          "Per-Platform Skill Management",
+          "Skills vs Memory",
+          "Tips"
+        ],
+        "word_count": 1234,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "hermes_x_search_grok": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Authentication",
+          "Enabling the tool",
+          "Configuration",
+          "Tool parameters",
+          "Example",
+          "Troubleshooting"
+        ],
+        "word_count": 1203,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      }
+    }
+  }
+}

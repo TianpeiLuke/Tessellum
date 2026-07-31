@@ -1,0 +1,189 @@
+---
+tags:
+  - resource
+  - documentation
+  - openclaw
+  - install
+  - azure
+keywords:
+  - openclaw azure install
+  - azure linux vm openclaw gateway
+  - network security group nsg hardening
+  - azure bastion ssh tunneling
+  - no public ip vm
+  - openclaw install.sh installer
+  - az vm deallocate cost
+  - github copilot provider azure
+topics:
+  - OpenClaw
+  - Azure Install
+language: markdown
+date of note: 2026-06-22
+status: active
+building_block: procedure
+source_url: https://docs.openclaw.ai/install/azure
+access_control_group: ["general"]
+---
+
+# OpenClaw — Deploy on an Azure Linux VM (NSG + Bastion)
+
+## Overview
+
+This procedure runs an OpenClaw Gateway 24/7 on an Azure Linux VM provisioned entirely with the Azure CLI, mirroring the `install/azure` source page. It walks through creating the Azure networking and compute (resource group, Network Security Group, virtual network with VM and Bastion subnets, the VM, and Azure Bastion), hardening so the VM accepts SSH only from the Bastion subnet (the VM has no public IP), administering the VM through Azure Bastion native SSH tunneling, installing OpenClaw via the `openclaw.ai/install.sh` script, verifying the Gateway, and managing cost and cleanup. The end state is a production-grade, always-on Gateway whose only administrative path is Bastion-tunneled SSH.
+
+## What you will do
+
+The guide sets up an Azure Linux VM with the Azure CLI, applies Network Security Group (NSG) hardening, configures Azure Bastion for SSH access, and installs OpenClaw. The high-level steps are: create Azure networking (VNet, subnets, NSG) and compute resources with the Azure CLI; apply Network Security Group rules so VM SSH is allowed only from Azure Bastion; use Azure Bastion for SSH access (no public IP on the VM); install OpenClaw with the installer script; and verify the Gateway.
+
+## What you need
+
+- An Azure subscription with permission to create compute and network resources.
+- Azure CLI installed (see the [Azure CLI install steps](https://learn.microsoft.com/cli/azure/install-azure-cli) if needed).
+- An SSH key pair (the guide covers generating one if needed).
+- ~20-30 minutes.
+
+## Configure deployment
+
+**Sign in and add the SSH extension.** Sign in to the Azure CLI with `az login`, then add the `ssh` extension with `az extension add -n ssh` — the extension is required for Azure Bastion native SSH tunneling.
+
+**Register required resource providers (one-time).** Register the two providers with `az provider register --namespace Microsoft.Compute` and `az provider register --namespace Microsoft.Network`, then poll their registration state with `az provider show --namespace Microsoft.Compute --query registrationState -o tsv` (and the same for `Microsoft.Network`) and wait until both show `Registered`.
+
+**Set deployment variables.** Export the shell variables the later `az` commands consume; the source notes that names and CIDR ranges may be adjusted to fit your environment and that the Bastion subnet must be at least `/26`:
+
+```bash
+RG="rg-openclaw"
+LOCATION="westus2"
+VNET_NAME="vnet-openclaw"
+VNET_PREFIX="10.40.0.0/16"
+VM_SUBNET_NAME="snet-openclaw-vm"
+VM_SUBNET_PREFIX="10.40.2.0/24"
+BASTION_SUBNET_PREFIX="10.40.1.0/26"
+NSG_NAME="nsg-openclaw-vm"
+VM_NAME="vm-openclaw"
+ADMIN_USERNAME="openclaw"
+BASTION_NAME="bas-openclaw"
+BASTION_PIP_NAME="pip-openclaw-bastion"
+```
+
+**Select SSH key.** Use an existing public key with `SSH_PUB_KEY="$(cat ~/.ssh/id_ed25519.pub)"`. If you don't have one yet, generate it with `ssh-keygen -t ed25519 -a 100 -f ~/.ssh/id_ed25519 -C "you@example.com"` and then read it into `SSH_PUB_KEY`.
+
+**Select VM size and OS disk size.** Set `VM_SIZE="Standard_B2as_v2"` and `OS_DISK_SIZE_GB=64`. Choose a VM size and OS disk size available in your subscription and region: start smaller for light usage and scale up later; use more vCPU/RAM/disk for heavier automation, more channels, or larger model/tool workloads; and if a VM size is unavailable in your region or subscription quota, pick the closest available SKU. List sizes available in your target region with `az vm list-skus --location "${LOCATION}" --resource-type virtualMachines -o table`, and check your current vCPU and disk usage/quota with `az vm list-usage --location "${LOCATION}" -o table`.
+
+## Deploy Azure resources
+
+**Create the resource group** with `az group create -n "${RG}" -l "${LOCATION}"`.
+
+**Create the network security group.** Create the NSG and add rules so only the Bastion subnet can SSH into the VM. The rules are evaluated by priority (lowest number first): Bastion traffic is allowed at priority 100, then all other SSH is blocked at 110 (Internet) and 120 (VirtualNetwork):
+
+```bash
+az network nsg create \
+  -g "${RG}" -n "${NSG_NAME}" -l "${LOCATION}"
+
+# Allow SSH from the Bastion subnet only
+az network nsg rule create \
+  -g "${RG}" --nsg-name "${NSG_NAME}" \
+  -n AllowSshFromBastionSubnet --priority 100 \
+  --access Allow --direction Inbound --protocol Tcp \
+  --source-address-prefixes "${BASTION_SUBNET_PREFIX}" \
+  --destination-port-ranges 22
+
+# Deny SSH from the public internet
+az network nsg rule create \
+  -g "${RG}" --nsg-name "${NSG_NAME}" \
+  -n DenyInternetSsh --priority 110 \
+  --access Deny --direction Inbound --protocol Tcp \
+  --source-address-prefixes Internet \
+  --destination-port-ranges 22
+
+# Deny SSH from other VNet sources
+az network nsg rule create \
+  -g "${RG}" --nsg-name "${NSG_NAME}" \
+  -n DenyVnetSsh --priority 120 \
+  --access Deny --direction Inbound --protocol Tcp \
+  --source-address-prefixes VirtualNetwork \
+  --destination-port-ranges 22
+```
+
+**Create the virtual network and subnets.** Create the VNet with the VM subnet, attach the NSG to the VM subnet, then add the `AzureBastionSubnet` (whose name is required by Azure):
+
+```bash
+az network vnet create \
+  -g "${RG}" -n "${VNET_NAME}" -l "${LOCATION}" \
+  --address-prefixes "${VNET_PREFIX}" \
+  --subnet-name "${VM_SUBNET_NAME}" \
+  --subnet-prefixes "${VM_SUBNET_PREFIX}"
+
+# Attach the NSG to the VM subnet
+az network vnet subnet update \
+  -g "${RG}" --vnet-name "${VNET_NAME}" \
+  -n "${VM_SUBNET_NAME}" --nsg "${NSG_NAME}"
+
+# AzureBastionSubnet — name is required by Azure
+az network vnet subnet create \
+  -g "${RG}" --vnet-name "${VNET_NAME}" \
+  -n AzureBastionSubnet \
+  --address-prefixes "${BASTION_SUBNET_PREFIX}"
+```
+
+**Create the VM.** The VM has no public IP; SSH access is exclusively through Azure Bastion. The image is `Canonical:ubuntu-24_04-lts:server:latest` on `StandardSSD_LRS` storage. `--public-ip-address ""` prevents a public IP from being assigned, and `--nsg ""` skips creating a per-NIC NSG (the subnet-level NSG handles security):
+
+```bash
+az vm create \
+  -g "${RG}" -n "${VM_NAME}" -l "${LOCATION}" \
+  --image "Canonical:ubuntu-24_04-lts:server:latest" \
+  --size "${VM_SIZE}" \
+  --os-disk-size-gb "${OS_DISK_SIZE_GB}" \
+  --storage-sku StandardSSD_LRS \
+  --admin-username "${ADMIN_USERNAME}" \
+  --ssh-key-values "${SSH_PUB_KEY}" \
+  --vnet-name "${VNET_NAME}" \
+  --subnet "${VM_SUBNET_NAME}" \
+  --public-ip-address "" \
+  --nsg ""
+```
+
+For reproducibility the command above uses `latest` for the Ubuntu image; to pin a specific version, list available versions with `az vm image list --publisher Canonical --offer ubuntu-24_04-lts --sku server --all -o table` and replace `latest`.
+
+**Create Azure Bastion.** Azure Bastion provides managed SSH access to the VM without exposing a public IP. The Standard SKU with tunneling is required for CLI-based `az network bastion ssh`. Create a Standard, statically allocated public IP for Bastion, then create the Bastion resource with `--enable-tunneling true`. Bastion provisioning typically takes 5-10 minutes but can take up to 15-30 minutes in some regions:
+
+```bash
+az network public-ip create \
+  -g "${RG}" -n "${BASTION_PIP_NAME}" -l "${LOCATION}" \
+  --sku Standard --allocation-method Static
+
+az network bastion create \
+  -g "${RG}" -n "${BASTION_NAME}" -l "${LOCATION}" \
+  --vnet-name "${VNET_NAME}" \
+  --public-ip-address "${BASTION_PIP_NAME}" \
+  --sku Standard --enable-tunneling true
+```
+
+## Install OpenClaw
+
+**SSH into the VM through Azure Bastion.** Resolve the VM resource id with `VM_ID="$(az vm show -g "${RG}" -n "${VM_NAME}" --query id -o tsv)"`, then open an SSH-key-authenticated session over Bastion's native tunneling with `az network bastion ssh --name "${BASTION_NAME}" --resource-group "${RG}" --target-resource-id "${VM_ID}" --auth-type ssh-key --username "${ADMIN_USERNAME}" --ssh-key ~/.ssh/id_ed25519`.
+
+**Install OpenClaw (in the VM shell).** Run the installer script. The installer installs Node LTS and dependencies if not already present, installs OpenClaw, and launches the onboarding wizard (see the OpenClaw `Install` page for details):
+
+```bash
+curl -fsSL https://openclaw.ai/install.sh -o /tmp/install.sh
+bash /tmp/install.sh
+rm -f /tmp/install.sh
+```
+
+**Verify the Gateway.** After onboarding completes, run `openclaw gateway status`. The source notes that most enterprise Azure teams already have GitHub Copilot licenses; if that is your case, OpenClaw recommends choosing the GitHub Copilot provider in the onboarding wizard (see the GitHub Copilot provider page).
+
+## Cost considerations
+
+Azure Bastion Standard SKU runs approximately **$140/month** and the VM (Standard_B2as_v2) runs approximately **$55/month**. To reduce costs: **deallocate the VM** when not in use (stops compute billing; disk charges remain) — the Gateway will not be reachable while deallocated, so restart it when you need it live again with `az vm deallocate -g "${RG}" -n "${VM_NAME}"` followed later by `az vm start -g "${RG}" -n "${VM_NAME}"`; **delete Bastion when not needed** and recreate it when you need SSH access, since Bastion is the largest cost component and takes only a few minutes to provision; and **use the Basic Bastion SKU** (~$38/month) if you only need Portal-based SSH and don't require CLI tunneling (`az network bastion ssh`).
+
+## Cleanup
+
+To delete all resources created by this guide, delete the resource group with `az group delete -n "${RG}" --yes --no-wait`. This removes the resource group and everything inside it (VM, VNet, NSG, Bastion, public IP).
+
+## Next steps
+
+The source page points to several follow-ons: set up messaging channels (`/channels`); pair local devices as nodes (`/nodes`); configure the Gateway (`/gateway/configuration`); and, for more details on OpenClaw Azure deployment with the GitHub Copilot model provider, the external `openclaw-azure-github-copilot` repository. The page's Related section additionally links the Install overview, the GCP install guide, and the DigitalOcean install guide.
+
+**Source**: OpenClaw documentation — `install/azure` (mirror `inbox/openclaw_docs/install/azure.md`)
+**Last Updated**: 2026-06-22
+**Status**: Active

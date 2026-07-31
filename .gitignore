@@ -224,3 +224,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# eval build tooling — hardcodes the private vault path + internal-token denylist; must NOT publish
+eval/digestion_pipeline/tools/vendor_full_corpora.py

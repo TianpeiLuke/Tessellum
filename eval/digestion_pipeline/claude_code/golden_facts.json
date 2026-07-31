@@ -1,0 +1,6420 @@
+{
+  "slice": "claude_code",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "59bdae36c",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "",
+  "source_url_pattern": "",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 134,
+    "pages": [
+      "admin-setup.md",
+      "advisor.md",
+      "agent-sdk/agent-loop.md",
+      "agent-sdk/claude-code-features.md",
+      "agent-sdk/cost-tracking.md",
+      "agent-sdk/custom-tools.md",
+      "agent-sdk/file-checkpointing.md",
+      "agent-sdk/hooks.md",
+      "agent-sdk/hosting.md",
+      "agent-sdk/mcp.md",
+      "agent-sdk/migration-guide.md",
+      "agent-sdk/modifying-system-prompts.md",
+      "agent-sdk/observability.md",
+      "agent-sdk/overview.md",
+      "agent-sdk/permissions.md",
+      "agent-sdk/plugins.md",
+      "agent-sdk/python.md",
+      "agent-sdk/quickstart.md",
+      "agent-sdk/secure-deployment.md",
+      "agent-sdk/session-storage.md",
+      "agent-sdk/sessions.md",
+      "agent-sdk/skills.md",
+      "agent-sdk/slash-commands.md",
+      "agent-sdk/streaming-output.md",
+      "agent-sdk/streaming-vs-single-mode.md",
+      "agent-sdk/structured-outputs.md",
+      "agent-sdk/subagents.md",
+      "agent-sdk/todo-tracking.md",
+      "agent-sdk/tool-search.md",
+      "agent-sdk/typescript-v2-preview.md",
+      "agent-sdk/typescript.md",
+      "agent-sdk/user-input.md",
+      "agent-teams.md",
+      "agent-view.md",
+      "agents.md",
+      "amazon-bedrock.md",
+      "analytics.md",
+      "authentication.md",
+      "auto-mode-config.md",
+      "best-practices.md",
+      "champion-kit.md",
+      "channels-reference.md",
+      "channels.md",
+      "checkpointing.md",
+      "chrome.md",
+      "claude-code-on-the-web.md",
+      "claude-directory.md",
+      "claude-platform-on-aws.md",
+      "cli-reference.md",
+      "code-review.md",
+      "commands.md",
+      "common-workflows.md",
+      "communications-kit.md",
+      "computer-use.md",
+      "context-window.md",
+      "costs.md",
+      "data-usage.md",
+      "debug-your-config.md",
+      "deep-links.md",
+      "desktop-quickstart.md",
+      "desktop-scheduled-tasks.md",
+      "desktop.md",
+      "devcontainer.md",
+      "discover-plugins.md",
+      "env-vars.md",
+      "errors.md",
+      "fast-mode.md",
+      "features-overview.md",
+      "fullscreen.md",
+      "github-actions.md",
+      "github-enterprise-server.md",
+      "gitlab-ci-cd.md",
+      "glossary.md",
+      "goal.md",
+      "google-vertex-ai.md",
+      "headless.md",
+      "hooks-guide.md",
+      "hooks.md",
+      "how-claude-code-works.md",
+      "interactive-mode.md",
+      "jetbrains.md",
+      "keybindings.md",
+      "large-codebases.md",
+      "legal-and-compliance.md",
+      "llm-gateway.md",
+      "managed-mcp.md",
+      "mcp-quickstart.md",
+      "mcp.md",
+      "memory.md",
+      "microsoft-foundry.md",
+      "model-config.md",
+      "monitoring-usage.md",
+      "network-config.md",
+      "output-styles.md",
+      "overview.md",
+      "permission-modes.md",
+      "permissions.md",
+      "platforms.md",
+      "plugin-dependencies.md",
+      "plugin-hints.md",
+      "plugin-marketplaces.md",
+      "plugins-reference.md",
+      "plugins.md",
+      "prompt-caching.md",
+      "prompt-library.md",
+      "quickstart.md",
+      "remote-control.md",
+      "routines.md",
+      "sandbox-environments.md",
+      "sandboxing.md",
+      "scheduled-tasks.md",
+      "security-guidance.md",
+      "security.md",
+      "server-managed-settings.md",
+      "sessions.md",
+      "settings.md",
+      "setup.md",
+      "skills.md",
+      "slack.md",
+      "statusline.md",
+      "sub-agents.md",
+      "terminal-config.md",
+      "third-party-integrations.md",
+      "tools-reference.md",
+      "troubleshoot-install.md",
+      "troubleshooting.md",
+      "ultraplan.md",
+      "ultrareview.md",
+      "voice-dictation.md",
+      "vs-code.md",
+      "web-quickstart.md",
+      "workflows.md",
+      "worktrees.md",
+      "zero-data-retention.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_claude_code_docs_master.md",
+    "subplan": "",
+    "planned_note_count": 0,
+    "gate_count": 8,
+    "xref_floor_per_note": {},
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/claude_code",
+    "note_prefix": "cc_",
+    "note_count": 339,
+    "bb_distribution": {
+      "procedure": 176,
+      "concept": 142,
+      "argument": 18,
+      "model": 3
+    },
+    "word_count": {
+      "min": 220,
+      "median": 998,
+      "max": 2292
+    },
+    "term_links": {
+      "min": 0,
+      "median": 0
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "cc_admin_enforcement_controls": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Decide what to enforce",
+          "Set up usage visibility",
+          "Review data handling"
+        ],
+        "word_count": 827,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_admin_setup_decision_map": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Deployment Decision Table",
+          "Choose your API provider",
+          "Verify and onboard",
+          "Next steps"
+        ],
+        "word_count": 826,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "cc_adoption_objection_handling": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Questions you are likely to hear",
+          "Respond to common concerns"
+        ],
+        "word_count": 791,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_advanced_install_and_verification": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Install a Specific Version",
+          "Install with Linux Package Managers",
+          "Install with npm",
+          "Binary Integrity and Code Signing"
+        ],
+        "word_count": 986,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_advisor_tool": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to use the advisor",
+          "When Claude consults the advisor",
+          "What you see during a session",
+          "Impact on prompt caching",
+          "Compare with related features"
+        ],
+        "word_count": 712,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_agent_sdk_agent_loop": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The loop at a glance",
+          "Turns and messages"
+        ],
+        "word_count": 850,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_agent_sdk_compare_to_other_tools": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Agent SDK vs Client SDK",
+          "Agent SDK vs Claude Code CLI",
+          "Agent SDK vs Managed Agents"
+        ],
+        "word_count": 674,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_agent_sdk_context_window": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Consumes Context",
+          "Automatic Compaction",
+          "Keep Context Efficient"
+        ],
+        "word_count": 848,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_agent_sdk_install_and_auth": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1 — Install the SDK",
+          "Step 2 — Set your API key",
+          "Step 3 — Run your first agent",
+          "Next steps"
+        ],
+        "word_count": 534,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_agent_sdk_loop_controls": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Turns and budget",
+          "Effort level",
+          "Permission mode",
+          "Model"
+        ],
+        "word_count": 811,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_agent_sdk_message_types": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Five Core Message Types",
+          "Handle Messages"
+        ],
+        "word_count": 709,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_agent_sdk_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Capabilities",
+          "Getting started and comparison"
+        ],
+        "word_count": 750,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_agent_sdk_quickstart_bug_fixer": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Create a buggy file",
+          "Build an agent that finds and fixes bugs",
+          "Troubleshooting",
+          "Next steps"
+        ],
+        "word_count": 1080,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_agent_sdk_result_and_hooks": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Handle the result",
+          "Hooks",
+          "Put it all together"
+        ],
+        "word_count": 930,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_agent_sdk_settingsources_and_features": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Control filesystem settings with settingSources",
+          "Project instructions (CLAUDE.md and rules)",
+          "Skills",
+          "Hooks",
+          "Choose the right feature",
+          "Migrate from the old SDK"
+        ],
+        "word_count": 1450,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_agent_sdk_tool_execution": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Built-in tools",
+          "Tool permissions",
+          "Parallel tool execution"
+        ],
+        "word_count": 663,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_agent_teams_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to Use Agent Teams",
+          "How Agent Teams Work",
+          "Limitations"
+        ],
+        "word_count": 1250,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_agent_view_monitor": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start: The Agent View Loop",
+          "The Session List",
+          "Peek and Reply",
+          "Attach to a Session",
+          "Organize and Filter the List",
+          "Limitations"
+        ],
+        "word_count": 2040,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_agentic_loop": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Three Phases",
+          "You Are Part of the Loop",
+          "Models and Tools",
+          "The Agentic Harness"
+        ],
+        "word_count": 481,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_amazon_bedrock_features": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "IAM configuration",
+          "1M token context window",
+          "Service tiers",
+          "AWS Guardrails",
+          "Prompt caching",
+          "Platform constraints",
+          "Troubleshooting"
+        ],
+        "word_count": 805,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_amazon_bedrock_mantle_endpoint": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable Mantle",
+          "Select a Mantle Model",
+          "Run Mantle Alongside the Invoke API",
+          "Route Mantle Through a Gateway",
+          "Mantle Environment Variables",
+          "Troubleshooting: Mantle Endpoint Errors"
+        ],
+        "word_count": 728,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_amazon_bedrock_model_config": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "4. Pin model versions",
+          "Startup model checks"
+        ],
+        "word_count": 858,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_amazon_bedrock_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Sign in with Bedrock",
+          "Set up manually"
+        ],
+        "word_count": 1190,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_analytics_dashboards": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Dashboard access by plan",
+          "Team and Enterprise dashboard",
+          "API customers (Claude Console) dashboard"
+        ],
+        "word_count": 876,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_async_hooks": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configure an async hook",
+          "How async hooks execute",
+          "Example: run tests after file changes",
+          "Limitations"
+        ],
+        "word_count": 753,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_authentication": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Log in to Claude Code",
+          "Set up team authentication",
+          "Credential management"
+        ],
+        "word_count": 1286,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_authentication_and_network_errors": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Authentication Errors",
+          "Network and Connection Errors"
+        ],
+        "word_count": 1741,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_auto_memory": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable or disable auto memory",
+          "Storage location",
+          "How it works",
+          "Audit and edit your memory",
+          "View and edit with `/memory`"
+        ],
+        "word_count": 676,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_auto_mode": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Requirements",
+          "Enable auto mode on Bedrock, Vertex AI, or Foundry",
+          "What the classifier blocks and allows by default",
+          "Boundaries you state in conversation",
+          "When auto mode falls back",
+          "How the classifier evaluates actions",
+          "How auto mode handles subagents",
+          "Cost and latency"
+        ],
+        "word_count": 1326,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_auto_mode_configuration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Where the classifier reads configuration",
+          "Define trusted infrastructure",
+          "Override the block and allow rules",
+          "Inspect the defaults and your effective config",
+          "Review denials"
+        ],
+        "word_count": 1411,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_automate_and_scale": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Run non-interactive mode",
+          "Run multiple Claude sessions",
+          "Fan out across files",
+          "Run autonomously with auto mode",
+          "Add an adversarial review step"
+        ],
+        "word_count": 992,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_background_session_hosting": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The supervisor process",
+          "Where state is stored",
+          "Persistence across sleep, shutdown, and stalls",
+          "Turn off agent view"
+        ],
+        "word_count": 982,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_build_a_channel": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What You Need",
+          "Example: Build a Webhook Receiver",
+          "Test During the Research Preview",
+          "Server Options",
+          "Notification Format",
+          "Package as a Plugin"
+        ],
+        "word_count": 1641,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_built_in_tools": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Five Tool Categories",
+          "How Claude Uses Tools",
+          "Extending the Base Capabilities"
+        ],
+        "word_count": 356,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_bundled_skills": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prompt-Based Skills vs Fixed-Logic Built-Ins",
+          "Disabling Bundled Skills",
+          "Run and Verify Your App"
+        ],
+        "word_count": 608,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_cache_invalidation_actions": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The eight invalidating actions"
+        ],
+        "word_count": 1477,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_cache_lifetime_and_scope": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Cache lifetime",
+          "Cache scope"
+        ],
+        "word_count": 656,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_cache_preserving_actions": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Actions that keep the cache",
+          "Subagents and the cache",
+          "Check cache performance",
+          "Disable prompt caching"
+        ],
+        "word_count": 919,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_champion_playbook": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Champion Role",
+          "Share What You Discover",
+          "Be the Person People Ask",
+          "Grow the Circle",
+          "Quick-Reference Sheet"
+        ],
+        "word_count": 1680,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_channel_permission_relay": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Gate Inbound Messages (Prerequisite)",
+          "How Relay Works",
+          "Permission Request Fields",
+          "Add Relay to a Chat Bridge",
+          "Full Example and Three-Terminal Test"
+        ],
+        "word_count": 1510,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_channel_reply_tool": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1 — Enable Tool Discovery",
+          "Step 2 — Register the Reply Tool",
+          "Step 3 — Update the Instructions",
+          "Outbound and Local Testing"
+        ],
+        "word_count": 658,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_channels_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What a Channel Is",
+          "One-Way vs Two-Way",
+          "How Channels Compare",
+          "Research Preview Status"
+        ],
+        "word_count": 926,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_channels_security_and_enterprise_controls": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Who Can Push Messages — Sender Allowlist",
+          "The `--channels` Opt-In Gate",
+          "Enterprise Controls"
+        ],
+        "word_count": 826,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_channels_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Common pattern: install, enable, pair",
+          "Telegram and Discord",
+          "iMessage",
+          "Quickstart: fakechat",
+          "Permission prompts while away"
+        ],
+        "word_count": 1123,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_checkpointing": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How checkpoints work",
+          "Common use cases",
+          "Limitations"
+        ],
+        "word_count": 838,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_chrome_browser_automation": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Capabilities",
+          "Example workflows"
+        ],
+        "word_count": 752,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_chrome_setup_and_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Get started in the CLI",
+          "Troubleshooting"
+        ],
+        "word_count": 887,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_claude_application_data": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Troubleshoot configuration",
+          "Cleaned up automatically",
+          "Kept until you delete them",
+          "Plaintext storage",
+          "Clear local data"
+        ],
+        "word_count": 858,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_claude_code_in_slack": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Use cases",
+          "How it works",
+          "User interface elements",
+          "What's accessible where",
+          "Best practices",
+          "Current limitations"
+        ],
+        "word_count": 908,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_claude_md_files": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to add to CLAUDE.md",
+          "Choose where to put CLAUDE.md files",
+          "Set up a project CLAUDE.md",
+          "Write effective instructions",
+          "Import additional files",
+          "AGENTS.md",
+          "Claude Code",
+          "How CLAUDE.md files load"
+        ],
+        "word_count": 1354,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_claude_platform_on_aws_proxy_and_sdk": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Use the Agent SDK",
+          "Route through a corporate proxy",
+          "Troubleshooting"
+        ],
+        "word_count": 581,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_claude_platform_on_aws_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Additional resources"
+        ],
+        "word_count": 881,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_claude_rules_directory": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Set up rules",
+          "Path-specific rules",
+          "Share rules across projects with symlinks",
+          "User-level rules"
+        ],
+        "word_count": 529,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_cli_commands": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Start, pipe, and resume sessions",
+          "Update, install, and authenticate",
+          "Manage background sessions",
+          "Configure integrations and run tools",
+          "Typo-suggestion behavior"
+        ],
+        "word_count": 856,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_cli_flags": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Session and resume flags",
+          "Model and effort flags",
+          "Permissions and tools flags",
+          "MCP and plugin flags",
+          "Print-mode and output flags",
+          "Surface and integration flags",
+          "Context, debug, and safe-mode flags"
+        ],
+        "word_count": 1708,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_cli_system_prompt_flags": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The four flags",
+          "Mutual exclusivity and combination",
+          "The decision rule: append vs replace",
+          "Scope: per-invocation only"
+        ],
+        "word_count": 500,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_cloud_environment": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What's available in cloud sessions",
+          "Installed tools",
+          "Work with GitHub issues and pull requests",
+          "Link artifacts back to the session",
+          "Run tests, start services, and add packages",
+          "Resource limits",
+          "Configure your environment"
+        ],
+        "word_count": 1203,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_cloud_network_access": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Access levels",
+          "Allow specific domains",
+          "GitHub proxy",
+          "Security proxy",
+          "Default allowed domains"
+        ],
+        "word_count": 741,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_code_review": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How reviews work",
+          "Pricing"
+        ],
+        "word_count": 1045,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 8
+      },
+      "cc_code_review_local_command": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What it reviews by default",
+          "Effort levels (precision vs. coverage)",
+          "Choosing a target",
+          "Escalating to cloud ultrareview",
+          "`/simplify` rename history"
+        ],
+        "word_count": 404,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_code_review_setup_and_customization": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Set up Code Review",
+          "Manually trigger reviews",
+          "Customize reviews",
+          "What Important means here",
+          "Cap the nits",
+          "Do not report",
+          "Always check",
+          "View usage",
+          "Troubleshooting"
+        ],
+        "word_count": 1882,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_commands_by_workflow": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "First session in a repo",
+          "During a task",
+          "Running work in parallel",
+          "Before you ship",
+          "Between sessions",
+          "When something is wrong"
+        ],
+        "word_count": 543,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_commands_reference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Argument and Availability Conventions",
+          "Session and Context",
+          "Model and Effort",
+          "Agents and Parallel Work",
+          "Review and Ship",
+          "Setup, Memory, and Config",
+          "Diagnostics and Recovery",
+          "Bundled Skills and Workflows",
+          "MCP Prompts as Commands"
+        ],
+        "word_count": 1793,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_computer_use": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What you can do with computer use",
+          "When computer use applies",
+          "Enable computer use",
+          "How Claude works on your screen",
+          "Example workflows",
+          "Differences from the Desktop app",
+          "Troubleshooting"
+        ],
+        "word_count": 1435,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_computer_use_safety": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Approve apps per session",
+          "Safety and the trust boundary"
+        ],
+        "word_count": 534,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_configure_advisor_model": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable the advisor",
+          "Choose an advisor model",
+          "Cost",
+          "Requirements",
+          "Turn the advisor off"
+        ],
+        "word_count": 1020,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_configure_your_environment": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Setup Checklist"
+        ],
+        "word_count": 1174,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_context_cost_by_feature": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Context cost by feature",
+          "Understand how features load"
+        ],
+        "word_count": 656,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_context_window_anatomy": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What loads before you type anything",
+          "What loads as Claude works",
+          "Invisible vs visible in your terminal",
+          "What survives when the window fills",
+          "Check your own session"
+        ],
+        "word_count": 859,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_cost_tracking": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Track your costs",
+          "Managing costs for teams",
+          "Background token usage",
+          "Understanding changes in Claude Code behavior"
+        ],
+        "word_count": 1048,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_create_a_skill": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Create your first skill",
+          "Current changes",
+          "Instructions",
+          "Add supporting files"
+        ],
+        "word_count": 580,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_create_a_subagent": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quickstart: the `/agents` command",
+          "Choose the subagent scope",
+          "Write subagent files"
+        ],
+        "word_count": 993,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_create_and_run_workflows": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Have Claude write a workflow",
+          "Manage runs"
+        ],
+        "word_count": 1224,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_create_routine": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choosing the creation surface",
+          "Create from the web",
+          "What the autonomous run can reach",
+          "Create from the CLI"
+        ],
+        "word_count": 944,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_data_usage_and_telemetry": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Data Policies",
+          "Data Access",
+          "Data Flow and Dependencies",
+          "Telemetry Services",
+          "Default Behaviors by API Provider"
+        ],
+        "word_count": 1408,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_debug_your_configuration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "See what loaded into context",
+          "Check resolved settings",
+          "Check MCP servers",
+          "Check hooks",
+          "Test against a clean configuration",
+          "Check common causes"
+        ],
+        "word_count": 1826,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_desktop_diff_review_and_pr": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Preview your app",
+          "Review changes with diff view",
+          "Review your code",
+          "Monitor pull request status",
+          "Configure preview servers"
+        ],
+        "word_count": 1461,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_desktop_environments_extend_and_enterprise": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Remote, continue-in-surface, and Dispatch sessions",
+          "Extend Claude Code",
+          "Environment configuration",
+          "Enterprise configuration",
+          "Coming from the CLI?",
+          "Troubleshooting (desktop-specific)"
+        ],
+        "word_count": 2292,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_desktop_overview_and_sessions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Start a session",
+          "Work with code",
+          "Manage sessions"
+        ],
+        "word_count": 1116,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_desktop_permission_modes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Five Permission Modes",
+          "Auto Mode Availability",
+          "Cloud Session Mode Mapping",
+          "Enterprise Restrictions",
+          "What's Not in Desktop"
+        ],
+        "word_count": 666,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_desktop_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Three Tabs",
+          "Install",
+          "Start Your First Session",
+          "Now What?",
+          "Coming from the CLI?",
+          "What's Next"
+        ],
+        "word_count": 1302,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_desktop_scheduled_tasks": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Create a scheduled task",
+          "Schedule options",
+          "How scheduled tasks run",
+          "Missed runs",
+          "Permissions for scheduled tasks",
+          "Manage scheduled tasks"
+        ],
+        "word_count": 1291,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_desktop_workspace_panes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Arrange your workspace",
+          "Let Claude use your computer"
+        ],
+        "word_count": 1634,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_devcontainer_hardening": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Persist authentication and settings across rebuilds",
+          "Enforce organization policy",
+          "Restrict network egress",
+          "Run without permission prompts"
+        ],
+        "word_count": 920,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_devcontainer_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How dev containers work with your editor",
+          "Add Claude Code to your dev container",
+          "Try the reference container",
+          "Next steps"
+        ],
+        "word_count": 1078,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_dispatch_background_agents": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Dispatch from agent view",
+          "Dispatch from inside a session",
+          "Dispatch from your shell",
+          "How file edits are isolated",
+          "Set the model, permission mode, and effort",
+          "Settings, plugins, and MCP servers",
+          "Manage sessions from the shell"
+        ],
+        "word_count": 1905,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_dot_claude_directory": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Project files (`your-project/`)",
+          "Global files (`~/.claude/`)",
+          "What's not shown",
+          "Choose the right file",
+          "Precedence",
+          "Example: a project `settings.json`"
+        ],
+        "word_count": 1544,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_dynamic_workflows": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to Use a Workflow",
+          "Run a Bundled Workflow",
+          "How a Workflow Runs"
+        ],
+        "word_count": 920,
+        "term_links": 3,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_effective_prompting": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Provide specific context in your prompts",
+          "Provide rich content"
+        ],
+        "word_count": 831,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_effort_level_and_thinking": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Adjust Effort Level",
+          "Extended Thinking"
+        ],
+        "word_count": 1274,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_enterprise_best_practices": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Best practices for organizations",
+          "Next steps"
+        ],
+        "word_count": 614,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_enterprise_deployment_options": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Two Ways to Deploy",
+          "Compare Deployment Options",
+          "Setup Pointers"
+        ],
+        "word_count": 676,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_environment_variables": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Set environment variables",
+          "Precedence",
+          "Variables (purpose-grouped reference)",
+          "See also"
+        ],
+        "word_count": 1641,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_execution_environments": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Execution Environments",
+          "Interfaces"
+        ],
+        "word_count": 220,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_execution_tool_behavior": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Agent tool behavior",
+          "Bash tool behavior",
+          "Monitor tool",
+          "PowerShell tool",
+          "WebFetch tool behavior",
+          "WebSearch tool behavior",
+          "LSP tool behavior"
+        ],
+        "word_count": 1893,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_explore_plan_code": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Four-Phase Workflow",
+          "When to Skip Planning"
+        ],
+        "word_count": 383,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_extended_context_1m": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Which Models Support 1M Context",
+          "Availability by Model and Plan",
+          "Disabling Extended Context",
+          "Pricing",
+          "Selecting Extended Context"
+        ],
+        "word_count": 508,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_extending_claude_code": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Match features to your goal",
+          "Build your setup over time"
+        ],
+        "word_count": 774,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_fallback_models": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The `opusplan` model setting",
+          "Fallback model chains (availability-based)",
+          "Automatic model fallback (content-based)"
+        ],
+        "word_count": 1059,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_fast_mode": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Toggle fast mode",
+          "Understand the cost tradeoff",
+          "Decide when to use fast mode",
+          "Requirements",
+          "Handle rate limits",
+          "Research preview"
+        ],
+        "word_count": 1155,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_feature_selection_guide": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Compare Similar Features",
+          "How Features Layer",
+          "Combine Features"
+        ],
+        "word_count": 970,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_file_tool_behavior": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Read tool behavior",
+          "Edit tool behavior",
+          "Write tool behavior",
+          "NotebookEdit tool behavior",
+          "Glob tool behavior",
+          "Grep tool behavior"
+        ],
+        "word_count": 1128,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_forked_subagents": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enabling and Starting a Fork",
+          "Observe and Steer Running Forks",
+          "How Forks Differ From Named Subagents",
+          "Limitations"
+        ],
+        "word_count": 691,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_fullscreen_navigation_and_mouse": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Use the mouse",
+          "Scroll the conversation",
+          "Search and review the conversation",
+          "Clear the conversation",
+          "Keep native text selection"
+        ],
+        "word_count": 1700,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_fullscreen_rendering": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable fullscreen rendering",
+          "What changes",
+          "Use with tmux",
+          "Research preview"
+        ],
+        "word_count": 851,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_github_actions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why use Claude Code GitHub Actions?",
+          "What can Claude do?",
+          "Setup",
+          "Upgrading from Beta",
+          "Example use cases",
+          "Best practices",
+          "Configuration examples",
+          "Troubleshooting",
+          "Advanced configuration"
+        ],
+        "word_count": 1479,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_github_actions_cloud_providers": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1 — Create a custom GitHub App (recommended for 3P providers)",
+          "Step 2 — Configure cloud provider authentication",
+          "Step 3 — Add required secrets",
+          "Step 4 — Create workflow files",
+          "Action parameters relevant to providers",
+          "Troubleshooting authentication errors"
+        ],
+        "word_count": 1235,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_github_enterprise_server": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What works with GitHub Enterprise Server",
+          "Admin setup",
+          "Developer workflow",
+          "Plugin marketplaces on GHES",
+          "Limitations",
+          "Troubleshooting"
+        ],
+        "word_count": 1335,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_gitlab_ci_cd": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why use Claude Code with GitLab?",
+          "How it works",
+          "What can Claude do?",
+          "Setup",
+          "Example use cases",
+          "Configuration examples",
+          "Best practices",
+          "Security and governance",
+          "Troubleshooting",
+          "Advanced configuration"
+        ],
+        "word_count": 1791,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_goal_command": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Compare Ways to Keep a Session Running",
+          "Use `/goal`",
+          "How Evaluation Works",
+          "Requirements"
+        ],
+        "word_count": 1177,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_google_vertex_ai": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Sign in with Vertex AI",
+          "Region configuration",
+          "Set up manually",
+          "Startup model checks",
+          "IAM configuration",
+          "1M token context window",
+          "Troubleshooting"
+        ],
+        "word_count": 1659,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_headless_examples": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Bare-Mode Operating Model",
+          "Pipe Data Through Claude",
+          "Add Claude to a Build Script",
+          "Get Structured Output",
+          "Stream Responses",
+          "Auto-Approve Tools",
+          "Create a Commit",
+          "Customize the System Prompt",
+          "Continue Conversations"
+        ],
+        "word_count": 1424,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_headless_mode": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Basic Usage",
+          "Start Faster with Bare Mode",
+          "Background Tasks at Exit"
+        ],
+        "word_count": 576,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_hook_configuration_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`allowManagedHooksOnly` (managed only)",
+          "`allowedHttpHookUrls` — restrict HTTP hook URLs",
+          "`httpHookAllowedEnvVars` — restrict HTTP hook environment variables",
+          "`disableAllHooks`",
+          "When hook edits take effect",
+          "Relationship to plugin-only customization"
+        ],
+        "word_count": 443,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_hook_events_catalog": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The three cadences",
+          "When each event fires",
+          "What each event's matcher filters",
+          "Which handler types each event supports",
+          "Where the per-event detail lives"
+        ],
+        "word_count": 1076,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_hook_handler_types": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The five handler types",
+          "Command hook fields",
+          "HTTP hook fields",
+          "MCP tool hook fields",
+          "Reference scripts by path",
+          "Hooks in skills and agents",
+          "The `/hooks` menu, and disabling hooks"
+        ],
+        "word_count": 1262,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_hook_io_and_exit_codes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Common input fields",
+          "Exit code output",
+          "HTTP response handling",
+          "JSON output"
+        ],
+        "word_count": 1834,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_hook_matchers_and_filters": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Matcher patterns",
+          "Common hook handler fields"
+        ],
+        "word_count": 1328,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_hook_security_and_debugging": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Security considerations",
+          "Windows PowerShell tool",
+          "Debug hooks"
+        ],
+        "word_count": 558,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_hook_session_lifecycle_events": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Session-scope events",
+          "Per-turn events",
+          "Display and notification events",
+          "Subagent and agent-team events",
+          "Async and standalone events",
+          "Compaction events",
+          "MCP elicitation events"
+        ],
+        "word_count": 2241,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_hook_tool_loop_events": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "PreToolUse",
+          "PermissionRequest",
+          "PostToolUse",
+          "PostToolUseFailure",
+          "PostToolBatch",
+          "PermissionDenied"
+        ],
+        "word_count": 1427,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_hooks_advanced_types": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prompt-based hooks",
+          "Agent-based hooks",
+          "HTTP hooks"
+        ],
+        "word_count": 761,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_hooks_common_recipes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Get notified when Claude needs input",
+          "Auto-format code after edits"
+        ],
+        "word_count": 739,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_hooks_environment_and_permission_recipes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Reload environment when directory or files change",
+          "Auto-approve specific permission prompts"
+        ],
+        "word_count": 801,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_hooks_guardrail_and_audit_recipes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Block edits to protected files",
+          "Re-inject context after compaction",
+          "Audit configuration changes"
+        ],
+        "word_count": 601,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_hooks_io_and_decision_control": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Hook lifecycle events",
+          "Combine results from multiple hooks",
+          "Read input and return output"
+        ],
+        "word_count": 1723,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_hooks_matchers_and_filtering": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Filter hooks with matchers",
+          "Filter by tool name and arguments with the `if` field"
+        ],
+        "word_count": 1225,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_hooks_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Hook lifecycle and cadences",
+          "How a hook resolves",
+          "Configuration: three levels of nesting"
+        ],
+        "word_count": 654,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_hooks_overview_and_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Set up your first hook",
+          "Configure hook location",
+          "Learn more"
+        ],
+        "word_count": 662,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_hooks_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Limitations",
+          "Hooks and permission modes",
+          "Hook not firing",
+          "Hook error in output",
+          "`/hooks` shows no hooks configured",
+          "Stop hook hits the block cap",
+          "JSON validation failed",
+          "Debug techniques"
+        ],
+        "word_count": 1043,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_host_and_manage_marketplaces": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Host and distribute marketplaces",
+          "Manage marketplaces from the CLI",
+          "Troubleshooting"
+        ],
+        "word_count": 1910,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_input_modes_and_editing": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Multiline input",
+          "Vim editor mode",
+          "Command history"
+        ],
+        "word_count": 923,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_install": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "System Requirements",
+          "Install Claude Code",
+          "Verify Your Installation",
+          "Authenticate"
+        ],
+        "word_count": 793,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_install_diagnostics": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Check network connectivity",
+          "Verify your PATH",
+          "Check for conflicting installations",
+          "Check directory permissions",
+          "Verify the binary works",
+          "Still stuck"
+        ],
+        "word_count": 1122,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_install_failures_reference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Find your error (router table)",
+          "Network and download failures",
+          "Wrong command, locked file, or low memory",
+          "Windows shell and 32-bit issues",
+          "Native-binary incompatibilities",
+          "npm-path and permission failures"
+        ],
+        "word_count": 2271,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "cc_interactive_mode_keyboard_shortcuts": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "General controls",
+          "Text editing",
+          "Theme and display",
+          "Quick commands",
+          "Transcript viewer",
+          "Voice input"
+        ],
+        "word_count": 985,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 10
+      },
+      "cc_interactive_session_features": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Background Bash Commands",
+          "Prompt Suggestions",
+          "Side Questions with `/btw`",
+          "Task List",
+          "Session Recap",
+          "PR Review Status"
+        ],
+        "word_count": 1216,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_jetbrains_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Supported IDEs",
+          "Features",
+          "Installation",
+          "Usage",
+          "Configuration",
+          "Special configurations",
+          "Troubleshooting",
+          "Security considerations"
+        ],
+        "word_count": 1174,
+        "term_links": 2,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_keybindings_action_reference": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Contexts",
+          "Available actions"
+        ],
+        "word_count": 1015,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_keybindings_customization": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configuration file",
+          "Keystroke syntax",
+          "Unbind default shortcuts",
+          "Reserved shortcuts",
+          "Terminal conflicts",
+          "Vim mode interaction",
+          "Validation"
+        ],
+        "word_count": 849,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_large_codebase_claude_md_layering": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Layer CLAUDE.md files by directory",
+          "Choose between per-directory CLAUDE.md and path-scoped rules",
+          "Exclude irrelevant CLAUDE.md files"
+        ],
+        "word_count": 976,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_large_codebase_reduce_reads_and_worktrees": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Reduce what Claude reads",
+          "Scope worktrees and file access"
+        ],
+        "word_count": 1327,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_large_codebase_skills_and_plugins": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Add per-directory skills",
+          "Test structure",
+          "Centralize conventions when layering stops scaling",
+          "Put it together"
+        ],
+        "word_count": 1289,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_large_codebase_strategy": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why Defaults Degrade at Scale",
+          "The Layering Principle",
+          "Choose Where to Start Claude",
+          "Scope and Plan Changes That Span Packages",
+          "Next Steps"
+        ],
+        "word_count": 1038,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_launch_communications": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Before you send (pre-send checklist)",
+          "The announcement",
+          "Executive sponsor variant",
+          "Pilot group variant",
+          "Champion recruitment DM"
+        ],
+        "word_count": 1130,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_legal_and_compliance": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Legal agreements",
+          "Compliance",
+          "Usage policy",
+          "Security and trust"
+        ],
+        "word_count": 534,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_llm_gateway": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What a Gateway Provides",
+          "Gateway Requirements",
+          "Configuration"
+        ],
+        "word_count": 829,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_llm_gateway_litellm": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Malware version warning",
+          "Prerequisites",
+          "Authentication methods",
+          "Endpoint configuration"
+        ],
+        "word_count": 548,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_login_authentication_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Reset your login",
+          "OAuth error: Invalid code",
+          "403 Forbidden after login",
+          "This organization has been disabled with an active subscription",
+          "OAuth login fails in WSL2, SSH, or containers",
+          "Not logged in or token expired",
+          "Bedrock, Vertex, or Foundry credentials not loading"
+        ],
+        "word_count": 1046,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_loop_scheduled_tasks": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The three /loop modes",
+          "Set a one-time reminder",
+          "Managed-platform caveats"
+        ],
+        "word_count": 1197,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_manage_claude_md_for_teams": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Deploy organization-wide CLAUDE.md",
+          "Managed CLAUDE.md vs. managed settings",
+          "Exclude specific CLAUDE.md files"
+        ],
+        "word_count": 529,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_manage_routines": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "View and interact with runs",
+          "Edit and control routines",
+          "Repositories and branch permissions",
+          "Connectors",
+          "Environments and network access",
+          "Troubleshooting"
+        ],
+        "word_count": 1063,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_manage_your_session": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Communicate Effectively",
+          "Manage Your Session",
+          "Avoid Common Failure Patterns",
+          "Develop Your Intuition"
+        ],
+        "word_count": 1395,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_managed_mcp_configuration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choose a pattern",
+          "Exclusive control with managed-mcp.json",
+          "Policy-based control with allowlists and denylists",
+          "How restrictions appear to users",
+          "Monitor MCP usage",
+          "Configuration summary"
+        ],
+        "word_count": 1668,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_managed_permission_settings_and_precedence": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How permissions interact with sandboxing",
+          "Managed settings",
+          "Settings precedence",
+          "Example configurations"
+        ],
+        "word_count": 1115,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_managed_plugin_policy_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`strictKnownMarketplaces` — marketplace allowlist",
+          "`blockedMarketplaces` — marketplace blocklist",
+          "`strictPluginOnlyCustomization` — surface lockdown"
+        ],
+        "word_count": 1158,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_managed_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Delivery mechanisms",
+          "Invalid entries in managed settings",
+          "Compute managed settings with a policy helper"
+        ],
+        "word_count": 1026,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_marketplace_json_schema": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Create the marketplace file",
+          "Marketplace schema",
+          "Plugin entries",
+          "Strict mode"
+        ],
+        "word_count": 1072,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_marketplace_restrictions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Allowlist values",
+          "Common configurations",
+          "How restrictions work"
+        ],
+        "word_count": 622,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_mcp_authentication": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Authenticate with the interactive OAuth flow",
+          "Use a fixed OAuth callback port",
+          "Use pre-configured OAuth credentials",
+          "Override OAuth metadata discovery",
+          "Restrict OAuth scopes",
+          "Use dynamic headers for custom authentication",
+          "Use MCP servers from Claude.ai",
+          "Use Claude Code as an MCP server"
+        ],
+        "word_count": 1395,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_mcp_installation_scopes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The three scopes",
+          "Where servers are saved on disk",
+          "Choosing and changing scope",
+          "Scope hierarchy and precedence",
+          "Environment variable expansion in `.mcp.json`"
+        ],
+        "word_count": 923,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_mcp_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What you can do with MCP",
+          "Find and build MCP servers"
+        ],
+        "word_count": 475,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_mcp_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Before you begin",
+          "Add and verify a server",
+          "Additional server examples",
+          "Practical examples (from the MCP reference)",
+          "Connect from other surfaces",
+          "Troubleshooting",
+          "Next steps"
+        ],
+        "word_count": 1517,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 11
+      },
+      "cc_mcp_server_management": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Managing your servers",
+          "Dynamic tool updates",
+          "Automatic reconnection",
+          "Push messages with channels",
+          "Server timeouts and tips",
+          "Plugin-provided MCP servers",
+          "MCP output limits and warnings"
+        ],
+        "word_count": 1319,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_mcp_tool_search": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Scale with MCP Tool Search",
+          "Use MCP resources",
+          "Use MCP prompts as commands",
+          "Respond to MCP elicitation requests"
+        ],
+        "word_count": 1225,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_mcp_transports": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Option 1: Add a remote HTTP server",
+          "Option 2: Add a remote SSE server",
+          "Option 3: Add a local stdio server",
+          "Option 4: Add a remote WebSocket server",
+          "Add MCP servers from JSON configuration",
+          "Import MCP servers from Claude Desktop"
+        ],
+        "word_count": 995,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_memory_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Two mechanisms for cross-session knowledge",
+          "CLAUDE.md vs auto memory",
+          "Memory is context, not enforcement"
+        ],
+        "word_count": 437,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_microsoft_foundry": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Azure RBAC configuration",
+          "Troubleshooting",
+          "Additional resources"
+        ],
+        "word_count": 817,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_model_selection": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Model aliases",
+          "Work with Fable 5",
+          "Setting your model",
+          "Add a custom model option",
+          "Checking your current model"
+        ],
+        "word_count": 1343,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_monitoring_opentelemetry_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Administrator configuration",
+          "Example configurations",
+          "Service information"
+        ],
+        "word_count": 759,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_move_tasks_web_terminal": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "From terminal to web (`--remote`)",
+          "From web to terminal (`--teleport`)"
+        ],
+        "word_count": 981,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_network_tls_and_access": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "CA certificate store",
+          "Custom CA certificates",
+          "mTLS authentication",
+          "Network access requirements",
+          "Additional resources"
+        ],
+        "word_count": 652,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_orchestrate_agent_teams": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable agent teams",
+          "Start your first agent team",
+          "Control your agent team",
+          "Use subagent definitions for teammates",
+          "Permissions",
+          "Use case examples",
+          "Best practices",
+          "Troubleshooting"
+        ],
+        "word_count": 1892,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_otel_analysis_and_privacy": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Interpret metrics and events data",
+          "Backend considerations",
+          "ROI measurement resources",
+          "Security and privacy",
+          "Monitor Claude Code on Amazon Bedrock"
+        ],
+        "word_count": 1247,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_otel_audit_and_siem": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Attribute actions to users",
+          "Audit MCP activity",
+          "Map security questions to events",
+          "Send events to a SIEM"
+        ],
+        "word_count": 741,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_otel_configuration_variables": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Common configuration variables",
+          "mTLS authentication",
+          "Metrics cardinality control",
+          "Dynamic headers",
+          "Multi-team organization support"
+        ],
+        "word_count": 1299,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_otel_events_reference": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Event correlation attributes",
+          "Prompt and tool lifecycle events",
+          "API request events",
+          "Session, auth, and mode events",
+          "MCP, mention, and internal-error events",
+          "Plugin, skill, and hook inventory events"
+        ],
+        "word_count": 1020,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_otel_metrics_reference": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Standard attributes",
+          "Metrics",
+          "Metric details"
+        ],
+        "word_count": 1165,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_otel_traces": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enabling traces",
+          "Context propagation",
+          "Span hierarchy",
+          "Span attributes"
+        ],
+        "word_count": 1416,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_output_styles": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Built-in output styles",
+          "Change your output style",
+          "Create a custom output style",
+          "How output styles work",
+          "Comparisons to related features"
+        ],
+        "word_count": 1037,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What You Can Do",
+          "Use Claude Code Everywhere"
+        ],
+        "word_count": 456,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_performance_and_stability": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Performance and Stability",
+          "Get More Help"
+        ],
+        "word_count": 939,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_permission_and_attribution_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Permission settings",
+          "Permission rule syntax (quick)",
+          "Attribution settings",
+          "File suggestion settings"
+        ],
+        "word_count": 851,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_permission_modes_detail": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Auto-approve file edits with acceptEdits mode",
+          "Analyze before you edit with plan mode",
+          "Allow only pre-approved tools with dontAsk mode",
+          "Skip all checks with bypassPermissions mode",
+          "Protected paths"
+        ],
+        "word_count": 1153,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_permission_modes_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Available modes",
+          "Switch permission modes"
+        ],
+        "word_count": 888,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_permission_system_and_rules": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Permission system",
+          "Manage permissions",
+          "Permission rule syntax"
+        ],
+        "word_count": 815,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_permissions_hooks_and_working_directories": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Extend permissions with hooks",
+          "Working directories"
+        ],
+        "word_count": 698,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_platforms_and_integrations": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Where to run Claude Code",
+          "Connect your tools",
+          "Work when you are away from your terminal"
+        ],
+        "word_count": 790,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_plugin_caching_and_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Plugin Caching and File Resolution",
+          "Debugging and Development Tools",
+          "Marketplace and Install Troubleshooting"
+        ],
+        "word_count": 1320,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_plugin_cli_commands": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Plugin installation scopes",
+          "Skills-directory plugins",
+          "CLI commands reference"
+        ],
+        "word_count": 1328,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_plugin_components": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Skills",
+          "Agents",
+          "Hooks",
+          "MCP servers",
+          "LSP servers",
+          "Monitors",
+          "Themes",
+          "Ship default settings (`settings.json`)"
+        ],
+        "word_count": 1126,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_plugin_dependencies": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why Constrain Dependency Versions",
+          "Declare a Dependency with a Version Constraint",
+          "Depend on a Plugin from Another Marketplace",
+          "Tag Plugin Releases for Version Resolution",
+          "How Constraints Interact",
+          "Enable or Disable a Plugin with Dependencies",
+          "Remove Orphaned Auto-Installed Dependencies",
+          "Resolve Dependency Errors"
+        ],
+        "word_count": 1804,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_plugin_directory_structure": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Standard plugin layout",
+          "Single-skill-at-root layout",
+          "File locations reference"
+        ],
+        "word_count": 653,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_plugin_install_hints": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How it works",
+          "Emit the hint",
+          "Choose where to emit",
+          "What the user sees",
+          "Hint format",
+          "Requirements",
+          "Get your plugin into the official marketplace"
+        ],
+        "word_count": 1153,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_plugin_manifest_schema": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Complete schema",
+          "Required fields",
+          "Unrecognized fields",
+          "Metadata fields",
+          "Default enablement",
+          "Component path fields",
+          "Path behavior rules (replace vs extend)",
+          "Experimental components"
+        ],
+        "word_count": 1409,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_plugin_marketplace_walkthrough": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Walkthrough: create a local marketplace",
+          "Validation and testing"
+        ],
+        "word_count": 686,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_plugin_marketplaces_and_install": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The marketplaces",
+          "Add marketplaces",
+          "Install plugins",
+          "Manage installed plugins and marketplaces",
+          "Configure team marketplaces",
+          "Submit your plugin to the community marketplace",
+          "Security"
+        ],
+        "word_count": 1203,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_plugin_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Create your first plugin",
+          "Test your plugins locally",
+          "Develop a plugin in your skills directory",
+          "Convert existing configurations to plugins"
+        ],
+        "word_count": 1218,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_plugin_sources": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The five source types",
+          "Advanced plugin entries",
+          "Marketplace sources vs plugin sources"
+        ],
+        "word_count": 929,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_plugin_user_config_and_env": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "User configuration (`userConfig`)",
+          "Channels",
+          "Environment variables",
+          "Persistent data directory"
+        ],
+        "word_count": 1067,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_plugins_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When to use plugins vs standalone configuration",
+          "Namespacing"
+        ],
+        "word_count": 417,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_pr_attribution": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable contribution metrics",
+          "PR attribution",
+          "Get the most from analytics"
+        ],
+        "word_count": 859,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_prompt_and_agent_hooks": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Which events support prompt and agent hooks",
+          "Prompt-based hooks",
+          "Agent-based hooks"
+        ],
+        "word_count": 1043,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_prompt_caching_mechanism": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How the cache is organized"
+        ],
+        "word_count": 700,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_prompt_injection_defenses": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Core protections",
+          "Privacy safeguards (pointer)",
+          "Additional safeguards",
+          "Best practices for working with untrusted content"
+        ],
+        "word_count": 639,
+        "term_links": 1,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_prompting_patterns": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Makes These Prompts Work",
+          "Where These Come From",
+          "Making a Prompt Repeatable"
+        ],
+        "word_count": 599,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_proxy_and_gateway_config": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Corporate proxy: environment variables",
+          "Proxy basic authentication",
+          "Corporate proxy vs LLM gateway",
+          "Per-provider proxy and gateway recipes",
+          "Verify the configuration"
+        ],
+        "word_count": 651,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1: Install Claude Code",
+          "Step 2: Log in to your account",
+          "Step 3: Start your first session",
+          "Step 4: Ask your first question",
+          "Step 5: Make your first code change",
+          "Step 6: Use Git with Claude Code",
+          "Step 7: Fix a bug or add a feature",
+          "Step 8: Test out other common workflows",
+          "Essential commands",
+          "Pro tips for beginners",
+          "Getting help"
+        ],
+        "word_count": 908,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_reduce_token_usage": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Manage context proactively",
+          "Choose the right model",
+          "Reduce MCP server overhead",
+          "Install code intelligence plugins for typed languages",
+          "Offload processing to hooks and skills",
+          "Move instructions from CLAUDE.md to skills",
+          "Adjust extended thinking",
+          "Delegate verbose operations to subagents",
+          "Manage agent team costs",
+          "Write specific prompts",
+          "Work efficiently on complex tasks"
+        ],
+        "word_count": 1127,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_remote_control": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Requirements",
+          "Start a Remote Control session",
+          "Connection and security",
+          "Mobile push notifications",
+          "Limitations",
+          "Troubleshooting"
+        ],
+        "word_count": 1743,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_remote_vs_web_and_deep_links": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Remote Control vs Claude Code on the web",
+          "Choose the right approach",
+          "Deep links: launch sessions from a URL",
+          "High 5xx rate on web-gateway"
+        ],
+        "word_count": 1592,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_request_and_quality_errors": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prompt is too long",
+          "Error during compaction: Conversation too long",
+          "Request too large",
+          "Image, resize, and PDF errors",
+          "Extra inputs are not permitted",
+          "Model selection errors",
+          "Extended thinking errors",
+          "Tool use or thinking block mismatch",
+          "Usage Policy refusal",
+          "Responses seem lower quality than usual",
+          "Report an error"
+        ],
+        "word_count": 2168,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_restrict_model_selection": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The `availableModels` Allowlist",
+          "Default Model Behavior",
+          "Control the Model Users Run On",
+          "Merge Behavior",
+          "Mantle Model IDs",
+          "Add a Custom Model Option",
+          "Pin and Override Model IDs (Third-Party Governance)"
+        ],
+        "word_count": 1068,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_routine_triggers": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Add a schedule trigger",
+          "Add an API trigger",
+          "Add a GitHub trigger"
+        ],
+        "word_count": 1081,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_routines_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What a routine is",
+          "Example use cases",
+          "Usage and limits"
+        ],
+        "word_count": 676,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_run_agents_in_parallel": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Four Approaches",
+          "Choose an Approach",
+          "Check on Running Work",
+          "Learn More"
+        ],
+        "word_count": 1003,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sandbox_environments_comparison": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Compare sandboxing approaches",
+          "Choose an approach",
+          "How isolation relates to permission modes"
+        ],
+        "word_count": 935,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "cc_sandbox_filesystem_network_isolation": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configure sandboxing (paths)",
+          "How sandboxing works"
+        ],
+        "word_count": 894,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sandbox_limitations_and_troubleshooting": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Troubleshooting",
+          "Limitations"
+        ],
+        "word_count": 1064,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sandbox_modes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Auto-allow mode",
+          "Regular permissions mode",
+          "The session temp directory and `$TMPDIR`",
+          "The `dangerouslyDisableSandbox` escape hatch",
+          "Strict sandbox mode (`allowUnsandboxedCommands: false`)"
+        ],
+        "word_count": 611,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sandbox_org_enforcement": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Which approaches an organization can enforce",
+          "Enforce sandboxing with managed settings",
+          "Keep developers from widening the policy",
+          "Custom proxy configuration"
+        ],
+        "word_count": 730,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sandbox_runtime_and_containers": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Sandbox runtime",
+          "Dev containers",
+          "Custom container",
+          "Virtual machine",
+          "Claude Code on the web"
+        ],
+        "word_count": 716,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sandbox_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Sandbox settings",
+          "Excluding sensitive files"
+        ],
+        "word_count": 1143,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sandbox_vs_permissions": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Permission rules vs sandboxing",
+          "Permission modes vs the sandbox"
+        ],
+        "word_count": 631,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sandboxed_bash_tool_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Get started",
+          "Set up Linux and WSL2"
+        ],
+        "word_count": 847,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_scheduled_task_execution_model": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How scheduled tasks run",
+          "Manage scheduled tasks",
+          "Cron expression reference",
+          "Disable scheduled tasks",
+          "Limitations"
+        ],
+        "word_count": 871,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_scheduling_options_comparison": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Compare scheduling options",
+          "How to choose"
+        ],
+        "word_count": 546,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_clarifying_questions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The five-step flow",
+          "Question format",
+          "Response format",
+          "Complete example",
+          "Limitations",
+          "Other ways to get user input"
+        ],
+        "word_count": 1697,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_connect_mcp_servers": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quickstart",
+          "Add an MCP server",
+          "Allow MCP tools",
+          "Transport types",
+          "MCP tool search",
+          "Beyond connecting"
+        ],
+        "word_count": 1001,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_cost_and_usage_tracking": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Understand token usage",
+          "Get the total cost of a query",
+          "Track per-step and per-model usage",
+          "Accumulate costs across multiple calls",
+          "Handle errors, caching, and token discrepancies"
+        ],
+        "word_count": 1418,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_credential_and_filesystem_controls": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Credential management",
+          "Filesystem configuration"
+        ],
+        "word_count": 1068,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_custom_tool_definition": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick reference",
+          "The four parts of a tool",
+          "Define a tool and wrap it in a server",
+          "Call a custom tool",
+          "Add more tools",
+          "Add tool annotations"
+        ],
+        "word_count": 1391,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 13
+      },
+      "cc_sdk_customize_system_prompt": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "CLAUDE.md files for project-level instructions",
+          "Output styles for persistent configurations",
+          "Append to the `claude_code` preset",
+          "Custom system prompts",
+          "Use cases and best practices",
+          "Combine approaches"
+        ],
+        "word_count": 1665,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_file_checkpointing_concepts": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How checkpointing works",
+          "Limitations"
+        ],
+        "word_count": 564,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_file_checkpointing_implementation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Implement checkpointing",
+          "Common patterns",
+          "Try it out",
+          "Limitations",
+          "Troubleshooting"
+        ],
+        "word_count": 1496,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_hooks_configuration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configure hooks",
+          "Matchers",
+          "Callback functions"
+        ],
+        "word_count": 998,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_hooks_examples": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Modify tool input (sandbox redirect)",
+          "Add context and block a tool",
+          "Auto-approve specific tools",
+          "Register multiple hooks and multi-tool matchers",
+          "Track subagent activity",
+          "Make HTTP requests from hooks",
+          "Forward notifications to Slack"
+        ],
+        "word_count": 896,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_hooks_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How hooks work",
+          "Available hooks"
+        ],
+        "word_count": 1077,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_hooks_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Hook not firing",
+          "Matcher not filtering as expected",
+          "Hook timeout",
+          "Tool blocked unexpectedly",
+          "Modified input not applied",
+          "Session hooks not available in Python",
+          "Subagent permission prompts multiplying",
+          "Recursive hook loops with subagents",
+          "systemMessage not appearing in output"
+        ],
+        "word_count": 664,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_hosting_provisioning_and_scaling": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Provision the container",
+          "Handle production concerns",
+          "Known limitations"
+        ],
+        "word_count": 1143,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_sdk_input_modes": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Streaming Input Mode (Recommended)",
+          "Single Message Input",
+          "Choosing a Mode"
+        ],
+        "word_count": 621,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_isolation_technologies": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The tradeoff table",
+          "Sandbox runtime",
+          "Containers (Docker)",
+          "gVisor",
+          "Virtual machines",
+          "Cloud deployments"
+        ],
+        "word_count": 1007,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_mcp_auth_and_errors": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Authentication",
+          "Examples",
+          "Error handling",
+          "Troubleshooting"
+        ],
+        "word_count": 981,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_observability_opentelemetry": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How telemetry flows from the SDK",
+          "Enable telemetry export",
+          "Read agent traces",
+          "Link traces to your application",
+          "Tag telemetry from your agent",
+          "Attribute actions to your end users",
+          "Control sensitive data in exports"
+        ],
+        "word_count": 1644,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_permission_modes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Available modes",
+          "Set permission mode",
+          "Mode details"
+        ],
+        "word_count": 870,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_permissions_evaluation": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How permissions are evaluated",
+          "Allow and deny rules"
+        ],
+        "word_count": 844,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_sdk_plugin_structure": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Directory layout",
+          "The four component types",
+          "The optional manifest"
+        ],
+        "word_count": 411,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_plugins": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What are plugins?",
+          "Loading plugins",
+          "Verifying plugin installation",
+          "Using plugin skills",
+          "Complete example",
+          "Common use cases",
+          "Troubleshooting"
+        ],
+        "word_count": 884,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_python_client": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Key Features",
+          "Class definition and methods",
+          "Context manager support",
+          "Continuing a conversation",
+          "Interrupts and the buffer-drain caveat",
+          "Advanced features"
+        ],
+        "word_count": 1141,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_sdk_python_entry_points": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installation",
+          "Choosing between query() and ClaudeSDKClient",
+          "Functions: query()",
+          "Example Usage"
+        ],
+        "word_count": 730,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_sdk_python_hook_types": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`HookEvent`",
+          "`HookCallback`",
+          "`HookContext` and `HookMatcher`",
+          "`HookInput` (per-event input types)",
+          "`HookJSONOutput`",
+          "Hook Usage Example"
+        ],
+        "word_count": 1104,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_python_message_and_error_types": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Message Types",
+          "Content Block Types",
+          "Error Types"
+        ],
+        "word_count": 1142,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_python_options_and_config_types": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`ClaudeAgentOptions`",
+          "Prompt, output, and setting types",
+          "Permission types",
+          "Subagent, thinking, and beta types",
+          "MCP, transport, and plugin config types"
+        ],
+        "word_count": 1426,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_python_session_functions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`list_sessions()`",
+          "`get_session_messages()`",
+          "`get_session_info()`",
+          "`rename_session()`",
+          "`tag_session()`"
+        ],
+        "word_count": 1088,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_python_tool_io_and_sandbox": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Tool Input/Output Types",
+          "Sandbox Configuration"
+        ],
+        "word_count": 1536,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_secure_deployment_principles": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Threat model",
+          "Built-in security features",
+          "Security principles"
+        ],
+        "word_count": 761,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_session_management_api": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Automatic session management",
+          "Use session options with `query()`",
+          "Enumerate and mutate sessions"
+        ],
+        "word_count": 1328,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_session_patterns": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The four session patterns"
+        ],
+        "word_count": 703,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_session_store": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The `SessionStore` interface",
+          "Behavior notes",
+          "Supported on"
+        ],
+        "word_count": 1008,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_session_store_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1 — Quick start with `InMemorySessionStore`",
+          "Step 2 — Write your own adapter",
+          "Step 3 — Copy a reference implementation",
+          "Step 4 — Validate your adapter (conformance)"
+        ],
+        "word_count": 754,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_sessions_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Choose an Approach",
+          "Continue, Resume, and Fork",
+          "Resume Across Hosts"
+        ],
+        "word_count": 806,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_skills": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Skills Work with the SDK",
+          "Using Skills with the SDK",
+          "Skill Locations",
+          "Creating Skills",
+          "Tool Restrictions",
+          "Discovering and Testing Skills",
+          "Troubleshooting"
+        ],
+        "word_count": 845,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_slash_commands": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Discovering Available Slash Commands",
+          "Sending Slash Commands",
+          "Common Slash Commands",
+          "Creating Custom Slash Commands"
+        ],
+        "word_count": 895,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_stream_text_and_tool_calls": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Stream text responses",
+          "Stream tool calls",
+          "Build a streaming UI"
+        ],
+        "word_count": 1072,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_streaming_input_example": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Streaming input: async-generator messages (incl. image)",
+          "Single-message input: one-shot query + session continuation",
+          "Generator-exception gotchas"
+        ],
+        "word_count": 821,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_streaming_output": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enable streaming output",
+          "StreamEvent reference",
+          "Message flow",
+          "Known limitations"
+        ],
+        "word_count": 634,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_structured_output_schemas": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Type-safe schemas with Zod and Pydantic",
+          "Example: TODO tracking agent",
+          "Error handling"
+        ],
+        "word_count": 1179,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_structured_outputs": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why structured outputs?",
+          "Quick start",
+          "Output format configuration"
+        ],
+        "word_count": 679,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_sdk_subagents_definition": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three ways to create subagents",
+          "Benefits of using subagents",
+          "Programmatic definition",
+          "AgentDefinition configuration",
+          "What subagents inherit",
+          "Tool restrictions"
+        ],
+        "word_count": 1433,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_subagents_lifecycle": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Invoking subagents",
+          "Detecting subagent invocation",
+          "Resuming subagents",
+          "Scale up with dynamic workflows",
+          "Troubleshooting"
+        ],
+        "word_count": 1204,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_subprocess_model": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "One session = one subprocess",
+          "State that lives on local disk"
+        ],
+        "word_count": 439,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_system_prompts": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How system prompts work",
+          "Compare the four approaches"
+        ],
+        "word_count": 1039,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_todo_and_task_tracking": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Todo Lifecycle",
+          "When Todos Are Used",
+          "Monitoring and Displaying Todos",
+          "Migrate to Task tools"
+        ],
+        "word_count": 796,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_tool_access_control": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Tool name format",
+          "Configure allowed tools",
+          "Removing built-ins versus scoped denials"
+        ],
+        "word_count": 403,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_tool_approval_handling": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Callback Arguments",
+          "The Two Response Types",
+          "Procedure: Prompt the User and Return a Decision",
+          "The Six Response Patterns"
+        ],
+        "word_count": 1200,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_tool_error_handling": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Returned error vs. uncaught throw",
+          "The double-catch handler pattern",
+          "Applying it to unhandled inputs"
+        ],
+        "word_count": 671,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_tool_rich_content": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Content block types",
+          "Images",
+          "Resources",
+          "Return structured data"
+        ],
+        "word_count": 782,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_tool_search": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How tool search works",
+          "Configure tool search",
+          "Optimize tool discovery",
+          "Limits",
+          "MCP tool search (folded from mcp.md)"
+        ],
+        "word_count": 919,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_typescript_installation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installation",
+          "Compile to a single executable"
+        ],
+        "word_count": 433,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_typescript_message_and_hook_types": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Message Types — the `SDKMessage` union",
+          "Hook Types"
+        ],
+        "word_count": 1027,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sdk_typescript_options": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Option Keys Grouped by Purpose",
+          "The `env` Replace-Not-Merge Gotcha",
+          "Handle Slow or Stalled API Responses"
+        ],
+        "word_count": 1554,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_typescript_query_function": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`query()`",
+          "`startup()`",
+          "`WarmQuery`"
+        ],
+        "word_count": 672,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_sdk_typescript_query_object": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The `Query` Interface",
+          "Methods",
+          "`applyFlagSettings()` — the flag-settings layer",
+          "`WarmQuery` methods",
+          "Typed return shapes"
+        ],
+        "word_count": 1041,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_sdk_typescript_sdk_functions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "`tool()`",
+          "`createSdkMcpServer()`",
+          "Session discovery functions",
+          "Session mutation functions",
+          "`resolveSettings()`"
+        ],
+        "word_count": 1036,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_typescript_tool_and_permission_types": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Tool Input Types",
+          "Tool Output Types",
+          "Permission Types",
+          "Agent, MCP & Config / Metadata Types"
+        ],
+        "word_count": 1014,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_sdk_typescript_v2_session_api_removed": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installation (version-pin boundary)",
+          "API reference (removed)",
+          "Usage pattern (the send/stream split)",
+          "Feature availability",
+          "Migration path"
+        ],
+        "word_count": 564,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_sdk_user_input_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The `canUseTool` callback model",
+          "The two trigger cases",
+          "Pausing, indefinite waits, and `defer`",
+          "Hooks fire before `canUseTool`"
+        ],
+        "word_count": 501,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_security_architecture": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Security foundation",
+          "Permission-based architecture",
+          "Built-in protections",
+          "User responsibility",
+          "MCP security",
+          "Cloud and IDE execution",
+          "Security best practices"
+        ],
+        "word_count": 755,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_security_guidance_layers_and_rules": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What the Plugin Checks",
+          "Add Your Own Rules",
+          "Usage Cost",
+          "How the Plugin Integrates with Claude Code",
+          "How This Fits with Other Security Tools",
+          "Troubleshooting"
+        ],
+        "word_count": 1920,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_security_guidance_plugin": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Install the plugin",
+          "Disable or uninstall"
+        ],
+        "word_count": 606,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_server_and_usage_limit_errors": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Automatic retries",
+          "Server errors",
+          "Usage limits"
+        ],
+        "word_count": 1567,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_server_managed_settings": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Requirements",
+          "Choose Between Server-Managed and Endpoint-Managed Settings",
+          "Configure Server-Managed Settings",
+          "Settings Delivery",
+          "Platform Availability",
+          "Audit Logging",
+          "Security Considerations"
+        ],
+        "word_count": 1619,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_sessions": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Resume a Session",
+          "Name Your Sessions",
+          "Use the Session Picker",
+          "Branch a Session",
+          "Manage Context Within a Session",
+          "Export and Locate Session Data"
+        ],
+        "word_count": 1160,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_settings_files": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Settings file locations",
+          "The `$schema` line",
+          "When edits take effect",
+          "Other configuration: `~/.claude.json`",
+          "Timestamped backups"
+        ],
+        "word_count": 603,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_settings_reference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Available settings (`settings.json`)",
+          "Global config settings (`~/.claude.json`)",
+          "Worktree settings (`worktree.*`)",
+          "Example `settings.json`"
+        ],
+        "word_count": 1530,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 16
+      },
+      "cc_settings_scopes_and_precedence": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Available scopes",
+          "When to use each scope",
+          "How scopes interact",
+          "Settings precedence",
+          "What uses scopes",
+          "Verify active settings",
+          "Key points about the configuration system"
+        ],
+        "word_count": 1196,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_skill_arguments_and_substitutions": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Available String Substitutions",
+          "Pass Arguments to Skills"
+        ],
+        "word_count": 824,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_skill_dynamic_context_and_subagent": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Inject dynamic context",
+          "Pull request context",
+          "Your task",
+          "Environment",
+          "Run skills in a subagent",
+          "Pre-approve tools for a skill",
+          "Generate visual output"
+        ],
+        "word_count": 1337,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_skill_frontmatter_reference": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Types of Skill Content",
+          "Frontmatter Reference",
+          "How a Skill Gets Its Command Name"
+        ],
+        "word_count": 1247,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_skill_invocation_and_lifecycle": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Control who invokes a skill",
+          "Skill content lifecycle",
+          "Restrict Claude's skill access",
+          "Override skill visibility from settings"
+        ],
+        "word_count": 1025,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_skills_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Custom Commands Merged Into Skills",
+          "Agent Skills Open Standard",
+          "Where Skills Live",
+          "Live Change Detection",
+          "Automatic Discovery From Parent and Nested Directories",
+          "Skills From Additional Directories"
+        ],
+        "word_count": 937,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_slack_setup_and_routing": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setting up Claude Code in Slack",
+          "Access and permissions",
+          "Troubleshooting"
+        ],
+        "word_count": 1071,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_statusline_advanced_examples": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Clickable links",
+          "Rate limit usage",
+          "Cache expensive operations",
+          "Windows configuration"
+        ],
+        "word_count": 1044,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_statusline_example_scripts": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Context window usage",
+          "Git status with colors",
+          "Cost and duration tracking",
+          "Display multiple lines"
+        ],
+        "word_count": 770,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_statusline_json_fields": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Field Catalog",
+          "Absent vs. Null Fields",
+          "Context Window Fields"
+        ],
+        "word_count": 1424,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_statusline_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Set up a status line",
+          "Build a status line step by step",
+          "How status lines work"
+        ],
+        "word_count": 894,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_statusline_troubleshooting": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Tips",
+          "Troubleshooting"
+        ],
+        "word_count": 739,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_subagent_and_plugin_settings": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Subagent configuration",
+          "Plugin configuration"
+        ],
+        "word_count": 836,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_subagent_configuration_reference": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Supported frontmatter fields",
+          "Choose a model",
+          "Control subagent capabilities",
+          "Define hooks for subagents"
+        ],
+        "word_count": 2043,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_subagent_examples": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Code Reviewer",
+          "Debugger",
+          "Data Scientist",
+          "Database Query Validator"
+        ],
+        "word_count": 1021,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_subagent_statusline": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The `subagentStatusLine` setting",
+          "Per-tick input JSON",
+          "Output contract: one JSON line per overridden row",
+          "Trust gates and plugin defaults"
+        ],
+        "word_count": 372,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_subagents_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Subagents Help You Do",
+          "Built-in Subagents"
+        ],
+        "word_count": 591,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_terminal_configuration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Enter Multiline Prompts",
+          "Enable Option Key Shortcuts on macOS",
+          "Get a Terminal Bell or Notification",
+          "Configure tmux",
+          "Switch to Fullscreen Rendering",
+          "Paste Large Content"
+        ],
+        "word_count": 1270,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_terminal_themes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Match the Color Theme",
+          "Create a Custom Theme",
+          "Color Token Reference"
+        ],
+        "word_count": 978,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_tips_and_tricks_campaign": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The shared message pattern",
+          "The eight topic groups (feature → activation message)",
+          "Quick reference"
+        ],
+        "word_count": 1105,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_tool_specific_permission_rules": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Bash",
+          "PowerShell",
+          "Read and Edit",
+          "WebFetch",
+          "MCP",
+          "Agent (subagents)",
+          "Cd"
+        ],
+        "word_count": 1854,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_tools_catalog": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Extending the catalog",
+          "The built-in tools",
+          "Configure tools with permission rules and hooks",
+          "Check which tools are available"
+        ],
+        "word_count": 1018,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_troubleshoot_memory": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Claude isn't following my CLAUDE.md",
+          "I don't know what auto memory saved",
+          "My CLAUDE.md is too large",
+          "Instructions seem lost after `/compact`"
+        ],
+        "word_count": 529,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 6
+      },
+      "cc_ultraplan": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Launch ultraplan from the CLI",
+          "Review and revise the plan in your browser",
+          "Choose where to execute"
+        ],
+        "word_count": 803,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_ultrareview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Run Ultrareview from the CLI",
+          "Pricing and Free Runs",
+          "Track a Running Review",
+          "Run Ultrareview Non-Interactively",
+          "How Ultrareview Compares to /review"
+        ],
+        "word_count": 1168,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 3
+      },
+      "cc_uninstall": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Remove the binary by install method",
+          "Remove configuration files"
+        ],
+        "word_count": 420,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_update_and_release_channels": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Auto-updates",
+          "Configure release channel",
+          "Pin a minimum version",
+          "Disable auto-updates",
+          "Update manually"
+        ],
+        "word_count": 723,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_verification_loop": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Why \"Looks Done\" Is Unreliable",
+          "What Counts as a Check",
+          "How Hard the Check Gates the Stop",
+          "Show Evidence, Don't Assert"
+        ],
+        "word_count": 604,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      },
+      "cc_voice_dictation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Requirements",
+          "Enable voice dictation",
+          "Hold to record",
+          "Tap to record and send",
+          "Change the dictation language",
+          "Rebind the dictation key",
+          "Troubleshooting"
+        ],
+        "word_count": 1884,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_vs_code_extension": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Install the extension",
+          "Get started",
+          "Fix common issues",
+          "Uninstall the extension"
+        ],
+        "word_count": 1247,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 5
+      },
+      "cc_vs_code_ide_mcp_server": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Selection and Open-File Context",
+          "Transport and Authentication",
+          "Tools Exposed to the Model",
+          "Jupyter Execution Always Asks First"
+        ],
+        "word_count": 483,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_vs_code_prompt_box_and_sessions": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Use the prompt box",
+          "Customize your workflow",
+          "Manage plugins",
+          "Automate browser tasks with Chrome"
+        ],
+        "word_count": 1561,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_vs_code_settings_and_cli_relationship": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configure settings",
+          "VS Code commands and shortcuts",
+          "VS Code extension vs. Claude Code CLI",
+          "Work with git",
+          "Use third-party providers"
+        ],
+        "word_count": 1859,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_web_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What it is",
+          "How sessions run",
+          "What it's good for"
+        ],
+        "word_count": 565,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 4
+      },
+      "cc_web_quickstart": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Connect GitHub and create an environment",
+          "Start a task",
+          "Pre-fill sessions",
+          "Review and iterate"
+        ],
+        "word_count": 1066,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_web_security_and_limits": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "GitHub authentication options",
+          "Security and isolation",
+          "Limitations",
+          "Troubleshooting cloud sessions"
+        ],
+        "word_count": 1010,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_web_session_management": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Manage context",
+          "Review changes",
+          "Share sessions",
+          "Archive sessions",
+          "Delete sessions",
+          "Auto-fix pull requests"
+        ],
+        "word_count": 1182,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_web_setup_scripts": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Authoring a Setup Script",
+          "Environment Caching",
+          "Setup Scripts vs. SessionStart Hooks",
+          "Install Dependencies with a SessionStart Hook"
+        ],
+        "word_count": 900,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_what_claude_can_access": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Running `claude` Grants",
+          "Why Whole-Project Access Matters"
+        ],
+        "word_count": 311,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_what_survives_compaction": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What survives compaction",
+          "When your context fills up"
+        ],
+        "word_count": 593,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_work_with_subagents": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Understand Automatic Delegation",
+          "Invoke Subagents Explicitly",
+          "Run Subagents in Foreground or Background",
+          "Common Patterns",
+          "Choose Between Subagents and the Main Conversation",
+          "Spawn Nested Subagents",
+          "Manage Subagent Context"
+        ],
+        "word_count": 1603,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 2
+      },
+      "cc_workflow_recipes": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prompt Recipes",
+          "Session and Scaling Recipes (link-outs)"
+        ],
+        "word_count": 1183,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_worktree_isolation": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Start Claude in a Worktree",
+          "Copy Gitignored Files into Worktrees",
+          "Isolate Subagents with Worktrees",
+          "Clean Up Worktrees",
+          "Manage Worktrees Manually",
+          "Non-git Version Control"
+        ],
+        "word_count": 1155,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 0
+      },
+      "cc_zero_data_retention": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview"
+        ],
+        "h2_sections": [
+          "Overview",
+          "ZDR scope",
+          "Features disabled under ZDR",
+          "Data retention for policy violations",
+          "Request ZDR"
+        ],
+        "word_count": 807,
+        "term_links": 0,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 1
+      }
+    }
+  }
+}

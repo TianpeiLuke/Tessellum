@@ -1,0 +1,106 @@
+---
+tags:
+  - resource
+  - documentation
+  - openclaw
+  - concepts
+  - architecture
+keywords:
+  - openclaw gateway architecture
+  - single websocket gateway
+  - role node nodes
+  - wire protocol req res event
+  - device-based pairing device token
+  - typebox json schema codegen
+  - gateway auth modes
+  - remote access ssh tunnel tailscale
+topics:
+  - OpenClaw
+  - Gateway Architecture
+language: markdown
+date of note: 2026-06-22
+status: active
+building_block: concept
+source_url: https://docs.openclaw.ai/concepts/architecture
+access_control_group: ["general"]
+---
+
+# OpenClaw — Gateway Architecture
+
+## Overview
+
+This note describes the OpenClaw **Gateway architecture**: a single long-lived WebSocket Gateway per host that owns every messaging surface, exposes one typed WS API consumed by both control-plane clients and `role: node` nodes, and enforces a request/response/event wire protocol with device-based pairing. It mirrors the `concepts/architecture` source page — covering the components and flows (Gateway daemon, clients, nodes, WebChat), the connection lifecycle, the wire-protocol summary, pairing and local trust, TypeBox-driven protocol typing and codegen, remote access, an operations snapshot, and the load-bearing architectural invariants.
+
+## Overview (single Gateway + WS)
+
+A single long-lived **Gateway** owns all messaging surfaces — WhatsApp (via Baileys), Telegram (via grammY), Slack, Discord, Signal, iMessage, and WebChat. Control-plane clients (the macOS app, CLI, web UI, and automations) connect to the Gateway over **WebSocket** on the configured bind host, defaulting to `127.0.0.1:18789`. **Nodes** (macOS/iOS/Android/headless) also connect over WebSocket, but declare `role: node` with explicit caps/commands. There is exactly one Gateway per host, and it is the only place that opens a WhatsApp session. The **canvas host** is served by the Gateway HTTP server under `/__openclaw__/canvas/` (agent-editable HTML/CSS/JS) and `/__openclaw__/a2ui/` (the A2UI host); it uses the same port as the Gateway (default `18789`).
+
+## Components and flows
+
+The architecture has four participant roles around the one Gateway.
+
+- **Gateway (daemon)** — maintains provider connections, exposes a typed WS API (requests, responses, and server-push events), validates inbound frames against JSON Schema, and emits events such as `agent`, `chat`, `presence`, `health`, `heartbeat`, and `cron`.
+- **Clients (mac app / CLI / web admin)** — hold one WS connection per client, send requests (`health`, `status`, `send`, `agent`, `system-presence`), and subscribe to events (`tick`, `agent`, `presence`, `shutdown`).
+- **Nodes (macOS / iOS / Android / headless)** — connect to the **same WS server** with `role: node`, provide a device identity in `connect` (pairing is **device-based** for role `node`, with approval living in the device pairing store), and expose commands like `canvas.*`, `camera.*`, `screen.record`, and `location.get`.
+- **WebChat** — a static UI that uses the Gateway WS API for chat history and sends; in remote setups it connects through the same SSH/Tailscale tunnel as other clients.
+
+Protocol details for these flows live in the Gateway protocol reference (linked under References).
+
+## Connection lifecycle (single client)
+
+A single client's lifecycle starts with a `connect` request and proceeds through snapshot delivery, server-push events, and an agent run that streams before its final response:
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Gateway
+
+    Client->>Gateway: req:connect
+    Gateway-->>Client: res (ok)
+    Note right of Gateway: or res error + close
+    Note left of Client: payload=hello-ok<br>snapshot: presence + health
+
+    Gateway-->>Client: event:presence
+    Gateway-->>Client: event:tick
+
+    Client->>Gateway: req:agent
+    Gateway-->>Client: res:agent<br>ack {runId, status:"accepted"}
+    Gateway-->>Client: event:agent<br>(streaming)
+    Gateway-->>Client: res:agent<br>final {runId, status, summary}
+```
+
+The `connect` request returns `res (ok)` carrying a `hello-ok` payload (a snapshot of presence + health) or, on failure, a `res` error followed by a close. After the handshake the Gateway pushes `presence` and `tick` events; an `agent` request is acknowledged immediately with `{runId, status:"accepted"}`, streams `event:agent` deltas, and ends with a final `res:agent` of `{runId, status, summary}`.
+
+## Wire protocol (summary)
+
+The transport is WebSocket text frames carrying JSON payloads, and the first frame **must** be `connect`. After the handshake, requests use `{type:"req", id, method, params}` answered by `{type:"res", id, ok, payload|error}`, while events use `{type:"event", event, payload, seq?, stateVersion?}`. The `hello-ok.features.methods` / `events` fields are discovery metadata — not a generated dump of every callable helper route. Shared-secret auth uses `connect.params.auth.token` or `connect.params.auth.password`, depending on the configured gateway auth mode. Identity-bearing modes — Tailscale Serve (`gateway.auth.allowTailscale: true`) or a non-loopback `gateway.auth.mode: "trusted-proxy"` — satisfy auth from request headers instead of `connect.params.auth.*`. Private-ingress `gateway.auth.mode: "none"` disables shared-secret auth entirely and must be kept off public/untrusted ingress. Idempotency keys are required for side-effecting methods (`send`, `agent`) so retries are safe; the server keeps a short-lived dedupe cache. Nodes must include `role: "node"` plus caps/commands/permissions in `connect`.
+
+## Pairing + local trust
+
+All WS clients — operators and nodes alike — include a **device identity** on `connect`. New device IDs require pairing approval, after which the Gateway issues a **device token** for subsequent connects. Direct local loopback connects can be auto-approved to keep same-host UX smooth, and OpenClaw also has a narrow backend/container-local self-connect path for trusted shared-secret helper flows. Tailnet and LAN connects — including same-host tailnet binds — still require explicit pairing approval. All connects must sign the `connect.challenge` nonce; the signature payload `v3` additionally binds `platform` + `deviceFamily`, and the Gateway pins paired metadata on reconnect and requires repair pairing for metadata changes. **Non-local** connects still require explicit approval, and gateway auth (`gateway.auth.*`) still applies to **all** connections, local or remote.
+
+## Protocol typing and codegen
+
+The protocol is defined by **TypeBox** schemas. JSON Schema is generated from those TypeBox schemas, and Swift models are in turn generated from the JSON Schema — giving one source of truth (TypeBox) that flows to runtime validation (JSON Schema) and native client types (Swift).
+
+## Remote access
+
+The preferred remote-access path is Tailscale or a VPN; the alternative is an SSH tunnel:
+
+```bash
+ssh -N -L 18789:127.0.0.1:18789 user@host
+```
+
+The same handshake + auth token apply over the tunnel, and TLS with optional pinning can be enabled for WS in remote setups.
+
+## Operations snapshot
+
+The Gateway starts in the foreground with `openclaw gateway` (logging to stdout). Health is checked via the `health` method over WS (also included in `hello-ok`), and supervision (auto-restart) is handled by launchd or systemd.
+
+## Invariants
+
+Three invariants hold the architecture together: exactly one Gateway controls a single Baileys session per host; the handshake is mandatory, so any non-JSON or non-`connect` first frame is a hard close; and events are not replayed, so clients must refresh on gaps.
+
+**Source**: OpenClaw documentation — `concepts/architecture` (mirror `inbox/openclaw_docs/concepts/architecture.md`)
+**Last Updated**: 2026-06-22
+**Status**: Active
