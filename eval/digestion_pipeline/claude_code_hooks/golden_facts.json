@@ -1,0 +1,295 @@
+{
+  "slice": "claude_code_hooks",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "9bf1773a6",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "Claude Code documentation (code.claude.com/docs/en)",
+  "source_url_pattern": "https://code.claude.com/docs/en/<slug>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 1,
+    "pages": [
+      "hooks.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_claude_code_docs_b07a_hooks_reference.md",
+    "subplan": "B07A (Hooks Reference)",
+    "planned_note_count": 10,
+    "gate_count": 8,
+    "xref_floor_per_note": {
+      "term_dictionary": 6
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/claude_code",
+    "note_prefix": "cc_",
+    "note_count": 10,
+    "bb_distribution": {
+      "procedure": 3,
+      "concept": 6,
+      "argument": 1
+    },
+    "word_count": {
+      "min": 748,
+      "median": 1512,
+      "max": 2474
+    },
+    "term_links": {
+      "min": 6,
+      "median": 6
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "cc_async_hooks": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configure an async hook",
+          "How async hooks execute",
+          "Example: run tests after file changes",
+          "Limitations",
+          "Related Notes"
+        ],
+        "word_count": 981,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 10
+      },
+      "cc_hook_events_catalog": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The three cadences",
+          "When each event fires",
+          "What each event's matcher filters",
+          "Which handler types each event supports",
+          "Where the per-event detail lives",
+          "Related Notes"
+        ],
+        "word_count": 1250,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 9
+      },
+      "cc_hook_handler_types": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The five handler types",
+          "Command hook fields",
+          "HTTP hook fields",
+          "MCP tool hook fields",
+          "Reference scripts by path",
+          "Hooks in skills and agents",
+          "The `/hooks` menu, and disabling hooks",
+          "Related Notes"
+        ],
+        "word_count": 1512,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 10
+      },
+      "cc_hook_io_and_exit_codes": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Common input fields",
+          "Exit code output",
+          "HTTP response handling",
+          "JSON output",
+          "Related Notes"
+        ],
+        "word_count": 2051,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 11
+      },
+      "cc_hook_matchers_and_filters": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Matcher patterns",
+          "Common hook handler fields",
+          "Related Notes"
+        ],
+        "word_count": 1599,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 12
+      },
+      "cc_hook_security_and_debugging": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Security considerations",
+          "Windows PowerShell tool",
+          "Debug hooks",
+          "Related Notes"
+        ],
+        "word_count": 748,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 7
+      },
+      "cc_hook_session_lifecycle_events": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Session-scope events",
+          "Per-turn events",
+          "Display and notification events",
+          "Subagent and agent-team events",
+          "Async and standalone events",
+          "Compaction events",
+          "MCP elicitation events",
+          "Related Notes"
+        ],
+        "word_count": 2474,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 14
+      },
+      "cc_hook_tool_loop_events": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "PreToolUse",
+          "PermissionRequest",
+          "PostToolUse",
+          "PostToolUseFailure",
+          "PostToolBatch",
+          "PermissionDenied",
+          "Related Notes"
+        ],
+        "word_count": 1692,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 13
+      },
+      "cc_hooks_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Hook lifecycle and cadences",
+          "How a hook resolves",
+          "Configuration: three levels of nesting",
+          "Related Notes"
+        ],
+        "word_count": 858,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 13
+      },
+      "cc_prompt_and_agent_hooks": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Which events support prompt and agent hooks",
+          "Prompt-based hooks",
+          "Agent-based hooks",
+          "Related Notes"
+        ],
+        "word_count": 1248,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 10
+      }
+    }
+  }
+}

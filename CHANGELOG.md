@@ -4,6 +4,18 @@ All notable changes to Tessellum are documented here. The format is loosely [Kee
 
 ## [Unreleased]
 
+### Eval — six new curated slices and the FIRST dev/test split (FZ 20m1a Stage 0) — 2026-07-31
+
+The curated slice set triples from 3 to 9, and the eval gains its first held-out discipline. New DEV slices (may be swept and tuned against): `claude_code_hooks` (B07A — a single 21,959-word reference page split into 10 notes), `hermes_protocols_providers` (SP09 — 7 pages into 9 notes across procedure/model/concept), `openclaw_gateway` (gw02 — the 9-gate variant with plan-amendment fidelity: 11 planned notes plus two execution-time density splits recorded in the plan's own Amendments section, 13 shipped). New SEQUESTERED TEST slices, vendored mechanically with no developer reading the content: `claude_code_sdk_core` (B19A), `hermes_build_extend` (SP17), `openclaw_plugins` (pl02 — one recorded golden imperfection: a note with 0 snippet links against its plan's floor, true of the vault original; N6 10/11, tier-2 mean 0.985). Test slices are scored only at declared release points and are CONSUMED by their first measured contact (the `split_protocol` in `manifest.json`; the trail's FZ 20m1 acceptance criterion 1 and FZ 20m1a Stage 0). Slice notes are vendored TAIL-BEARING from the vault originals under the curated-slice scrub — link counts preserved, residual private-token scans 0 hits — so the cross-reference scoring surface the tail-dropped corpus copies lose is retained. All 9 slices independently re-scored: GREEN across the board. Manifest 1.1.0.
+
+### Eval — `make_golden_facts.py`: the `--check` oracle implemented; `optional_h2` emission fixed — 2026-07-31
+
+The generator's advertised oracle mode was dead code (`--check` parsed, never compared); it now deep-diffs generated facts against a committed `golden_facts.json` field-by-field and exits 1 with the diff list on mismatch. The `optional_h2` schema constant was popped whenever no note carried a `## References` block, contradicting the committed facts of two tail-bearing curated slices; the pop now keys on tail-droppedness (full-corpus copies) rather than References-presence. Oracle status after the fix: `hermes_getting_started` reproduces EXACTLY; `claude_code_mcp` and `openclaw_concepts` carry five pre-scrub measurement fields (word/link counts measured before the scrub touched those files) — documented in the tool's docstring as known caveats and left frozen, since `score.py` still passes GREEN on all three (the gated floors are unaffected).
+
+### Eval — full corpora vendored: claude_code / hermes_agent / openclaw self-contained (2,818 files) — 2026-07-31
+
+The complete digestion output of all three public documentation sources now lives in `eval/digestion_pipeline/` as self-contained corpus dirs — `input_docs/` + `golden_plans/` + `golden_notes/` + `golden_terms/` + a corpus-level `golden_facts.json` measured from the scrubbed copies. Totals: 1,154 raw docs, 174 plans, 1,381 notes, 100 term notes. Corpus `golden_notes` are tail-dropped for public-repo safety (no `## Related Notes`), which is exactly why curated slices vendor tail-bearing notes separately; the corpora are the raw material future slices are cut from without touching the private vault. The eval set no longer depends on the private vault for reproduction at any scale.
+
 ## [1.13.0] — 2026-07-30
 
 ### Eval — run 19 COMPLETES the Tier-2 gauntlet: T2 0.926, T3 98.9%, the cure validated (FZ 20k9c1a1a1b7c2k2a4a) — 2026-07-30

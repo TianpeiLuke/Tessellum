@@ -1,0 +1,423 @@
+{
+  "slice": "hermes_build_extend",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "9bf1773a6",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "Hermes Agent documentation (NousResearch/hermes-agent Docusaurus site)",
+  "source_url_pattern": "https://hermes-agent.nousresearch.com/docs/<path>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 10,
+    "pages": [
+      "build-a-hermes-plugin.md",
+      "automation-blueprints.md",
+      "use-mcp-with-hermes.md",
+      "use-voice-mode-with-hermes.md",
+      "work-with-skills.md",
+      "python-library.md",
+      "use-soul-with-hermes.md",
+      "migrate-from-openclaw.md",
+      "tips.md",
+      "microsoft-graph-app-registration.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_hermes_agent_docs_17_guides_build_extend.md",
+    "subplan": "SP17 (Guides: Build & Extend)",
+    "planned_note_count": 13,
+    "gate_count": 8,
+    "xref_floor_per_note": {
+      "term_dictionary": 8,
+      "code_snippets": 10,
+      "code_repos": 5,
+      "documentation": 10
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/hermes_agent",
+    "note_prefix": "hermes_",
+    "note_count": 13,
+    "bb_distribution": {
+      "procedure": 12,
+      "model": 1
+    },
+    "word_count": {
+      "min": 1424,
+      "median": 1841,
+      "max": 2007
+    },
+    "term_links": {
+      "min": 8,
+      "median": 8
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "hermes_automation_blueprints_event": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Automatic PR Code Review",
+          "GitHub Event Automations",
+          "Generic API Webhooks",
+          "Multi-Skill Workflows",
+          "Webhook Template Variables",
+          "Related Notes"
+        ],
+        "word_count": 1796,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 36
+      },
+      "hermes_automation_blueprints_scheduled": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three Trigger Types",
+          "Development Workflow",
+          "DevOps & Monitoring (schedule-triggered)",
+          "Research & Intelligence",
+          "Multi-Skill Workflows (schedule-triggered)",
+          "Quick Reference",
+          "Related Notes"
+        ],
+        "word_count": 1875,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 38
+      },
+      "hermes_build_plugin_tutorial": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What you're building",
+          "Step 1: Create the plugin directory",
+          "Step 2: Write the manifest",
+          "Step 3: Write the tool schemas",
+          "Step 4: Write the tool handlers",
+          "Step 5: Write the registration",
+          "Step 6: Test it",
+          "Your plugin's final structure",
+          "Related Notes"
+        ],
+        "word_count": 1841,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      },
+      "hermes_migrate_from_openclaw": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Options",
+          "What gets migrated",
+          "Archived (no direct Hermes equivalent)",
+          "API key resolution",
+          "SecretRef handling",
+          "After migration",
+          "Troubleshooting",
+          "Related Notes"
+        ],
+        "word_count": 1737,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 36
+      },
+      "hermes_msgraph_app_registration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Step 1: Create the App Registration",
+          "Step 2: Create a Client Secret",
+          "Step 3: Grant Graph API Permissions",
+          "Step 4: (Recommended) Scope the App with an Application Access Policy",
+          "Step 5: Write the Credentials to Your Env File",
+          "Step 6: Verify the Token Flow",
+          "Rotating the Client Secret",
+          "Next Steps",
+          "Related Notes"
+        ],
+        "word_count": 1600,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      },
+      "hermes_plugin_extensions_hooks": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Ship data files and bundle skills",
+          "Gate, lazy-install, and singleton-cache",
+          "Conditional availability and overriding built-ins",
+          "Lifecycle hooks and `pre_llm_call` context injection",
+          "Register CLI commands, slash commands, and dispatch tools",
+          "Handle Slack Block Kit button clicks",
+          "Related Notes"
+        ],
+        "word_count": 1859,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      },
+      "hermes_plugin_types_surfaces": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "If you want to add… (routing map)",
+          "Specialized plugin types",
+          "Non-Python extension surfaces",
+          "Distribute via pip",
+          "Distribute for NixOS",
+          "Common mistakes",
+          "Related Notes"
+        ],
+        "word_count": 1869,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 39
+      },
+      "hermes_python_library_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Installation",
+          "Basic Usage",
+          "Full Conversation Control",
+          "Configuring Tools",
+          "Multi-turn Conversations",
+          "Saving Trajectories & Custom System Prompts",
+          "Batch Processing",
+          "Integration Examples",
+          "Key Constructor Parameters",
+          "Important Notes",
+          "Related Notes"
+        ],
+        "word_count": 1645,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      },
+      "hermes_tips_best_practices": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Getting the Best Results",
+          "CLI Power User Tips",
+          "Context Files",
+          "Memory & Skills",
+          "Performance & Cost",
+          "Messaging Tips",
+          "Security",
+          "Related Notes"
+        ],
+        "word_count": 1858,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 36
+      },
+      "hermes_use_mcp_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When should you use MCP?",
+          "Mental model",
+          "Step 1: install MCP support",
+          "Step 2: add one server first",
+          "Step 3: verify MCP loaded",
+          "Step 4: start filtering immediately",
+          "What does filtering actually affect?",
+          "Common patterns",
+          "Tutorial: end-to-end setup with filtering",
+          "WSL2: bridge Hermes in WSL to Windows Chrome",
+          "Safe usage recommendations",
+          "Troubleshooting by symptom",
+          "Recommended first MCP setups",
+          "Related Notes"
+        ],
+        "word_count": 1964,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      },
+      "hermes_use_soul_md_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What SOUL.md is (and is not) for",
+          "Where it lives",
+          "First-run behavior",
+          "How Hermes uses it",
+          "A good first edit and example styles",
+          "SOUL.md vs /personality vs AGENTS.md",
+          "How to edit it and a practical workflow",
+          "Troubleshooting",
+          "Related Notes"
+        ],
+        "word_count": 1424,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      },
+      "hermes_use_voice_mode_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What voice mode is good for",
+          "Choose your voice mode setup",
+          "Step 1: make sure normal Hermes works first",
+          "Step 2: install the right extras",
+          "Step 3: install system dependencies",
+          "Step 4: choose STT and TTS providers",
+          "Step 5: recommended config",
+          "Use case 1: CLI voice mode",
+          "Tuning CLI behavior",
+          "Use case 2: voice replies in Telegram or Discord",
+          "Use case 3: Discord voice channels",
+          "Voice quality recommendations",
+          "Common failure modes",
+          "Suggested first-week setup",
+          "Related Notes"
+        ],
+        "word_count": 2007,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 36
+      },
+      "hermes_work_with_skills_guide": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Finding Skills",
+          "Using a Skill",
+          "Installing from the Hub",
+          "Plugin-Provided Skills",
+          "Configuring Skill Settings",
+          "Creating Your Own Skill",
+          "When to Use",
+          "Procedure",
+          "Pitfalls",
+          "Verification",
+          "Per-Platform Skill Management",
+          "Skills vs Memory",
+          "Tips",
+          "Related Notes"
+        ],
+        "word_count": 1773,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      }
+    }
+  }
+}

@@ -1,0 +1,357 @@
+{
+  "slice": "openclaw_plugins",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "9bf1773a6",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "OpenClaw documentation (docs.openclaw.ai)",
+  "source_url_pattern": "https://docs.openclaw.ai/<slug>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 7,
+    "pages": [
+      "plugins/codex-computer-use.md",
+      "plugins/codex-harness.md",
+      "plugins/codex-harness-reference.md",
+      "plugins/codex-harness-runtime.md",
+      "plugins/codex-native-plugins.md",
+      "plugins/community.md",
+      "plugins/compatibility.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_openclaw_docs_pl02.md",
+    "subplan": "pl02 (Plugins — Codex harness / computer use / community / compatibility)",
+    "planned_note_count": 11,
+    "gate_count": 9,
+    "xref_floor_per_note": {
+      "term_dictionary": 6,
+      "code_snippets": 10,
+      "documentation": 5
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/openclaw",
+    "note_prefix": "oc_",
+    "note_count": 11,
+    "bb_distribution": {
+      "procedure": 6,
+      "model": 4,
+      "concept": 1
+    },
+    "word_count": {
+      "min": 875,
+      "median": 1861,
+      "max": 2498
+    },
+    "term_links": {
+      "min": 8,
+      "median": 8
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "oc_plugins_codex_computer_use": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "When NOT to use this — adjacent paths",
+          "Quick setup",
+          "Commands",
+          "Marketplace choices",
+          "Bundled macOS marketplace",
+          "Remote catalog limit",
+          "Configuration reference",
+          "What OpenClaw checks (setup-reason status machine)",
+          "macOS permissions",
+          "Troubleshooting",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2496,
+        "term_links": 8,
+        "snippet_links": 11,
+        "repo_links": 2,
+        "total_internal_md_links": 31
+      },
+      "oc_plugins_codex_harness_deployment": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Deployment Patterns",
+          "App-Server Policy",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1181,
+        "term_links": 8,
+        "snippet_links": 11,
+        "repo_links": 2,
+        "total_internal_md_links": 31
+      },
+      "oc_plugins_codex_harness_diagnostics": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Commands and diagnostics",
+          "Computer Use (pointer)",
+          "Runtime boundaries (summary)",
+          "Troubleshooting",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1661,
+        "term_links": 8,
+        "snippet_links": 11,
+        "repo_links": 2,
+        "total_internal_md_links": 31
+      },
+      "oc_plugins_codex_harness_reference_config": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Plugin config surface",
+          "App-server transport",
+          "Approval and sandbox modes",
+          "Model discovery",
+          "Workspace bootstrap files",
+          "Environment overrides",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2366,
+        "term_links": 8,
+        "snippet_links": 12,
+        "repo_links": 2,
+        "total_internal_md_links": 32
+      },
+      "oc_plugins_codex_harness_reference_runtime": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Sandboxed Native Execution",
+          "Auth and Environment Isolation",
+          "Dynamic Tools",
+          "Timeouts",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1861,
+        "term_links": 8,
+        "snippet_links": 12,
+        "repo_links": 2,
+        "total_internal_md_links": 32
+      },
+      "oc_plugins_codex_harness_runtime": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Ownership Boundary",
+          "Thread Bindings and Model Changes",
+          "Visible Replies and Heartbeats",
+          "Hook Boundaries",
+          "V1 Support Contract",
+          "Native Permissions and MCP Elicitations",
+          "Queue Steering",
+          "Codex Feedback Upload",
+          "Compaction and Transcript Mirror",
+          "Media and Delivery",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2498,
+        "term_links": 9,
+        "snippet_links": 0,
+        "repo_links": 3,
+        "total_internal_md_links": 22
+      },
+      "oc_plugins_codex_harness_setup": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What the Codex harness owns vs OpenClaw",
+          "Requirements",
+          "Quickstart",
+          "Configuration",
+          "Verify Codex runtime",
+          "Routing and model selection",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2192,
+        "term_links": 8,
+        "snippet_links": 12,
+        "repo_links": 2,
+        "total_internal_md_links": 32
+      },
+      "oc_plugins_codex_native_plugins": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Requirements",
+          "Quickstart",
+          "Manage plugins from chat",
+          "How native plugin setup works",
+          "V1 support boundary",
+          "App inventory and ownership",
+          "Thread app config",
+          "Destructive action policy",
+          "Troubleshooting",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2224,
+        "term_links": 8,
+        "snippet_links": 11,
+        "repo_links": 2,
+        "total_internal_md_links": 32
+      },
+      "oc_plugins_community": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Find plugins",
+          "Publish plugins",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 875,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 1,
+        "total_internal_md_links": 29
+      },
+      "oc_plugins_compatibility": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Compatibility registry",
+          "Plugin inspector package",
+          "Deprecation policy",
+          "Release notes",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1280,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 2,
+        "total_internal_md_links": 32
+      },
+      "oc_plugins_compatibility_areas": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Current Compatibility Areas",
+          "WhatsApp Inbound Callback Flat Aliases",
+          "WhatsApp Inbound Admission Fields",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1282,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 2,
+        "total_internal_md_links": 31
+      }
+    }
+  }
+}

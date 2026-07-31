@@ -68,13 +68,32 @@ Per-slice gradeable facts live in `golden_facts.json` (BB distribution, word /
 line / code-block ranges, cross-reference floors, frontmatter schema, per-note
 section lists, planned-note counts).
 
-## Curated slices (one representative sub-plan per source)
+## Curated slices (nine, with a dev/test split)
 
-| Slice | Sub-plan | Input pages | Golden notes | Exercises |
-|-------|----------|------------:|-------------:|-----------|
-| `claude_code_mcp` | B08A (MCP) | 3 | 8 | aggressive split of a 6,822-word / 41-code-block page; concept↔procedure BB routing; ≥6 term-link floor |
-| `hermes_getting_started` | SP01 (Getting Started) | 8 | 9 | BB routing to navigation + model (not just procedure); the FOUR-FLOOR cross-ref (≥8 term / ≥5 repo / ≥10 snippet / ≥10 doc) |
-| `openclaw_concepts` | co01 (agent runtime core) | 7 | 8 | 9-gate variant; dual cross-ref blocks (`## Related Notes` internal + `## References` external); one-page→two-note split |
+| Slice | Split | Sub-plan | Input pages | Golden notes | Exercises |
+|-------|-------|----------|------------:|-------------:|-----------|
+| `claude_code_mcp` | dev | B08A (MCP) | 3 | 8 | aggressive split of a 6,822-word / 41-code-block page; concept↔procedure BB routing; ≥6 term-link floor |
+| `hermes_getting_started` | dev | SP01 (Getting Started) | 8 | 9 | BB routing to navigation + model (not just procedure); the FOUR-FLOOR cross-ref (≥8 term / ≥5 repo / ≥10 snippet / ≥10 doc) |
+| `openclaw_concepts` | dev | co01 (agent runtime core) | 7 | 8 | 9-gate variant; dual cross-ref blocks (`## Related Notes` internal + `## References` external); one-page→two-note split |
+| `claude_code_hooks` | dev | B07A (Hooks Reference) | 1 | 10 | single 21,959-word reference page split into 10 notes; concept/procedure routing on reference material |
+| `claude_code_sdk_core` | **test** | B19A (Agent SDK Core & Lifecycle) | 5 | 11 | SEQUESTERED — registered mechanically; scored only at declared release points |
+| `hermes_protocols_providers` | dev | SP09 (Protocols & Providers) | 7 | 9 | multi-page fan-in; procedure/model/concept routing; the four-floor cross-ref |
+| `hermes_build_extend` | **test** | SP17 (Guides: Build & Extend) | 10 | 13 | SEQUESTERED — registered mechanically; scored only at declared release points |
+| `openclaw_gateway` | dev | gw02 (Gateway) | 7 | 13 | 9-gate variant; plan-amendment fidelity (11 planned → 13 shipped via recorded density splits) |
+| `openclaw_plugins` | **test** | pl02 (Plugins) | 7 | 11 | SEQUESTERED — registered mechanically; one recorded golden imperfection (see manifest) |
+
+### The dev/test split
+
+The three original slices plus one new slice per source are the DEV set: they may
+be read, swept, and tuned against, and numbers computed on them are training
+objectives. The three `test` slices are SEQUESTERED: they were vendored
+mechanically (scripts copied, scrubbed, measured, and scored them; no developer
+read the content), they must never be swept or tuned against, and they are scored
+only at declared release points. A test slice is **consumed by its first measured
+contact** — once its score is published it converts to dev, and a fresh test
+slice should be cut from the vendored corpora (`tools/make_golden_facts.py`
+regenerates any slice's facts; `--check` is the oracle). First-contact scores on
+test slices are the program's only generalization estimates.
 
 ## How to run
 

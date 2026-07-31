@@ -1,0 +1,309 @@
+{
+  "slice": "claude_code_sdk_core",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "9bf1773a6",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "Claude Code documentation (code.claude.com/docs/en)",
+  "source_url_pattern": "https://code.claude.com/docs/en/<slug>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 5,
+    "pages": [
+      "overview.md",
+      "quickstart.md",
+      "agent-loop.md",
+      "claude-code-features.md",
+      "migration-guide.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_claude_code_docs_b19a_sdk_core_and_lifecycle.md",
+    "subplan": "B19A (Agent SDK Core & Lifecycle)",
+    "planned_note_count": 25,
+    "gate_count": 8,
+    "xref_floor_per_note": {
+      "term_dictionary": 6
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/claude_code",
+    "note_prefix": "cc_",
+    "note_count": 11,
+    "bb_distribution": {
+      "concept": 7,
+      "argument": 1,
+      "procedure": 3
+    },
+    "word_count": {
+      "min": 1122,
+      "median": 1461,
+      "max": 2109
+    },
+    "term_links": {
+      "min": 6,
+      "median": 7
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "cc_agent_sdk_agent_loop": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The loop at a glance",
+          "Turns and messages",
+          "Related Notes"
+        ],
+        "word_count": 1538,
+        "term_links": 8,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 24
+      },
+      "cc_agent_sdk_compare_to_other_tools": {
+        "building_block": "argument",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Agent SDK vs Client SDK",
+          "Agent SDK vs Claude Code CLI",
+          "Agent SDK vs Managed Agents",
+          "Related Notes"
+        ],
+        "word_count": 1285,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 16
+      },
+      "cc_agent_sdk_context_window": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Consumes Context",
+          "Automatic Compaction",
+          "Keep Context Efficient",
+          "Related Notes"
+        ],
+        "word_count": 1461,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 19
+      },
+      "cc_agent_sdk_install_and_auth": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Step 1 — Install the SDK",
+          "Step 2 — Set your API key",
+          "Step 3 — Run your first agent",
+          "Next steps",
+          "Related Notes"
+        ],
+        "word_count": 1122,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 21
+      },
+      "cc_agent_sdk_loop_controls": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Turns and budget",
+          "Effort level",
+          "Permission mode",
+          "Model",
+          "Related Notes"
+        ],
+        "word_count": 1382,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 22
+      },
+      "cc_agent_sdk_message_types": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "The Five Core Message Types",
+          "Handle Messages",
+          "Related Notes"
+        ],
+        "word_count": 1260,
+        "term_links": 8,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 21
+      },
+      "cc_agent_sdk_overview": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Capabilities",
+          "Getting started and comparison",
+          "Related Notes"
+        ],
+        "word_count": 1588,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 29
+      },
+      "cc_agent_sdk_quickstart_bug_fixer": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Prerequisites",
+          "Setup",
+          "Create a buggy file",
+          "Build an agent that finds and fixes bugs",
+          "Troubleshooting",
+          "Next steps",
+          "Related Notes"
+        ],
+        "word_count": 1579,
+        "term_links": 6,
+        "snippet_links": 0,
+        "repo_links": 1,
+        "total_internal_md_links": 19
+      },
+      "cc_agent_sdk_result_and_hooks": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Handle the result",
+          "Hooks",
+          "Put it all together",
+          "Related Notes"
+        ],
+        "word_count": 1530,
+        "term_links": 8,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 18
+      },
+      "cc_agent_sdk_settingsources_and_features": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Control filesystem settings with settingSources",
+          "Project instructions (CLAUDE.md and rules)",
+          "Skills",
+          "Hooks",
+          "Choose the right feature",
+          "Migrate from the old SDK",
+          "Related Notes"
+        ],
+        "word_count": 2109,
+        "term_links": 7,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 21
+      },
+      "cc_agent_sdk_tool_execution": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Built-in tools",
+          "Tool permissions",
+          "Parallel tool execution",
+          "Related Notes"
+        ],
+        "word_count": 1280,
+        "term_links": 8,
+        "snippet_links": 0,
+        "repo_links": 0,
+        "total_internal_md_links": 22
+      }
+    }
+  }
+}

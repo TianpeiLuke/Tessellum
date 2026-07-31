@@ -1,6 +1,6 @@
 {
   "eval_name": "digestion_pipeline_golden",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "created": "2026-07-26",
   "purpose": "Evaluate Tessellum's digestion pipeline (plan -> augment -> review -> execute) against real golden triples produced by the SAME four skills, run at scale in a production vault.",
   "framing": {
@@ -105,7 +105,7 @@
   "curated_slices": [
     {
       "id": "claude_code_mcp",
-      "source": "Claude Code docs \u2014 MCP (sub-plan B08A)",
+      "source": "Claude Code docs — MCP (sub-plan B08A)",
       "input_pages": 3,
       "golden_plan_notes": 8,
       "golden_facts": "claude_code_mcp/golden_facts.json",
@@ -119,11 +119,12 @@
         "input_pages": "claude_code_mcp/input_pages/",
         "golden_plan": "claude_code_mcp/golden_plan/",
         "golden_notes": "claude_code_mcp/golden_notes/"
-      }
+      },
+      "split": "dev"
     },
     {
       "id": "hermes_getting_started",
-      "source": "Hermes Agent docs \u2014 Getting Started & Install (sub-plan SP01)",
+      "source": "Hermes Agent docs — Getting Started & Install (sub-plan SP01)",
       "input_pages": 8,
       "golden_plan_notes": 9,
       "golden_facts": "hermes_getting_started/golden_facts.json",
@@ -137,11 +138,12 @@
         "input_pages": "hermes_getting_started/input_pages/",
         "golden_plan": "hermes_getting_started/golden_plan/",
         "golden_notes": "hermes_getting_started/golden_notes/"
-      }
+      },
+      "split": "dev"
     },
     {
       "id": "openclaw_concepts",
-      "source": "OpenClaw docs \u2014 Concepts / agent runtime core (sub-plan co01)",
+      "source": "OpenClaw docs — Concepts / agent runtime core (sub-plan co01)",
       "input_pages": 7,
       "golden_plan_notes": 8,
       "golden_facts": "openclaw_concepts/golden_facts.json",
@@ -155,6 +157,115 @@
         "input_pages": "openclaw_concepts/input_pages/",
         "golden_plan": "openclaw_concepts/golden_plan/",
         "golden_notes": "openclaw_concepts/golden_notes/"
+      },
+      "split": "dev"
+    },
+    {
+      "id": "claude_code_hooks",
+      "split": "dev",
+      "source": "Claude Code docs — Hooks Reference (sub-plan B07A)",
+      "input_pages": 1,
+      "golden_plan_notes": 10,
+      "golden_facts": "claude_code_hooks/golden_facts.json",
+      "difficulty": "one very large reference page (21,959 words) split into 10 notes; concept 6 / procedure 3 / argument 1; term floor >=6",
+      "tests": [
+        "single-page aggressive split of a reference doc",
+        "concept-vs-procedure routing on reference material",
+        "term-link floor (>=6)"
+      ],
+      "vendored": {
+        "input_pages": "claude_code_hooks/input_pages/",
+        "golden_plan": "claude_code_hooks/golden_plan/",
+        "golden_notes": "claude_code_hooks/golden_notes/"
+      }
+    },
+    {
+      "id": "claude_code_sdk_core",
+      "split": "test",
+      "source": "Claude Code docs — Agent SDK Core & Lifecycle (sub-plan B19A)",
+      "input_pages": 5,
+      "golden_plan_notes": 11,
+      "golden_facts": "claude_code_sdk_core/golden_facts.json",
+      "difficulty": "SEQUESTERED TEST SLICE (mechanical registration only): concept 7 / procedure 3 / argument 1; term floor >=6",
+      "tests": [
+        "SEQUESTERED — do not read, sweep, or tune against; scored only at declared release points; consumed on first measured contact"
+      ],
+      "vendored": {
+        "input_pages": "claude_code_sdk_core/input_pages/",
+        "golden_plan": "claude_code_sdk_core/golden_plan/",
+        "golden_notes": "claude_code_sdk_core/golden_notes/"
+      }
+    },
+    {
+      "id": "hermes_protocols_providers",
+      "split": "dev",
+      "source": "Hermes Agent docs — Protocols & Provider Integration (sub-plan SP09)",
+      "input_pages": 7,
+      "golden_plan_notes": 9,
+      "golden_facts": "hermes_protocols_providers/golden_facts.json",
+      "difficulty": "multi-page protocol/provider reference; procedure 5 / model 2 / concept 2; the hermes four-floor cross-ref profile",
+      "tests": [
+        "BB routing across procedure + model + concept",
+        "multi-page fan-in (7 pages -> 9 notes)",
+        "four-floor cross-ref"
+      ],
+      "vendored": {
+        "input_pages": "hermes_protocols_providers/input_pages/",
+        "golden_plan": "hermes_protocols_providers/golden_plan/",
+        "golden_notes": "hermes_protocols_providers/golden_notes/"
+      }
+    },
+    {
+      "id": "hermes_build_extend",
+      "split": "test",
+      "source": "Hermes Agent docs — Guides: Build & Extend (sub-plan SP17)",
+      "input_pages": 10,
+      "golden_plan_notes": 13,
+      "golden_facts": "hermes_build_extend/golden_facts.json",
+      "difficulty": "SEQUESTERED TEST SLICE (mechanical registration only): procedure 12 / model 1; 10 pages -> 13 notes; xref floors 8 term / 5 repo / 10 snippet",
+      "tests": [
+        "SEQUESTERED — do not read, sweep, or tune against; scored only at declared release points; consumed on first measured contact"
+      ],
+      "vendored": {
+        "input_pages": "hermes_build_extend/input_pages/",
+        "golden_plan": "hermes_build_extend/golden_plan/",
+        "golden_notes": "hermes_build_extend/golden_notes/"
+      }
+    },
+    {
+      "id": "openclaw_gateway",
+      "split": "dev",
+      "source": "OpenClaw docs — Gateway (sub-plan gw02)",
+      "input_pages": 7,
+      "golden_plan_notes": 13,
+      "golden_facts": "openclaw_gateway/golden_facts.json",
+      "difficulty": "9-gate variant; 11 planned notes plus TWO execution-time density splits recorded in the plan's Amendments section (13 notes shipped); procedure 7 / model 5 / concept 1",
+      "tests": [
+        "plan-amendment fidelity (planned 11 -> shipped 13 via recorded density splits)",
+        "9-gate variant",
+        "word cap 2500 with median 1714"
+      ],
+      "vendored": {
+        "input_pages": "openclaw_gateway/input_pages/",
+        "golden_plan": "openclaw_gateway/golden_plan/",
+        "golden_notes": "openclaw_gateway/golden_notes/"
+      }
+    },
+    {
+      "id": "openclaw_plugins",
+      "split": "test",
+      "source": "OpenClaw docs — Plugins (sub-plan pl02)",
+      "input_pages": 7,
+      "golden_plan_notes": 11,
+      "golden_facts": "openclaw_plugins/golden_facts.json",
+      "difficulty": "SEQUESTERED TEST SLICE (mechanical registration only). Known golden imperfection: one note carries 0 code_snippets links against the plan's snippet floor (true of the vault original; N6 self-consistency 10/11, tier-2 mean 0.985, verdict GREEN)",
+      "tests": [
+        "SEQUESTERED — do not read, sweep, or tune against; scored only at declared release points; consumed on first measured contact"
+      ],
+      "vendored": {
+        "input_pages": "openclaw_plugins/input_pages/",
+        "golden_plan": "openclaw_plugins/golden_plan/",
+        "golden_notes": "openclaw_plugins/golden_notes/"
       }
     }
   ],
@@ -179,6 +290,10 @@
       "xref_floor_met",
       "cross_ref_block_resolvable"
     ],
-    "content_fidelity": "LLM-judge 6-dim rubric (relevance, completeness, accuracy, clarity, structural_integrity, epistemic_congruence) \u2014 reuses tessellum.composer.eval.LLMJudge against the named source page(s)."
+    "content_fidelity": "LLM-judge 6-dim rubric (relevance, completeness, accuracy, clarity, structural_integrity, epistemic_congruence) — reuses tessellum.composer.eval.LLMJudge against the named source page(s)."
+  },
+  "split_protocol": {
+    "dev": "Development slices: may be read, swept, and tuned against. The learning objective computed on dev slices is a training objective, never a generalization claim.",
+    "test": "Sequestered test slices: vendored mechanically (no developer read the content), never swept during development, scored only at declared release points. A test slice is CONSUMED by its first measured contact — after publication of its score it converts to dev. First-contact scores on test slices are the program's only generalization estimates (FZ 20m1a Stage 0; FZ 20m1 acceptance criterion 1)."
   }
 }

@@ -8,6 +8,12 @@ notes it is given, running it over the *vendored* (scrubbed) notes yields a
 golden_facts that is self-consistent by construction — ``score.py`` of those same
 notes against this output is GREEN at 1.0.
 
+Known oracle caveats: two committed curated facts carry pre-scrub measurements
+(claude_code_mcp: one note word_count 1023 vs vendored 1020; openclaw_concepts:
+one note link counts 37/4 vs vendored 35/2) — score.py still passes GREEN on
+both since the gated floors are unaffected; the committed facts are left
+untouched per the frozen-instrument discipline.
+
 Pure stdlib. Correctness oracle: run over the three existing curated slices'
 ``golden_notes/`` + ``golden_plan/`` and it reproduces their committed
 ``golden_facts.json`` (see ``--check``).
@@ -199,7 +205,9 @@ def build_facts(args) -> dict:
             "per_note": per_note,
         },
     }
-    if not has_refs:
+    # optional_h2 is a schema constant of tail-bearing notes ("References is the
+    # optional external-URL block"); tail-dropped full-corpus notes omit it.
+    if not notes_have_tail and not has_refs:
         facts["golden_output"].pop("optional_h2", None)
     return facts
 
@@ -223,6 +231,30 @@ def main() -> int:
 
     facts = build_facts(args)
     out = json.dumps(facts, indent=2, ensure_ascii=False)
+    if args.check:
+        want = json.loads(Path(args.check).read_text(encoding="utf-8"))
+        diffs = []
+
+        def walk(a, b, path=""):
+            if isinstance(a, dict) and isinstance(b, dict):
+                for k in sorted(set(a) | set(b)):
+                    if k not in a:
+                        diffs.append(f"{path}.{k}: missing in generated")
+                    elif k not in b:
+                        diffs.append(f"{path}.{k}: extra in generated")
+                    else:
+                        walk(a[k], b[k], f"{path}.{k}")
+            elif a != b:
+                diffs.append(f"{path}: generated={a!r} committed={b!r}")
+
+        walk(facts, want)
+        if diffs:
+            print(f"CHECK FAIL ({len(diffs)} diffs) vs {args.check}")
+            for d in diffs[:40]:
+                print("  " + d)
+            return 1
+        print(f"CHECK OK: generated facts match {args.check} exactly")
+        return 0
     if args.out:
         Path(args.out).write_text(out + "\n", encoding="utf-8")
         print(f"wrote {args.out}")

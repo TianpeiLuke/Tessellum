@@ -1,0 +1,409 @@
+{
+  "slice": "openclaw_gateway",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "9bf1773a6",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "OpenClaw documentation (docs.openclaw.ai)",
+  "source_url_pattern": "https://docs.openclaw.ai/<slug>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 7,
+    "pages": [
+      "gateway/config-tools.md",
+      "gateway/configuration.md",
+      "gateway/configuration-examples.md",
+      "gateway/configuration-reference.md",
+      "gateway/diagnostics.md",
+      "gateway/discovery.md",
+      "gateway/doctor.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_openclaw_docs_gw02.md",
+    "subplan": "gw02 (Gateway — configuration, diagnostics, discovery & doctor)",
+    "planned_note_count": 11,
+    "gate_count": 9,
+    "xref_floor_per_note": {
+      "documentation": 10
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/openclaw",
+    "note_prefix": "oc_",
+    "note_count": 13,
+    "bb_distribution": {
+      "procedure": 7,
+      "model": 5,
+      "concept": 1
+    },
+    "word_count": {
+      "min": 1283,
+      "median": 1714,
+      "max": 2499
+    },
+    "term_links": {
+      "min": 8,
+      "median": 8
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "oc_gateway_config_custom_providers": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Registering a Custom Provider",
+          "Auth and Merge Precedence",
+          "Provider Field Details",
+          "Provider Examples",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1689,
+        "term_links": 10,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 34
+      },
+      "oc_gateway_config_reference_ops": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Secrets",
+          "Auth storage",
+          "Logging",
+          "Diagnostics",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1602,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 33
+      },
+      "oc_gateway_config_reference_ops_jobs": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Update",
+          "ACP",
+          "CLI",
+          "Wizard",
+          "Identity",
+          "Bridge (legacy, removed)",
+          "Cron",
+          "Media model template variables",
+          "Config includes (`$include`)",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1805,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 31
+      },
+      "oc_gateway_config_reference_platform": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Browser",
+          "UI",
+          "Gateway",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1980,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 33
+      },
+      "oc_gateway_config_reference_runtime": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Channels",
+          "Agent Defaults, Multi-Agent, Sessions, and Messages",
+          "Tools and Custom Providers",
+          "Models",
+          "MCP",
+          "Skills",
+          "Plugins",
+          "Commitments",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2499,
+        "term_links": 10,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 35
+      },
+      "oc_gateway_config_reference_surfaces": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Hooks",
+          "Canvas plugin host",
+          "Discovery",
+          "Environment",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1283,
+        "term_links": 8,
+        "snippet_links": 9,
+        "repo_links": 3,
+        "total_internal_md_links": 30
+      },
+      "oc_gateway_config_reload_rpc_env": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Config hot reload",
+          "Config RPC (programmatic updates)",
+          "Environment variables",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1699,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 31
+      },
+      "oc_gateway_config_tools_policy": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Tool profiles",
+          "Tool groups",
+          "MCP and plugin tools inside sandbox tool policy",
+          "`tools.codeMode`",
+          "`tools.allow` / `tools.deny`",
+          "`tools.byProvider` and `tools.toolsBySender`",
+          "`tools.elevated`",
+          "`tools.exec`",
+          "`tools.loopDetection`",
+          "`tools.web`",
+          "`tools.media`",
+          "`tools.agentToAgent`",
+          "`tools.sessions` and `tools.sessions_spawn`",
+          "`tools.experimental`",
+          "`agents.defaults.subagents`",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2491,
+        "term_links": 10,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 33
+      },
+      "oc_gateway_configuration_examples": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Expanded example (major options)",
+          "Common patterns",
+          "Tips",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1596,
+        "term_links": 9,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 32
+      },
+      "oc_gateway_configuration_overview": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Config file location",
+          "Minimal config",
+          "Editing config (four edit paths)",
+          "Strict validation and refuse-to-start",
+          "Common tasks (pointer accordion)",
+          "Full reference (pointer)",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1734,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 31
+      },
+      "oc_gateway_diagnostics_export": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Chat command",
+          "What the export contains",
+          "Privacy model",
+          "Stability recorder",
+          "Useful options",
+          "Disable diagnostics",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1714,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 31
+      },
+      "oc_gateway_discovery": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Terms",
+          "Why we keep both direct and SSH",
+          "Discovery inputs (how clients learn where the gateway is)",
+          "Transport selection (client policy)",
+          "Pairing + auth (direct transport)",
+          "Responsibilities by component",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 1650,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 3,
+        "total_internal_md_links": 31
+      },
+      "oc_gateway_doctor": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes",
+          "References"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick start",
+          "Read-only lint mode",
+          "What it does (summary)",
+          "Dreams UI backfill and reset",
+          "Detailed behavior and rationale",
+          "Related Notes",
+          "References"
+        ],
+        "word_count": 2471,
+        "term_links": 8,
+        "snippet_links": 10,
+        "repo_links": 4,
+        "total_internal_md_links": 32
+      }
+    }
+  }
+}

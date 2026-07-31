@@ -1,0 +1,324 @@
+{
+  "slice": "hermes_protocols_providers",
+  "provenance": {
+    "vault_repo": "private knowledge vault",
+    "vault_git_sha": "9bf1773a6",
+    "note": "Golden plan + notes live in the private vault; only measured/structural facts are vendored here (public repo)."
+  },
+  "source": "Hermes Agent documentation (NousResearch/hermes-agent Docusaurus site)",
+  "source_url_pattern": "https://hermes-agent.nousresearch.com/docs/<path>",
+  "produced_by": "The FOUR digestion skills (plan-digestion -> augment -> review -> execute) — the SAME skills Tessellum runs as run_digestion_pipeline PHASE_SKILLS.",
+  "input": {
+    "page_count": 7,
+    "pages": [
+      "mcp.md",
+      "acp.md",
+      "api-server.md",
+      "provider-routing.md",
+      "fallback-providers.md",
+      "credential-pools.md",
+      "subscription-proxy.md"
+    ]
+  },
+  "golden_plan": {
+    "file": "plan_digest_hermes_agent_docs_09_protocols_providers.md",
+    "subplan": "SP09 (Protocols & Provider Integration)",
+    "planned_note_count": 9,
+    "gate_count": 8,
+    "xref_floor_per_note": {
+      "term_dictionary": 8,
+      "code_snippets": 10,
+      "code_repos": 5,
+      "documentation": 10
+    },
+    "mandatory_plan_sections": [
+      "Scope",
+      "Content Strategy",
+      "Source Pages (measured)",
+      "Planned Notes (table: # | Filename | BB | Source Section(s) | ~Words | Description)",
+      "Section Coverage Map (every source H2/H3 -> a note; no orphans)",
+      "Split Decisions",
+      "Summary Statistics & Building Block Distribution",
+      "Per-Note Related Notes Mapping (cross-ref contract)",
+      "Density Re-Assessment",
+      "Undigested Terms Plan",
+      "Per-Phase Validation Gate",
+      "Entry Point Decision",
+      "Inlinks",
+      "Review Sign-Off (CP1-CP9)"
+    ]
+  },
+  "golden_output": {
+    "note_dir": "resources/documentation/hermes_agent",
+    "note_prefix": "hermes_",
+    "note_count": 9,
+    "bb_distribution": {
+      "procedure": 5,
+      "model": 2,
+      "concept": 2
+    },
+    "word_count": {
+      "min": 1234,
+      "median": 1984,
+      "max": 2488
+    },
+    "term_links": {
+      "min": 10,
+      "median": 11
+    },
+    "frontmatter_required_keys": [
+      "tags",
+      "keywords",
+      "topics",
+      "language",
+      "date of note",
+      "status",
+      "building_block",
+      "source_url",
+      "access_control_group"
+    ],
+    "frontmatter_forbidden_keys": [
+      "category",
+      "created",
+      "note_second_category",
+      "parent",
+      "source",
+      "title",
+      "updated"
+    ],
+    "required_h2": [
+      "Overview",
+      "Related Notes"
+    ],
+    "optional_h2": [
+      "References"
+    ],
+    "cross_ref_block_header": "## Related Notes (NOT ## References; References is external-URL-only when present)",
+    "per_note": {
+      "hermes_acp_editor_integration": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What Hermes exposes in ACP mode",
+          "Installation",
+          "Launching the ACP server",
+          "Editor setup",
+          "Registry manifest",
+          "Configuration and credentials",
+          "Session behavior",
+          "Working directory behavior",
+          "Approvals",
+          "Troubleshooting",
+          "Related Notes"
+        ],
+        "word_count": 1848,
+        "term_links": 12,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      },
+      "hermes_api_server_endpoints": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Endpoints",
+          "Runs API (streaming-friendly alternative)",
+          "Jobs API (background scheduled work)",
+          "Sessions API (session control over REST)",
+          "Skills and Toolsets Discovery",
+          "Long-term Memory Scoping (`X-Hermes-Session-Key`)",
+          "System Prompt Handling",
+          "Related Notes"
+        ],
+        "word_count": 2098,
+        "term_links": 11,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      },
+      "hermes_api_server_setup_auth": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Quick Start",
+          "Authentication",
+          "Configuration",
+          "Security Headers",
+          "CORS",
+          "Compatible Frontends",
+          "Multi-User Setup with Profiles",
+          "Limitations",
+          "Proxy Mode",
+          "Related Notes"
+        ],
+        "word_count": 1565,
+        "term_links": 10,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      },
+      "hermes_credential_pools": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Pools vs. Fallback Providers",
+          "How It Works",
+          "Quick Start",
+          "Interactive Management",
+          "CLI Commands",
+          "Rotation Strategies",
+          "Error Recovery",
+          "Custom Endpoint Pools",
+          "Auto-Discovery",
+          "Delegation & Subagent Sharing",
+          "Thread Safety",
+          "Architecture",
+          "Storage",
+          "Related Notes"
+        ],
+        "word_count": 1984,
+        "term_links": 14,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 42
+      },
+      "hermes_fallback_providers": {
+        "building_block": "model",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Three Layers of Resilience",
+          "Primary Model Fallback",
+          "Auxiliary Task Fallback",
+          "Auxiliary Capacity-Error Fallback",
+          "Context Compression Fallback",
+          "Delegation & Cron Provider Inheritance",
+          "Summary",
+          "Related Notes"
+        ],
+        "word_count": 2488,
+        "term_links": 14,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 43
+      },
+      "hermes_mcp_concept_config": {
+        "building_block": "concept",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "What MCP gives you",
+          "Quick start",
+          "Catalog: one-click install for Nous-approved MCPs",
+          "Two kinds of MCP servers",
+          "mTLS / client certificates",
+          "Basic configuration reference",
+          "Built-in presets",
+          "Related Notes"
+        ],
+        "word_count": 2397,
+        "term_links": 12,
+        "snippet_links": 11,
+        "repo_links": 5,
+        "total_internal_md_links": 40
+      },
+      "hermes_mcp_filtering_serving": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "How Hermes registers MCP tools",
+          "MCP utility tools",
+          "Per-server filtering",
+          "Runtime behavior",
+          "Security model",
+          "Example use cases",
+          "Troubleshooting",
+          "Parallel Tool Calls",
+          "MCP Sampling Support",
+          "Running Hermes as an MCP server",
+          "Related Notes"
+        ],
+        "word_count": 2279,
+        "term_links": 10,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 36
+      },
+      "hermes_provider_routing": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Configuration",
+          "Options",
+          "Practical Examples",
+          "How It Works",
+          "Default Behavior",
+          "Provider Routing vs. Fallback Models",
+          "Related Notes"
+        ],
+        "word_count": 1234,
+        "term_links": 10,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 38
+      },
+      "hermes_subscription_proxy": {
+        "building_block": "procedure",
+        "required_h2_present": [
+          "Overview",
+          "Related Notes"
+        ],
+        "h2_sections": [
+          "Overview",
+          "Subscription Proxy vs API Server",
+          "Quick Start",
+          "Available Providers",
+          "Check Status",
+          "Allowed Paths",
+          "Configuring OpenViking to Use Portal",
+          "Configuring Karakeep (or Any Bookmark/Summarizer App)",
+          "Exposing on LAN",
+          "Rate Limits",
+          "Architecture",
+          "Future: More OAuth Providers",
+          "Related Notes"
+        ],
+        "word_count": 1467,
+        "term_links": 11,
+        "snippet_links": 10,
+        "repo_links": 5,
+        "total_internal_md_links": 37
+      }
+    }
+  }
+}
