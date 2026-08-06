@@ -151,7 +151,6 @@ For notes that are part of an FZ trail (most commonly argument / counter / hypot
 
 ```yaml
 folgezettel: "<id>"             # the FZ ID — string; can include letters/digits (e.g., "7", "10", "13a2", "14d1d1")
-folgezettel_parent: "<id>"      # the parent FZ ID — or null for trail roots; or omit both fields for non-trail notes
 ```
 
 #### When are FZ fields expected vs omitted
@@ -165,23 +164,17 @@ folgezettel_parent: "<id>"      # the parent FZ ID — or null for trail roots; 
 
 #### Trail-position rule
 
-| Trail position | `folgezettel:` | `folgezettel_parent:` |
-|---|---|---|
-| Trail root (top of an argument chain) | `"<root-id>"` (e.g., `"14"`) | `null` |
-| Trail child (mid-chain or leaf) | `"<child-id>"` (e.g., `"14d1"`) | `"<parent-id>"` (e.g., `"14d"`) |
-| Non-trail note | omit | omit |
+Author **only** `folgezettel:`. The parent is derived from the ID's prefix (a pure substring), so there is no `folgezettel_parent:` field to fill.
 
-#### Both-or-neither rule (validator-enforced)
+| Trail position | `folgezettel:` |
+|---|---|
+| Trail root (top of an argument chain) | `"<root-id>"` (e.g., `"14"`) — a single-segment ID; its prefix has no parent |
+| Trail child (mid-chain or leaf) | `"<child-id>"` (e.g., `"14d1"`) — descends from `"14d"` by prefix |
+| Non-trail note | omit |
 
-The two fields travel as a pair. Three valid configurations:
+#### Parent is derived, not authored (validator-enforced)
 
-1. **Both filled** (trail child): `folgezettel: "14d1"`, `folgezettel_parent: "14d"`
-2. **Filled-with-null** (trail root): `folgezettel: "14"`, `folgezettel_parent: null`
-3. **Both omitted** (non-trail note): neither key present in YAML
-
-**Invalid**: setting `folgezettel:` without `folgezettel_parent:` (or vice versa). The validator flags this as an error — it's the partial-fill bug, where an author forgot the second field.
-
-The canonical key is `folgezettel_parent:` (long form). The shorter `fz_parent:` is accepted as an alias for backwards compatibility, but `folgezettel_parent:` is preferred and used in all Tessellum templates.
+`folgezettel_parent:` is redundant with the ID and is **not authored**. The indexer computes it for the DB from the `folgezettel` prefix. `TESS-001` errors if `folgezettel:` is not a well-formed prefix-encoded ID; `TESS-002` errors if a stray `folgezettel_parent:`/`fz_parent:` is present (it contradicts, and duplicates, the ID).
 
 #### Why FZ fields are NOT required universally
 
@@ -218,7 +211,6 @@ section_type: <abstract|intro|method|...>
 
 ```yaml
 folgezettel: "<id>"             # if part of an FZ trail
-folgezettel_parent: "<parent-id>"
 ```
 
 (Note: experiments use `tags[0]: archive`, not `resource`. They live in the PARA Archive bucket.)
@@ -241,7 +233,7 @@ folgezettel_parent: "<parent-id>"
 
 8. **Tags must form a list.** Use the YAML list syntax (one tag per line with `-` prefix). Avoid inline `[a, b, c]` syntax — the validator prefers the multiline form.
 
-9. **FZ fields travel as a pair.** If `folgezettel:` is present, `folgezettel_parent:` must also be present (with a value or `null` for trail roots). If `folgezettel:` is absent, `folgezettel_parent:` must also be absent. Setting one without the other is a validation error — the partial-fill bug.
+9. **Author only `folgezettel:`.** The parent is derived from the ID's prefix (a pure substring), so there is no `folgezettel_parent:` field to fill. A malformed `folgezettel:` (not a well-formed prefix-encoded ID) is TESS-001; a stray `folgezettel_parent:`/`fz_parent:` is TESS-002 (redundant — remove it).
 
 ## Validation
 
@@ -310,7 +302,6 @@ date of note: 2026-04-28
 status: active
 building_block: argument
 folgezettel: "7g1a1a1a1a1"
-folgezettel_parent: "7g1a1a1a1a"
 ---
 ```
 

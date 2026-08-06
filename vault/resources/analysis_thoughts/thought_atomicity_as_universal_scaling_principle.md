@@ -31,7 +31,6 @@ date of note: 2026-04-10
 status: active
 building_block: argument
 folgezettel: "7"
-folgezettel_parent: ""
 ---
 
 # Thought: Atomicity Is a Universal Scaling Principle — From Knowledge Atoms to Agent Primitives

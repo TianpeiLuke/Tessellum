@@ -27,7 +27,6 @@ date of note: 2026-05-10
 status: active
 building_block: counter_argument
 folgezettel: "1c"
-folgezettel_parent: "1"
 ---
 
 # BB-Internal Transitions: Evidence They Are Critical and Should Be Allowed (FZ 1c)

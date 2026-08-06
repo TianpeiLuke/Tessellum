@@ -28,7 +28,6 @@ date of note: 2026-04-11
 status: active
 building_block: hypothesis
 folgezettel: "8c5c1a10"
-folgezettel_parent: "8c5c1a"
 ---
 
 # Hypothesis: DKS Is a Thinking Protocol Running on a Slipbox Knowledge Graph — Two Entities, Not One

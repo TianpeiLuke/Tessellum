@@ -24,7 +24,11 @@ from pathlib import Path
 
 import sqlite_vec
 
-from tessellum.format.parser import FrontmatterParseError, parse_note
+from tessellum.format.parser import (
+    FrontmatterParseError,
+    derive_folgezettel_parent,
+    parse_note,
+)
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 _LOG = logging.getLogger(__name__)
@@ -524,8 +528,11 @@ def _extract_note_metadata(md_file: Path, vault_path: Path) -> dict | None:
         "language": _str_or_none(front.get("language")),
         "building_block": _str_or_none(front.get("building_block")),
         "folgezettel": _str_or_none(front.get("folgezettel")),
-        "folgezettel_parent": _str_or_none(
-            front.get("folgezettel_parent") or front.get("fz_parent")
+        # DERIVED from the folgezettel prefix, not read from YAML — the parent
+        # is a pure substring of the child's ID, so a separate field is
+        # redundant. A stray folgezettel_parent/fz_parent in the note is ignored.
+        "folgezettel_parent": derive_folgezettel_parent(
+            _str_or_none(front.get("folgezettel"))
         ),
         "last_indexed_mtime": stat.st_mtime,
         # content_hash over BOTH frontmatter AND body — the incremental

@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2c1a"
-folgezettel_parent: "2c1"
 ---
 
 # Meta-DKS Validation Evidence — v0.0.53 Dogfood Run (FZ 2c1a)

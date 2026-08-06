@@ -27,7 +27,6 @@ date of note: 2026-04-21
 status: active
 building_block: counter_argument
 folgezettel: "5h1"
-folgezettel_parent: "5h"
 author: lukexie
 ---
 

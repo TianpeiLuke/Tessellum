@@ -30,7 +30,7 @@ Folgezettel (FZ) trails are Tessellum's mechanism for *argumentative descent* �
 
 ## What a trail is, in one paragraph
 
-A FZ trail is a tree of notes where each node's `folgezettel:` field is a hierarchical ID (`1`, `1a`, `1a1`, `1a1b`, ...) and `folgezettel_parent:` points at the parent's FZ. The hierarchy *encodes the argumentative structure*: `1` is a root claim, `1a` refines it, `1b` is a sibling refinement, `1a1` refines `1a` further. Reading a trail breadth-first gives the conceptual map; reading depth-first gives the argumentative descent.
+A FZ trail is a tree of notes where each node's `folgezettel:` field is a hierarchical ID (`1`, `1a`, `1a1`, `1a1b`, ...). The ID *is* the trail path: the parent is derived from its prefix (`1a1` descends from `1a`, which descends from `1`), so no separate `folgezettel_parent:` field is authored. The hierarchy *encodes the argumentative structure*: `1` is a root claim, `1a` refines it, `1b` is a sibling refinement, `1a1` refines `1a` further. Reading a trail breadth-first gives the conceptual map; reading depth-first gives the argumentative descent.
 
 For the full theory, see [`term_folgezettel`](../term_dictionary/term_folgezettel.md).
 
@@ -53,8 +53,7 @@ tessellum capture argument my_new_trail_root --vault vault
 Edit the new note's frontmatter:
 
 ```yaml
-folgezettel: "4"
-folgezettel_parent: ""   # roots have no parent
+folgezettel: "4"   # a single-segment ID is a root — its prefix has no parent
 argument_perspective: "conservative"  # optional; for multi-perspective DKS later
 ```
 
@@ -78,8 +77,7 @@ tessellum capture argument my_refinement --vault vault
 Set frontmatter:
 
 ```yaml
-folgezettel: "4a"
-folgezettel_parent: "4"
+folgezettel: "4a"   # descends from "4" (parent derived from the prefix)
 ```
 
 Body should *explicitly relate* to the parent — common framings:
@@ -110,12 +108,11 @@ tessellum capture counter_argument against_my_refinement --vault vault
 Frontmatter:
 
 ```yaml
-folgezettel: "4a1"
-folgezettel_parent: "4a"
+folgezettel: "4a1"   # descends from "4a" — the argument it attacks
 building_block: counter_argument
 ```
 
-The TESS-004 validator enforces a structural invariant: every `counter_argument` note must link to the attacked argument note via folgezettel hierarchy. Setting `folgezettel_parent: "4a"` satisfies this — the counter's FZ descends from the argument it attacks.
+The TESS-004 validator enforces a structural invariant: every `counter_argument` note must link to the attacked argument note via folgezettel hierarchy. Giving the counter the FZ `4a1` satisfies this — its ID descends (by prefix) from `4a`, the argument it attacks.
 
 The counter must name **which Toulmin component is broken** in FZ 4a's argument:
 
@@ -182,7 +179,8 @@ See [`thought_dks_design_synthesis`](../analysis_thoughts/thought_dks_design_syn
 |---|---|
 | Skipping the counter-argument step | Every claim should have at least one explicit `counter_argument` child node; trails without counters become brittle |
 | FZ IDs reused across trails | Each trail root's integer is unique; descendants extend the parent's prefix. `tessellum fz next-root` enforces this. |
-| `folgezettel_parent:` missing on non-roots | TESS-001 ERROR. Fix by setting the parent FZ or marking the note as a root (no parent). |
+| Malformed `folgezettel:` ID | TESS-001 ERROR. The ID must be a well-formed prefix-encoded ID — alternating digit/letter segments starting with a digit (e.g. `4`, `4a`, `4a1`). Fix the ID; the parent is derived from its prefix, so no `folgezettel_parent:` is authored. |
+| Stray `folgezettel_parent:`/`fz_parent:` field present | TESS-002 ERROR. The field is redundant (the parent is derived from the `folgezettel:` prefix at index time). Remove it. |
 | Trail tree only goes one direction (no branching) | A trail with no siblings is a single-path argument — sound but rigid. Branch on choice points to capture alternatives. |
 | Per-trail entry point not updated when new nodes land | Future readers can't navigate the trail. The entry point is the canonical map. |
 

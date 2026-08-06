@@ -32,6 +32,34 @@ class FrontmatterParseError(ValueError):
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 
+# A Folgezettel ID is a prefix encoding: each parent→child step appends one
+# segment, and the segment alternates class (a run of digits, then a run of
+# letters, then digits, …). So the parent is the ID minus its trailing segment
+# — a pure substring. See derive_folgezettel_parent.
+_FZ_LAST_SEGMENT_RE = re.compile(r"([0-9]+|[a-z]+)$")
+
+
+def derive_folgezettel_parent(fz: str | None) -> str | None:
+    """Return the parent Folgezettel of ``fz``, derived from its prefix.
+
+    The Folgezettel ID *is* the trail path: ``20`` → ``20l`` → ``20l2`` →
+    ``20l2a``. Each child appends one segment — a maximal run of digits or of
+    letters — and the class alternates at each step (digit↔letter boundary). The
+    parent is therefore ``fz`` with its trailing segment removed, a pure
+    substring; no separate ``folgezettel_parent`` field is needed.
+
+    Examples: ``20l2`` → ``20l``; ``20l`` → ``20``; ``9h10`` → ``9h``;
+    ``9h`` → ``9``. A single-segment (root) ID such as ``20`` or ``9`` has no
+    parent → ``None``. ``None``/empty in → ``None`` out.
+    """
+    if not fz:
+        return None
+    m = _FZ_LAST_SEGMENT_RE.search(fz)
+    if not m:
+        return None
+    parent = fz[: m.start()]
+    return parent or None
+
 
 @dataclass(frozen=True)
 class Note:
@@ -83,10 +111,14 @@ class Note:
 
     @property
     def folgezettel_parent(self) -> str | None:
-        v = self.frontmatter.get("folgezettel_parent")
-        if v is None:
-            v = self.frontmatter.get("fz_parent")
-        return str(v) if v is not None else None
+        """The parent Folgezettel, DERIVED from this note's ``folgezettel``
+        prefix (see :func:`derive_folgezettel_parent`).
+
+        ``folgezettel_parent``/``fz_parent`` is no longer an authored YAML field
+        — it is redundant with the prefix-encoded ID. A stray one in the
+        frontmatter is ignored; the derived value is authoritative.
+        """
+        return derive_folgezettel_parent(self.folgezettel)
 
 
 def parse_note(path: Path | str) -> Note:

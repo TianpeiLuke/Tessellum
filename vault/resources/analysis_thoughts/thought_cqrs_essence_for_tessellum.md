@@ -22,7 +22,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "1a1a"
-folgezettel_parent: "1a1"
 ---
 
 # The Essence of CQRS for Tessellum — One Boundary, Two Disciplines

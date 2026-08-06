@@ -30,7 +30,6 @@ date of note: 2026-04-03
 status: active
 building_block: argument
 folgezettel: "5"
-folgezettel_parent: ""
 ---
 
 # Thought: The Meta-Question — Does Epistemically Typed Knowledge Provide Measurable Value Over Unstructured Information?

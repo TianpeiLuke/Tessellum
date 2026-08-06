@@ -19,7 +19,6 @@ date of note: 2026-04-15
 status: active
 building_block: argument
 folgezettel: "10b"
-folgezettel_parent: "10"
 ---
 
 # Analysis: Building Block × Category × Directory Mapping Principles (FZ 10b)

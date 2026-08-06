@@ -79,8 +79,8 @@ Each finding carries a stable `rule_id` and a `severity` (ERROR / WARNING / INFO
 | YAML-063 | ERROR | `building_block` is not in the valid BB enum (8 values) |
 | YAML-100 | ERROR | Wiki link `[[...]]` inside a YAML field value |
 | YAML-101 | ERROR | Markdown link of the form `[<text>](<path>.md)` inside a YAML field value |
-| TESS-001 | ERROR | `folgezettel:` is set but `folgezettel_parent:` is missing |
-| TESS-002 | ERROR | `folgezettel_parent:` is set but `folgezettel:` is missing |
+| TESS-001 | ERROR | `folgezettel:` is not a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit, e.g. `20`, `20l`, `9h10`) |
+| TESS-002 | ERROR | A redundant `folgezettel_parent:`/`fz_parent:` field is present — the parent is derived from the `folgezettel:` prefix; remove it |
 | TESS-003 | ERROR | Forbidden field present (e.g. `note_second_category`) |
 
 ### Warning rules <!-- :: section_id = warning_rules :: -->
@@ -188,7 +188,7 @@ Fix in this priority order:
 
 1. **YAML-010..099** — required-field + enum errors. The note is currently invisible to any structured tooling. Highest priority.
 2. **YAML-100/101** — links-in-YAML. These silently break parsers downstream. Strip wiki/markdown link syntax from YAML field values; use plain strings.
-3. **TESS-001/002** — folgezettel pair. Add the missing field, or remove both. Both-or-neither — see [DEVELOPING.md § Folgezettel-trail notes](../../../DEVELOPING.md).
+3. **TESS-001/002** — folgezettel. TESS-001: fix a malformed `folgezettel:` ID. TESS-002: remove any `folgezettel_parent:`/`fz_parent:` field — the parent is derived from the `folgezettel:` prefix, not authored. See [DEVELOPING.md § Folgezettel-trail notes](../../../DEVELOPING.md).
 4. **TESS-003** — forbidden field. Currently only `note_second_category` triggers this; remove it (the indexer reads `tags[1]` as the source of truth).
 5. **LINK-003** — broken links. Either author the missing target, change the link, or mark the target as a `placeholder`-status note.
 6. **LINK-001/002** — link-format hygiene. Add `.md`, prefer relative.

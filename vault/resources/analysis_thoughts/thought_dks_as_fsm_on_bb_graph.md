@@ -29,7 +29,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2a2"
-folgezettel_parent: "2a"
 ---
 
 # DKS as a Finite-State Machine on the BB Ontology Graph (FZ 2a2)

@@ -16,22 +16,22 @@ date of note: 2026-05-10
 status: template
 building_block: empirical_observation
 folgezettel: ""              # if part of an FZ trail
-folgezettel_parent: ""       # usually the FZ ID of the hypothesis or argument this observation tests
 ---
 
 <!--
 NOTE ON FOLGEZETTEL FIELDS:
 An observation is most often a child of a `hypothesis` (the hypothesis it
 tests — Testing-and-Evidence edge in the BB ontology) or an `argument`
-(observation provides evidence for the argument's claim). Set
-`folgezettel_parent:` to that upstream parent's FZ ID.
+(observation provides evidence for the argument's claim). Choose a
+`folgezettel:` ID whose prefix is that upstream parent's FZ ID — the parent is
+derived from the prefix, so there is no `folgezettel_parent:` field to set.
 
 Inline thought-trail observations (this template) live in
 `vault/resources/analysis_thoughts/`. For full pre-registered investigations
 that warrant their own archive note, use `template_experiment.md` instead
 (those live in `vault/archives/experiments/` with `tags[0]: archive`).
 
-Non-trail observations (rare) omit both FZ fields.
+Non-trail observations (rare) omit the `folgezettel:` field.
 -->
 
 
@@ -42,7 +42,7 @@ HOW TO USE THIS TEMPLATE:
 1. Copy to:
    - `vault/resources/analysis_thoughts/thought_<topic>.md` (in-flight observations)
    - `vault/archives/experiments/experiment_<topic>.md` (completed experiments)
-2. If part of a Folgezettel trail, add `folgezettel:` and `fz_parent:`.
+2. If part of a Folgezettel trail, add `folgezettel:` (choose an ID whose prefix is the parent's FZ; the parent is derived).
 3. Update YAML — tags[1] is usually `analysis` or `experiment`.
 4. Fill required sections: Observation, Method, Result, References.
 5. Remove this commentary block.

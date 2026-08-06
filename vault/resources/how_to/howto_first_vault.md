@@ -179,7 +179,7 @@ You're done with the basics when all of the following work:
 You now have a working vault, the foundation vocabulary, and the format spec. Next:
 
 - **Add more notes.** Each new note picks a BB type from the picker matrix and goes through capture → fill → format check.
-- **Grow a trail.** Add `folgezettel:` + `folgezettel_parent:` fields to link notes into a Folgezettel descent ([`term_folgezettel`](../term_dictionary/term_folgezettel.md)).
+- **Grow a trail.** Add a `folgezettel:` field to link notes into a Folgezettel descent — the parent is derived from the ID's prefix ([`term_folgezettel`](../term_dictionary/term_folgezettel.md)).
 - **Run a skill end-to-end.** Author a real skill canonical + sidecar pair, then `tessellum composer run` it against a leaves JSON file — the typed DAG drives the agent calls.
 - **Customize the templates.** All 15 templates live in `resources/templates/` — edit them; future captures use your edits.
 

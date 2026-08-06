@@ -26,7 +26,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "1b"
-folgezettel_parent: "1"
 ---
 
 # BB Ontology as a Typed Graph: Schema, Corpus, and the Finite-State Substrate of DKS (FZ 1b)

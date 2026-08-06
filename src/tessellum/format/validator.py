@@ -8,7 +8,8 @@ Issue rule-ID prefixes:
     YAML-010..099   YAML frontmatter rules (presence, type, value)
     YAML-100..199   YAML linkage rules (no wiki/markdown links inside YAML)
     LINK-001..006   Body markdown link rules (see ``link_checker``)
-    TESS-001..099   Tessellum-specific rules (folgezettel pair, forbidden fields)
+    TESS-001..099   Tessellum-specific rules (folgezettel well-formedness +
+                    no-authored-parent, forbidden fields)
 """
 
 from __future__ import annotations
@@ -97,7 +98,7 @@ def validate(target: Path | str | Note) -> list[Issue]:
     )
     issues.extend(_check_enum(fm.get("status"), "status", VALID_STATUSES, "YAML-061"))
     issues.extend(_check_date(fm.get("date of note")))
-    issues.extend(_check_folgezettel_pair(fm))
+    issues.extend(_check_folgezettel(fm))
     issues.extend(_check_forbidden(fm))
     issues.extend(_check_yaml_links(note.raw_frontmatter))
     issues.extend(check_links(note))
@@ -286,30 +287,68 @@ def _check_date(value: object) -> list[Issue]:
     return []
 
 
-def _check_folgezettel_pair(fm: dict) -> list[Issue]:
-    has_fz = "folgezettel" in fm
-    has_parent = "folgezettel_parent" in fm or "fz_parent" in fm
-    if has_fz and not has_parent:
-        return [
+_FZ_ID_RE = re.compile(r"^[0-9]+([a-z]+[0-9]+)*[a-z]*$")
+
+
+def _check_folgezettel(fm: dict) -> list[Issue]:
+    """TESS-001/002 — Folgezettel well-formedness + no authored parent.
+
+    The parent is DERIVED from the ``folgezettel`` prefix (a pure substring;
+    see ``parser.derive_folgezettel_parent``), so ``folgezettel_parent`` is no
+    longer authored. This rule:
+
+    - TESS-001: if ``folgezettel`` is present it must be a well-formed
+      prefix-encoded ID — digit/letter segments alternating, starting with a
+      digit (root), e.g. ``20``, ``20l``, ``20l2``, ``9h10``.
+    - TESS-002: a ``folgezettel_parent``/``fz_parent`` in the frontmatter is
+      redundant; if present it must equal the prefix-derived parent (a mismatch
+      is a stale hand-edit and an ERROR — it silently contradicts the ID).
+
+    Corpus-level orphan checking (does the derived parent resolve to an existing
+    note?) is a cross-note property enforced by the trail builder, not here —
+    this validator sees a single note in isolation.
+    """
+    from tessellum.format.parser import derive_folgezettel_parent
+
+    fz = fm.get("folgezettel")
+    issues: list[Issue] = []
+    # Treat a YAML-null / empty folgezettel as "no FZ" (template default).
+    if fz is None or str(fz).strip() in ("", "null", "None"):
+        fz_val: str | None = None
+    else:
+        fz_val = str(fz).strip()
+
+    if fz_val is not None and not _FZ_ID_RE.match(fz_val):
+        issues.append(
             Issue(
                 Severity.ERROR,
                 "TESS-001",
-                "folgezettel_parent",
-                "folgezettel: is set but folgezettel_parent: is missing "
-                "(both-or-neither rule)",
-            )
-        ]
-    if has_parent and not has_fz:
-        return [
-            Issue(
-                Severity.ERROR,
-                "TESS-002",
                 "folgezettel",
-                "folgezettel_parent: is set but folgezettel: is missing "
-                "(both-or-neither rule)",
+                f"folgezettel: {fz_val!r} is not a well-formed prefix-encoded "
+                "ID (expected alternating digit/letter segments starting with a "
+                "digit, e.g. '20', '20l', '9h10')",
             )
-        ]
-    return []
+        )
+
+    # A folgezettel_parent/fz_parent field is redundant with the prefix-derived
+    # parent and must not be authored — flag ANY present value (even one that
+    # happens to match the derived parent), so the field cannot silently drift.
+    if "folgezettel_parent" in fm or "fz_parent" in fm:
+        authored = fm.get("folgezettel_parent", fm.get("fz_parent"))
+        derived = derive_folgezettel_parent(fz_val)
+        authored_str = "" if authored is None else str(authored).strip()
+        detail = (
+            f"folgezettel_parent: {authored_str!r} is redundant — the parent is "
+            f"derived from the folgezettel prefix (= {derived!r}). Remove the field."
+        )
+        if authored_str not in ("", "null", "None") and authored_str != (derived or ""):
+            detail = (
+                f"folgezettel_parent: {authored_str!r} CONTRADICTS the "
+                f"prefix-derived parent {derived!r}, and the field is redundant. "
+                "Remove it (the parent is derived from the folgezettel prefix)."
+            )
+        issues.append(Issue(Severity.ERROR, "TESS-002", "folgezettel_parent", detail))
+    return issues
 
 
 def _check_forbidden(fm: dict) -> list[Issue]:

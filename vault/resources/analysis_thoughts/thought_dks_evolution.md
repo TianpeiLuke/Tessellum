@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2"
-folgezettel_parent: ""
 ---
 
 # How the Dialectic Knowledge System Was Reasoned Into Shape

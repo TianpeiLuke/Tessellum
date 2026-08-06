@@ -30,7 +30,6 @@ date of note: 2026-04-19
 status: active
 building_block: argument
 folgezettel: "5f"
-folgezettel_parent: "5"
 ---
 
 # Folgezettel Trails as a Fifth Retrieval Modality (FZ 5f)

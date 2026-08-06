@@ -58,7 +58,7 @@ Use the next free integer at the top level (`1`, `2`, `3`, ...). The integer car
 
 ### 2. Author the trail-root note
 
-The root sits at `folgezettel: "N"` with `folgezettel_parent: ""` (empty string — the both-or-neither rule requires the field to be *present*; the value `""` marks "this is the trail root"). Place the file under `vault/resources/analysis_thoughts/` (or wherever its BB type belongs — most trail nodes are `argument` or `counter_argument`, which capture under `analysis_thoughts/`).
+The root sits at `folgezettel: "N"` — a single-segment ID (just the top-level integer). Only `folgezettel:` is authored; the parent is *derived* from the ID's prefix at index time, and a single-segment ID has no prefix, so it is a root with no parent. Place the file under `vault/resources/analysis_thoughts/` (or wherever its BB type belongs — most trail nodes are `argument` or `counter_argument`, which capture under `analysis_thoughts/`).
 
 ### 3. Author the per-trail entry point
 
@@ -88,9 +88,8 @@ To add a child to an existing trail node (FZ ID `Nx`):
 2. Set the new note's frontmatter:
    ```yaml
    folgezettel: "Nxa"
-   folgezettel_parent: "Nx"
    ```
-   Both fields must be present (`TESS-001` / `TESS-002` enforce the both-or-neither rule). Empty `folgezettel_parent: ""` is reserved for trail roots.
+   Only `folgezettel:` is authored — the parent (`Nx`) is derived from the ID's prefix at index time, so no `folgezettel_parent:` field is written. `TESS-001` errors if the ID isn't a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit); `TESS-002` errors if a stray `folgezettel_parent:`/`fz_parent:` field is present (redundant — remove it).
 3. Update the per-trail entry point — add a row in the FZ table; extend the ASCII tree.
 
 The validator and indexer pick up the new note automatically; no other configuration changes.
@@ -99,7 +98,7 @@ The validator and indexer pick up the new note automatically; no other configura
 
 A new Tessellum user reads [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md) (the mechanism) and [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) (the rules), but until they see a real trail in action, the convention is abstract. The two shipped trails are worked examples: every FZ ID is real, every parent-child pair is valid, every link resolves, and the resulting chains record the actual design history of Tessellum's two most novel architectural commitments (CQRS and DKS).
 
-When you grow your first trail, copy the shape: linear or branching descent, a root with `folgezettel_parent: ""`, a per-trail entry point that summarises the dialectic progress, and a row in this master index.
+When you grow your first trail, copy the shape: linear or branching descent, a root with a single-segment `folgezettel:` ID (no parent — it's derived from the prefix, and a root has none), a per-trail entry point that summarises the dialectic progress, and a row in this master index.
 
 ## Related Entry Points
 
@@ -112,7 +111,7 @@ When you grow your first trail, copy the shape: linear or branching descent, a r
 ## Related Terms
 
 - [`term_folgezettel`](../resources/term_dictionary/term_folgezettel.md) — the trail mechanism this map indexes
-- [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) — the `folgezettel:` / `folgezettel_parent:` field rules
+- [`term_format_spec`](../resources/term_dictionary/term_format_spec.md) — the `folgezettel:` field rules (the parent is derived from its prefix, not authored)
 
 ---
 

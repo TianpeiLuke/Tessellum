@@ -40,7 +40,7 @@ The frontmatter declares:
 - *When it was written* (`date of note:` — ISO date).
 - *What it's about* (`tags`, `keywords`, `topics`).
 - *Which schema version was current when it was written* (`bb_schema_version:` — Tessellum auto-populates this on capture).
-- *Where it sits in any FZ trail* (`folgezettel:` + `folgezettel_parent:` — empty when not part of a trail).
+- *Where it sits in any FZ trail* (`folgezettel:` — empty when not part of a trail; the parent is derived from the ID's prefix).
 
 ## Required fields
 
@@ -72,15 +72,14 @@ Anything missing from this seven-field set produces a validator ERROR. The forma
 
 ```yaml
 bb_schema_version: 1                 # auto-populated by `tessellum capture`; D8 frozen-at-creation
-folgezettel: "2c1"                   # quoted string — required if part of an FZ trail
-folgezettel_parent: "2c"             # quoted string — the FZ this note descends from
+folgezettel: "2c1"                   # quoted string — required if part of an FZ trail (parent is derived from the prefix)
 argument_perspective: "conservative" # optional, on argument-typed notes (v0.0.55+)
 pipeline_metadata: ./skill_<slug>.pipeline.yaml  # on skill canonicals — sidecar pointer
 ```
 
 The optional fields are read by specific tools:
 - `bb_schema_version:` is the D8 frozen-at-creation marker — TESS-005 validates the note's links against the schema as of *that* version (per v0.0.55).
-- `folgezettel:` + `folgezettel_parent:` together register the note as a FZ trail node. They must agree (a child's parent FZ must be the prefix of its own FZ).
+- `folgezettel:` alone registers the note as a FZ trail node — the parent is **derived from the ID's prefix** (a pure substring: `2c1` descends from `2c`), so there is no `folgezettel_parent:` field to author. The indexer computes `folgezettel_parent` for the DB from the prefix.
 - `argument_perspective:` is the per-argument perspective string (e.g., `conservative` / `exploratory`) — feeds meta-DKS per-perspective stratification (v0.0.55).
 
 ## H1 + body sections
@@ -132,7 +131,8 @@ tessellum format check vault/
 | `YAML-001` missing field | A required key is absent | Add the field. Check the template under `vault/resources/templates/` for the canonical shape. |
 | `YAML-014` bad enum value | E.g. `status: dragons-here` | Use one of the allowed values in `tessellum.format.frontmatter_spec.VALID_STATUSES`. |
 | `YAML-015` lowercase tag mismatch | `tags[0]: Resource` instead of `resource` | Tags are lowercase. |
-| `TESS-001` folgezettel without parent | `folgezettel:` set but `folgezettel_parent:` missing | Add the parent FZ (or null for trail roots). |
+| `TESS-001` malformed folgezettel | `folgezettel:` is not a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit, e.g. `20`, `20l`, `9h10`) | Fix the ID. The parent is derived from the prefix — do not add a `folgezettel_parent:` field. |
+| `TESS-002` redundant folgezettel_parent | A `folgezettel_parent:`/`fz_parent:` field is present (and, if it disagrees with the prefix-derived parent, contradicts the ID) | Remove the field — the parent is derived from the `folgezettel` prefix. |
 | `TESS-004` counter_argument without arg link | A `counter_argument` note doesn't link to any `argument`-typed note | Add a markdown link to the attacked argument. |
 | `LINK-003` link target does not exist | Markdown link points at a missing file | Fix the path or remove the link. |
 | `TESS-005` BB-pair not in schema | Body link between BB types that don't have a declared edge | Acceptable as documentation (advisory only). Or propose a schema extension. |

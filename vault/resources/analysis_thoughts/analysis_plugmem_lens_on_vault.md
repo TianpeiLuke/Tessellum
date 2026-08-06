@@ -29,7 +29,6 @@ date of note: 2026-03-27
 status: active
 building_block: argument
 folgezettel: "5c"
-folgezettel_parent: "5"
 ---
 
 # The Vault Through PlugMem's Lens: Why a Knowledge-Centric Vault Outperforms Raw Documentation

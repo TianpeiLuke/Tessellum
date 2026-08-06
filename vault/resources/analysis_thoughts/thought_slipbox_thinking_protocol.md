@@ -28,7 +28,6 @@ date of note: 2026-03-03
 status: active
 building_block: argument
 folgezettel: "7f"
-folgezettel_parent: "7"
 author: lukexie
 ---
 

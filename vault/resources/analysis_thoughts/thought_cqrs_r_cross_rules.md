@@ -26,7 +26,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "1a1b"
-folgezettel_parent: "1a1"
 ---
 
 # The R-Cross Rules — Formal Discipline for the Two Sub-System Boundaries

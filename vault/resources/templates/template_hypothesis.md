@@ -15,20 +15,21 @@ language: markdown
 date of note: 2026-05-10
 status: template
 building_block: hypothesis
-folgezettel: ""              # if part of an FZ trail
-folgezettel_parent: ""       # if has a parent (e.g., the model that generated this hypothesis)
+folgezettel: ""              # if part of an FZ trail. Parent is derived from the ID's prefix (e.g. "13a" descends from "13")
 ---
 
 <!--
 NOTE ON FOLGEZETTEL FIELDS:
 A hypothesis is most often a child of either a `model` (the model predicts
 this hypothesis — Predicting edge in the BB ontology) or an `argument` (the
-argument leads to this testable prediction). Set `folgezettel_parent:` to
-that upstream parent's FZ ID. The hypothesis itself usually becomes the
-parent of an `empirical_observation` or `experiment` that tests it.
+argument leads to this testable prediction). Encode that lineage by choosing a
+`folgezettel:` ID whose prefix is the upstream parent's FZ ID — the parent is
+DERIVED from that prefix at index time, not authored. The hypothesis itself
+usually becomes the parent of an `empirical_observation` or `experiment` that
+tests it (its ID, in turn, extends this one's prefix).
 
-Trail-root hypotheses are valid (e.g., FZ 13 "PGHAM hypothesis") — in that
-case set `folgezettel: "<root-id>"` and `folgezettel_parent: null`.
+Trail-root hypotheses are valid (e.g., FZ 13 "PGHAM hypothesis") — a
+single-segment ID is a root with no parent.
 -->
 
 
@@ -37,7 +38,8 @@ case set `folgezettel: "<root-id>"` and `folgezettel_parent: null`.
 <!--
 HOW TO USE THIS TEMPLATE:
 1. Copy to `vault/resources/analysis_thoughts/thought_<topic>.md`.
-2. If part of a Folgezettel trail, add `folgezettel:` and `fz_parent:`.
+2. If part of a Folgezettel trail, add `folgezettel:` (choose an ID whose
+   prefix is the upstream parent's FZ ID; the parent is derived from it).
 3. Update YAML — tags[1] is usually `analysis`.
 4. Fill required sections: Hypothesis, Reasoning, Falsifiability, References.
 5. Remove this commentary block.

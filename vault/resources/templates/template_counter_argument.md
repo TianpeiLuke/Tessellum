@@ -15,23 +15,24 @@ language: markdown
 date of note: 2026-05-10
 status: template
 building_block: counter_argument
-folgezettel: ""              # the counter's own FZ ID
-folgezettel_parent: ""       # the FZ ID of the argument being countered (REQUIRED for FZ-trail counters)
+folgezettel: ""              # the counter's own FZ ID; its prefix must be the target argument's FZ ID (parent is derived from the prefix)
 ---
 
 <!--
 NOTE ON FOLGEZETTEL FIELDS:
 A counter-argument almost always has a parent — that's the argument it
-refutes. In FZ-trail conventions, set `folgezettel_parent:` to the target
-argument's FZ ID (NOT the parent in the topic graph — the *argument being
-refuted*). The counter's own `folgezettel:` is the next available child ID
-under that parent.
+refutes. In FZ-trail conventions, choose the counter's `folgezettel:` so its
+prefix IS the target argument's FZ ID (NOT the parent in the topic graph — the
+*argument being refuted*). The parent is DERIVED from that prefix at index
+time, so the counter's ID is the next available child ID under the target.
 
-Example: countering FZ 7b (an argument) → counter gets `folgezettel: "7b1"`
-and `folgezettel_parent: "7b"`. Subsequent counter-of-counter notes chain
-deeper: `folgezettel: "7b1a"`, `folgezettel_parent: "7b1"`.
+Example: countering FZ 7b (an argument) → counter gets `folgezettel: "7b1"`,
+which descends from "7b" by prefix. Subsequent counter-of-counter notes chain
+deeper: `folgezettel: "7b1a"` descends from "7b1". This descent is what
+TESS-004 enforces — a counter's FZ must be a prefix-extension of the argument
+it attacks.
 
-Non-trail counters (rare) omit both FZ fields.
+Non-trail counters (rare) omit the `folgezettel:` field.
 -->
 
 
@@ -40,9 +41,10 @@ Non-trail counters (rare) omit both FZ fields.
 <!--
 HOW TO USE THIS TEMPLATE:
 1. Copy to `vault/resources/analysis_thoughts/counter_<topic>.md`.
-2. A counter MUST point at a target — the argument it refutes. Add
-   `fz_parent: "<target-fz-id>"` to your YAML frontmatter so the dialectic
-   chain is explicit. Add `folgezettel: "<id>"` for your own ID.
+2. A counter MUST point at a target — the argument it refutes. Choose
+   `folgezettel: "<id>"` for your own ID so that its prefix is the target
+   argument's FZ ID; the parent is derived from that prefix, making the
+   dialectic chain explicit (TESS-004).
 3. Update YAML — tags[1] is usually `analysis`.
 4. Fill required sections: Counter-claim, Reason, Strength, References.
 5. Remove this commentary block.

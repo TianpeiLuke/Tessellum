@@ -29,7 +29,6 @@ date of note: 2026-04-30
 status: active
 building_block: argument
 folgezettel: "10d1e1a5"
-folgezettel_parent: "10d1e1a"
 ---
 
 # ★ Synthesis: A Central Design Proposal for Knowledge Auto-Digestion — Skills + Context Management + Programmatic Orchestration on a Plan-Doc-as-State Substrate

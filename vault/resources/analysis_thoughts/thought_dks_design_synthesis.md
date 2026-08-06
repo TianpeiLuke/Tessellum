@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2a"
-folgezettel_parent: "2"
 ---
 
 # Synthesis: The Dialectic Knowledge System (DKS) Design

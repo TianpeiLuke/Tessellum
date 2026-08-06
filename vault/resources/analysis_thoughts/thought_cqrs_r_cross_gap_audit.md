@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "1a1b1"
-folgezettel_parent: "1a1b"
 ---
 
 # Gap Audit: Tessellum Through the R-Cross Lens

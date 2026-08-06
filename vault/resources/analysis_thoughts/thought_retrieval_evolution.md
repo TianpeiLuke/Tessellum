@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "3"
-folgezettel_parent: ""
 ---
 
 # How Tessellum's Retrieval System Was Tested Into Shape

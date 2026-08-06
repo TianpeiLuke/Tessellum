@@ -17,7 +17,6 @@ date of note: 2026-05-10
 status: template
 building_block: empirical_observation
 folgezettel: ""              # if part of an FZ trail; empty/absent otherwise
-folgezettel_parent: ""       # if has a parent in the FZ trail; empty/absent otherwise
 ---
 
 <!--
@@ -26,10 +25,11 @@ NOTE ON YAML:
   which is the PARA Archive bucket. Time-bounded investigations whose primary
   value is the result; not for ongoing maintenance.
 - tags[1] = `experiment` — the second-category routing label.
-- folgezettel + folgezettel_parent: fill in if this experiment is part of a
-  Folgezettel trail (most experiments are children of an upstream argument
-  or hypothesis). For trail-root experiments, set folgezettel_parent: null
-  or omit the field. For non-trail one-off experiments, omit BOTH FZ fields.
+- folgezettel: fill in if this experiment is part of a Folgezettel trail
+  (most experiments are children of an upstream argument or hypothesis —
+  choose an ID whose prefix is that parent's FZ). The parent is derived from
+  the prefix, so there is no folgezettel_parent field. For non-trail one-off
+  experiments, omit the folgezettel field.
 -->
 
 

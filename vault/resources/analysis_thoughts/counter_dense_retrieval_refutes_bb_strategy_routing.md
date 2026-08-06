@@ -25,7 +25,6 @@ date of note: 2026-04-21
 status: active
 building_block: counter_argument
 folgezettel: "5e2"
-folgezettel_parent: "5e"
 author: lukexie
 ---
 

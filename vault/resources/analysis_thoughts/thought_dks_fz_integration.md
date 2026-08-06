@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2a1"
-folgezettel_parent: "2a"
 ---
 
 # DKS × Folgezettel: How the Trail System Tracks the Dialectic

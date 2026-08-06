@@ -28,7 +28,6 @@ date of note: 2026-04-21
 status: active
 building_block: argument
 folgezettel: "5i1a"
-folgezettel_parent: "5i1"
 author: lukexie
 ---
 

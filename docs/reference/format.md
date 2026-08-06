@@ -41,7 +41,7 @@ All coerce to `str` / `list[str]` and tolerate missing/mistyped fields (return `
 | `building_block` | `str(building_block)` or `None` |
 | `status` | `str(status)` or `None` |
 | `folgezettel` | `str(folgezettel)` or `None` |
-| `folgezettel_parent` | `folgezettel_parent`, falling back to `fz_parent`, else `None` |
+| `folgezettel_parent` | DERIVED from the `folgezettel` prefix via `derive_folgezettel_parent` (a pure substring — `20l` → `20`; single-segment ID → `None`); no longer read from an authored YAML field |
 
 ## Spec Constants (`frontmatter_spec.py`)
 
@@ -95,8 +95,8 @@ Enum, date, and list-min checks **skip when the value is absent** (presence is o
 
 | Rule | Field | Severity | Condition |
 |------|-------|----------|-----------|
-| TESS-001 | `folgezettel_parent` | E | `folgezettel` set without `folgezettel_parent`/`fz_parent` |
-| TESS-002 | `folgezettel` | E | parent set without `folgezettel` |
+| TESS-001 | `folgezettel` | E | `folgezettel` set but not a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit, e.g. `20`, `20l`, `9h10`) |
+| TESS-002 | `folgezettel_parent` | E | an authored `folgezettel_parent`/`fz_parent` field is present and contradicts the prefix-derived parent — redundant (parent is derived from the `folgezettel` prefix); remove it |
 | TESS-003 | forbidden field | E | any `FORBIDDEN_FIELDS` member present (bespoke message for `note_second_category`; the other 6 get a generic "field is forbidden by the spec") |
 | YAML-100 | (none) | E | `[[...]]` wiki link found in `raw_frontmatter` (scanned line-by-line, offset starts at 2) |
 | YAML-101 | (none) | E | `[..](..)` markdown link found in `raw_frontmatter` |

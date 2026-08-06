@@ -27,7 +27,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2b"
-folgezettel_parent: "2"
 ---
 
 # DKS Runtime Integration: How the Closed Loop Wires Into the Rest of Tessellum (FZ 2b)

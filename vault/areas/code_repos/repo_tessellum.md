@@ -22,7 +22,6 @@ status: active
 building_block: model
 bb_schema_version: 1
 folgezettel: ""
-folgezettel_parent: ""
 ---
 
 # Repo: Tessellum

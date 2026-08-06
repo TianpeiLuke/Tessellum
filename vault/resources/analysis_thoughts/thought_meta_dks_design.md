@@ -28,7 +28,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2c1"
-folgezettel_parent: "2c"
 ---
 
 # Meta-DKS Design: How DKS Mutates Its Own Schema (FZ 2c1)

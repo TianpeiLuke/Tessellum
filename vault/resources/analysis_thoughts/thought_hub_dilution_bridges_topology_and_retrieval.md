@@ -35,7 +35,6 @@ date of note: 2026-04-21
 status: active
 building_block: hypothesis
 folgezettel: "5j"
-folgezettel_parent: "5"
 author: lukexie
 ---
 

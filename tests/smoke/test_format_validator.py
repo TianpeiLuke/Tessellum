@@ -130,20 +130,10 @@ def test_uppercase_tag_is_error():
     assert any(i.severity is Severity.ERROR for i in issues)
 
 
-def test_folgezettel_without_parent_is_error():
+def test_folgezettel_alone_is_ok_parent_is_derived():
+    # A well-formed folgezettel with NO folgezettel_parent field is valid —
+    # the parent is derived from the prefix, not authored.
     fm = VALID_FRONTMATTER + 'folgezettel: "1a"\n'
-    issues = [i for i in validate(_note(fm)) if i.field == "folgezettel_parent"]
-    assert any(i.severity is Severity.ERROR for i in issues)
-
-
-def test_folgezettel_parent_without_folgezettel_is_error():
-    fm = VALID_FRONTMATTER + 'folgezettel_parent: "1"\n'
-    issues = [i for i in validate(_note(fm)) if i.field == "folgezettel"]
-    assert any(i.severity is Severity.ERROR for i in issues)
-
-
-def test_folgezettel_pair_with_null_parent_is_ok():
-    fm = VALID_FRONTMATTER + 'folgezettel: "1"\nfolgezettel_parent: null\n'
     note = _note(fm)
     fz_issues = [
         i for i in validate(note) if i.field in {"folgezettel", "folgezettel_parent"}
@@ -152,13 +142,37 @@ def test_folgezettel_pair_with_null_parent_is_ok():
     assert is_valid(note)
 
 
-def test_legacy_fz_parent_alias_is_accepted():
-    fm = VALID_FRONTMATTER + 'folgezettel: "1a"\nfz_parent: "1"\n'
+def test_folgezettel_root_single_segment_is_ok():
+    fm = VALID_FRONTMATTER + 'folgezettel: "1"\n'
     note = _note(fm)
-    fz_issues = [
-        i for i in validate(note) if i.field in {"folgezettel", "folgezettel_parent"}
-    ]
-    assert fz_issues == []
+    assert [i for i in validate(note) if i.rule_id in {"TESS-001", "TESS-002"}] == []
+    assert is_valid(note)
+
+
+def test_malformed_folgezettel_is_tess_001():
+    # Must start with a digit and alternate digit/letter segments.
+    fm = VALID_FRONTMATTER + 'folgezettel: "a1"\n'
+    issues = [i for i in validate(_note(fm)) if i.rule_id == "TESS-001"]
+    assert any(i.severity is Severity.ERROR for i in issues)
+
+
+def test_redundant_folgezettel_parent_matching_prefix_is_tess_002():
+    # Even a CORRECT authored parent is flagged — the field is redundant.
+    fm = VALID_FRONTMATTER + 'folgezettel: "1a"\nfolgezettel_parent: "1"\n'
+    issues = [i for i in validate(_note(fm)) if i.rule_id == "TESS-002"]
+    assert any(i.severity is Severity.ERROR for i in issues)
+
+
+def test_contradicting_folgezettel_parent_is_tess_002():
+    fm = VALID_FRONTMATTER + 'folgezettel: "1a"\nfolgezettel_parent: "9z"\n'
+    issues = [i for i in validate(_note(fm)) if i.rule_id == "TESS-002"]
+    assert any(i.severity is Severity.ERROR for i in issues)
+
+
+def test_legacy_fz_parent_alias_is_also_tess_002():
+    fm = VALID_FRONTMATTER + 'folgezettel: "1a"\nfz_parent: "1"\n'
+    issues = [i for i in validate(_note(fm)) if i.rule_id == "TESS-002"]
+    assert any(i.severity is Severity.ERROR for i in issues)
 
 
 def test_note_second_category_field_is_forbidden():

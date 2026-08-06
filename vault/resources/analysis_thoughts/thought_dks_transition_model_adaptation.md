@@ -30,7 +30,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "2c"
-folgezettel_parent: "2"
 ---
 
 # Adapting DKS to Learn the BB-Internal Transition Model (FZ 2c)

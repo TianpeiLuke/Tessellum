@@ -24,7 +24,6 @@ date of note: 2026-05-10
 status: active
 building_block: argument
 folgezettel: "1a"
-folgezettel_parent: "1"
 ---
 
 # How the CQRS Architecture for Tessellum Evolved

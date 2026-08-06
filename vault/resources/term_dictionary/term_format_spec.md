@@ -93,18 +93,19 @@ Lowercase letters, digits, underscores only. No spaces. No camelCase. No leading
 - `YAML-015` — a tag contains uppercase or special characters
 - `YAML-013` — `tags[0]` is not a valid PARA bucket
 
-### Folgezettel fields (optional, both-or-neither)
+### Folgezettel fields (only `folgezettel:` is authored)
 
-If a note is part of a Folgezettel trail, both fields must be present:
+If a note is part of a Folgezettel trail, author `folgezettel:` only. The parent
+is a pure prefix of the ID and is DERIVED at index time — you never write it:
 
 | Field | Rule |
 |---|---|
-| `folgezettel` | The trail ID (e.g., `5e1c3a1a`) |
-| `folgezettel_parent` | The parent trail ID (e.g., `5e1c3a1`) |
+| `folgezettel` | The trail ID: prefix-encoded, alternating digit/letter segments starting with a digit (e.g., `20`, `20l`, `9h10`, `5e1c3a1a`) |
+| `folgezettel_parent` | DERIVED from the `folgezettel` prefix (e.g., `5e1c3a1a` → `5e1c3a1`; a single-segment ID like `14` is a root with no parent). Present as a DB column, but NOT an authored YAML field |
 
 **Violations:**
-- `TESS-001` — `folgezettel:` set but `folgezettel_parent:` missing
-- `TESS-002` — `folgezettel_parent:` set but `folgezettel:` missing
+- `TESS-001` — `folgezettel:` is not a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit)
+- `TESS-002` — a redundant `folgezettel_parent:`/`fz_parent:` YAML field is present (the parent is derived; remove it)
 
 ### Forbidden fields
 
@@ -192,8 +193,8 @@ When `tessellum format check` reports an issue, look it up here.
 
 | Code | Meaning |
 |---|---|
-| TESS-001 | `folgezettel:` set but `folgezettel_parent:` missing |
-| TESS-002 | `folgezettel_parent:` set but `folgezettel:` missing |
+| TESS-001 | `folgezettel:` is not a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit) |
+| TESS-002 | a redundant `folgezettel_parent:`/`fz_parent:` field is present (the parent is derived; remove it) |
 | TESS-003 | Forbidden field (`note_second_category`) used |
 
 ### Link codes (`LINK-NNN`)

@@ -16,21 +16,21 @@ language: markdown
 date of note: 2026-05-10
 status: template
 building_block: argument
-folgezettel: ""              # if part of an FZ trail; empty/absent otherwise
-folgezettel_parent: ""       # if has a parent in the FZ trail; null for roots; empty/absent for non-trail notes
+folgezettel: ""              # if part of an FZ trail; empty/absent otherwise. Parent is derived from the ID's prefix (e.g. "7b1" descends from "7b")
 argument_perspective: ""     # optional: the perspective this argument was generated from (e.g. "conservative", "exploratory", "empirical"). Open vocabulary. Phase 10+.
 ---
 
 <!--
 NOTE ON FOLGEZETTEL FIELDS:
-- For trail ROOTS: set `folgezettel: "<root-id>"` (e.g., "7", "10", "14") and
-  `folgezettel_parent: null` (or omit).
-- For trail CHILDREN: set both `folgezettel: "<id>"` and
-  `folgezettel_parent: "<parent-id>"`. Example: `folgezettel: "7b1"` with
-  `folgezettel_parent: "7b"`.
-- For NON-TRAIL argument notes: omit both FZ fields entirely.
-- The canonical key is `folgezettel_parent:` (long form). The shorter
-  `fz_parent:` is accepted as an alias but `folgezettel_parent:` is preferred.
+- For trail ROOTS: set `folgezettel: "<root-id>"` (e.g., "7", "10", "14"). A
+  single-segment ID is a root and has no parent.
+- For trail CHILDREN: set `folgezettel: "<id>"`. The parent is DERIVED from the
+  ID's prefix at index time — do NOT author it. Example: `folgezettel: "7b1"`
+  descends from "7b" (which descends from "7") by prefix.
+- For NON-TRAIL argument notes: omit the `folgezettel:` field entirely.
+- Only `folgezettel:` is authored. There is no `folgezettel_parent:`/`fz_parent:`
+  YAML field — the parent is computed from the prefix, and a stray one is
+  flagged TESS-002.
 -->
 
 
@@ -40,8 +40,8 @@ NOTE ON FOLGEZETTEL FIELDS:
 HOW TO USE THIS TEMPLATE:
 1. Copy to `vault/resources/analysis_thoughts/thought_<topic>.md`.
 2. If this argument is part of a Folgezettel trail, add `folgezettel: "<id>"`
-   and `fz_parent: "<parent-id>"` to the YAML frontmatter (or `fz_parent: null`
-   for trail roots).
+   to the YAML frontmatter. The parent is derived from the ID's prefix — a
+   single-segment ID (e.g., "7") is a root with no parent.
 3. Update YAML — tags[1] is usually `analysis`.
 4. Fill required sections: Claim, Reason, Evidence, References.
 5. Remove this commentary block.

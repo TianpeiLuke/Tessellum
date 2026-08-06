@@ -61,7 +61,7 @@ API, symbols, and signatures for the vault indexer. For the mental model and how
 | `language` | TEXT | frontmatter `language` |
 | `building_block` | TEXT | frontmatter `building_block` |
 | `folgezettel` | TEXT | frontmatter `folgezettel` |
-| `folgezettel_parent` | TEXT | frontmatter `folgezettel_parent`, else `fz_parent` |
+| `folgezettel_parent` | TEXT | DERIVED from the `folgezettel` prefix via `derive_folgezettel_parent` (a pure substring; single-segment ID → NULL). Not read from YAML — a stray authored `folgezettel_parent`/`fz_parent` is ignored |
 | `indexed_at` | TIMESTAMP | `DEFAULT CURRENT_TIMESTAMP` |
 | `last_indexed_mtime` | REAL | file mtime (epoch float) |
 | `content_hash` | TEXT | sha256 of frontmatter + body — the incremental change-detection key (a legacy NULL row falls back to `last_indexed_mtime`) |

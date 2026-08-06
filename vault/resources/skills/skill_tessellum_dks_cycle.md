@@ -139,8 +139,7 @@ The frontmatter MUST contain:
   - All standard fields: tags (with tags[0]=resource, tags[1]=analysis,
     tags[2]=dks), keywords, topics, language, date of note, status,
     building_block: empirical_observation
-  - folgezettel: "<cycle_root_fz>"
-  - folgezettel_parent: <cycle_root_parent_fz or null for fresh mode>
+  - folgezettel: "<cycle_root_fz>"   # parent derived from prefix; extend/branch modes give an ID whose prefix is the parent FZ, fresh mode gives a single-segment root
 
 The body MUST include:
   - # Observation: <Title> (FZ <cycle_root_fz>)
@@ -210,8 +209,7 @@ The frontmatter MUST contain:
   - All standard fields: tags (with tags[0]=resource, tags[1]=analysis,
     tags[2]=dks), keywords, topics, language, date of note, status,
     building_block: argument
-  - folgezettel: "<cycle_root_fz>a"
-  - folgezettel_parent: "<cycle_root_fz>"
+  - folgezettel: "<cycle_root_fz>a"   # parent (<cycle_root_fz>) derived from the prefix
   - argument_perspective: "conservative"
 
 The body MUST include:
@@ -280,8 +278,7 @@ The frontmatter MUST contain:
   - All standard fields: tags (with tags[0]=resource, tags[1]=analysis,
     tags[2]=dks), keywords, topics, language, date of note, status,
     building_block: argument
-  - folgezettel: "<cycle_root_fz>b"
-  - folgezettel_parent: "<cycle_root_fz>"
+  - folgezettel: "<cycle_root_fz>b"   # parent (<cycle_root_fz>) derived from the prefix
   - argument_perspective: "exploratory"
 
 The body MUST mirror Argument A's section structure (Claim / Data /
@@ -433,8 +430,7 @@ The frontmatter MUST contain:
   - All standard fields: tags (with tags[0]=resource, tags[1]=analysis,
     tags[2]=dks), keywords, topics, language, date of note, status,
     building_block: counter_argument
-  - folgezettel: "<attacked_fz>a"
-  - folgezettel_parent: "<attacked_fz>"
+  - folgezettel: "<attacked_fz>a"   # parent (<attacked_fz>) derived from the prefix
   - broken_component: one of "premise" | "warrant" | "counter-example" | "undercutting"
   - strength: one of "weak" | "moderate" | "strong"
 
@@ -507,8 +503,7 @@ The frontmatter MUST contain:
   - All standard fields: tags (with tags[0]=area, tags[1]=model,
     tags[2]=dks), keywords, topics, language, date of note, status,
     building_block: model
-  - folgezettel: "<counter_fz>a"
-  - folgezettel_parent: "<counter_fz>"
+  - folgezettel: "<counter_fz>a"   # parent (<counter_fz>) derived from the prefix
 
 The body MUST include:
   - # Pattern: <Concise Name> (FZ <counter_fz>a)
@@ -588,8 +583,7 @@ The frontmatter MUST contain:
   - All standard fields: tags (with tags[0]=resource, tags[1] in
     {skill, terminology}, tags[2]=dks), keywords, topics, language,
     date of note, status, building_block in {procedure, concept}
-  - folgezettel: "<pattern_fz>a"
-  - folgezettel_parent: "<pattern_fz>"
+  - folgezettel: "<pattern_fz>a"   # parent (<pattern_fz>) derived from the prefix
   - supersedes: <FZ of the warrant this replaces, or null>
 
 The body MUST include:

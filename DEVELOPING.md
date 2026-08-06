@@ -141,15 +141,14 @@ The validator rejects these legacy / parent-vault keys as `TESS-003` errors — 
 #### Folgezettel-trail notes (type-specific — NOT universally required)
 
 ```yaml
-folgezettel: "14d1d"           # the FZ ID — string, can include letters/digits/sub-letters
-folgezettel_parent: "14d1"     # parent FZ ID, or null for trail roots
+folgezettel: "14d1d"           # the FZ ID — a prefix-encoded string of alternating digit/letter segments
 ```
 
-The canonical field name is `folgezettel_parent:` (long form). The shorter `fz_parent:` is accepted as an alias for backwards compatibility with some legacy notes, but `folgezettel_parent:` is preferred and used in all Tessellum templates.
+**Author only `folgezettel:`.** The parent is DERIVED from the ID's prefix (a pure substring: `14d1d` descends from `14d1`, which descends from `14d` → `14`), so there is no `folgezettel_parent:`/`fz_parent:` field to author. The indexer computes the `folgezettel_parent` DB column from the prefix at index time.
 
 **Expected vs omitted**:
 
-| Note type | FZ fields |
+| Note type | `folgezettel:` |
 |---|---|
 | Argument / counter_argument / hypothesis / empirical_observation under `analysis_thoughts/` | **Expected** — most participate in trails |
 | Experiment under `archives/experiments/` | **Expected** — usually tied to upstream argument |
@@ -157,13 +156,13 @@ The canonical field name is `folgezettel_parent:` (long form). The shorter `fz_p
 
 **Trail-position rule**:
 
-| Trail position | `folgezettel:` | `folgezettel_parent:` |
-|---|---|---|
-| Trail root | `"<root-id>"` | `null` |
-| Trail child | `"<child-id>"` | `"<parent-id>"` |
-| Non-trail note | omit | omit |
+| Trail position | `folgezettel:` |
+|---|---|
+| Trail root | `"<root-id>"` (single-segment, e.g. `"14"`) — its prefix has no parent |
+| Trail child | `"<child-id>"` (e.g. `"14d1"`) — descends from `"14d"` by prefix |
+| Non-trail note | omit |
 
-**Both-or-neither rule** (validator-enforced): if `folgezettel:` is present, `folgezettel_parent:` must also be present (value-or-`null`). If `folgezettel:` is absent, `folgezettel_parent:` must also be absent. Setting one without the other is a validation error — the partial-fill bug.
+**Validator rules**: **TESS-001** errors if `folgezettel:` is not a well-formed prefix-encoded ID (alternating digit/letter segments starting with a digit, e.g. `14`, `14d`, `9h10`). **TESS-002** errors if a redundant `folgezettel_parent:`/`fz_parent:` field is present (the parent is derived; remove it).
 
 **Why FZ fields are NOT universally required**: FZ trails are a specific dialectic-tracking mechanism, not a universal note property. The ~10–20% of notes that participate in trails benefit from FZ fields; the other ~80–90% do not. Forcing `folgezettel: null` on every term note would add noise and dilute the meaningful signal (presence of the field implies trail participation). For more on this design choice, see the *Why FZ fields are NOT required universally* section in [`vault/resources/templates/template_yaml_header.md`](vault/resources/templates/template_yaml_header.md).
 
@@ -251,7 +250,7 @@ The 8 top-level BB types live in the `building_block:` field — distinct from t
 
 If your contribution introduces a new architectural argument, it deserves a Folgezettel trail. Pattern:
 
-1. Author the **root note** as an `argument` BB at `vault/resources/analysis_thoughts/thought_<topic>.md`; set `folgezettel: "<N>"` (next root number) and `folgezettel_parent: null`
+1. Author the **root note** as an `argument` BB at `vault/resources/analysis_thoughts/thought_<topic>.md`; set `folgezettel: "<N>"` (next root number — a single-segment ID, so its prefix has no parent)
 2. Write child notes that elaborate, challenge, or absorb into synthesis
 3. Update `vault/0_entry_points/entry_folgezettel_trails.md` with the new trail's row + ASCII tree
 

@@ -44,7 +44,7 @@ Default DB: `./data/tessellum.db`. Vault root: `./vault/`. Override per-invocati
 - **CLI**: `tessellum filter --has-folgezettel --folgezettel-prefix <N>` — direct metadata filter
 - **CLI**: `tessellum format check <path>` — validate the new/updated note before commit
 - **CLI**: `tessellum index build` — refresh the DB after writing the note
-- **Spec**: [DEVELOPING.md § Folgezettel-trail notes](../../../DEVELOPING.md) — the YAML pair (`folgezettel` + `folgezettel_parent`) rules enforced by TESS-001/002
+- **Spec**: [DEVELOPING.md § Folgezettel-trail notes](../../../DEVELOPING.md) — only `folgezettel:` is authored (the parent is derived from its prefix); TESS-001 checks the ID is well-formed, TESS-002 flags a stray redundant `folgezettel_parent:`
 
 ### Entry-Point Mapping <!-- :: section_id = entry_point_mapping :: -->
 
@@ -138,18 +138,16 @@ If the note already exists but has no FZ fields, add them to the YAML frontmatte
 
 ```yaml
 folgezettel: "<assigned_fz>"
-folgezettel_parent: "<parent_fz>"
 ```
 
-Insert these after the `building_block` field (or at the end of the YAML block before the closing `---`). Both fields are required together — TESS-001/TESS-002 will flag a half-pair.
+Insert this after the `building_block` field (or at the end of the YAML block before the closing `---`). Author **only** `folgezettel:` — the parent is derived from its prefix; do NOT add `folgezettel_parent:` (TESS-002 flags it as redundant).
 
 ### 3c. New note — create with FZ fields <!-- :: section_id = 3c_new_note_create_with_fz :: -->
 
-Author the note with standard YAML frontmatter that includes the pair:
+Author the note with standard YAML frontmatter that includes `folgezettel:` (the parent is derived from its prefix — do not add `folgezettel_parent:`):
 
 ```yaml
 folgezettel: "<assigned_fz>"
-folgezettel_parent: "<parent_fz>"
 ```
 
 The title SHOULD include the FZ number: `# <Title> (FZ <number>)`.
@@ -227,7 +225,7 @@ The row goes in FZ order — after the last row whose FZ is a descendant of the 
 tessellum format check vault/<note_path>
 ```
 
-Fix any errors (broken links, missing YAML fields, TESS-001/002 half-pair).
+Fix any errors (broken links, missing YAML fields, TESS-001 malformed `folgezettel:`, TESS-002 redundant `folgezettel_parent:`).
 
 ### 6b. Refresh the index <!-- :: section_id = 6b_refresh_index :: -->
 
@@ -282,15 +280,16 @@ git push
 | FZ number already exists | Collision with existing note | Increment and try next available |
 | Parent FZ not found | Typo, or parent not in the index | `tessellum filter --has-folgezettel \| grep <partial>` to find alternatives |
 | Entry point has no FZ tree | Trail not yet tracked | Create a new `entry_<topic>_trail.md` and add the trail to `entry_folgezettel_trails.md` |
-| `tessellum format check` reports errors | Broken links or missing YAML pair | Fix before committing (Step 6a) |
+| `tessellum format check` reports errors | Broken links or a malformed/redundant FZ field | Fix before committing (Step 6a) |
 | Tree indentation mismatch | Inconsistent spacing in entry point | Read surrounding lines and match exactly |
-| TESS-001 / TESS-002 fired | Half-pair `folgezettel`/`folgezettel_parent` | Add the missing field, or remove both |
+| TESS-001 fired | Malformed `folgezettel:` ID | Fix the ID (well-formed prefix-encoded: alternating digit/letter segments starting with a digit) |
+| TESS-002 fired | A redundant `folgezettel_parent:`/`fz_parent:` field is present | Remove it — the parent is derived from the `folgezettel:` prefix |
 
 ## Checklist <!-- :: section_id = checklist :: -->
 
 Before marking complete, verify:
 - [ ] FZ number is unique (no duplicates in DB)
-- [ ] YAML has both `folgezettel` and `folgezettel_parent` fields
+- [ ] YAML has a well-formed `folgezettel:` field (and NO `folgezettel_parent:` — the parent is derived from the prefix)
 - [ ] Note title includes FZ number
 - [ ] Parent note has inlink to the new child (inside Related section)
 - [ ] Entry-point FZ tree updated (correct indentation, sibling ordering)
