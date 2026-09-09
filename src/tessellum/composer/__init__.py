@@ -20,7 +20,8 @@ Public API surface:
   - :func:`compile_skill`, :class:`CompiledPipeline`, :class:`CompilerError` — compiler
   - :func:`execute_step`, :func:`execute_step_with_retry`, :class:`StepResult` — executor
   - :func:`run_pipeline`, :class:`RunResult` — scheduler
-  - :class:`LLMBackend`, :class:`MockBackend`, :class:`AnthropicBackend` — backends
+  - :class:`LLMBackend`, :class:`MockBackend`, :class:`AnthropicBackend`,
+    :class:`BedrockBackend`, :class:`ClineBackend` — backends
 
 Example::
 
@@ -65,6 +66,7 @@ from tessellum.composer.executor import (
 from tessellum.composer.llm import (
     AnthropicBackend,
     BedrockBackend,
+    ClineBackend,
     LLMBackend,
     LLMRequest,
     LLMResponse,
@@ -170,6 +172,7 @@ from tessellum.composer.scheduler import (
     run_pipeline_dynamic,
 )
 from tessellum.composer.digestion import (
+    DEFAULT_DIGESTION_CONTEXT_MAX_CHARS,
     PHASE_SKILLS,
     DigestionResult,
     PhaseOutcome,
@@ -382,6 +385,7 @@ __all__ = [
     "MockBackend",
     "AnthropicBackend",  # requires the ``[agent]`` extras
     "BedrockBackend",  # requires the ``[agent]`` extras + AWS creds
+    "ClineBackend",  # requires the ``cline`` CLI on PATH (no SDK, no key)
     "PooledBackend",  # wraps a backend with a CredentialPool
     # Materializers
     "materialize",
@@ -458,6 +462,7 @@ __all__ = [
     "DigestionResult",
     "PhaseOutcome",
     "PHASE_SKILLS",
+    "DEFAULT_DIGESTION_CONTEXT_MAX_CHARS",
     # Typed change proposals + snapshot-pinned merge/hash (P0)
     "AddNote",
     "UpdateNote",

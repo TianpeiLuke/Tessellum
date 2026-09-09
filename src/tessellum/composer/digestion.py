@@ -182,6 +182,22 @@ DERIVED_MAX_TOKENS_CEILING: int = MAX_TRUNCATION_CEILING_TOKENS
 # effectively-infinite watchdog.
 DERIVED_TIMEOUT_CEILING_SECONDS: float = 1800.0
 
+# The context CHARACTER budget the digestion driver defaults to when a caller
+# passes no ``context_assembler`` (the ``composer digest`` CLI without
+# ``--context-max-chars``; any direct ``run_digestion_pipeline`` /
+# ``run_execute_wave`` call). Sized just under the executor's
+# ``HARD_PROMPT_CAP_CHARS`` so the fail-soft assembler always bounds FIRST and
+# the hard-cap validation error never fires. Named (not inlined at each
+# fallback site) because this budget is a first-order lever on what the writer
+# sees: on a benchmark vault built by this pipeline the context budget moved
+# chain completeness by more than an order of magnitude beyond what any
+# retrieval strategy moved it, so it must be a sweepable knob, not an
+# incidental arithmetic expression. UNIT: characters of the fully rendered
+# prompt (the assembler bounds the whole prompt, not the source alone), NOT
+# tokens — ~3–4 chars/token for English prose. The service path uses
+# ``RuntimePolicy.context_max_chars`` instead (a different default).
+DEFAULT_DIGESTION_CONTEXT_MAX_CHARS: int = HARD_PROMPT_CAP_CHARS - 4_096
+
 
 def _derive_step_budgets(
     compiled: CompiledPipeline, *, declared_notes: int
@@ -1905,7 +1921,7 @@ def run_execute_wave(
     gets the same protection as the single-doc pipeline.
     """
     if context_assembler is None:
-        context_assembler = WindowedAssembler(max_chars=HARD_PROMPT_CAP_CHARS - 4_096)
+        context_assembler = WindowedAssembler(max_chars=DEFAULT_DIGESTION_CONTEXT_MAX_CHARS)
     compiled = compile_skill(Path(skills_dir) / f"{PHASE_SKILLS['execute']}.md")
     # P12: raise coefficient-bearing execute steps' budgets by the declared note
     # count (single-doc + corpus waves both route here). The per_leaf
@@ -2166,7 +2182,7 @@ def run_digestion_pipeline(
     # (the executor's documented fail-soft) rather than erroring. A caller that
     # passes its own assembler (the runtime executor does) is untouched.
     if context_assembler is None:
-        context_assembler = WindowedAssembler(max_chars=HARD_PROMPT_CAP_CHARS - 4_096)
+        context_assembler = WindowedAssembler(max_chars=DEFAULT_DIGESTION_CONTEXT_MAX_CHARS)
 
     # ── Linear phases: plan → (augment → review)[×revise] ───────────────────
     # P15 (FZ 20k9c1a1a1b7c2h): the review is a plan-quality IMPROVER, not just a
@@ -2509,6 +2525,7 @@ def run_digestion_pipeline(
 
 __all__ = [
     "PHASE_SKILLS",
+    "DEFAULT_DIGESTION_CONTEXT_MAX_CHARS",
     "PhaseOutcome",
     "DigestionResult",
     "PreflightResult",

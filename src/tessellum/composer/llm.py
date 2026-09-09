@@ -7,7 +7,7 @@ prompt + user prompt + max_tokens), return an :class:`LLMResponse`
 this shape; the compiler validates the contract; the executor invokes
 the ``call`` method.
 
-Three backends ship:
+Four backends ship:
 
 - :class:`MockBackend` — canned responses, no network. Makes the
   executor + scheduler testable end-to-end without API keys.
@@ -21,12 +21,24 @@ Three backends ship:
   Bedrock (``anthropic.AnthropicBedrock``), authenticated by the ambient
   AWS credential chain (``AWS_PROFILE``) rather than an API key. The right
   choice for AWS-internal deployments.
+- :class:`ClineBackend` — one-shot completions through the ``cline`` CLI
+  (a subprocess; no SDK, no key). Reaches whatever provider ``cline auth``
+  is logged into — by default the cline gateway fronting DeepSeek's free
+  tier — so digestion and the answer-level eval stay runnable when every
+  paid key is out of credit.
 """
 
 from __future__ import annotations
 
+import json
+import math
+import shutil
+import subprocess
+import sys
+import tempfile
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, Protocol
 
 from tessellum.composer.error_taxonomy import is_auth as _is_auth
@@ -461,6 +473,366 @@ class BedrockBackend:
         )
 
 
+# ── ClineBackend — one-shot completions through the `cline` CLI ──────────────
+
+DEFAULT_CLINE_MODEL = "deepseek/deepseek-v4-flash"
+"""The provider model id ``cline -m`` gets by default: DeepSeek V4 Flash on
+the cline gateway's free tier — the one LLM path that costs nothing."""
+
+DEFAULT_CLINE_TIMEOUT_S: float = 90.0
+"""Per-call subprocess timeout. Deliberately SHORT: a wedged cline hub daemon
+makes every call hang indefinitely, and a long per-call timeout turns that
+into a run that never finishes rather than one that fails and is retried."""
+
+# A single argv string is capped at 128KB on Linux (MAX_ARG_STRLEN); a
+# digestion prompt carrying a whole source document can exceed that. Above this
+# bound the prompt's tail is piped on stdin instead — cline concatenates an
+# argv prompt with piped stdin as ``f"{argv} {stdin.strip()}"``, so the split
+# lands on a single space and the model sees the original prompt.
+_CLINE_ARGV_PROMPT_MAX_BYTES = 100_000
+
+# Mirrors executor._PROVIDER_ERROR_BODY_MAX_CHARS (not imported: executor
+# imports this module). A relayed refusal is a sentence; a real answer that
+# merely MENTIONS "401 Unauthorized" is long, and must not be raised as one.
+_CLINE_REFUSAL_ECHO_MAX_CHARS = 600
+
+
+class ClineBackendError(RuntimeError):
+    """The ``cline`` CLI did not produce a usable answer.
+
+    Raised — never returned as content — so the executor's retry ladder and
+    :func:`~tessellum.composer.error_taxonomy.classify_reason` see a real
+    exception. The message carries the taxonomy token for the cause
+    (``Unauthorized`` → ``auth``; ``rate limit`` → ``rate_limit``;
+    ``timed out`` → ``stall``/transient) so the ladder picks the right rung.
+    """
+
+
+def _cline_run_result(stdout: str) -> dict | None:
+    """The LAST ``{"type": "run_result", ...}`` JSON line in ``stdout``.
+
+    cline ``--json`` streams one JSON object per line: reasoning / text chunks
+    as the model produces them, then a final ``run_result`` carrying the
+    answer (``text``), ``finishReason``, ``model`` and usage. Non-JSON lines
+    and any other message type are skipped, so a reasoning model's scratchpad
+    is never mistaken for the answer.
+    """
+    result: dict | None = None
+    for raw in stdout.splitlines():
+        line = raw.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and obj.get("type") == "run_result":
+            result = obj
+    return result
+
+
+def _cline_failure_signal(stdout: str, stderr: str) -> str:
+    """The parts of cline's output where a FAILURE is reported.
+
+    All of stderr (in ``--json`` mode cline writes ``{"type": "error",
+    "message": ...}`` lines there), plus every stdout line that is not a JSON
+    message or is a ``type: "error"`` one. Streamed model text is excluded on
+    purpose: a note ABOUT ``401 Unauthorized`` must not be raised as one.
+    """
+    parts: list[str] = [stderr]
+    for raw in stdout.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if not line.startswith("{"):
+            parts.append(line)
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            parts.append(line)
+            continue
+        if isinstance(obj, dict) and obj.get("type") == "error":
+            parts.append(line)
+    return "\n".join(parts)
+
+
+def _cline_refusal_marker(text: str) -> str | None:
+    """The provider-fault token present in ``text`` (taxonomy-classifiable), or None.
+
+    Covers what cline ACTUALLY emits when the gateway rejects a call, not just
+    the two tokens the reference harness happened to see. A live probe returned
+    ``{"error":{"code":"INFERENCE_CAP_ERROR","message":"Error 429: Daily free
+    limit reached ..."}}`` as the run_result text with ``finishReason: "error"``
+    -- neither "unauthorized" nor "rate limit" appears in it, so the first cut
+    of this function let it through as content. The returned token is chosen
+    so ``error_taxonomy.classify_reason`` maps it: 429 -> rate_limit.
+    """
+    low = text.lower().lstrip()
+    if "unauthorized" in low:
+        return "Unauthorized"
+    if ("rate limit" in low or "rate_limit" in low or "ratelimit" in low
+            or "429" in low or "daily free limit" in low or "inference_cap" in low
+            or "too many requests" in low):
+        return "rate limit 429"
+    if low.startswith('{"error"') or low.startswith("{'error'"):
+        return "rate limit 429"        # a gateway error envelope is never an answer
+    if "insufficient balance" in low or "credits balance" in low or "billing" in low:
+        return "quota insufficient balance"
+    return None
+
+
+def _split_prompt_for_argv(prompt: str) -> tuple[str, str | None]:
+    """``(argv_prompt, stdin_tail)`` — the tail is ``None`` when the whole
+    prompt fits one argv string.
+
+    Two facts about the installed cline (3.0.61, read from the binary) decide
+    the shape of this function. First, it joins the argv prompt and a piped
+    stdin tail with a DOUBLE NEWLINE -- ``f"{prompt}\n\n{stdin.strip()}"`` --
+    not a space, so the cut must land on an existing paragraph break or the
+    join inserts a spurious one mid-table, mid-fence or mid-line. Second, the
+    128KB per-argument cap (``MAX_ARG_STRLEN``) is Linux-only; macOS has no
+    per-arg limit, so spilling there turns a prompt that would have arrived
+    intact into an altered one. The spill is therefore gated on Linux.
+    """
+    encoded = prompt.encode("utf-8")
+    if len(encoded) <= _CLINE_ARGV_PROMPT_MAX_BYTES or not sys.platform.startswith("linux"):
+        return prompt, None
+    head = encoded[:_CLINE_ARGV_PROMPT_MAX_BYTES].decode("utf-8", errors="ignore")
+    cut = head.rfind("\n\n")
+    if cut <= 0:
+        cut = head.rfind("\n")
+    if cut <= 0:
+        cut = head.rfind(" ")
+    if cut <= 0:
+        cut = len(head)
+    tail = prompt[cut:].strip()
+    return prompt[:cut].rstrip("\n"), (tail or None)
+
+
+class ClineBackend:
+    """One-shot completion through the ``cline`` CLI (a subprocess, no SDK).
+
+    WHY: every other real backend needs a paid key or an AWS role. ``cline``
+    logs into the cline gateway with its own OAuth flow and fronts DeepSeek's
+    free tier, so this is the one path that keeps digestion — and the
+    answer-level eval of Tessellum's own output — runnable at zero cost when
+    the Anthropic key is out of credit. Ported from the benchmark harness'
+    ``ask_cline`` (``slipbox-benchmark-eval/scripts/answer_eval.py``), which
+    learned every rule below the hard way.
+
+    cline is an agent, not a completion endpoint, so three flags force it to
+    behave as one: ``--cwd`` points at an EMPTY sandbox so a stray tool call
+    cannot touch the repo; ``--auto-approve false`` stops it acting on one;
+    ``-s`` replaces its coding system prompt with the request's. It still
+    bills ~7,000 tokens of tool schemas per call regardless — constant, but
+    the reason a run is not cheap.
+
+    NEVER pass ``--data-dir``. Credentials live in the default
+    ``~/.cline/data``; pointing ``--data-dir`` at any other path creates empty
+    state whose every call returns ``Unauthorized`` — which silently hung two
+    benchmark runs before the cause was found. Isolation is enforced by
+    ``--cwd`` instead, which is what actually bounds file access.
+
+    Output is JSON lines on stdout; the answer is the ``text`` of the final
+    ``run_result`` line (its ``finishReason`` becomes ``stop_reason``).
+    Streamed reasoning lines are ignored. cline reports failures as
+    ``{"type": "error"}`` lines on STDERR in ``--json`` mode, so both streams
+    are scanned for ``Unauthorized`` / ``rate limit`` and the call RAISES
+    :class:`ClineBackendError` on them (and on a non-zero exit with empty
+    stdout, on a missing ``run_result``, and on timeout) — never returns the
+    error text as content, so the executor's retry ladder and
+    ``error_taxonomy.classify_reason`` see a real exception. The executor's
+    own 200-body guard remains the backstop for anything subtler.
+
+    stdin is ``/dev/null`` unless the prompt overflows argv: cline reads a
+    non-TTY stdin to EOF, so an inherited open pipe (an orchestrator, cron)
+    would otherwise stall every call until the timeout.
+
+    ``max_tokens`` / ``temperature``: cline exposes NO flag for either (see
+    ``cline --help``), so ``LLMRequest.max_tokens`` and ``.temperature`` are
+    not honoured — the provider's defaults apply. The requested cap is echoed
+    in ``metadata["max_tokens_requested"]`` for the trace.
+
+    Attributes:
+        backend_id: Always ``"cline"``.
+        model: Provider model id passed as ``-m``.
+        provider: cline provider id passed as ``-P``.
+        sandbox: The EMPTY directory handed to ``--cwd`` (created on demand).
+        timeout_s: Per-call subprocess timeout; also passed to cline as ``-t``.
+        cline_bin: Resolved absolute path of the cline executable.
+
+    Example::
+
+        from tessellum.composer import ClineBackend, run_pipeline
+        backend = ClineBackend()          # deepseek/deepseek-v4-flash via cline
+        run = run_pipeline(compiled, leaves=leaves, backend=backend, ...)
+    """
+
+    backend_id: str = "cline"
+
+    def __init__(
+        self,
+        *,
+        model: str = DEFAULT_CLINE_MODEL,
+        provider: str = "cline",
+        sandbox: Path | None = None,
+        timeout_s: float = DEFAULT_CLINE_TIMEOUT_S,
+        cline_bin: str = "cline",
+    ) -> None:
+        """Construct a cline-backed LLM backend.
+
+        Args:
+            model: Provider model id (``cline -m``). Default: DeepSeek V4
+                Flash — the free tier.
+            provider: cline provider id (``cline -P``). Default ``"cline"``,
+                the cline gateway; must be one ``cline auth`` is logged into.
+            sandbox: EMPTY directory for ``--cwd``. ``None`` → a fixed
+                ``tessellum-cline-sandbox`` under the system temp dir, shared
+                across workers (cline keys sessions per run, so sharing is
+                safe; ``--cwd`` is what bounds file access, not state).
+            timeout_s: Per-call subprocess timeout — keep it SHORT (see
+                :data:`DEFAULT_CLINE_TIMEOUT_S`). Passed to cline as ``-t``
+                rounded up to whole seconds.
+            cline_bin: The executable: a name on ``PATH`` or an absolute
+                path. Resolved here so a missing install fails at
+                construction, like the SDK-backed siblings, not mid-run.
+
+        Raises:
+            FileNotFoundError: If ``cline_bin`` cannot be resolved.
+        """
+        resolved = shutil.which(cline_bin)
+        if resolved is None:
+            raise FileNotFoundError(
+                f"ClineBackend requires the `cline` CLI (looked for {cline_bin!r}). "
+                "Install it, put it on PATH (or pass cline_bin=<absolute path>), "
+                "and log in with `cline auth`."
+            )
+        self.cline_bin: str = resolved
+        self.model = model
+        self.provider = provider
+        self.sandbox: Path = (
+            Path(sandbox).expanduser()
+            if sandbox is not None
+            else Path(tempfile.gettempdir()) / "tessellum-cline-sandbox"
+        )
+        self.timeout_s = float(timeout_s)
+
+    def build_command(self, request: LLMRequest) -> tuple[list[str], str | None]:
+        """``(argv, stdin_text)`` for one request — exposed for inspection.
+
+        ``stdin_text`` is ``None`` (stdin will be ``/dev/null``) unless the
+        user prompt overflows one argv string, in which case its tail is
+        piped and cline re-joins the two on a single space.
+        """
+        argv_prompt, stdin_tail = _split_prompt_for_argv(request.user_prompt)
+        argv = [
+            self.cline_bin,
+            "-P", self.provider,
+            "--cwd", str(self.sandbox),
+            "--auto-approve", "false",
+            "-t", str(max(1, math.ceil(self.timeout_s))),
+            "--json",
+            "-s", request.system_prompt,
+        ]
+        if self.model:
+            argv += ["-m", self.model]
+        argv.append(argv_prompt)
+        return argv, stdin_tail
+
+    def call(self, request: LLMRequest) -> LLMResponse:
+        start = time.monotonic()
+        self.sandbox.mkdir(parents=True, exist_ok=True)
+        argv, stdin_tail = self.build_command(request)
+        stdin_kw: dict = (
+            {"input": stdin_tail} if stdin_tail is not None
+            else {"stdin": subprocess.DEVNULL}
+        )
+        try:
+            proc = subprocess.run(
+                argv,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout_s,
+                cwd=str(self.sandbox),
+                **stdin_kw,
+            )
+        except subprocess.TimeoutExpired as e:
+            raise ClineBackendError(
+                f"cline timed out after {self.timeout_s:g}s (model={self.model}); "
+                "a wedged cline hub daemon hangs every call -- restart it "
+                "before retrying"
+            ) from e
+        except OSError as e:
+            raise ClineBackendError(f"cline could not be launched: {e}") from e
+        elapsed_ms = (time.monotonic() - start) * 1000.0
+        stdout, stderr = proc.stdout or "", proc.stderr or ""
+
+        result = _cline_run_result(stdout)
+        text = (result.get("text") or "").strip() if result is not None else ""
+
+        # A substantive answer wins: a full note body that mentions "401
+        # Unauthorized" is content, and a warning line printed on the way to
+        # one is not a refusal. Anything shorter is checked as a relayed
+        # error — the exact shape the --data-dir failure took.
+        if len(text) <= _CLINE_REFUSAL_ECHO_MAX_CHARS:
+            signal = _cline_failure_signal(stdout, stderr)
+            marker = _cline_refusal_marker(signal) or _cline_refusal_marker(text)
+            if marker is None and text.lower().startswith("error:"):
+                marker = "error"
+            if marker is not None:
+                excerpt = (text or signal).strip()[:200]
+                raise ClineBackendError(
+                    f"cline backend refused the call ({marker}; rc={proc.returncode}): "
+                    f"{excerpt}"
+                )
+        if result is None:
+            if proc.returncode != 0 and not stdout.strip():
+                raise ClineBackendError(
+                    f"cline exited rc={proc.returncode} with empty stdout: "
+                    f"{stderr.strip()[:200]}"
+                )
+            raise ClineBackendError(
+                f"cline gave no run_result (rc={proc.returncode}): "
+                f"{stderr.strip()[:200] or stdout.strip()[-200:]}"
+            )
+        stop_reason = result.get("finishReason") or result.get("stop_reason")
+        if not text:
+            raise ClineBackendError(
+                f"cline returned an empty run_result (rc={proc.returncode}, "
+                f"finishReason={stop_reason!r}): {stderr.strip()[:200]}"
+            )
+        # A run_result whose finishReason is "error" is a FAILED call whatever
+        # its text says. Verified live: a daily-cap 429 arrives exactly this way,
+        # with the JSON envelope as the text and total_cost 0. Returning it as
+        # content is the failure this backend exists to prevent, and one that
+        # answer_eval.py -- which calls backend.call() directly, bypassing the
+        # executor's body guard -- would then score as an answer.
+        if isinstance(stop_reason, str) and stop_reason.lower() == "error":
+            marker = _cline_refusal_marker(text) or "rate limit 429"
+            raise ClineBackendError(
+                f"cline run_result finishReason='error' ({marker}): {text.strip()[:200]}"
+            )
+
+        metadata: dict = {
+            "model": result.get("model") or self.model,
+            "provider": self.provider,
+            "elapsed": round(elapsed_ms / 1000.0, 3),
+            "max_tokens_requested": request.max_tokens,
+        }
+        if stop_reason is not None:
+            metadata["stop_reason"] = stop_reason
+        usage = result.get("aggregateUsage") or result.get("usage") or {}
+        if isinstance(usage, dict) and usage.get("totalCost") is not None:
+            metadata["total_cost"] = usage.get("totalCost")
+        return LLMResponse(
+            content=text,
+            elapsed_ms=elapsed_ms,
+            backend_id=self.backend_id,
+            metadata=metadata,
+        )
+
+
 class PooledBackend:
     """Wraps an inner backend with a :class:`CredentialPool` — leases a key
     per call, rotates + benches a key that a provider rejects.
@@ -646,5 +1018,7 @@ __all__ = [
     "MockBackend",
     "AnthropicBackend",
     "BedrockBackend",
+    "ClineBackend",
+    "ClineBackendError",
     "PooledBackend",
 ]

@@ -16,6 +16,7 @@ from typing import Any, Callable, ContextManager
 from tessellum.composer import (
     AnthropicBackend,
     BedrockBackend,
+    ClineBackend,
     Manifest,
     MockBackend,
 )
@@ -602,6 +603,10 @@ def build_backend(config: BackendConfig) -> LLMBackend:
             region=config.region,
             aws_profile=config.aws_profile,
         )
+    if config.kind == "cline":
+        # No SDK, no key: the `cline` CLI on PATH, logged in via `cline auth`.
+        # The free-tier path when every paid key is out of credit.
+        return ClineBackend(model=config.model or "deepseek/deepseek-v4-flash")
     if config.kind == "mock":
         return MockBackend(responses=config.mock_responses)
     raise ValueError(f"unknown backend: {config.kind!r}")

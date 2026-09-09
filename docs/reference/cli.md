@@ -98,9 +98,9 @@ Group handler defaults to `run_bb_audit`; bare `tessellum bb` exits `2` with usa
 | `batch` | `run_composer_batch_cli` | `jobs` (JSON list) | `--parallelism` (4), `--no-resume`, `--dry-run`, `--mock-responses`, `--backend {mock,anthropic}`, `--model`, `--format` |
 | `eval` | `run_composer_eval_cli` | `scenarios_dir` | `--backend {mock,anthropic}`, `--judge-backend {none,mock,anthropic}`, `--mock-responses`, `--judge-mock-responses`, `--model`, `--dry-run`, `--format` |
 | `scaffold-sidecar` | `run_composer_scaffold_cli` | `skill` (`.md`) | `--stdout` |
-| `digest` | `run_composer_digest_cli` | `--source` (JSON object file) | `--skills-dir`, `--vault`, `--backend {mock,anthropic,bedrock}`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--run-id` (minted `run-<utc>-<hex>` when absent), `--runs-dir` (per-step traces + checkpoints), `--durable-artifacts` (page the `{{artifact.X}}` store to disk as integrity-checked refs), `--gc-artifacts` (requires `--durable-artifacts`; completed runs only), `--max-review-rounds` (`0`), `--format`. Output surfaces `run_id`, `review_rounds`, and the sign-off `reason`. |
+| `digest` | `run_composer_digest_cli` | `--source` (JSON object file) | `--skills-dir`, `--vault`, `--backend {mock,anthropic,bedrock,cline}`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--run-id` (minted `run-<utc>-<hex>` when absent), `--runs-dir` (per-step traces + checkpoints), `--durable-artifacts` (page the `{{artifact.X}}` store to disk as integrity-checked refs), `--gc-artifacts` (requires `--durable-artifacts`; completed runs only), `--max-review-rounds` (`0`), `--context-strategy {full_source,windowed}` + `--context-max-chars` (context CHARACTER budget for every phase prompt; either alone is enough — the budget alone keeps the default `windowed` strategy; default `DEFAULT_DIGESTION_CONTEXT_MAX_CHARS` = 145,904), `--format`. Output surfaces `run_id`, `review_rounds`, and the sign-off `reason`. |
 
-`composer run` base flags: `--leaves`, `--vault` (default `vault`), `--mock-responses`, `--backend {mock,anthropic,bedrock}` (default `mock`), `--region` (default `us-east-1`), `--aws-profile`, `--model`, `--dry-run`, `--no-trace`, `--runs-dir` (default `./runs/composer`), `--format`, `--progress`.
+`composer run` base flags: `--leaves`, `--vault` (default `vault`), `--mock-responses`, `--backend {mock,anthropic,bedrock,cline}` (default `mock`), `--region` (default `us-east-1`), `--aws-profile`, `--model`, `--dry-run`, `--no-trace`, `--runs-dir` (default `./runs/composer`), `--format`, `--progress`.
 
 `composer run --dynamic` family (selects `run_pipeline_dynamic`; each flag ignored without `--dynamic`): `--workers` (4), `--manifest`, `--fix-with-backend` (requires `--close-gate`) + `--max-fix-rounds` (1), `--close-gate`, `--max-invocations`, `--max-cost`, `--stats`, `--wave-gate`, `--context-strategy {full_source,windowed}` + `--context-max-chars`, `--skip-unchanged` + `--skip-unchanged-key`. Without `--dynamic`, `run` calls `run_pipeline` (serial reference path).
 
@@ -144,7 +144,7 @@ Other discovery overrides are `TESSELLUM_RUNS` (default `<root>/runs`), `TESSELL
 
 | Flag | Default | Behavior |
 |------|---------|----------|
-| `--backend {mock,anthropic,bedrock}` | `mock` | Composer backend used by native digestion. |
+| `--backend {mock,anthropic,bedrock,cline}` | `mock` | Composer backend used by native digestion. |
 | `--model MODEL` | backend default | Mock: no model; Anthropic: `claude-sonnet-4-6`; Bedrock: `us.anthropic.claude-sonnet-4-6`. |
 | `--region REGION` | `us-east-1` | Bedrock region; parsed but unused by other backends. |
 | `--aws-profile PROFILE` | unset | Bedrock AWS profile; parsed but unused by other backends. |

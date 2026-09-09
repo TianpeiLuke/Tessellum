@@ -225,16 +225,18 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     dks.add_argument(
         "--backend",
-        choices=["mock", "anthropic"],
+        choices=["mock", "anthropic", "cline"],
         default="mock",
         help="LLM backend (default: mock — no network). `anthropic` requires "
         "the [agent] extras (`pip install tessellum[agent]`) and the "
-        "ANTHROPIC_API_KEY environment variable.",
+        "ANTHROPIC_API_KEY environment variable. `cline` requires the `cline` "
+        "CLI on PATH, logged in via `cline auth`.",
     )
     dks.add_argument(
         "--model",
-        default="claude-sonnet-4-6",
-        help="Anthropic model ID (only used when --backend=anthropic).",
+        default=None,
+        help="Model ID for --backend=anthropic|cline (default: claude-sonnet-4-6 "
+        "for anthropic; deepseek/deepseek-v4-flash for cline).",
     )
     dks.add_argument(
         "--mock-responses",
@@ -426,11 +428,24 @@ def run_dks_cli(args: argparse.Namespace) -> int:
         try:
             from tessellum.composer import AnthropicBackend
 
-            backend = AnthropicBackend(model=args.model)
+            backend = AnthropicBackend(model=args.model or "claude-sonnet-4-6")
         except ImportError as e:
             print(
                 "tessellum dks: --backend=anthropic requires the "
                 "[agent] extras: pip install tessellum[agent]",
+                file=sys.stderr,
+            )
+            print(f"  ({e})", file=sys.stderr)
+            return 2
+    elif args.backend == "cline":
+        try:
+            from tessellum.composer import ClineBackend
+
+            backend = ClineBackend(model=args.model or "deepseek/deepseek-v4-flash")
+        except FileNotFoundError as e:
+            print(
+                "tessellum dks: --backend=cline requires the `cline` CLI on "
+                "PATH, logged in via `cline auth`",
                 file=sys.stderr,
             )
             print(f"  ({e})", file=sys.stderr)
@@ -1090,12 +1105,26 @@ def _run_dks_meta(args: argparse.Namespace) -> int:
             try:
                 from tessellum.composer import AnthropicBackend
 
-                meta_backend = AnthropicBackend(model=args.model)
+                meta_backend = AnthropicBackend(model=args.model or "claude-sonnet-4-6")
             except ImportError as e:
                 print(
                     "tessellum dks --meta with --proposer llm / --attacker llm: "
                     "--backend=anthropic requires the [agent] extras: "
                     "pip install tessellum[agent]",
+                    file=sys.stderr,
+                )
+                print(f"  ({e})", file=sys.stderr)
+                return 2
+        elif args.backend == "cline":
+            try:
+                from tessellum.composer import ClineBackend
+
+                meta_backend = ClineBackend(model=args.model or "deepseek/deepseek-v4-flash")
+            except FileNotFoundError as e:
+                print(
+                    "tessellum dks --meta with --proposer llm / --attacker llm: "
+                    "--backend=cline requires the `cline` CLI on PATH, "
+                    "logged in via `cline auth`",
                     file=sys.stderr,
                 )
                 print(f"  ({e})", file=sys.stderr)

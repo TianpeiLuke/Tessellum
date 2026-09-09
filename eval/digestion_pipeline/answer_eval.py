@@ -938,6 +938,12 @@ def _make_backend(name: str, model: str | None, region: str) -> LLMBackend:
         from tessellum.composer.llm import BedrockBackend
 
         return BedrockBackend(model=model or "us.anthropic.claude-sonnet-4-6", region=region)
+    if name == "cline":
+        # The free-tier path: the `cline` CLI (logged in via `cline auth`)
+        # fronting DeepSeek -- what the reference harness ran its arms on.
+        from tessellum.composer.llm import ClineBackend
+
+        return ClineBackend(model=model or "deepseek/deepseek-v4-flash")
     raise SystemExit(f"unknown backend {name!r}")
 
 
@@ -963,7 +969,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     ap.add_argument("--db-dir", type=Path, help="where to write index DBs (default: a temp dir)")
     ap.add_argument("--no-dense", action="store_true", help="index without dense vectors (BM25-only)")
-    ap.add_argument("--backend", choices=["mock", "anthropic", "bedrock"], default="mock")
+    ap.add_argument(
+        "--backend", choices=["mock", "anthropic", "bedrock", "cline"], default="mock",
+    )
     ap.add_argument("--model", default=None)
     ap.add_argument("--region", default="us-east-1")
     ap.add_argument("--condition", choices=["tokens", "slots"], default="tokens")

@@ -206,6 +206,8 @@ Gate-then-commit: the manifest row flips `done` and the `StepResult` is treated 
 - `get_assembler(strategy: str = "full_source", *, max_chars=DEFAULT_MAX_CONTEXT_CHARS, db_path=None, query=None) -> ContextAssembler` — selects from `ASSEMBLER_REGISTRY` (`full_source`/`windowed`/`retrieval`); `db_path`+`query` are consumed only by `"retrieval"`.
 - `is_safe_read_path(path, *, workspace_root) -> bool` — fail-closed workspace confinement, secret-path rejection, and binary sniffing.
 
+**Context budget — the sweepable knob.** Every assembler bounds the FULLY RENDERED prompt (skill body + leaf + upstreams, not the source alone) to `max_chars`, in **characters** — Tessellum has no token budget on this seam (~3–4 chars/token for English prose; the answer-eval harness's `--budget` is a cl100k *token* budget on the retrieval side and is a different lever). On a benchmark vault built by this pipeline the budget moved chain completeness by more than an order of magnitude beyond what the retrieval strategy moved it, so it is a named parameter on every run surface, each with its own default: `composer run --dynamic --context-strategy … --context-max-chars N` (no assembler at all without `--context-strategy`, i.e. the hard cap; `get_assembler`'s own default is `DEFAULT_MAX_CONTEXT_CHARS = 200_000`); `composer digest --context-max-chars N` (driver fallback `DEFAULT_DIGESTION_CONTEXT_MAX_CHARS = HARD_PROMPT_CAP_CHARS - 4096 = 145_904`, windowed — the flag alone keeps the strategy and changes only the size); the service path reads `RuntimePolicy.context_max_chars` (`120_000`, windowed) — sweep it by constructing a `RuntimePolicy(context_max_chars=N)` (or a profile), since `runtime submit --profile` selects a profile name only.
+
 ## Planning (`planning.py`)
 
 - `content_fingerprint(source: str | bytes | Path) -> str`.
@@ -395,7 +397,7 @@ Seven subcommands under one of Tessellum's 12 top-level CLI groups; `dks` is a p
 | `batch <jobs.json>` | Many `(skill, leaves)` jobs in parallel with resume. | `--parallelism`, `--no-resume` |
 | `eval <scenarios_dir>` | Assertions + `LLMJudge` rubric. | `--backend`, `--judge-backend` |
 | `scaffold-sidecar <skill>` | Print a starter contract block per section anchor, to paste into the canonical. | `--stdout` |
-| `digest --source <json>` | Run plan → augment → review → sign-off → execute. | `--skills-dir`, `--vault`, `--backend`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--run-id`, `--runs-dir`, `--durable-artifacts`, `--gc-artifacts`, `--max-review-rounds`, `--format` |
+| `digest --source <json>` | Run plan → augment → review → sign-off → execute. | `--skills-dir`, `--vault`, `--backend`, `--model`, `--region`, `--aws-profile`, `--mock-responses`, `--require-agent-signoff`, `--dry-run`, `--run-id`, `--runs-dir`, `--durable-artifacts`, `--gc-artifacts`, `--max-review-rounds`, `--context-strategy full_source|windowed` (+ `--context-max-chars`, usable alone), `--format` |
 
 ### `run` flags
 

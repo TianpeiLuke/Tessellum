@@ -28,6 +28,7 @@ import sys
 from pathlib import Path
 
 from tessellum.composer import (
+    DEFAULT_DIGESTION_CONTEXT_MAX_CHARS,
     AgentVerdict,
     BatchJob,
     CompilerError,
@@ -137,12 +138,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     run_cmd.add_argument(
         "--backend",
-        choices=["mock", "anthropic", "bedrock"],
+        choices=["mock", "anthropic", "bedrock", "cline"],
         default="mock",
         help="LLM backend (default: mock — no network). `anthropic` requires "
         "the [agent] extras + ANTHROPIC_API_KEY. `bedrock` requires the "
         "[agent] extras + an AWS_PROFILE that can invoke Bedrock (set "
-        "AWS_PROFILE before running; the backend embeds no credentials).",
+        "AWS_PROFILE before running; the backend embeds no credentials). "
+        "`cline` requires the `cline` CLI on PATH, logged in via `cline auth` "
+        "(no SDK, no key — the free-tier path).",
     )
     run_cmd.add_argument(
         "--region",
@@ -158,10 +161,11 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     run_cmd.add_argument(
         "--model",
         default=None,
-        help="Model ID for --backend=anthropic|bedrock. Default: "
+        help="Model ID for --backend=anthropic|bedrock|cline. Default: "
         "claude-sonnet-4-6 for anthropic; us.anthropic.claude-sonnet-4-6 "
         "(the cross-region inference profile) for bedrock — a bare "
-        "foundation-model id fails on-demand Bedrock invocation.",
+        "foundation-model id fails on-demand Bedrock invocation; "
+        "deepseek/deepseek-v4-flash (the free tier) for cline.",
     )
     run_cmd.add_argument(
         "--dry-run",
@@ -333,14 +337,16 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     batch_cmd.add_argument(
         "--backend",
-        choices=["mock", "anthropic"],
+        choices=["mock", "anthropic", "cline"],
         default="mock",
-        help="LLM backend (default: mock). `anthropic` requires [agent] extras.",
+        help="LLM backend (default: mock). `anthropic` requires [agent] extras; "
+        "`cline` requires the `cline` CLI on PATH.",
     )
     batch_cmd.add_argument(
         "--model",
-        default="claude-sonnet-4-6",
-        help="Anthropic model ID (only used when --backend=anthropic).",
+        default=None,
+        help="Model ID for --backend=anthropic|cline (default: claude-sonnet-4-6 "
+        "for anthropic; deepseek/deepseek-v4-flash for cline).",
     )
     batch_cmd.add_argument(
         "--format",
@@ -362,16 +368,16 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     eval_cmd.add_argument(
         "--backend",
-        choices=["mock", "anthropic"],
+        choices=["mock", "anthropic", "cline"],
         default="mock",
         help="Pipeline LLM backend (default: mock).",
     )
     eval_cmd.add_argument(
         "--judge-backend",
-        choices=["none", "mock", "anthropic"],
+        choices=["none", "mock", "anthropic", "cline"],
         default="mock",
         help="LLMJudge backend (default: mock — canned scores; "
-        "use `anthropic` for real grading; `none` to skip rubric).",
+        "use `anthropic` or `cline` for real grading; `none` to skip rubric).",
     )
     eval_cmd.add_argument(
         "--mock-responses",
@@ -387,8 +393,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     eval_cmd.add_argument(
         "--model",
-        default="claude-sonnet-4-6",
-        help="Anthropic model ID for --backend=anthropic / --judge-backend=anthropic.",
+        default=None,
+        help="Model ID for --backend / --judge-backend (default: claude-sonnet-4-6 "
+        "for anthropic; deepseek/deepseek-v4-flash for cline).",
     )
     eval_cmd.add_argument(
         "--dry-run",
@@ -445,10 +452,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Vault root for materializer file paths (default: ./vault).",
     )
     digest_cmd.add_argument(
-        "--backend", choices=["mock", "anthropic", "bedrock"], default="mock",
-        help="LLM backend (default: mock).",
+        "--backend", choices=["mock", "anthropic", "bedrock", "cline"], default="mock",
+        help="LLM backend (default: mock). `cline` needs the `cline` CLI on PATH.",
     )
-    digest_cmd.add_argument("--model", default=None, help="Model id for anthropic|bedrock.")
+    digest_cmd.add_argument(
+        "--model", default=None, help="Model id for anthropic|bedrock|cline.",
+    )
     digest_cmd.add_argument("--region", default="us-east-1", help="AWS region for bedrock.")
     digest_cmd.add_argument("--aws-profile", default=None, help="AWS_PROFILE for bedrock.")
     digest_cmd.add_argument(
@@ -493,6 +502,23 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="P15 review-revise rounds: on a plan-quality rejection, re-augment "
         "from the review's failures and re-review, up to N extra rounds "
         "(revert-to-BEST on regression). Default 0 = single pass.",
+    )
+    digest_cmd.add_argument(
+        "--context-strategy",
+        choices=["full_source", "windowed"],
+        default=None,
+        help="Context-assembly strategy for every phase prompt: `windowed` "
+        "(head+tail, the default) or `full_source` (truncate the tail). "
+        "Omit to keep the driver's built-in windowed assembler.",
+    )
+    digest_cmd.add_argument(
+        "--context-max-chars",
+        type=int,
+        default=None,
+        help="Context CHARACTER budget for the assembled prompt (unit: chars of "
+        "the fully rendered prompt, not tokens). Usable alone — the "
+        "strategy stays `windowed`. Default: "
+        f"{DEFAULT_DIGESTION_CONTEXT_MAX_CHARS} (HARD_PROMPT_CAP_CHARS - 4096).",
     )
     digest_cmd.add_argument(
         "--format", dest="output_format", choices=["human", "json"], default="human",
@@ -856,6 +882,24 @@ def run_composer_run_cli(args: argparse.Namespace) -> int:
             )
             print(f"  ({e})", file=sys.stderr)
             return 2
+    elif args.backend == "cline":
+        if args.mock_responses is not None:
+            print(
+                "tessellum composer run: --mock-responses is ignored when "
+                "--backend=cline",
+                file=sys.stderr,
+            )
+        try:
+            from tessellum.composer import ClineBackend
+            backend = ClineBackend(model=args.model or "deepseek/deepseek-v4-flash")
+        except FileNotFoundError as e:
+            print(
+                "tessellum composer run: --backend=cline requires the `cline` "
+                "CLI on PATH, logged in via `cline auth`",
+                file=sys.stderr,
+            )
+            print(f"  ({e})", file=sys.stderr)
+            return 2
     else:
         backend = MockBackend(responses=responses)
     vault_root = args.vault.expanduser().resolve()
@@ -1101,11 +1145,23 @@ def run_composer_batch_cli(args: argparse.Namespace) -> int:
     if args.backend == "anthropic":
         try:
             from tessellum.composer import AnthropicBackend
-            backend = AnthropicBackend(model=args.model)
+            backend = AnthropicBackend(model=args.model or "claude-sonnet-4-6")
         except ImportError as e:
             print(
                 "tessellum composer batch: --backend=anthropic requires the "
                 "[agent] extras: pip install tessellum[agent]",
+                file=sys.stderr,
+            )
+            print(f"  ({e})", file=sys.stderr)
+            return 2
+    elif args.backend == "cline":
+        try:
+            from tessellum.composer import ClineBackend
+            backend = ClineBackend(model=args.model or "deepseek/deepseek-v4-flash")
+        except FileNotFoundError as e:
+            print(
+                "tessellum composer batch: --backend=cline requires the `cline` "
+                "CLI on PATH, logged in via `cline auth`",
                 file=sys.stderr,
             )
             print(f"  ({e})", file=sys.stderr)
@@ -1191,15 +1247,31 @@ def _load_mock_responses(path: Path | None) -> dict[str, str]:
     return data
 
 
-def _make_anthropic_backend_or_exit(model: str) -> LLMBackend:
+def _make_anthropic_backend_or_exit(model: str | None) -> LLMBackend:
     """Helper: try to construct AnthropicBackend; exits with helpful message if missing."""
     try:
         from tessellum.composer import AnthropicBackend
-        return AnthropicBackend(model=model)
+        return AnthropicBackend(model=model or "claude-sonnet-4-6")
     except ImportError as e:
         print(
             "tessellum composer eval: --backend=anthropic requires the "
             "[agent] extras: pip install tessellum[agent]",
+            file=sys.stderr,
+        )
+        print(f"  ({e})", file=sys.stderr)
+        raise SystemExit(2) from e
+
+
+def _make_cline_backend_or_exit(model: str | None) -> LLMBackend:
+    """Helper: try to construct ClineBackend; exits with helpful message if the
+    `cline` CLI is not on PATH."""
+    try:
+        from tessellum.composer import ClineBackend
+        return ClineBackend(model=model or "deepseek/deepseek-v4-flash")
+    except FileNotFoundError as e:
+        print(
+            "tessellum composer eval: --backend=cline requires the `cline` CLI "
+            "on PATH, logged in via `cline auth`",
             file=sys.stderr,
         )
         print(f"  ({e})", file=sys.stderr)
@@ -1229,6 +1301,8 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
     backend: LLMBackend
     if args.backend == "anthropic":
         backend = _make_anthropic_backend_or_exit(args.model)
+    elif args.backend == "cline":
+        backend = _make_cline_backend_or_exit(args.model)
     else:
         try:
             responses = _load_mock_responses(args.mock_responses)
@@ -1247,6 +1321,8 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
     elif args.judge_backend == "anthropic":
         judge_backend = _make_anthropic_backend_or_exit(args.model)
         judge = LLMJudge(judge_backend)
+    elif args.judge_backend == "cline":
+        judge = LLMJudge(_make_cline_backend_or_exit(args.model))
     else:
         try:
             judge_responses = _load_mock_responses(args.judge_mock_responses)
@@ -1341,7 +1417,7 @@ def run_composer_eval_cli(args: argparse.Namespace) -> int:
 
 def _build_backend_for(args) -> "LLMBackend | int":
     """Construct the LLM backend for a run/digest command (or return an exit
-    code on failure). Shared 3-way (mock | anthropic | bedrock) logic."""
+    code on failure). Shared 4-way (mock | anthropic | bedrock | cline) logic."""
     responses = None
     if getattr(args, "mock_responses", None) is not None:
         try:
@@ -1368,6 +1444,14 @@ def _build_backend_for(args) -> "LLMBackend | int":
             )
         except ImportError as e:
             print(f"tessellum composer: --backend=bedrock needs [agent] extras ({e})",
+                  file=sys.stderr)
+            return 2
+    if args.backend == "cline":
+        try:
+            from tessellum.composer import ClineBackend
+            return ClineBackend(model=args.model or "deepseek/deepseek-v4-flash")
+        except FileNotFoundError as e:
+            print(f"tessellum composer: --backend=cline needs the `cline` CLI on PATH ({e})",
                   file=sys.stderr)
             return 2
     return MockBackend(responses=responses)
@@ -1431,6 +1515,21 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
             else Path("runs")
         )
         extra_kwargs["durable_artifact_dir"] = base / run_id / "artifacts"
+    # Context budget (chars). Either flag alone is enough: the budget without a
+    # strategy keeps the driver's default `windowed` assembler at the new size
+    # (the sweep case); a strategy without a budget keeps the driver's default
+    # size. Neither → None → the driver's own fallback, byte-identical.
+    context_strategy = getattr(args, "context_strategy", None)
+    context_max_chars = getattr(args, "context_max_chars", None)
+    if context_strategy is not None or context_max_chars is not None:
+        extra_kwargs["context_assembler"] = get_assembler(
+            context_strategy or "windowed",
+            max_chars=(
+                context_max_chars
+                if context_max_chars is not None
+                else DEFAULT_DIGESTION_CONTEXT_MAX_CHARS
+            ),
+        )
 
     result = run_digestion_pipeline(
         skills_dir=skills_dir,

@@ -28,7 +28,9 @@ def _add_common_paths(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_backend(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--backend", choices=["mock", "anthropic", "bedrock"], default="mock")
+    parser.add_argument(
+        "--backend", choices=["mock", "anthropic", "bedrock", "cline"], default="mock",
+    )
     parser.add_argument("--model")
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--aws-profile")
