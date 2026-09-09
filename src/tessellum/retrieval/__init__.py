@@ -33,7 +33,7 @@ Public API:
 
 from tessellum.retrieval.bm25 import BM25Hit, bm25_search
 from tessellum.retrieval.dense import DenseHit, dense_search
-from tessellum.retrieval.graph import GraphHit, best_first_bfs
+from tessellum.retrieval.graph import GraphHit, best_first_bfs, graph_search
 from tessellum.retrieval.hybrid import HybridHit, hybrid_search
 from tessellum.retrieval.metadata import MetadataHit, metadata_search
 from tessellum.retrieval.router import RouterDecision, Strategy, classify_query, route
@@ -46,6 +46,7 @@ __all__ = [
     "hybrid_search",
     "HybridHit",
     "best_first_bfs",
+    "graph_search",
     "GraphHit",
     "metadata_search",
     "MetadataHit",

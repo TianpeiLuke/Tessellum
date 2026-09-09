@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from tessellum.indexer import build
-from tessellum.retrieval import GraphHit, best_first_bfs
+from tessellum.retrieval import GraphHit, best_first_bfs, graph_search
 
 
 _NOTE_TEMPLATE = """\
@@ -270,3 +270,27 @@ def test_bfs_against_real_tessellum_vault():
     finally:
         if db_path.is_file():
             db_path.unlink()
+
+
+# --- query-seeded graph_search (the answer_eval "graph" strategy) ---
+
+def test_graph_search_reaches_graph_neighbors(graph_db):
+    """Seeded on the note the query matches, the walk reaches its link
+    neighbours — the reach a bare similarity match lacks (the 2a arm)."""
+    hits = graph_search(graph_db, "Seed", k=20, seeds=3, max_depth=2)
+    assert all(isinstance(h, GraphHit) for h in hits)
+    names = {h.note_name for h in hits}
+    # term_seed's body links A, B, D; the graph adds 2-hop C (via A) and E (via D).
+    assert {"term_a", "term_b", "term_d"} <= names
+    assert names & {"term_c", "term_e"}
+
+
+def test_graph_search_ranked_descending(graph_db):
+    hits = graph_search(graph_db, "Seed", k=20, seeds=3, max_depth=2)
+    scores = [h.score for h in hits]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_graph_search_k_zero_is_empty(graph_db):
+    assert graph_search(graph_db, "Seed", k=0) == []
+    assert graph_search(graph_db, "Seed", seeds=0) == []

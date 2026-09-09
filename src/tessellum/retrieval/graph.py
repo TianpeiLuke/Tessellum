@@ -183,3 +183,68 @@ def _load_graph(conn: sqlite3.Connection) -> tuple[nx.DiGraph, dict[str, str]]:
 def _name_from_id(note_id: str) -> str:
     """Fallback: derive note_name from note_id stem if not in the index."""
     return Path(note_id).stem
+
+
+def graph_search(
+    db_path: Path | str,
+    query: str,
+    *,
+    dense_query: str | None = None,
+    k: int = 20,
+    seeds: int = 5,
+    max_depth: int = 2,
+    hub_threshold: int = DEFAULT_HUB_THRESHOLD,
+) -> list[GraphHit]:
+    """Query-seeded graph retrieval: hybrid-rank the seeds, expand each over
+    the link graph.
+
+    ``best_first_bfs`` starts from a *known* seed note; a query does not name
+    one. This wraps it into a query-driven strategy the way the benchmark's
+    graph arm did: take the top ``seeds`` notes from ``hybrid_search`` as
+    entry points, run a bounded best-first walk from each, and score every
+    reached note by its seed's rank weight (``1/(rank+1)``) times the walk's
+    hop discount (``1/(1+depth)``), keeping the max when a note is reached
+    from several seeds. The seed notes themselves are included at their rank
+    weight (depth 0).
+
+    This is the arm that tests whether the typed link graph reaches evidence
+    that lexical/dense similarity alone misses: the seeds come from hybrid,
+    the *reach* comes from the graph. No Personalized PageRank — graph.py's
+    module docstring records why (ρ=0.37 Hit@K↔answer correlation); this stays
+    on the cheaper, Pareto-optimal best-first walk.
+
+    Returns ``GraphHit`` list ranked by descending combined score, length
+    ``≤ k``. ``depth``/``path`` on each hit describe the shortest seed reach
+    recorded for that note.
+    """
+    # Lazy import: avoids any import-order coupling with hybrid at package init.
+    from tessellum.retrieval.hybrid import hybrid_search
+
+    if k <= 0 or seeds <= 0:
+        return []
+    seed_hits = hybrid_search(db_path, query, dense_query=dense_query, k=seeds)
+    scored: dict[str, float] = {}
+    meta: dict[str, tuple[int, tuple[str, ...]]] = {}
+    for i, s in enumerate(seed_hits):
+        w = 1.0 / (i + 1)
+        if scored.get(s.note_id, 0.0) < w:
+            scored[s.note_id] = w
+            meta[s.note_id] = (0, (s.note_id,))
+        for h in best_first_bfs(
+            db_path, s.note_id, k=k, max_depth=max_depth, hub_threshold=hub_threshold
+        ):
+            combined = w * h.score
+            if scored.get(h.note_id, 0.0) < combined:
+                scored[h.note_id] = combined
+                meta[h.note_id] = (h.depth, h.path)
+    ranked = sorted(scored.items(), key=lambda kv: -kv[1])[:k]
+    return [
+        GraphHit(
+            note_id=nid,
+            note_name=_name_from_id(nid),
+            score=sc,
+            depth=meta[nid][0],
+            path=meta[nid][1],
+        )
+        for nid, sc in ranked
+    ]

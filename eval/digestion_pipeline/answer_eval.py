@@ -117,12 +117,12 @@ from tessellum.composer.llm import (  # noqa: E402
     MockBackend,
 )
 from tessellum.indexer import build  # noqa: E402
-from tessellum.retrieval import bm25_search, dense_search, hybrid_search, route  # noqa: E402
+from tessellum.retrieval import bm25_search, dense_search, graph_search, hybrid_search, route  # noqa: E402
 
 REFUSAL_TOKEN = "INSUFFICIENT"
 POLARITY = {"yes": "yes", "true": "yes", "no": "no", "false": "no"}
-Strategy = Literal["hybrid", "bm25", "dense", "router"]
-STRATEGIES: tuple[str, ...] = ("hybrid", "bm25", "dense", "router")
+Strategy = Literal["hybrid", "bm25", "dense", "router", "graph"]
+STRATEGIES: tuple[str, ...] = ("hybrid", "bm25", "dense", "router", "graph")
 Condition = Literal["tokens", "slots"]
 
 # FIXED across every arm, condition and run. The only thing that varies between
@@ -496,6 +496,15 @@ class VaultArm:
             hits = hybrid_search(self.db_path, fts, dense_query=question, k=want)
         elif self.strategy == "dense":
             hits = dense_search(self.db_path, question, k=want)
+        elif self.strategy == "graph":
+            # Query-seeded graph arm: hybrid seeds + best-first walk over
+            # note_links. Tests whether the link graph reaches evidence
+            # similarity misses. Dense seeds when available, else bm25-only.
+            hits = graph_search(
+                self.db_path, fts,
+                dense_query=(question if self.dense_available else None),
+                k=want,
+            )
         else:  # router
             _, hits = route(self.db_path, fts, dense_query=question, k=want)
         return [h.note_id for h in hits]
