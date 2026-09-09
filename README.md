@@ -65,17 +65,18 @@ tessellum mcp serve                                                          # s
 
 ## Status
 
-**Current `main` — every engine subsystem shipped.** Test suite: **2204 passing**. Newest: grounded context delivery (verbatim owned source slices per writer), a free default-ON identifier-grounding fabrication gate, deterministic code-owned plan sections and note-coverage sweeps, checkpoint-resume for crashed digestions with a sign-off acceptance stamp, a hardened lease-renewal actor, and the four-tier AgentMemory facade.
+**Current `main` — every engine subsystem shipped.** Test suite: **2,250 passing**. Newest: an **answer-level eval harness** (the first reader in the loop), evidence-only indexing, a response-body provider-error guard, node-specificity link ranking, and a grounded-opening writer rule — all ported from a measured benchmark arc on this same digestion pipeline. Before that: grounded context delivery (verbatim owned source slices per writer), a free default-ON identifier-grounding fabrication gate, deterministic code-owned plan sections and note-coverage sweeps, checkpoint-resume for crashed digestions with a sign-off acceptance stamp, a hardened lease-renewal actor, and the four-tier AgentMemory facade.
 
 - **Composer** — *typed-contract pipeline runtime.* A skill compiles to a typed DAG with **zero LLM calls**. It then runs serially or in parallel. Backends: Mock / Anthropic / Bedrock / Pooled.
 - **Knowledge transaction** — *a multi-note digestion as one atomic transaction.* Staged, gated, then **published all-or-nothing**. Additive and opt-in.
 - **DKS** — *the Dialectic Knowledge System.* It reasons, not just stores. Arguments meet counters; **conclusions update from disagreement**. A meta-layer even evolves the type schema.
-- **Retrieval** — *hybrid search over the graph.* **BM25 + vector (RRF fusion)**, plus graph traversal and metadata filters.
-- **Indexer** — *the vault as one SQLite database.* **Full-text + vector + link graph**, rebuilt in a single pass.
+- **Retrieval** — *hybrid search over the graph.* **BM25 + vector (RRF fusion)**, plus graph traversal and metadata filters. Related-note selection weights **node specificity** (`1/log(in_degree+e)`), so a hub sinks below an equally relevant specific note.
+- **Indexer** — *the vault as one SQLite database.* **Full-text + vector + link graph**, rebuilt in a single pass. Indexes **evidence only**: `## Related Notes` / `## Source` / `## References` are excluded from the searchable text (they remain the source of truth for the link graph).
 - **Format** — *the note validator.* A **closed-enum** check of frontmatter, links, and building-block edges.
 - **BB** — *the Building Block ontology.* **8 typed note roles**, versioned and event-sourced. The source of truth for types.
 - **Automatic runtime** — *unattended, crash-safe digestion.* A durable inbox queue with leased workers. **Atomic index publication**.
 - **Interfaces** — *for humans and agents.* A **12-command CLI** and a **12-tool MCP server**.
+- **Eval** — *construction gates AND a reader in the loop.* `score.py` checks how notes are built; **`answer_eval.py`** assembles a context to a token budget, asks a fixed reader, and reports **stratified accuracy, refusal, and refusal-when-the-answer-was-present** against majority and closed-book floors — because a vault can pass every construction gate and still lose on reader refusal.
 
 See the [CHANGELOG](CHANGELOG.md) for the full per-release ship list.
 
@@ -175,6 +176,8 @@ Wikilinks tell you what's *related*. Folgezettel trails tell you *how thinking d
 Tessellum doesn't only store the notes you write; it **digests** source documents into them. A digestion runs one pipeline of four phases — `plan → augment → review → execute` — and it does two things at once.
 
 It *decomposes* the source into notes small enough that each makes a single point, one per building-block type. And it *connects* each note into the graph: back to the source it came from, up to the index pages that make it findable, across to its neighbouring notes, and into its place on a Folgezettel trail. A digested note is never dropped in as an island.
+
+Two rules in the writer come straight from measurement. Each note opens by saying **who asserted its claim and when, in the prose** — a benchmark on this pipeline found the reader declined attributed notes about half as often, and that willingness was the whole of their accuracy advantage (a footer citation does not count: the indexer strips it before a reader ever sees it). And links are chosen for **reach, not count**: a link earns its place only by taking the reader somewhere it could not already get, so restatements and hubs are trimmed first and nothing is padded to a number.
 
 The plan is reviewed and gated before the authoring step runs, so an unsound decomposition never reaches the vault. The optional **knowledge-transaction track** goes one step further: it stages a whole digestion off to the side, proves it is sound, and publishes every note at once — all-or-nothing. See **[docs/digestion.md](docs/digestion.md)** for the full flow.
 
