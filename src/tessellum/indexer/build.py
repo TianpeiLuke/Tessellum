@@ -28,6 +28,7 @@ from tessellum.format.parser import (
     FrontmatterParseError,
     derive_folgezettel_parent,
     parse_note,
+    strip_scaffolding,
 )
 
 _SCHEMA_PATH = Path(__file__).parent / "schema.sql"
@@ -406,8 +407,8 @@ def _upsert_note_row(conn: sqlite3.Connection, meta: dict) -> None:
     conn.execute("DELETE FROM notes_fts WHERE note_id = ?", (meta["note_id"],))
     conn.execute(
         "INSERT INTO notes_fts (note_id, note_name, body) "
-        "VALUES (:note_id, :note_name, :_body)",
-        meta,
+        "VALUES (:note_id, :note_name, :_indexed_body)",
+        {**meta, "_indexed_body": strip_scaffolding(meta["_body"])},
     )
 
 
@@ -431,7 +432,8 @@ def _load_all_note_bodies(conn: sqlite3.Connection, fs_meta: dict[str, dict]) ->
     from there — no second disk read. Only ``note_id`` + ``_body`` are needed by
     :func:`_extract_all_links`."""
     return [
-        {"note_id": nid, "note_name": m["note_name"], "_body": m["_body"]}
+        {"note_id": nid, "note_name": m["note_name"],
+         "_indexed_body": strip_scaffolding(m["_body"])}
         for nid, m in fs_meta.items()
     ]
 
@@ -769,9 +771,16 @@ def _write_fts(conn: sqlite3.Connection, notes: list[dict]) -> None:
     """
     sql = (
         "INSERT INTO notes_fts (note_id, note_name, body) "
-        "VALUES (:note_id, :note_name, :_body)"
+        "VALUES (:note_id, :note_name, :_indexed_body)"
     )
-    conn.executemany(sql, notes)
+    # Strip here rather than mutating `_body`: the same dicts are consumed by
+    # link extraction, which must still see the Related Notes section because
+    # that is where the links are.
+    conn.executemany(sql, [
+        {"note_id": n["note_id"], "note_name": n["note_name"],
+         "_indexed_body": strip_scaffolding(n.get("_body") or "")}
+        for n in notes
+    ])
 
 
 def _build_embedding_text(note: dict) -> str:
@@ -791,7 +800,11 @@ def _build_embedding_text(note: dict) -> str:
                 items = []
             if isinstance(items, list):
                 parts.append(" ".join(str(x) for x in items))
-    parts.append(note.get("_body") or "")
+    # Index evidence, not navigation: a note's Related Notes / Source /
+    # References sections are part of the note and are what link extraction
+    # reads, but embedding them spends the note's representation on markdown
+    # links rather than on prose. The full body remains the source of truth.
+    parts.append(strip_scaffolding(note.get("_body") or ""))
     return "\n".join(p for p in parts if p)
 
 

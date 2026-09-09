@@ -158,3 +158,35 @@ def parse_text(text: str) -> Note:
         )
 
     return Note(path=None, frontmatter=fm, body=body, raw_frontmatter=raw)
+
+# Sections that are navigation or provenance rather than evidence. They are part
+# of the note and are what link extraction reads, but they should not be INDEXED
+# as though they were content: a reader's budget goes on prose, not on a list of
+# markdown links the model cannot follow.
+NON_EVIDENCE_SECTIONS = ("Related Notes", "Related Terms", "Source", "Sources",
+                         "References", "See Also", "Backlinks")
+
+_NON_EVIDENCE_RE = re.compile(
+    r"^##\s+(?:" + "|".join(re.escape(s) for s in NON_EVIDENCE_SECTIONS) + r")\s*$"
+    r".*?(?=^##\s|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+
+
+def strip_scaffolding(body: str) -> str:
+    """Drop navigation and provenance sections from text destined for the index.
+
+    Repairing a link graph inflates every note with Related Notes lines, and
+    counting those as evidence charges the note a large share of its budget for
+    text that is not evidence. Measured on a benchmark vault, excluding these
+    sections from the indexed text was worth a substantial recall gain at a
+    fixed token budget, for free.
+
+    Use this at INDEXING time only. The full body stays the source of truth and
+    is what link extraction must read -- the links live in exactly the sections
+    this removes.
+    """
+    if not body:
+        return body
+    return _NON_EVIDENCE_RE.sub("", body).strip()
+
