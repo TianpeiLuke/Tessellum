@@ -37,8 +37,10 @@ Design invariants:
 
 from __future__ import annotations
 
+import math
+import sqlite3
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from tessellum.composer.context_assembler import _fts5_safe_query
@@ -46,17 +48,27 @@ from tessellum.composer.context_assembler import _fts5_safe_query
 # Retrieval sizing defaults for per-note enrichment.
 DEFAULT_SEEDS: int = 10  # router top-K used as the relevance core + BFS seeds
 DEFAULT_NEIGHBORS: int = 8  # best-first BFS neighbors expanded per seed
-# Cap on links written into ## References. Sized above the digestion skill's
-# per-note cross-reference floor (≥8 relevant term-dictionary notes +
-# non-entry/service/etc. notes — plan/augment skills) so the suggested block can
-# actually MEET that floor rather than undershoot it; the writer trims to the
-# genuinely relevant subset.
+# Cap on links written into ## References. The writer trims to the genuinely
+# useful subset; this only bounds what it is offered.
 DEFAULT_MAX_RELATED: int = 14
-# Minimum term_dictionary (term_*) notes the enrichment tries to surface, so the
-# References block can satisfy the skill's ≥8-term floor even when free
-# relevance ranking is dominated by non-term notes. Best-effort: filled only if
-# retrieval found that many term notes.
-DEFAULT_MIN_TERM_NOTES: int = 8
+# Term_dictionary (term_*) notes the enrichment reserves room for, so that the
+# concepts a note USES have their definitions reachable even when free
+# relevance ranking is dominated by non-term notes. This is a coverage reserve,
+# not a floor to fill: a vault-wide audit of 353k links found that a fixed
+# per-note link COUNT manufactures restatements -- asked for N links, an author
+# reaches for the N most similar notes, which are the N least useful to
+# traverse to, and only about one link in five spanned a real gap. Best-effort:
+# filled only if retrieval found that many term notes.
+DEFAULT_MIN_TERM_NOTES: int = 4
+# Node specificity. A note that everything links to carries almost no
+# information about where a reader came from, so traversing to it spreads
+# attention instead of directing it. Down-weight each candidate by
+# 1/log(in_degree + e) -- the hub kernel a personalised-PageRank walk uses, and
+# the same idea as HippoRAG's 1/|passages containing the node| seed weighting,
+# whose published result reproduced here to within 0.005. In this vault family
+# in-degree is median single digits and reaches the thousands, so the tail is
+# exactly the hub population this describes.
+SPECIFICITY_ENABLED: bool = True
 
 # The section header the writer's ## References block is rendered under. Matches
 # the vault note templates (template_*.md) so the enrichment slots into the
@@ -284,12 +296,50 @@ def enrich_related_notes(
             warning="retrieval returned no related notes for this note"
         )
 
+    ordered = _apply_specificity(ordered, db)
     capped = _cap_with_term_quota(ordered, max_related, min_term_notes)
     return RelatedNotesResult(
         related=capped,
         references_markdown=render_references(capped),
         warning=None,
     )
+
+
+def _in_degree_map(db: Path) -> dict[str, int]:
+    """``note_id -> inbound link count`` from ``note_links``. One GROUP BY; fail-soft."""
+    try:
+        conn = sqlite3.connect(str(db))
+        try:
+            rows = conn.execute(
+                "SELECT target_note_id, COUNT(*) FROM note_links GROUP BY target_note_id"
+            ).fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return {}
+    return {r[0]: int(r[1]) for r in rows if r[0]}
+
+
+def _apply_specificity(ordered: list["RelatedNote"], db: Path) -> list["RelatedNote"]:
+    """Re-rank by ``score / log(in_degree + e)`` so hubs sink below specific notes.
+
+    Relevance alone is topical similarity, and a topically similar note is by
+    definition one a query would already have reached -- the link adds no
+    traversal the reader could not make unaided. Specificity is the one signal
+    that distinguishes a link worth following from a restatement, and it is
+    independent of relevance: a candidate can be highly relevant AND a hub.
+    """
+    if not SPECIFICITY_ENABLED or not ordered:
+        return ordered
+    deg = _in_degree_map(db)
+    if not deg:
+        return ordered
+    adjusted = [
+        replace(r, score=r.score / math.log(deg.get(r.note_id, 0) + math.e))
+        for r in ordered
+    ]
+    adjusted.sort(key=lambda r: -r.score)
+    return adjusted
 
 
 def _is_term_note(note_id: str) -> bool:

@@ -1277,6 +1277,75 @@ def _same_error_loop_fires(history: list[str]) -> bool:
     return len(history) >= 3 and history[-1] == history[-2] == history[-3]
 
 
+class ProviderErrorInBody(RuntimeError):
+    """A provider error that arrived as a SUCCESSFUL response whose body is the error.
+
+    Some gateways relay quota, billing and rate-limit failures as HTTP 200 with
+    the error text in the completion -- ``{"error":{"code":"INFERENCE_CAP_ERROR",
+    ...}}`` or ``Insufficient balance. Your credits balance is $-0.04``. Nothing
+    raised, so the retry ladder never saw it; the text was handed to the
+    materializer and parsed as note content. In one measured run every reply of
+    a 954-question arm was that billing string, and because it begins with the
+    same word as the abstention token the arm scored as 74% deliberate refusal
+    rather than as an empty wallet.
+
+    Raising here routes the case through :func:`classify_error` and the
+    credential pool exactly as a thrown provider error would be. The message is
+    the body text, so the taxonomy's token heuristics apply unchanged.
+    """
+
+
+# Only inspect SHORT bodies. A real note is long; a relayed provider error is a
+# sentence or a small JSON envelope. The bound keeps the check from ever
+# firing on legitimate content that happens to mention billing.
+_PROVIDER_ERROR_BODY_MAX_CHARS = 600
+
+
+# Signatures of a relayed provider error, as they appear IN A RESPONSE BODY.
+# Deliberately stricter than error_taxonomy.classify_reason, which is tuned for
+# exception messages and matches the bare word "insufficient" -- fine for an
+# exception, fatal here, because "INSUFFICIENT" is also the abstention token a
+# well-behaved reader emits on purpose. Every pattern below needs the billing /
+# quota / gateway vocabulary, not just the adjective.
+_PROVIDER_ERROR_BODY_PATTERNS = (
+    r"insufficient\s+(balance|credits?|funds|quota)",
+    r"credits?\s+balance",
+    r"balance\s+is\s+too\s+low",
+    r"\bbilling\b",
+    r"\bquota\b",
+    r"payment\s+required",
+    r"\b(402|429)\b",
+    r"rate[\s_-]?limit",
+    r"too\s+many\s+requests",
+    r"inference_cap",
+    r"daily\s+(free\s+)?limit",
+    r"\bunauthori[sz]ed\b",
+    r"invalid\s+(api[\s_-]?)?key",
+    r'"error"\s*:\s*\{',
+)
+_PROVIDER_ERROR_BODY_RE = re.compile("|".join(_PROVIDER_ERROR_BODY_PATTERNS), re.I)
+
+
+def _provider_error_in_body(content: str | None) -> str | None:
+    """Return the taxonomy reason if ``content`` IS a relayed provider error, else None.
+
+    Two gates, both required: the body must be SHORT (a real note is long; a
+    relayed error is a sentence or a small JSON envelope), and it must carry an
+    explicit billing / quota / gateway signature -- never the bare word
+    "insufficient", which is the abstention token.
+    """
+    if not content:
+        return None
+    text = content.strip()
+    if len(text) > _PROVIDER_ERROR_BODY_MAX_CHARS:
+        return None
+    if not _PROVIDER_ERROR_BODY_RE.search(text):
+        return None
+    from tessellum.composer.error_taxonomy import classify_reason
+    reason = classify_reason(text)
+    return reason if reason in ("quota", "rate_limit", "auth", "transport") else "quota"
+
+
 def _call_backend_with_timeout(
     backend: LLMBackend, request: LLMRequest, timeout_seconds: float
 ) -> LLMResponse | None:
@@ -1310,10 +1379,20 @@ def _call_backend_with_timeout(
         return None
     if errors:
         raise errors[0]
-    return responses[0]
+    response = responses[0]
+    reason = _provider_error_in_body(response.content)
+    if reason is not None:
+        # Surface it as the error it is. Left alone, this body would be parsed
+        # as note content and scored, and the run would look complete.
+        raise ProviderErrorInBody(
+            f"provider error relayed in response body ({reason}): "
+            f"{response.content.strip()[:200]}"
+        )
+    return response
 
 
 __all__ = [
+    "ProviderErrorInBody",
     "StepResult",
     "ErrorClass",
     "ExecutorError",
