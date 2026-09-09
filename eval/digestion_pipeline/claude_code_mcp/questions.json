@@ -1,0 +1,31 @@
+{
+  "slice": "claude_code_mcp",
+  "format": "answer_eval questions v1 — see eval/digestion_pipeline/answer_eval.py docstring",
+  "notes": "Hand-authored from golden_notes/ (dev slice). gold is one short span; polarity golds are yes/no; null questions are NOT answerable from these eight notes. evidence_notes are vault-relative ids inside golden_notes/.",
+  "questions": [
+    {"qid": "q01", "question": "What CLI command registers an MCP server with Claude Code?", "gold": "claude mcp add", "evidence_notes": ["cc_mcp_quickstart.md", "cc_mcp_transports.md"]},
+    {"qid": "q02", "question": "Which command lists the configured MCP servers and their connection status?", "gold": "claude mcp list", "evidence_notes": ["cc_mcp_quickstart.md", "cc_mcp_server_management.md"]},
+    {"qid": "q03", "question": "Which environment variable raises the MCP server startup timeout?", "gold": "MCP_TIMEOUT", "evidence_notes": ["cc_mcp_quickstart.md", "cc_mcp_server_management.md"]},
+    {"qid": "q04", "question": "Which file stores project-scoped MCP servers so they can be shared through version control?", "gold": ".mcp.json", "evidence_notes": ["cc_mcp_installation_scopes.md"]},
+    {"qid": "q05", "question": "Which remote MCP transport is deprecated?", "gold": "SSE", "evidence_notes": ["cc_mcp_transports.md"]},
+    {"qid": "q06", "question": "What command imports MCP servers already configured in Claude Desktop?", "gold": "claude mcp add-from-claude-desktop", "evidence_notes": ["cc_mcp_transports.md", "cc_mcp_quickstart.md"]},
+    {"qid": "q07", "question": "Which environment variable controls MCP tool search in Claude Code?", "gold": "ENABLE_TOOL_SEARCH", "evidence_notes": ["cc_mcp_tool_search.md"]},
+    {"qid": "q08", "question": "Where does Claude Code look for managed-mcp.json on macOS?", "gold": "/Library/Application Support/ClaudeCode/managed-mcp.json", "evidence_notes": ["cc_managed_mcp_configuration.md"]},
+    {"qid": "q09", "question": "Which claude mcp add flag fixes the OAuth callback port?", "gold": "--callback-port", "evidence_notes": ["cc_mcp_authentication.md"]},
+    {"qid": "q10", "question": "Which managed setting makes the MCP allowlist authoritative so user settings cannot broaden it?", "gold": "allowManagedMcpServersOnly", "evidence_notes": ["cc_managed_mcp_configuration.md"]},
+    {"qid": "q11", "question": "What command starts Claude Code itself as an MCP server?", "gold": "claude mcp serve", "evidence_notes": ["cc_mcp_authentication.md"]},
+    {"qid": "q12", "question": "Which environment variable adjusts the maximum allowed MCP tool output tokens?", "gold": "MAX_MCP_OUTPUT_TOKENS", "evidence_notes": ["cc_mcp_server_management.md"]},
+    {"qid": "q13", "question": "Which server configuration field exempts a server's tools from tool-search deferral?", "gold": "alwaysLoad", "evidence_notes": ["cc_mcp_tool_search.md"]},
+    {"qid": "q14", "question": "Which plugin scaffolds a new MCP server from inside a Claude Code session?", "gold": "mcp-server-dev", "evidence_notes": ["cc_mcp_overview.md"]},
+    {"qid": "q15", "question": "Is local the default scope for an MCP server added with claude mcp add?", "gold": "yes", "evidence_notes": ["cc_mcp_installation_scopes.md", "cc_mcp_server_management.md"]},
+    {"qid": "q16", "question": "Does the claude mcp add --transport flag accept ws for WebSocket servers?", "gold": "no", "evidence_notes": ["cc_mcp_transports.md"]},
+    {"qid": "q17", "question": "Are stdio MCP servers reconnected automatically when they disconnect mid-session?", "gold": "no", "evidence_notes": ["cc_mcp_server_management.md"]},
+    {"qid": "q18", "question": "Is MCP tool search enabled by default in Claude Code?", "gold": "yes", "evidence_notes": ["cc_mcp_tool_search.md"]},
+    {"qid": "q19", "question": "Can an allowlist match override a denylist match for an MCP server?", "gold": "no", "evidence_notes": ["cc_managed_mcp_configuration.md"]},
+    {"qid": "q20", "question": "Does Claude Code impose a fixed per-server MCP tool cap?", "gold": "no", "evidence_notes": ["cc_mcp_tool_search.md"]},
+    {"qid": "q21", "question": "Who is the chief executive officer of Anthropic?", "null": true},
+    {"qid": "q22", "question": "What is the monthly price of a Claude Team plan seat?", "null": true},
+    {"qid": "q23", "question": "In which year was the Model Context Protocol first announced?", "null": true},
+    {"qid": "q24", "question": "What default port does the Claude Code web interface listen on?", "null": true}
+  ]
+}

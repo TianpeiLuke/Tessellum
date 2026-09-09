@@ -53,15 +53,65 @@ def test_empty_and_none_safe():
     assert strip_scaffolding("") == ""
 
 
-def test_link_extraction_still_reads_the_full_body():
-    """The indexer must strip only at the two indexing points.
+def _write(v: Path, rel: str, text: str) -> None:
+    p = v / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(text, encoding="utf-8")
 
-    If strip_scaffolding were applied to `_body` itself, every Related Notes
-    link would vanish from the graph -- the sections it removes are where the
-    links live.
+
+def _fixture_vault(root: Path) -> Path:
+    """Two notes. A links to B ONLY inside its Related Notes section, and A's
+    prose mentions a distinctive token that must be searchable while B's
+    Related-Notes-only token must not be."""
+    v = root / "vault"
+    _write(v, "resources/note_a.md",
+           "---\ntags: [resource]\n---\n# Alpha\n\nProse about quokkalith.\n\n"
+           "## Related Notes\n- [Beta](note_b.md) — zebrafrond\n")
+    _write(v, "resources/note_b.md",
+           "---\ntags: [resource]\n---\n# Beta\n\nProse about marmoset.\n")
+    return v
+
+
+def _assert_invariant(db: Path, label: str) -> None:
+    import sqlite3
+    con = sqlite3.connect(db)
+    try:
+        edges = con.execute(
+            "SELECT source_note_id, target_note_id FROM note_links").fetchall()
+        assert ("resources/note_a.md", "resources/note_b.md") in edges, \
+            f"{label}: link extraction lost the Related-Notes-only edge"
+        assert con.execute("SELECT note_id FROM notes_fts WHERE notes_fts MATCH ?",
+                           ("quokkalith",)).fetchall(), f"{label}: prose token not indexed"
+        assert not con.execute("SELECT note_id FROM notes_fts WHERE notes_fts MATCH ?",
+                               ("zebrafrond",)).fetchall(), \
+            f"{label}: Related Notes text reached the index"
+    finally:
+        con.close()
+
+
+def test_full_build_keeps_links_and_drops_scaffolding(tmp_path: Path):
+    from tessellum.indexer.build import build
+    v = _fixture_vault(tmp_path)
+    db = tmp_path / "full.db"
+    build(v, db, with_dense=False)
+    _assert_invariant(db, "full build")
+
+
+def test_incremental_build_keeps_links_and_drops_scaffolding(tmp_path: Path):
+    """The INCREMENTAL path is the one that broke.
+
+    It re-reads bodies through `_load_all_note_bodies` for link extraction, and
+    an earlier edit stripped that dict. A full build never touches that function,
+    so a test that only ran full builds passed with the bug in place and CI
+    caught it instead. Build, then change the vault, then run the incremental
+    pass -- that is the path under test.
     """
-    src = (Path(__file__).resolve().parents[2]
-           / "src/tessellum/indexer/build.py").read_text()
-    assert 'body = note["_body"]' in src, "link extraction must use the raw body"
-    assert "_indexed_body" in src, "FTS must index the stripped text"
-    assert "strip_scaffolding(note.get" in src, "embeddings must use stripped text"
+    from tessellum.indexer.build import build, build_incremental
+    v = _fixture_vault(tmp_path)
+    db = tmp_path / "inc.db"
+    build(v, db, with_dense=False)
+    # a change forces the incremental walk to re-extract links for all notes
+    _write(v, "resources/note_c.md",
+           "---\ntags: [resource]\n---\n# Gamma\n\nProse about capybara.\n")
+    build_incremental(v, db, with_dense=False)
+    _assert_invariant(db, "incremental build")

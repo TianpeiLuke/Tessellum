@@ -431,9 +431,12 @@ def _load_all_note_bodies(conn: sqlite3.Connection, fs_meta: dict[str, dict]) ->
     incremental walk parses all files to diff), so link resolution reads bodies
     from there — no second disk read. Only ``note_id`` + ``_body`` are needed by
     :func:`_extract_all_links`."""
+    # RAW body, deliberately. This feeds link extraction, and the links live in
+    # the Related Notes section that strip_scaffolding removes -- stripping here
+    # would silently empty the link graph. Stripping happens only at the FTS
+    # insert and the embedding text, never on the body link extraction reads.
     return [
-        {"note_id": nid, "note_name": m["note_name"],
-         "_indexed_body": strip_scaffolding(m["_body"])}
+        {"note_id": nid, "note_name": m["note_name"], "_body": m["_body"]}
         for nid, m in fs_meta.items()
     ]
 

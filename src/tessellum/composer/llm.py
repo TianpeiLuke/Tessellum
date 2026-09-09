@@ -149,6 +149,37 @@ WRITE_TIMEOUT_S: float = 60.0
 POOL_TIMEOUT_S: float = 60.0
 
 
+def _anthropic_httpx_module(anthropic_mod):
+    """Return the httpx module the installed anthropic SDK is built against.
+
+    anthropic >= the httpx2 migration imports ``httpx2`` and rejects
+    ``httpx.Timeout``; older releases use ``httpx``. Prefer whichever the SDK's
+    own base client references, then fall back by import order.
+    """
+    import importlib
+    base = getattr(anthropic_mod, "_base_client", None)
+    for attr in ("httpx", "httpx2"):
+        mod = getattr(base, attr, None) if base is not None else None
+        if mod is not None and hasattr(mod, "Timeout"):
+            return mod
+    for name in ("httpx2", "httpx"):
+        try:
+            mod = importlib.import_module(name)
+        except ImportError:
+            continue
+        # only accept the module the SDK will not reject
+        try:
+            anthropic_mod.Anthropic(api_key="probe", max_retries=0,
+                                    timeout=mod.Timeout(1.0))
+            return mod
+        except TypeError:
+            continue
+        except Exception:
+            return mod   # constructed past the timeout check; that is the match
+    import httpx  # last resort; matches every SDK that predates httpx2
+    return httpx
+
+
 class AnthropicBackend:
     """Anthropic Messages API backend.
 
@@ -204,12 +235,17 @@ class AnthropicBackend:
         if client is None:
             try:
                 import anthropic  # type: ignore[import-not-found]
-                import httpx  # anthropic's own transport dep
             except ImportError as e:  # pragma: no cover — environment-dep
                 raise ImportError(
                     "AnthropicBackend requires the `anthropic` package. "
                     "Install with: pip install tessellum[agent]"
                 ) from e
+            # The SDK rejects a Timeout object from the WRONG httpx: newer
+            # releases vendor `httpx2` and raise "`httpx.Timeout` is from the
+            # `httpx` package, but this SDK uses `httpx2`" on a plain
+            # `import httpx`. Resolve the transport module the installed SDK
+            # actually uses rather than hard-coding either name.
+            httpx = _anthropic_httpx_module(anthropic)
             # J3 finding 5 (FZ 20k9c1a1a1b7c2k2): the first live runtime wave
             # wedged for 60+ minutes on FOUR silent stalled HTTPS streams —
             # ESTABLISHED sockets, no data, no timeout firing, every worker
