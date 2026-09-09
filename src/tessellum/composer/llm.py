@@ -30,6 +30,7 @@ Four backends ship:
 
 from __future__ import annotations
 
+import inspect
 import json
 import math
 import shutil
@@ -938,6 +939,27 @@ class PooledBackend:
 _NONSTREAMING_MAX_TOKENS = 21_000  # conservatively under the SDK's 21_333 guard
 
 
+def _accepted_extra(client: object, extra: dict) -> dict:
+    """Keep only the ``extra`` kwargs the client's ``messages.create`` accepts.
+
+    anthropic SDK versions differ in their sampling-param surface — 1.4.0 has no
+    ``temperature`` and its ``create`` takes no ``**kwargs``, so an unrecognised
+    key raises ``TypeError`` and (on Bedrock) fails every call. This introspects
+    the signature once per call and drops unsupported keys. If the signature
+    exposes ``**kwargs`` (VAR_KEYWORD) or cannot be read, ``extra`` is returned
+    unchanged — the SDK will absorb or validate it as before.
+    """
+    try:
+        sig = inspect.signature(client.messages.create)  # type: ignore[attr-defined]
+    except (TypeError, ValueError, AttributeError):
+        return extra
+    params = sig.parameters
+    if any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return extra
+    kept = {k: v for k, v in extra.items() if k in params}
+    return kept
+
+
 def _messages_create_or_stream(
     client: object,
     *,
@@ -950,6 +972,15 @@ def _messages_create_or_stream(
     """Call the Anthropic Messages API, streaming iff ``max_tokens`` would trip
     the SDK's non-streaming 10-minute guard. Returns the final ``Message``."""
     messages = [{"role": "user", "content": user_prompt}]
+    # SDK-surface drift: `messages.create` accepts different sampling params
+    # across anthropic versions (1.4.0 has no `temperature` at all, and its
+    # `create` takes no `**kwargs`, so passing one raises TypeError). Drop any
+    # `extra` key the installed SDK's signature does not accept — the provider
+    # default is used for it — so a temperature-setting caller (e.g. the answer
+    # eval) does not turn every Bedrock call into a transport failure. When the
+    # signature can't be introspected or accepts arbitrary kwargs, pass through.
+    if extra:
+        extra = _accepted_extra(client, extra)
     if max_tokens > _NONSTREAMING_MAX_TOKENS:
         # Streaming path: the context manager accumulates the final Message,
         # which carries the same content/stop_reason/usage a create() returns.
