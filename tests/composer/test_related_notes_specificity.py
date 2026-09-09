@@ -22,7 +22,8 @@ def _db(tmp_path, links):
     c = sqlite3.connect(db)
     c.execute("CREATE TABLE note_links (source_note_id TEXT, target_note_id TEXT)")
     c.executemany("INSERT INTO note_links VALUES (?,?)", links)
-    c.commit(); c.close()
+    c.commit()
+    c.close()
     return db
 
 
@@ -53,7 +54,8 @@ def test_relevance_still_wins_when_specificity_is_equal(tmp_path):
 
 
 def test_missing_link_table_is_fail_soft(tmp_path):
-    db = tmp_path / "empty.db"; sqlite3.connect(db).close()
+    db = tmp_path / "empty.db"
+    sqlite3.connect(db).close()
     ordered = [_note("a.md", 0.5), _note("b.md", 0.9)]
     out = rn._apply_specificity(ordered, db)
     assert [r.note_id for r in out] == ["a.md", "b.md"], "unchanged order when no signal"
