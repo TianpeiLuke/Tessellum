@@ -1,6 +1,6 @@
 """Single source of package version and current capability status."""
 
-__version__ = "1.13.0"
+__version__ = "1.14.0"
 
 __status__ = (
     "Current main - Composer v4 dynamic workflows, the P0-P9 knowledge-transaction "
