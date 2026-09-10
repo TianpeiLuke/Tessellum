@@ -63,8 +63,14 @@ def test_renewal_survives_transient_error(tmp_path: Path) -> None:
         return real(job_id, lease, lease_ttl=lease_ttl)
 
     store.heartbeat = flaky  # type: ignore[method-assign]
-    with sup._heartbeat(job.job_id, job.lease, 0.6) as assert_healthy:
-        time.sleep(0.9)  # spans several 0.2s cadence ticks
+    # Margins are deliberately wide. This is a wall-clock race: the first beat
+    # is made to fail, and the SECOND must land before the lease TTL expires. At
+    # TTL 0.6s / cadence 0.2s that left one late thread schedule between pass
+    # and LeaseLostError, and the py3.11 CI runner lost it while py3.12 and
+    # every local run passed. The property under test is unchanged -- a
+    # transient error is journaled and renewal resumes -- it just gets room.
+    with sup._heartbeat(job.job_id, job.lease, 2.0) as assert_healthy:
+        time.sleep(2.5)  # spans a dozen 0.2s cadence ticks
         assert_healthy()  # transient error did NOT kill the actor
     recs = _journal(paths, job.job_id)
     assert any(not r["ok"] for r in recs)   # the failure was journaled
