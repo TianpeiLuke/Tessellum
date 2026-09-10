@@ -19,6 +19,8 @@ from tessellum.composer.gates import (
     PLAN_NOTE_MAX_WORDS,
     build_plan_gate,
     plan_atomicity_predicate,
+    plan_note_max_words,
+    plan_oversplit_min_words,
 )
 from tessellum.composer.knowledge_plan import ClaimProvenance, NoteIntent
 
@@ -390,3 +392,52 @@ def test_augment_phase_does_not_clobber_coverage_gate(tmp_path) -> None:
     assert not result.passed  # PLAN-006 fires on the omitted 'Security' section
     issues = plan_atomicity_predicate(plan_doc)
     assert any(i.rule_id == "PLAN-006" and "Security" in i.message for i in issues)
+
+
+# ── Granularity profile (v3-alignment) — the env-selectable density ceiling ──
+
+
+def test_granularity_accessors_default_to_section_constants(monkeypatch) -> None:
+    """No env → the accessors return the calibrated SECTION defaults, so the
+    golden-eval and every unflagged caller are byte-identical to before."""
+    monkeypatch.delenv("TESSELLUM_PLAN_NOTE_MAX_WORDS", raising=False)
+    monkeypatch.delenv("TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS", raising=False)
+    assert plan_note_max_words() == PLAN_NOTE_MAX_WORDS == 1800
+    assert plan_oversplit_min_words() == 1143
+
+
+def test_thought_profile_ceiling_fires_plan004_where_section_passes(monkeypatch) -> None:
+    """A ~600-word note is CLEAN under the section ceiling (1800) but trips
+    PLAN-004 under the thought ceiling (300) — the deterministic gate enforces
+    the active granularity profile regardless of the reviewer's self-report."""
+    planned = [
+        {"filename": "a.md", "building_block": "concept", "approx_words": 600},
+        {"filename": "b.md", "building_block": "concept", "approx_words": 605},
+        {"filename": "c.md", "building_block": "concept", "approx_words": 478},
+        {"filename": "d.md", "building_block": "concept", "approx_words": 478},
+    ]
+    coverage = [{"source_section": f"S{i}", "maps_to_note": n["filename"]}
+                for i, n in enumerate(planned)]
+
+    # section profile: 600 < 1800 → no PLAN-004
+    monkeypatch.setenv("TESSELLUM_PLAN_NOTE_MAX_WORDS", "1800")
+    monkeypatch.setenv("TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS", "1143")
+    section_issues = plan_atomicity_predicate(_plan(planned=planned, coverage=coverage))
+    assert not any(i.rule_id == "PLAN-004" for i in section_issues)
+
+    # thought profile: 600 >= 300 → PLAN-004 on every note
+    monkeypatch.setenv("TESSELLUM_PLAN_NOTE_MAX_WORDS", "300")
+    monkeypatch.setenv("TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS", "40")
+    thought_issues = plan_atomicity_predicate(_plan(planned=planned, coverage=coverage))
+    p004 = [i for i in thought_issues if i.rule_id == "PLAN-004"]
+    assert len(p004) == 4
+    assert all("300" in i.message for i in p004)
+
+
+def test_malformed_granularity_env_falls_back_to_constant(monkeypatch) -> None:
+    """A non-integer env value must not crash the accessor — it falls back to
+    the section constant (fail-safe, never a ValueError deep in the gate)."""
+    monkeypatch.setenv("TESSELLUM_PLAN_NOTE_MAX_WORDS", "not-a-number")
+    monkeypatch.setenv("TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS", "")
+    assert plan_note_max_words() == PLAN_NOTE_MAX_WORDS
+    assert plan_oversplit_min_words() == 1143

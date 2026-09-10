@@ -497,6 +497,32 @@ PLAN_NOTE_MAX_WORDS: int = 1800
 PLAN_OVERSPLIT_MIN_WORDS: int = 1143
 
 
+# Granularity is selectable per run. The module constants above are the SECTION
+# profile (the calibration Tessellum's own golden eval was built against). A
+# thought-atomic digest (v3-aligned, one thought per note ~40–250 words) sets
+# TESSELLUM_PLAN_NOTE_MAX_WORDS / TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS, read lazily
+# here so the digest CLI can pick a granularity without touching the section
+# eval, which never sets them and so keeps the section defaults. Import-by-name
+# consumers (and every existing test) see the unchanged section constants.
+import os as _os
+
+
+def plan_note_max_words() -> int:
+    """PLAN-004 word ceiling for the active granularity (env override → section default)."""
+    try:
+        return int(_os.environ.get("TESSELLUM_PLAN_NOTE_MAX_WORDS", "") or PLAN_NOTE_MAX_WORDS)
+    except ValueError:
+        return PLAN_NOTE_MAX_WORDS
+
+
+def plan_oversplit_min_words() -> int:
+    """PLAN-008 words-per-note floor for the active granularity (env override → section default)."""
+    try:
+        return int(_os.environ.get("TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS", "") or PLAN_OVERSPLIT_MIN_WORDS)
+    except ValueError:
+        return PLAN_OVERSPLIT_MIN_WORDS
+
+
 def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
     """A ``plan`` gate over OBJECTIVE note-atomicity signals (FZ 20k9d4).
 
@@ -557,12 +583,13 @@ def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]
         words = _coerce_words(note.get("approx_words"))
         if words is not None and words > 0:
             any_words_declared = True
-        if words is not None and words >= PLAN_NOTE_MAX_WORDS:
+        _max_words = plan_note_max_words()
+        if words is not None and words >= _max_words:
             issues.append(Issue(
                 Severity.ERROR, "PLAN-004", name,
                 f"note '{name}' is not density-atomic: approx_words={words} "
-                f">= {PLAN_NOTE_MAX_WORDS} — re-plan (split or rearrange the "
-                f"coverage map so no note carries >= {PLAN_NOTE_MAX_WORDS} words)",
+                f">= {_max_words} — re-plan (split or rearrange the "
+                f"coverage map so no note carries >= {_max_words} words)",
             ))
         bb = note.get("building_block")
         if bb is not None and not is_single_bb(bb):
@@ -595,16 +622,16 @@ def plan_atomicity_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]
     if notes and notes_source == "planned_notes":
         measured_total = _measured_source_words(plan_doc)
         if measured_total > 0:
-            max_notes = math.ceil(measured_total / PLAN_OVERSPLIT_MIN_WORDS)
+            max_notes = math.ceil(measured_total / plan_oversplit_min_words())
             if len(notes) > max_notes:
                 issues.append(Issue(
                     Severity.ERROR, "PLAN-008", "planned_notes",
                     f"plan is over-split: {len(notes)} notes for a "
                     f"{measured_total}-word source exceeds the max "
-                    f"{max_notes} (measured_total / {PLAN_OVERSPLIT_MIN_WORDS} "
+                    f"{max_notes} (measured_total / {plan_oversplit_min_words()} "
                     f"words-per-note floor) — re-plan by CONSOLIDATING thin "
                     f"notes or redistributing the coverage map so each note "
-                    f"carries closer to the ~1,600-word target",
+                    f"carries closer to the words-per-note target",
                 ))
 
     issues.extend(_coverage_issues(plan_doc, has_notes=bool(notes)))
@@ -845,14 +872,15 @@ def plan_balance_predicate(plan_doc: "dict | None", /, **_) -> Sequence[Issue]:
         return []
     from tessellum.composer.note_coverage import owned_span_words
 
-    ceiling = 2 * PLAN_NOTE_MAX_WORDS
+    _max_words = plan_note_max_words()
+    ceiling = 2 * _max_words
     return [
         Issue(
             Severity.WARNING,
             "PLAN-010",
             "plan_balance",
             f"note {name!r} owns {words} measured source words across "
-            f"{nsec} sections — over {ceiling} (2× the {PLAN_NOTE_MAX_WORDS}"
+            f"{nsec} sections — over {ceiling} (2× the {_max_words}"
             f"-word density ceiling); it cannot cover them deeply at cap — "
             f"consider re-allocating the coverage map",
         )

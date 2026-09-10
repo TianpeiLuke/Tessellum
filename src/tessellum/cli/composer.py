@@ -461,6 +461,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     digest_cmd.add_argument("--region", default="us-east-1", help="AWS region for bedrock.")
     digest_cmd.add_argument("--aws-profile", default=None, help="AWS_PROFILE for bedrock.")
     digest_cmd.add_argument(
+        "--granularity", choices=["thought", "section"], default="thought",
+        help="Note granularity. 'thought' (default): one thought per note "
+        "(~40-250 words by block, v3-aligned) — split when a note would answer "
+        "two questions. 'section': one building block per note (~1,100-1,600 "
+        "words) — Tessellum's original density-band profile (its golden eval's "
+        "calibration).",
+    )
+    digest_cmd.add_argument(
         "--mock-responses", type=Path,
         help="JSON pattern→response map for --backend=mock.",
     )
@@ -1481,6 +1489,37 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
     source_leaf.setdefault("member_count", 1)
     source_leaf.setdefault("members", [])
 
+    # Granularity (FZ v3-alignment): pick the per-note sizing profile. Sets the
+    # PLAN-004/008 gate constants (read lazily via env by gates.plan_note_max_words
+    # / plan_oversplit_min_words) AND injects the matching decompose guidance the
+    # plan skill renders at {{leaf.granularity_guidance}}, so the band the planner
+    # is given and the gate that judges it always agree. Default 'thought'
+    # (v3-aligned); 'section' restores the original density-band calibration.
+    # The gate constants are set via process env (read lazily by the gates) and
+    # MUST be restored after the run: pytest drives many digests in one process,
+    # so an unrestored "300" ceiling would leak into every later test's default
+    # gate. Capture the prior values here; a finally around the pipeline call
+    # below restores them. (In production each CLI invocation is its own process,
+    # so the restore is a no-op there — it exists purely for in-process callers.)
+    import os as _os
+    from tessellum.composer.digestion import (
+        THOUGHT_GRANULARITY_GUIDANCE,
+        SECTION_GRANULARITY_GUIDANCE,
+    )
+    _granularity_env_keys = (
+        "TESSELLUM_PLAN_NOTE_MAX_WORDS",
+        "TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS",
+    )
+    _prior_granularity_env = {k: _os.environ.get(k) for k in _granularity_env_keys}
+    if getattr(args, "granularity", "thought") == "thought":
+        _os.environ["TESSELLUM_PLAN_NOTE_MAX_WORDS"] = "300"
+        _os.environ["TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS"] = "40"
+        source_leaf["granularity_guidance"] = THOUGHT_GRANULARITY_GUIDANCE
+    else:
+        _os.environ["TESSELLUM_PLAN_NOTE_MAX_WORDS"] = "1800"
+        _os.environ["TESSELLUM_PLAN_OVERSPLIT_MIN_WORDS"] = "1143"
+        source_leaf["granularity_guidance"] = SECTION_GRANULARITY_GUIDANCE
+
     backend = _build_backend_for(args)
     if isinstance(backend, int):
         return backend
@@ -1531,18 +1570,27 @@ def run_composer_digest_cli(args: argparse.Namespace) -> int:
             ),
         )
 
-    result = run_digestion_pipeline(
-        skills_dir=skills_dir,
-        source_leaf=source_leaf,
-        backend=backend,
-        vault_root=args.vault.expanduser().resolve(),
-        dry_run=args.dry_run,
-        sign_off_policy=policy,
-        agent_judge=agent_judge,
-        run_id=run_id,
-        max_review_rounds=args.max_review_rounds,
-        **extra_kwargs,
-    )
+    try:
+        result = run_digestion_pipeline(
+            skills_dir=skills_dir,
+            source_leaf=source_leaf,
+            backend=backend,
+            vault_root=args.vault.expanduser().resolve(),
+            dry_run=args.dry_run,
+            sign_off_policy=policy,
+            agent_judge=agent_judge,
+            run_id=run_id,
+            max_review_rounds=args.max_review_rounds,
+            **extra_kwargs,
+        )
+    finally:
+        # Restore the gate-constant env exactly as it was (absent → stays absent),
+        # so this digest's granularity choice cannot leak to a later in-process run.
+        for _k, _v in _prior_granularity_env.items():
+            if _v is None:
+                _os.environ.pop(_k, None)
+            else:
+                _os.environ[_k] = _v
 
     if args.output_format == "json":
         print(json.dumps({

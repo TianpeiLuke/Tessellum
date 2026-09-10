@@ -62,6 +62,8 @@ from tessellum.composer.executor import (
 from tessellum.composer.gates import (
     PLAN_NOTE_MAX_WORDS,
     PLAN_OVERSPLIT_MIN_WORDS,
+    plan_note_max_words,
+    plan_oversplit_min_words,
     build_plan_gate,
     duplicate_target_predicate,
 )
@@ -197,6 +199,31 @@ DERIVED_TIMEOUT_CEILING_SECONDS: float = 1800.0
 # tokens — ~3–4 chars/token for English prose. The service path uses
 # ``RuntimePolicy.context_max_chars`` instead (a different default).
 DEFAULT_DIGESTION_CONTEXT_MAX_CHARS: int = HARD_PROMPT_CAP_CHARS - 4_096
+
+# Granularity guidance injected into the plan skill's decompose step as
+# {{leaf.granularity_guidance}}. SECTION is Tessellum's original density-band
+# target (one building block per note, ~1,100–1,600 words), the calibration its
+# own golden eval was built against. THOUGHT is the v3-aligned profile (one
+# *thought* per note, ~40–250 words by block) — the granularity the MultiHop-RAG
+# benchmark's plan_v2 used, and the default for `composer digest`. The eval
+# reproduction path sets neither and gets SECTION via M0's setdefault below.
+SECTION_GRANULARITY_GUIDANCE: str = (
+    "  A note carries roughly 60–90% of the word ceiling (~1,100–1,600 words of "
+    "mapped source), ONE building block. Split only when a note's mapped share "
+    "EXCEEDS the ceiling, never preemptively; expected count ≈ measured-total ÷ "
+    "~1,500. Over-splitting into many thin notes fails the note-count band just "
+    "as under-splitting fails density."
+)
+THOUGHT_GRANULARITY_GUIDANCE: str = (
+    "  ONE THOUGHT of the note's building-block kind — not one topic, not two "
+    "thoughts. SPLIT TEST: if a note would answer two DIFFERENT questions, it is "
+    "two notes. STOPPING RULE: do not split when the relation between the halves "
+    "cannot be stated in one line. TARGET WEIGHT by block (body words): "
+    "empirical_observation 40–90 | concept 50–110 | model/hypothesis/"
+    "counter_argument 60–130 | argument 70–150 | procedure 80–250 | navigation "
+    "40–120. Each note is SELF-SUFFICIENT: name its subject, carry the date, "
+    "resolve every reference — never buy brevity by deleting context."
+)
 
 
 def _derive_step_budgets(
@@ -818,8 +845,8 @@ def compute_review_exhibits(plan_doc: dict) -> str:
             parts.append(
                 f"DENSITY (computed): approx_words min={words[0]} median={mid} "
                 f"max={words[-1]} over {len(words)} notes "
-                f"(ceiling {PLAN_NOTE_MAX_WORDS}, over-split floor "
-                f"{PLAN_OVERSPLIT_MIN_WORDS})"
+                f"(ceiling {plan_note_max_words()}, over-split floor "
+                f"{plan_oversplit_min_words()})"
             )
         # BALANCE (W1.3, FZ k2a4) — per-note OWNED-SPAN size: the run-13
         # residual (a note owning 17 sections dilutes at cap). Advisory:
@@ -831,13 +858,14 @@ def compute_review_exhibits(plan_doc: dict) -> str:
 
             spans = owned_span_words(notes, cmap, source)
             if spans:
+                _2x = 2 * plan_note_max_words()
                 heavy = {n: ws for n, ws in spans.items()
-                         if ws[0] > 2 * PLAN_NOTE_MAX_WORDS}
+                         if ws[0] > _2x}
                 sizes = sorted(ws[0] for ws in spans.values())
                 parts.append(
                     f"BALANCE (computed): owned-span words per note "
                     f"min={sizes[0]} max={sizes[-1]} over {len(spans)} notes"
-                    + (f"; OVER 2x ceiling ({2 * PLAN_NOTE_MAX_WORDS}): "
+                    + (f"; OVER 2x ceiling ({_2x}): "
                        + ", ".join(f"{n}={ws[0]}w/{ws[1]}sec"
                                    for n, ws in sorted(heavy.items()))
                        if heavy else " (balanced)")
@@ -2123,6 +2151,10 @@ def run_digestion_pipeline(
     # the keys are already present → byte-identical prompts for those callers.
     plan_doc.setdefault("member_count", 1)
     plan_doc.setdefault("members", [])
+    # Granularity guidance is injected by the caller (the digest CLI defaults to
+    # THOUGHT); a caller that sets neither — the golden-eval reproduction path —
+    # defaults to SECTION here, so the calibrated eval is byte-identical.
+    plan_doc.setdefault("granularity_guidance", SECTION_GRANULARITY_GUIDANCE)
     # Issue 11 (FZ 20k9c1a1a1b7c2k1a1b): the source ledger is CODE-COMPUTED
     # from the members' inline text — the model may not author measurements.
     # Computed once here; re-asserted after every phase fold so an LLM
@@ -2150,11 +2182,12 @@ def run_digestion_pipeline(
         # gates enforce, so round 0 plans inside what sign-off will accept.
         total = sum(pg.get("measured_words", 0) for pg in code_ledger)
         if total > 0:
-            lo = max(1, -(-total // PLAN_NOTE_MAX_WORDS))
-            hi = max(lo, -(-total // PLAN_OVERSPLIT_MIN_WORDS))
+            _maxw, _minw = plan_note_max_words(), plan_oversplit_min_words()
+            lo = max(1, -(-total // _maxw))
+            hi = max(lo, -(-total // _minw))
             plan_doc["note_count_band"] = (
                 f"{lo}..{hi} notes (measured {total} words; density ceiling "
-                f"{PLAN_NOTE_MAX_WORDS}, over-split floor {PLAN_OVERSPLIT_MIN_WORDS} "
+                f"{_maxw}, over-split floor {_minw} "
                 f"— the PLAN-004/PLAN-008 gates enforce this band at sign-off)"
             )
     # A3.1 (FZ 20k9c1a1a1b7c2k1a): derive the joined source excerpt ONCE from
