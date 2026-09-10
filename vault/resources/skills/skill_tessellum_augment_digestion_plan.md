@@ -317,6 +317,8 @@ inputs:
   required: true
 - name: artifact.pages
   required: true
+- name: artifact.plan_text
+  required: true
 ```
 
 You are running step 3 of tessellum-augment-digestion-plan: assemble the
@@ -326,7 +328,12 @@ scripts, pacing rules, and per-phase gate tables).
 DENSITY RE-ASSESSMENT (from step 2)
 {{upstream.density_reassessment}}
 
+THE PLANNED NOTES INVENTORY (authoritative, from Phase 1 — the of-record plan by reference from the run's working store; you have NO tools). Its Planned Notes table is the EXACT, FIXED set of notes execution will produce:
+{{artifact.plan_text}}
+
 Follow this procedure:
+
+**The Planned Notes table above is AUTHORITATIVE — there are N notes (the exact row count, possibly 20+ small thought-atomic notes) and you MUST NOT change that number: never consolidate several planned notes into one, never merge documents into "section notes", never re-decompose. Map the coverage tree onto those N notes, and plan the execution PHASES as batches OVER those N notes — every phase's gate table enumerates the full contiguous G1–G8.**
 
 Using the density re-assessment from the prior step, assemble the structural-integrity sections of the augmented plan.
 
@@ -461,6 +468,8 @@ inputs:
   required: true
 - name: upstream.crossref_contract
   required: true
+- name: artifact.plan_text
+  required: true
 ```
 
 You are running step 4 of tessellum-augment-digestion-plan: build the
@@ -470,7 +479,12 @@ mapping, and the Entry Point Decision.
 COVERAGE + GATES (from step 3)
 {{upstream.coverage_and_gates}}
 
+THE PLANNED NOTES INVENTORY (authoritative, from Phase 1 — the of-record plan by reference from the run's working store; you have NO tools and must NEVER role-play reading a file). Its Planned Notes table lists the EXACT set of notes to enrich:
+{{artifact.plan_text}}
+
 Follow this procedure:
+
+**The Planned Notes table above is AUTHORITATIVE and FIXED — it lists N notes decomposed in Phase 1, and N is exactly the row count of that table (it may be 20+ small thought-atomic notes, not a handful of section notes). Build a per-note Related Notes mapping for EVERY one of those N notes (N of N), keyed by the EXACT filenames in the table. NEVER re-decompose, consolidate several planned notes into one, merge documents into "section notes", or reduce the count — decomposition is Phase 1's job, not yours. Any Building Block Distribution or note-count figure you touch MUST report the plan's actual N and its per-BB mix; NEVER invent a "SECTION" building block or collapse the inventory to one-note-per-document.**
 
 Build the cross-reference contract that the executing agent will copy verbatim. For EACH planned note, record a per-note Related Notes mapping from the plan's own cross-reference research (the execute wave enriches each writer with live per-note retrieval): **relevancy-selected `term_dictionary/` term-note links whose floor SCALES with the active granularity** — roughly one relevancy-selected term link per ~150 words of the note's target size, minimum 1 (SECTION ~1,100–1,600-word notes → ≥8; THOUGHT ~40–250-word notes → ≥1, 1–2 for a rich note), relevancy-ranked and NEVER padded to a large-note count — plus related tools/repos/areas/how-tos/siblings, plus **≥1 entry-point back-link**. Every mapped link MUST carry a one-line description AND a relevancy statement — bare wikilinks fail review CP1; write the descriptions in THIS first pass, not as a revise-round patch. Each listed reference must be verified to exist (this is what G5 checks). Then build the reverse **Inlink mapping** (existing notes → new notes) so every new note gains inbound discoverability (G8), and record the Follow-up Recommendations (incremental index update, add-inlinks, backlinks, sync).
 
@@ -552,6 +566,8 @@ Follow this procedure:
 **If PRIOR REVIEW FAILURES is non-empty, this is a REVISE round: resolve EACH listed failure IN the rewritten plan text itself** — if a failure demands an exact figure, write that exact figure (bare digits); if it names a missing heading or row, add it — then preserve everything the review did not flag. The failures are concrete edit instructions for THIS step, not background.
 
 Rewrite the plan file in place, weaving in the sections assembled by the prior steps. The plan_doc is both input and output: preserve every original section (Objective, Routing, Source, Content Strategy, Planned Notes table, Summary Statistics) and add or replace the augmentation sections — Section Coverage Map, Split Decisions, Density Re-Assessment, Validation Scripts, Pacing Rules, per-phase GATE tables, Per-Note Related Notes Mapping, Inlinks, Undigested Terms Plan, Term-Note Authoring Requirements, Documentation-Note Authoring Spec, Entry Point Decision, and Follow-up Recommendations.
+
+**The Phase-1 note inventory is FIXED: the rewritten Planned Notes table MUST reproduce the SAME set of notes (same filenames, same N row count) as the draft plan above, and the Summary Statistics + Building Block Distribution MUST report that exact N and its per-BB mix. NEVER re-decompose, consolidate to one-note-per-document, or emit a "SECTION" building block — if the draft plan lists 23 thought-atomic notes, the augmented plan lists those same 23 (and the Per-Note Related Notes Mapping carries all 23). Shrinking the inventory is the single most common augment failure and fails review CP1.**
 
 Before returning, run the completeness checklist over the rewritten plan and confirm every item passes: coverage map has no orphaned source headings, every phase gate table includes the contiguous G1-G8 (G7 present, G7/G8 not collapsed), the per-note cross-reference contract covers EVERY planned note (N mappings for N planned notes) and each meets the size-scaled term-link floor (SECTION ≥8; THOUGHT ≥1 relevancy-selected term links, never padded), the Undigested Terms Plan has no TBD rows and passed the specificity/collision audit, and the Entry Point Decision matches the size threshold. Only when all items pass is the plan ready for Phase 3 (review).
 
