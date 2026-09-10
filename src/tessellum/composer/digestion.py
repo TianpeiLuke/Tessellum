@@ -1156,6 +1156,21 @@ def _code_block_budget(filename: str, plan_doc: dict) -> int:
     return min(_GOLDEN_CODE_CAP, max(fences, 0)) or 0
 
 
+def _target_words(pn: dict) -> int:
+    """The writer's per-note WORD BUDGET — the plan's ``approx_words`` for this
+    note, coerced to int (0 when absent/unparseable). Mirrors
+    :func:`_code_block_budget`: a NUMBER on the leaf so the writer AIMS at the
+    planned granularity target (a thought-atomic note ~40-250w, a section note
+    ~1,100-1,600w) instead of drifting up to the ≤400-line pacing cap. The
+    residual FZ 20k9d4 gap: the plan sized each note but the writer never saw
+    that number, so thought-atomic bodies over-wrote 2-3x their target."""
+    raw = pn.get("approx_words")
+    try:
+        return max(0, int(float(str(raw))))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _owned_sections_md(filename: str, plan_doc: dict) -> str:
     """E2.3 (FZ 20k9c1a1a1b7c2k1a1b1): the per-note ledger slice — the
     ``section_coverage_map`` rows this note owns, joined with the code-measured
@@ -1572,6 +1587,10 @@ def _project_planned_notes_to_leaves(plan_doc: dict) -> list[dict]:
                 f"- {n}" for n in all_names if n != name
             ),
             "code_block_budget": _code_block_budget(name, plan_doc),
+            # The per-note WORD BUDGET (plan's approx_words as a NUMBER), so the
+            # writer aims the body at the planned granularity target instead of
+            # the ≤400-line pacing cap — the FZ 20k9d4 residual for thought mode.
+            "target_words": _target_words(pn),
             "target_path": f"{note_dir}/{name}",
             "source_ref": source_refs,
         })

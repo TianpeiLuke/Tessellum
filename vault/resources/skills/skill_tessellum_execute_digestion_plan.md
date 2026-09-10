@@ -307,6 +307,8 @@ inputs:
   required: false
 - name: leaf.code_block_budget
   required: false
+- name: leaf.target_words
+  required: false
 - name: artifact.plan_text
   required: true
 - name: artifact.source_excerpt
@@ -359,6 +361,16 @@ other spelling is a broken link by construction):
 CODE BUDGET: at most {{leaf.code_block_budget}} fenced code blocks in
 this note (computed from your owned slice's measured code). Select the
 REPRESENTATIVE snippets; do not exceed the number.
+
+WORD BUDGET: aim the note BODY (everything after the closing `---`) at
+about {{leaf.target_words}} words — the per-note granularity target the
+plan set for this note. This is a FIRM target, not a floor: a thought-atomic
+note is ~40–250 words and states ONE thought completely, then STOPS; a
+section note is ~1,100–1,600. Do NOT pad to the ≤400-line pacing cap, do NOT
+restate the source or add background the one thought does not need — a body
+2–3× its target is over-written and defeats the plan's granularity. If the
+owned material genuinely cannot be said as one atomic note within the target,
+return split-needed rather than over-writing.
 
 RELATED NOTES (retrieved per-note by relevance to THIS note's thesis;
 each is an EXISTING vault note with a path already resolved relative to

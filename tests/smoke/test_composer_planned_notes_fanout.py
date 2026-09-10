@@ -73,6 +73,21 @@ def test_projection_appends_md_and_prefix_and_builds_target_path():
     assert leaf["target_path"] == "resources/documentation/claude_code/cc_mcp_overview.md"
 
 
+def test_projection_stamps_target_words_from_approx_words():
+    """The writer's WORD BUDGET: the leaf carries a top-level integer
+    ``target_words`` = the plan's ``approx_words`` (coerced), so the writer aims
+    the body at the planned granularity target instead of the pacing cap."""
+    plan = {
+        "planned_notes": [
+            {"filename": "a.md", "approx_words": 90},      # thought-atomic
+            {"filename": "b.md", "approx_words": "1500"},  # str coerces
+            {"filename": "c.md"},                          # absent → 0
+        ],
+    }
+    leaves = _project_planned_notes_to_leaves(plan)
+    assert [lf["target_words"] for lf in leaves] == [90, 1500, 0]
+
+
 def test_projection_does_not_double_apply_prefix():
     """A filename already carrying the prefix is not double-prefixed."""
     plan = {
