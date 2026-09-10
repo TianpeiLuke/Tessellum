@@ -215,14 +215,23 @@ SECTION_GRANULARITY_GUIDANCE: str = (
     "as under-splitting fails density."
 )
 THOUGHT_GRANULARITY_GUIDANCE: str = (
-    "  ONE THOUGHT of the note's building-block kind — not one topic, not two "
-    "thoughts. SPLIT TEST: if a note would answer two DIFFERENT questions, it is "
-    "two notes. STOPPING RULE: do not split when the relation between the halves "
-    "cannot be stated in one line. TARGET WEIGHT by block (body words): "
-    "empirical_observation 40–90 | concept 50–110 | model/hypothesis/"
-    "counter_argument 60–130 | argument 70–150 | procedure 80–250 | navigation "
-    "40–120. Each note is SELF-SUFFICIENT: name its subject, carry the date, "
-    "resolve every reference — never buy brevity by deleting context."
+    "  ONE THOUGHT of the note's building-block kind — not one topic, not one "
+    "source section, not two thoughts. SPLIT TEST: if a note would answer two "
+    "DIFFERENT questions, it is two notes. STOPPING RULE: do not split when the "
+    "relation between the halves cannot be stated in one line. TARGET WEIGHT by "
+    "block (body words): empirical_observation 40–90 | concept 50–110 | model/"
+    "hypothesis/counter_argument 60–130 | argument 70–150 | procedure 80–250 | "
+    "navigation 40–120. Each note is SELF-SUFFICIENT: name its subject, carry the "
+    "date, resolve every reference — never buy brevity by deleting context.\n"
+    "  COUNT ANCHOR: at this granularity a source yields roughly its measured "
+    "words ÷ ~120 notes — a 2,000-word document decomposes into ~15–25 "
+    "thought-notes, NOT 3–5. If your note count is near the number of source "
+    "headings, you have decomposed by SECTION, not by THOUGHT — split further "
+    "until each note carries exactly one thought.\n"
+    "  WORKED EXAMPLE: a 600-word 'Method' section stating a dataset, two "
+    "baselines, a metric, and a result is NOT one 600-word note — it is ~5 "
+    "notes: one empirical_observation per measured result, one concept per "
+    "baseline it defines, one model for the setup relation, each 40–130 words."
 )
 
 
