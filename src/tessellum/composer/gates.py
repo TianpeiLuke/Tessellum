@@ -387,7 +387,7 @@ def build_close_gate() -> GateSuite:
     ``checkpoint`` gate) runs before the semantic ``grounding`` check (a
     ``checkpoint`` gate consuming the verifier verdict), so a
     format-broken note fails fast without spending the verifier. Both are
-    session-scope. The remaining pure predicates (density, ≥8-terms,
+    session-scope. The remaining pure predicates (density, term-floor,
     ghost, broken-link, discoverability) are folded into ``validate``'s
     link/BB-edge checks or run as wave-scope sweeps; this suite is the
     minimal always-on close gate that every note-creation session passes

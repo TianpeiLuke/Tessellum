@@ -27,7 +27,7 @@ This is the **single canonical body** for the `tessellum-plan-digestion` skill �
 
 ## Skill description <!-- :: section_id = skill_description :: -->
 
-Read a documentation source (a wiki site, a documentation portal, a shared design doc, a PDF, or any multi-section document) and generate a structured digestion plan that decomposes the content into BB-atomic notes. Each planned note corresponds to exactly one building block type. The plan controls content density (split if a note would exceed ~400 lines, ~1800 words, or 6 code blocks), maps every source section to a note, plans cross-references and undigested-term capture, and defines the validation gates. Outputs a single plan file to `plans/`. Use when a source needs to be planned before it is digested into vault notes.
+Read a documentation source (a wiki site, a documentation portal, a shared design doc, a PDF, or any multi-section document) and generate a structured digestion plan that decomposes the content into BB-atomic notes. Each planned note corresponds to exactly one building block type. The plan controls content density (split if a note would exceed the active granularity's per-note ceiling (the driver-injected words/lines/code-block caps — e.g. ~1,800 words under section, one thought per note under thought granularity)), maps every source section to a note, plans cross-references and undigested-term capture, and defines the validation gates. Outputs a single plan file to `plans/`. Use when a source needs to be planned before it is digested into vault notes.
 
 ## Step 1: Identify Source and Assess Density <!-- :: section_id = identify_source :: -->
 
@@ -123,7 +123,7 @@ Follow this procedure:
 - **Transcribe the MEASURED SOURCE LEDGER verbatim into your `pages[]` output.** Its rows already carry `url`, `measured_words`, `code_blocks`, and the complete verbatim `headings` list, measured by code from the real bytes — do NOT re-measure, re-count, or estimate any of these figures; `total_words` is the sum of the ledger rows' `measured_words`.
 - **If `members` is a non-empty list** (a multi-document bundle), you are planning a *corpus*, not a single page: the ledger has one row per member; assess the aggregate volume across ALL members to decide the plan shape. Otherwise (`member_count: 1`, empty `members`), plan the single source at `source_url` from the SOURCE CONTENT above.
 - **Determine source type** from `source_url` and the content itself: wiki | docs_portal | shared_doc | code_repo_docs | external | local_file.
-- **Assess total volume to decide the plan shape.** ≤10,000 words (≤15 notes) → single plan. 10,000–30,000 words (15–30 notes) → single plan with phased execution. >30,000 words (>30 notes) → divide-and-conquer: a pure-index master plan plus self-contained sub-plans, each producing 4–10 notes.
+- **Assess total volume to decide the plan shape — governed by SOURCE WORDS, not note count (note count scales with the active granularity, so the same source yields far more notes under thought than under section; judge the shape by words).** ≤10,000 words → single plan. 10,000–30,000 words → single plan with phased execution. >30,000 words → divide-and-conquer: a pure-index master plan plus self-contained sub-plans, each covering a coherent source span (~5,000–10,000 words of source).
 
 Emit a structured `source_assessment` (source type, the TRANSCRIBED per-page measured sizes, total words, estimated note count, and the plan-shape decision) for the downstream steps to build on.
 
@@ -363,7 +363,7 @@ expected_output_schema:
             type: string
           term_notes:
             type: array
-            description: '>=8 relevant term-dictionary notes, relevancy-selected'
+            description: 'Relevancy-selected term-dictionary notes; the floor SCALES with the active granularity (about one term link per ~150 words of note target size, min 1): SECTION ~1,100-1,600w -> >=8; THOUGHT ~40-250w -> >=1. Relevancy-selected, never padded to a large-note count.'
             items:
               type: string
           other_related_notes:
@@ -451,14 +451,15 @@ Follow this procedure:
 
 Read `{{upstream.note_breakdown}}` and plan how each note connects to the rest of the vault.
 
-- **Per-note related-notes mapping**: for each planned note, select the top matches from the EXISTING NOTES CONTEXT provided below (the execute wave enriches each writer with its own per-note retrieval; an empty block means a bootstrap vault — plan the contract, list nothing invented). Every planned note's mapping must include **≥8 relevant term-dictionary term notes**, selected by content relevancy (not padded with unrelated terms); other related notes (tools/repos/areas/entry points) are additional, not a substitute.
+- **Per-note related-notes mapping**: for each planned note, select the top matches from the EXISTING NOTES CONTEXT provided below (the execute wave enriches each writer with its own per-note retrieval; an empty block means a bootstrap vault — plan the contract, list nothing invented). Every planned note's mapping must include a relevancy-selected `term_dictionary/` term-note floor that SCALES with the ACTIVE granularity profile above — roughly one relevancy-selected term note per ~150 words of the note's target size, minimum 1: SECTION granularity (~1,100–1,600-word notes) → **≥8**; THOUGHT granularity (~40–250-word notes) → **≥1** (1–2 for a rich note). Select by content relevancy and NEVER pad a small note to a large note's count (a 95-word thought note with 8 term links is padded); other related notes (tools/repos/areas/entry points) are additional, not a substitute. Emit one mapping for EVERY planned note (N of N).
 - **Entry-point decision, size-driven**: <15 notes → UPDATE the most relevant existing entry point (1–3 rows or a new H2). 15–30 notes → CREATE a dedicated entry point plus a back-link row in the parent hub. >30 notes → CREATE a dedicated entry point (required) mirroring the master plan's sub-plans index.
 - **Inlinks**: name which existing notes should get backlinks pointing TO the new notes so the new cluster is discoverable, not an island.
 - **Undigested terms (three-way pre-flight)**: scan the SOURCE TEXT provided below for acronyms, method/estimator names, and concepts on first use; for each candidate check the term dictionary and classify it — no matching note → capture as a full term note; a stub exists → fill the stub; a substantive note exists → do NOT re-capture, just link it. Assign each undigested term a best-fit acronym glossary and a capture phase (Pattern A pre-digest stubs when ≤10 terms; Pattern B interleaved per sub-plan when >10, with a corpus-wide ownership sweep so no cross-cutting term is unowned). No term may be captured AFTER the digest — that ships ghost references.
 - **Validation gates**: define the per-phase gate table (format, grounding, density, coverage, cross-ref, ghost-reference detection, broken-link repair, discoverability) that execution will enforce.
 
-Emit a `cross_ref_plan` (per-note related-notes mapping, entry-point action, inlink plan, the Undigested Terms Plan, and the gate table). For each planned note build a related-
-notes mapping with >=8 relevancy-selected term notes; decide the entry-
+Emit a `cross_ref_plan` (per-note related-notes mapping, entry-point action, inlink plan, the Undigested Terms Plan, and the gate table). For every planned note (N of N) build a related-
+notes mapping meeting the size-scaled term-note floor (SECTION >=8; THOUGHT
+>=1, about one relevancy-selected term link per ~150 words, never padded); decide the entry-
 point action by digest size (update <15, create 15-30, create required
 >30) with a parent-hub back-link when creating; plan inlinks; run the
 three-way undigested-term pre-flight and assign every term a best-fit
@@ -518,7 +519,7 @@ CROSS_REF_PLAN (from step 4)
 
 Follow this procedure:
 
-Assemble everything into the single digestion plan and write it to `plans/plan_digest_<source_slug>.md` (single plan ≤30 notes) or a master + sub-plan set (>30 notes). This is the ONLY step that writes a file — it PRODUCEs the plan `.md`.
+Assemble everything into the single digestion plan and write it to `plans/plan_digest_<source_slug>.md` (single plan for sources ≤30,000 words) or a master + sub-plan set (>30,000 words of source) — the single-vs-master split follows SOURCE WORDS, not note count, since note count scales with the active granularity. This is the ONLY step that writes a file — it PRODUCEs the plan `.md`.
 
 Read `{{upstream.source_assessment}}`, `{{upstream.routing_decision}}`, `{{upstream.note_breakdown}}`, and `{{upstream.cross_ref_plan}}`, and lay them out under the required plan sections — using the CANONICAL section headings the review's deterministic scan checks for (Scope, Content Strategy, Source Pages (measured), Planned Notes, Section Coverage Map, Split Decisions, Summary Statistics & Building Block Distribution, Per-Note Related Notes Mapping, Density Re-Assessment, Undigested Terms Plan, Per-Phase Validation Gate, Entry Point Decision, Inlinks, Review Sign-Off) plus the working sections below: Objective, Routing Decision, Source Pages (measured word-count table — every figure COPIED VERBATIM from `source_assessment.pages[]`: `measured_words`, `code_blocks`, and the heading counts; never re-stated from memory, since the review's CP7 checks this table against the same ledger), Content Strategy, Section Coverage Map, Split Decisions, Planned Notes table, Content Size Assessment, Summary Statistics, Building Block Distribution, Cross-References to Add, Entry Point Decision, Undigested Terms Plan, Execution Phases (with per-phase validation gates), Note Format Definition, Validation Scripts, Pacing Rules, Density Re-Assessment, and Follow-up Recommendations.
 
