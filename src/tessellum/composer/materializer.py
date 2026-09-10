@@ -225,6 +225,24 @@ _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 _FENCED_DOC_RE = re.compile(r"^```(?:markdown|md)\s*\n(.*)\n```\s*$", re.DOTALL)
 _FENCED_YAML_RE = re.compile(r"^```(?:yaml|yml)\s*\n(.*?)\n```\s*\n?(.*)$", re.DOTALL)
 
+# F11 (thought-atomic sweep): two more meaning-identical frontmatter renderings
+# the F9 fences did not cover, both observed on thought-atomic builds where they
+# looped the same-error short-circuit and stalled the execute wave:
+#
+#   (a) MISSING OPENING FENCE — the writer emits the frontmatter KEYS then a
+#       closing --- then the body, dropping only the leading --- :
+#           output_path: x.md\ntags: [...]\n…\n---\n## Body…
+#       (the dominant shape: 5 of 6 failing leaves in one run). The note IS
+#       present; restore the opening fence when the pre-'---' head parses as a
+#       YAML mapping carrying output_path.
+#   (b) LEADING CONVERSATIONAL PREAMBLE before a full ---frontmatter--- pair
+#       ("Here is the note:\n\n---\n…\n---\n<body>") — drop the prose.
+#
+# Both are GUARDED on ``output_path`` so a body horizontal-rule --- pair or a
+# body that merely opens 'key: value' can never be mistaken for frontmatter.
+_LEADING_YAML_FENCE_RE = re.compile(r"\A```(?:yaml|yml|markdown|md)[ \t]*\n")
+_PREAMBLE_FRONTMATTER_RE = re.compile(r"(?:\A|\n)(---[ \t]*\n.*?\n---[ \t]*\n)", re.DOTALL)
+
 
 def _heal_sibling_links(text: str, siblings_md: str) -> str:
     """k2a4a: deterministic sibling-link healing — the F9/F10 absorption
@@ -277,6 +295,24 @@ def _absorb_frontmatter_rendering(text: str) -> str:
     fenced = _FENCED_YAML_RE.match(stripped)
     if fenced:
         return f"---\n{fenced.group(1)}\n---\n{fenced.group(2)}"
+    # A stray leading ```yaml/```md fence line whose closer is a --- (not ```)
+    # defeats both checks below; drop just that opening fence line (F11 variant).
+    stripped = _LEADING_YAML_FENCE_RE.sub("", stripped, count=1)
+    # (a) Missing OPENING fence: keys, then a closing ---, then body. Restore the
+    # opening --- when the head parses as a YAML mapping carrying output_path.
+    head, sep, body = stripped.partition("\n---\n")
+    if sep:
+        try:
+            parsed = yaml.safe_load(head)
+        except yaml.YAMLError:
+            parsed = None
+        if isinstance(parsed, dict) and "output_path" in parsed:
+            return f"---\n{head}\n---\n{body}"
+    # (b) Leading preamble before a full ---frontmatter--- pair: return from the
+    # first ---block that actually carries output_path, dropping the prose.
+    for pre in _PREAMBLE_FRONTMATTER_RE.finditer(stripped):
+        if "output_path" in pre.group(1):
+            return stripped[pre.start(1):]
     return stripped
 
 
@@ -302,9 +338,11 @@ def _body_markdown_frontmatter_to_file(
     """
     m = _FRONTMATTER_RE.match(_absorb_frontmatter_rendering(text))
     if not m:
+        head = text.strip()[:200].replace("\n", "\\n")
         raise MaterializerError(
             "body_markdown_frontmatter_to_file: response missing YAML frontmatter "
-            "(expected leading `---\\n…\\n---`)"
+            "(expected leading `---\\n…\\n---`); got "
+            f"{len(text)} chars starting: {head!r}"
         )
     raw_yaml = m.group(1)
     body = m.group(2)

@@ -106,6 +106,70 @@ def test_body_markdown_frontmatter_to_file_missing_output_path(tmp_path: Path) -
         materialize("body_markdown_frontmatter_to_file", text, vault_root=tmp_path)
 
 
+def test_body_markdown_frontmatter_to_file_absorbs_leading_preamble(tmp_path: Path) -> None:
+    # F11: a writer prefixes a conversational sentence before the frontmatter.
+    # The note IS present — absorb the preamble (guarded on output_path).
+    text = (
+        "Here is the note for the multi-hop concept:\n\n"
+        "---\n"
+        "output_path: notes/mh.md\n"
+        "tags:\n"
+        "  - resource\n"
+        "---\n"
+        "# Multi-hop\n\nbody text\n"
+    )
+    out = materialize("body_markdown_frontmatter_to_file", text, vault_root=tmp_path)
+    content = out.files_written[0].read_text(encoding="utf-8")
+    assert out.structured["output_path"] == "notes/mh.md"
+    assert "output_path" not in content
+    assert "Here is the note" not in content  # preamble dropped
+    assert "# Multi-hop" in content
+
+
+def test_body_markdown_frontmatter_to_file_absorbs_missing_opening_fence(tmp_path: Path) -> None:
+    # F11(a): the DOMINANT observed shape — writer emits the frontmatter KEYS,
+    # a closing ---, then the body, dropping ONLY the leading ---.
+    text = (
+        "output_path: notes/mh.md\n"
+        "tags: [resource, empirical_observation]\n"
+        "building_block: empirical_observation\n"
+        "---\n\n"
+        "## Overview\n\nbody text about multi-hop RAG\n"
+    )
+    out = materialize("body_markdown_frontmatter_to_file", text, vault_root=tmp_path)
+    content = out.files_written[0].read_text(encoding="utf-8")
+    assert out.structured["output_path"] == "notes/mh.md"
+    assert "building_block: empirical_observation" in content
+    assert "## Overview" in content
+
+
+def test_body_markdown_frontmatter_to_file_absorbs_stray_leading_yaml_fence(tmp_path: Path) -> None:
+    # F11 variant: an opening ```yaml fence whose CLOSER is a --- (not ```).
+    text = (
+        "```yaml\n"
+        "output_path: notes/mh.md\n"
+        "tags: [resource, concept]\n"
+        "---\n\n"
+        "# Note\n\nbody\n"
+    )
+    out = materialize("body_markdown_frontmatter_to_file", text, vault_root=tmp_path)
+    content = out.files_written[0].read_text(encoding="utf-8")
+    assert out.structured["output_path"] == "notes/mh.md"
+    assert "```yaml" not in content
+    assert "# Note" in content
+
+
+def test_body_markdown_frontmatter_to_file_preamble_hr_without_output_path_still_fails(
+    tmp_path: Path,
+) -> None:
+    # A body that opens with prose then a horizontal-rule `---` pair but NO
+    # output_path frontmatter must NOT be salvaged — the guard holds, so it
+    # falls through and fails the strict leading-frontmatter check.
+    text = "Intro line\n\n---\njust a section break\n---\nmore body, no frontmatter\n"
+    with pytest.raises(MaterializerError, match="missing YAML frontmatter"):
+        materialize("body_markdown_frontmatter_to_file", text, vault_root=tmp_path)
+
+
 # ── edits_apply_to_files (APPLY, JSON envelope) ───────────────────────────
 
 
