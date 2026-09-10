@@ -35,6 +35,7 @@ the *composition + scope* layer over the existing format primitives.
 from __future__ import annotations
 
 import math
+import os as _os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Literal, Sequence
@@ -504,8 +505,6 @@ PLAN_OVERSPLIT_MIN_WORDS: int = 1143
 # here so the digest CLI can pick a granularity without touching the section
 # eval, which never sets them and so keeps the section defaults. Import-by-name
 # consumers (and every existing test) see the unchanged section constants.
-import os as _os
-
 
 def plan_note_max_words() -> int:
     """PLAN-004 word ceiling for the active granularity (env override → section default)."""

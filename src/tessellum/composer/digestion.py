@@ -60,8 +60,6 @@ from tessellum.composer.executor import (
     upstream_placeholder_keys,
 )
 from tessellum.composer.gates import (
-    PLAN_NOTE_MAX_WORDS,
-    PLAN_OVERSPLIT_MIN_WORDS,
     plan_note_max_words,
     plan_oversplit_min_words,
     build_plan_gate,
