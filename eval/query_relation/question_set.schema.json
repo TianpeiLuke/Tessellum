@@ -1,0 +1,321 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tessellum/eval/query_relation/question_set.schema.json",
+  "title": "Role / Relation Question Set",
+  "description": "A question set for the role/relation answer A/B (plan phases P2 and P11). One question = a natural-language role question, the entity it resolves to, the grounded answer WITH ITS LOCATOR, and — first-class, not an afterthought — whether ABSTENTION is the correct response. Unanswerable questions are half the measurement: the phases raise abstention before they raise answer quality, so a set without deserving-abstention questions cannot tell a calibrated refusal from a regression. Graded by `metrics.py`; run by `arms.py`.",
+  "type": "object",
+  "required": [
+    "version",
+    "question_set",
+    "labelling",
+    "questions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Question-set format version. This document describes '1.0'.",
+      "const": "1.0"
+    },
+    "question_set": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Identifier for the set, used as the report key."
+    },
+    "description": {
+      "type": "string",
+      "description": "What this set is for and what it deliberately does not cover."
+    },
+    "labelling": {
+      "enum": [
+        "human",
+        "llm_judge",
+        "synthetic_fixture"
+      ],
+      "description": "How the expected answers were established. REQUIRED and reported verbatim in the A/B report, because an admission gate this decisive should rest on 'human'; 'llm_judge' records that a model graded itself somewhere in the loop; 'synthetic_fixture' marks an invented set that exercises the harness and MUST NOT be used to admit or refuse a phase."
+    },
+    "answer_path": {
+      "type": "string",
+      "description": "Free text naming the answer path this set was written against (arm 1). Recorded, not resolved: the baseline path may live outside this repository, in which case arm 1 cannot run here and the report says so."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/Question"
+      }
+    }
+  },
+  "definitions": {
+    "Locator": {
+      "type": "object",
+      "description": "Where a claim is written down. `note_id` alone is note-level; a grounded role answer is expected to name the component it was read from (a frontmatter field, a line, or a character span).",
+      "required": [
+        "note_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "note_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Vault-relative note path or id."
+        },
+        "field": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Frontmatter field name the value was read from, when it is an authored field."
+        },
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "1-indexed line inside the note."
+        },
+        "span": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "[start, end) character offsets inside the note body."
+        }
+      }
+    },
+    "Target": {
+      "type": "object",
+      "description": "The entity the question is about: the surface form as asked, and the entity it should resolve to. `entity_id` is null when the question is unresolvable ON PURPOSE.",
+      "required": [
+        "surface"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "surface": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The mention exactly as the question phrases it."
+        },
+        "entity_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Canonical entity id the surface must resolve to; null when no entity is the right answer."
+        },
+        "entity_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Canonical entity type, when the set records one (resolution is type-preferring)."
+        }
+      }
+    },
+    "ExpectedAnswer": {
+      "type": "object",
+      "description": "The grounded answer and where it is written. Both halves are required: an answer without a locator is not a grounded answer, and the grounding rate scores exactly that difference.",
+      "required": [
+        "answer",
+        "locator"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The short span that answers the question."
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Other renderings that count as the same answer."
+        },
+        "locator": {
+          "$ref": "#/definitions/Locator"
+        }
+      }
+    },
+    "Hop": {
+      "type": "object",
+      "description": "One step of the evidence chain, in order. Two or more REQUIRED hops make the question multi-hop, which is what the connected-reasoning rate is computed over.",
+      "required": [
+        "locator"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "locator": {
+          "$ref": "#/definitions/Locator"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "False for a hop that is merely helpful. Only required hops count toward chain completeness."
+        },
+        "bridge": {
+          "type": "boolean",
+          "default": false,
+          "description": "The load-bearing hop: suppress it and the question must become unanswerable. The harness re-asks each multi-hop question with the bridge hops suppressed; an arm that still answers correctly reached the answer without the chain, and that attempt is counted as a SHORTCUT rather than as connected reasoning."
+        },
+        "note": {
+          "type": "string",
+          "description": "What this hop supplies."
+        }
+      }
+    },
+    "ConflationTrap": {
+      "type": "object",
+      "description": "A value stated about the SAME entity under a DIFFERENT relation — e.g. who wrote a note versus who is accountable for the thing it describes. Answering with a trap value is the specific failure this question set exists to measure, so it is graded separately from a plain wrong answer.",
+      "required": [
+        "relation",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "relation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "$ref": "#/definitions/Locator"
+        }
+      }
+    },
+    "Question": {
+      "type": "object",
+      "required": [
+        "qid",
+        "question",
+        "relation",
+        "target",
+        "abstain"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "qid": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9_]*$",
+          "description": "Unique within the set."
+        },
+        "question": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relation": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "The relation the query asks for, as a stable label (the node-first arm reads the authored field of this name; naming it from free text is the one place arm 3 needs a model). It is NOT part of any claim's identity."
+        },
+        "target": {
+          "$ref": "#/definitions/Target"
+        },
+        "abstain": {
+          "type": "boolean",
+          "description": "True when ABSTENTION is the correct response. These questions are first-class members of the set."
+        },
+        "abstain_reason": {
+          "enum": [
+            "field_absent",
+            "entity_unresolvable",
+            "ambiguous_entity",
+            "out_of_scope",
+            "superseded_only"
+          ],
+          "description": "Why abstention is correct. Required when `abstain` is true, forbidden otherwise. 'superseded_only' = the only value on record has a closed validity interval, so answering returns a former holder of the role."
+        },
+        "expected": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/ExpectedAnswer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Required when `abstain` is false; must be null/absent when `abstain` is true."
+        },
+        "hops": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Hop"
+          }
+        },
+        "conflation_traps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ConflationTrap"
+          }
+        },
+        "note": {
+          "type": "string",
+          "description": "Why this question is in the set / what it is meant to break."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "abstain": {
+                "const": true
+              }
+            },
+            "required": [
+              "abstain"
+            ]
+          },
+          "then": {
+            "required": [
+              "abstain_reason"
+            ],
+            "properties": {
+              "expected": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "abstain": {
+                "const": false
+              }
+            },
+            "required": [
+              "abstain"
+            ]
+          },
+          "then": {
+            "required": [
+              "expected"
+            ],
+            "not": {
+              "required": [
+                "abstain_reason"
+              ]
+            },
+            "properties": {
+              "expected": {
+                "$ref": "#/definitions/ExpectedAnswer"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

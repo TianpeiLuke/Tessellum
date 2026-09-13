@@ -24,6 +24,14 @@ Design (honest + fail-closed):
 - **No provenance → no claims.** A note with no cited sources yields an empty
   claim list, which ``certify`` treats fail-closed (empty → abstain): an
   unsourced note is never auto-grounded.
+- **Claim ids: two schemes, the positional one still the default.** The
+  original ``{note_id}:c{index}`` scheme is positional, so inserting a sentence
+  renumbers every later claim and no downstream counter can recognise a claim
+  twice. ``claim_id_scheme="derivation"`` instead mints the insertion-stable
+  ``derivation_id`` from :mod:`tessellum.dks.claim_identity` (a content hash
+  over ``(note_id, span_locator)``). It is **opt-in**: the positional scheme
+  stays the default until the phases that consume derived-claim identity are
+  measured and admitted.
 
 Pure: no clock, no randomness, no I/O.
 """
@@ -31,10 +39,22 @@ Pure: no clock, no randomness, no I/O.
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from tessellum.composer.knowledge_plan import ClaimProvenance
 from tessellum.composer.lexical_scorer import _content_tokens
 from tessellum.composer.semantic_certificate import Claim, FailureClass
+
+ClaimIdScheme = Literal["index", "derivation"]
+"""How :func:`extract_claims` mints a ``claim_id``.
+
+- ``"index"`` — the historical ``{note_id}:c{index}``. Positional: an inserted
+  sentence renumbers every later claim, so recurrence is uncountable across
+  edits. Still the default (nothing may change behaviour on an existing path
+  before the plan's own gates run).
+- ``"derivation"`` — the ``derivation_id`` content hash over
+  ``(note_id, span_locator)``. Insertion-stable, model-free, and blind to the
+  claim's wording, so a paraphrase does not fork the claim."""
 
 # Separator joining a note's distinct source refs into one Claim.source_ref.
 # The C3 span resolver splits on this to resolve + concatenate the cited spans.
@@ -144,20 +164,47 @@ def _joined_source_ref(provenance: tuple[ClaimProvenance, ...]) -> str:
     return MULTI_SOURCE_SEP.join(refs)
 
 
+def claim_ids_for_sentences(
+    sentences: list[str], *, note_id: str, scheme: ClaimIdScheme,
+) -> list[str]:
+    """The ``claim_id`` for each extracted sentence, under ``scheme`` — pure.
+
+    ``"index"`` reproduces the historical positional ids byte-for-byte;
+    ``"derivation"`` delegates to the P0 identity module, which addresses each
+    sentence by a digest of its own content so an insertion above it changes no
+    later id.
+
+    The ``dks.claim_identity`` import is function-local on purpose: ``dks``
+    depends on ``composer`` (``autonomy``/``compiler``/``validation``), so a
+    module-level import here would close a package-level cycle."""
+    if scheme == "index":
+        return [f"{note_id}:c{i}" for i, _ in enumerate(sentences)]
+    if scheme == "derivation":
+        from tessellum.dks.claim_identity import derivation_ids_for_spans
+
+        return derivation_ids_for_spans(note_id, sentences)
+    raise ValueError(f"unknown claim_id_scheme {scheme!r}")
+
+
 def extract_claims(
     body: str,
     provenance: tuple[ClaimProvenance, ...],
     *,
     failure_class: FailureClass = "grounding",
     note_id: str = "note",
+    claim_id_scheme: ClaimIdScheme = "index",
 ) -> list[Claim]:
     """Extract checkable :class:`Claim` s from a written note (C2) — pure.
 
     Each prose sentence becomes one grounding-class claim cited against the
     UNION of the note's provenance refs (:func:`_joined_source_ref`), so it is
     scored as grounded iff any cited source supports it. A note with no
-    provenance yields ``[]`` (``certify`` → fail-closed abstain). ``claim_id`` s
-    are stable + deterministic (``{note_id}:c{index}``).
+    provenance yields ``[]`` (``certify`` → fail-closed abstain). Many claims
+    per note is the invariant; only their ``claim_id`` scheme is negotiable.
+
+    ``claim_id`` s are stable + deterministic under both schemes, but only
+    ``"derivation"`` is stable under an EDIT (see :data:`ClaimIdScheme`); it is
+    opt-in, and ``"index"`` remains the default.
 
     ``failure_class`` defaults to ``"grounding"`` (the class this lexical proxy
     checks); coverage/duplicate/edge-relevance claims are produced by their own
@@ -165,15 +212,21 @@ def extract_claims(
     if not provenance:
         return []
     src = _joined_source_ref(provenance)
+    sentences = split_sentences(body)
+    ids = claim_ids_for_sentences(
+        sentences, note_id=note_id, scheme=claim_id_scheme,
+    )
     return [
-        Claim(claim_id=f"{note_id}:c{i}", text=sentence, source_ref=src,
+        Claim(claim_id=cid, text=sentence, source_ref=src,
               failure_class=failure_class)
-        for i, sentence in enumerate(split_sentences(body))
+        for cid, sentence in zip(ids, sentences)
     ]
 
 
 __all__ = [
     "MULTI_SOURCE_SEP",
+    "ClaimIdScheme",
+    "claim_ids_for_sentences",
     "split_sentences",
     "extract_claims",
 ]

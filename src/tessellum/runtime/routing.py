@@ -67,6 +67,18 @@ def route_lane(lane: str, *, skills_dir: Path | str) -> DigestionRoute:
 NATIVE_DIGESTION = "native_digestion"
 DKS_INQUIRY = "dks_inquiry"
 
+# P8: ``dks_query`` is the query-time protocol as a THIRD capability, registered
+# on the same port so the supervisor drives it through the SAME commit tail as
+# ``native_digestion`` — the kernel proposes effects and the commit tail performs
+# the only write. It is a new capability, not a new program: a CLI or MCP entry
+# is a thin caller of it, never a parallel path.
+#
+# Additive and default-off, in the strong sense: ``route_lane`` above still
+# returns ``native_digestion`` for every lane and there is no lane, flag or
+# heuristic that selects ``dks_query``. A caller opts in by name, and until one
+# does, registering the capability changes no behaviour on any existing path.
+DKS_QUERY = "dks_query"
+
 _CAPABILITY_REGISTRY: dict[str, object] = {}
 
 
@@ -91,3 +103,20 @@ def get_capability_factory(name: str) -> object:
 
 def is_capability_registered(name: str) -> bool:
     return name in _CAPABILITY_REGISTRY
+
+
+def register_dks_query(factory: object) -> None:
+    """Register the query-time DKS capability under :data:`DKS_QUERY`.
+
+    A named wrapper over :func:`register_capability` rather than a second
+    mechanism: the point is that the query protocol arrives on the SAME registry,
+    keyed on the same port, so it is dispatched through the same commit tail and
+    inherits the executor's never-writes discipline.
+
+    The factory is required and takes no arguments. There is deliberately no
+    default: the protocol composes an episode's memory boundary, a bounded reach
+    and two injected model seams, none of which the runtime may invent on a
+    caller's behalf — the Dependency Rule runs the other way, and a default built
+    here would be the runtime deciding how the kernel reasons.
+    """
+    register_capability(DKS_QUERY, factory)

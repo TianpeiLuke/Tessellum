@@ -20,6 +20,26 @@ Each materializer:
 Materializer errors raise :class:`MaterializerError`. Callers catch
 this, surface it on the step's ``StepResult.error``, and continue —
 one bad step doesn't kill the whole pipeline.
+
+**Optional overlay staging (``overlay_root``, default OFF).** Every write below
+already runs inside ``with effect_guard()``, journalled by the runtime's
+``VaultEffectJournal`` and rollback-able, so a mid-episode write is *recoverable*
+— but it is also **visible**: a vault-READING step later in the same episode can
+observe a note this episode has not committed, even though the index cannot.
+Passing ``overlay_root`` closes that read channel by routing the write to a
+private staging directory instead of the live vault, so the live vault is
+unchanged until a promotion step publishes the overlay. Path resolution and
+confinement still happen against ``vault_root`` (an agent-supplied path may not
+escape it), and the intended live-vault targets come back on
+``MaterializedOutput.pending_targets``.
+
+This reuses the *design* of :class:`tessellum.composer.overlay.OverlayWriter`
+(confined path under a private root, the same shipped atomic primitive) rather
+than that module's code, which is tested but unwired. ``overlay_root=None`` — the
+default — leaves behaviour byte-identical: nothing on an existing code path
+stages until a caller opts in. A step that must READ staged output has to be
+handed the overlay root explicitly; such a read is speculative and non-citable,
+exactly as an uncommitted claim is.
 """
 
 from __future__ import annotations
@@ -105,16 +125,24 @@ class MaterializedOutput:
         structured: Parsed dict form of the agent's response. Used as
             the value of ``upstream.<output_key>`` for downstream steps.
         files_written: Paths that were created/overwritten with new
-            content (PRODUCE mode). Empty if ``dry_run=True``.
+            content (PRODUCE mode). Empty if ``dry_run=True``. Under
+            overlay staging these are the paths that actually exist —
+            i.e. the staged ones.
         files_applied: Paths that had existing content overwritten by
-            edits (APPLY mode). Empty if ``dry_run=True``.
+            edits (APPLY mode). Empty if ``dry_run=True``. Staged the
+            same way.
         notes: Short human-readable summary for trace logs.
+        pending_targets: The live-vault paths a staged write is destined
+            for, in the same order as the written/applied paths. Empty
+            unless materialization was routed through an ``overlay_root``
+            — which is the signal that nothing landed in the vault yet.
     """
 
     structured: dict[str, Any]
     files_written: tuple[Path, ...] = ()
     files_applied: tuple[Path, ...] = ()
     notes: str = ""
+    pending_targets: tuple[Path, ...] = ()
 
 
 # ── Public dispatch ────────────────────────────────────────────────────────
@@ -129,6 +157,7 @@ def materialize(
     effect_guard: Callable[[], ContextManager[None]] | None = None,
     effect_recorder: Callable[[Path], None] | None = None,
     leaf: dict | None = None,
+    overlay_root: Path | None = None,
 ) -> MaterializedOutput:
     """Dispatch ``response_text`` to the materializer for ``materializer_key``.
 
@@ -141,12 +170,19 @@ def materialize(
         dry_run: If True, skip all filesystem writes. The structured
             payload is still returned so downstream placeholders resolve
             correctly during a dry run.
+        overlay_root: Optional private staging root. When given, writes
+            land under it at the same vault-relative path and the LIVE
+            VAULT IS NOT TOUCHED, so a vault-reading step in the same
+            episode cannot observe uncommitted output. Default ``None``
+            keeps the existing live-vault behaviour exactly.
 
     Returns:
-        MaterializedOutput with structured + files written/applied.
+        MaterializedOutput with structured + files written/applied, plus
+        ``pending_targets`` when staged.
 
     Raises:
-        MaterializerError: malformed response, unknown key.
+        MaterializerError: malformed response, unknown key, or an
+            ``overlay_root`` the resolved target cannot be confined to.
     """
     handler = _DISPATCH.get(materializer_key)
     if handler is None:
@@ -172,6 +208,7 @@ def materialize(
         dry_run,
         effect_guard or nullcontext,
         effect_recorder or (lambda _path: None),
+        overlay_root,
     )
 
 
@@ -192,12 +229,39 @@ def _resolve_vault_path(vault_root: Path, value: object, *, field: str) -> Path:
     return target
 
 
+def _write_target(
+    vault_root: Path, overlay_root: Path | None, target: Path
+) -> Path:
+    """The path a write actually goes to — the vault target, or its overlay twin.
+
+    ``target`` has already been resolved and confined to ``vault_root``; this
+    re-roots that same vault-relative path under ``overlay_root`` and confirms
+    the result is confined there too. Confinement is re-checked rather than
+    assumed because ``overlay_root`` may itself contain a symlink.
+    """
+    if overlay_root is None:
+        return target
+    root = Path(vault_root).resolve()
+    staged_root = Path(overlay_root).resolve()
+    try:
+        relative = target.relative_to(root)
+    except ValueError as exc:  # pragma: no cover - _resolve_vault_path precedes
+        raise MaterializerError(f"target escapes vault_root: {target}") from exc
+    staged = (staged_root / relative).resolve()
+    try:
+        staged.relative_to(staged_root)
+    except ValueError as exc:
+        raise MaterializerError(f"target escapes overlay_root: {target}") from exc
+    return staged
+
+
 def _no_op(
     text: str,
     vault_root: Path,
     dry_run: bool,
     effect_guard: Callable[[], ContextManager[None]],
     effect_recorder: Callable[[Path], None],
+    overlay_root: Path | None = None,
 ) -> MaterializedOutput:
     """DESCRIBE materializer — parse JSON, no side effect."""
     if not text.strip():
@@ -322,6 +386,7 @@ def _body_markdown_frontmatter_to_file(
     dry_run: bool,
     effect_guard: Callable[[], ContextManager[None]],
     effect_recorder: Callable[[Path], None],
+    overlay_root: Path | None = None,
 ) -> MaterializedOutput:
     """PRODUCE — agent emits markdown-with-frontmatter directly.
 
@@ -384,16 +449,22 @@ def _body_markdown_frontmatter_to_file(
         # No remaining frontmatter — emit body only (rare, mostly tests).
         full_content = body
 
+    written = _write_target(vault_root, overlay_root, target)
     if not dry_run:
         with effect_guard():
             content = full_content.encode("utf-8")
-            _record_effect(effect_recorder, target, content)
-            _atomic_write_bytes(target, content)
+            _record_effect(effect_recorder, written, content)
+            _atomic_write_bytes(written, content)
 
+    staged = overlay_root is not None
     return MaterializedOutput(
         structured={"output_path": str(output_path), "body_markdown": body},
-        files_written=(target,) if not dry_run else (),
-        notes=f"wrote {output_path} ({len(full_content)} chars)",
+        files_written=(written,) if not dry_run else (),
+        notes=(
+            f"{'staged' if staged else 'wrote'} {output_path} "
+            f"({len(full_content)} chars)"
+        ),
+        pending_targets=(target,) if staged and not dry_run else (),
     )
 
 
@@ -403,6 +474,7 @@ def _body_markdown_to_file(
     dry_run: bool,
     effect_guard: Callable[[], ContextManager[None]],
     effect_recorder: Callable[[Path], None],
+    overlay_root: Path | None = None,
 ) -> MaterializedOutput:
     """Legacy v0.4 PRODUCE materializer — JSON envelope.
 
@@ -429,16 +501,22 @@ def _body_markdown_to_file(
         raise MaterializerError("missing required field `body_markdown`")
 
     target = _resolve_vault_path(vault_root, output_path, field="output_path")
+    written = _write_target(vault_root, overlay_root, target)
     if not dry_run:
         with effect_guard():
             content = str(body).encode("utf-8")
-            _record_effect(effect_recorder, target, content)
-            _atomic_write_bytes(target, content)
+            _record_effect(effect_recorder, written, content)
+            _atomic_write_bytes(written, content)
 
+    staged = overlay_root is not None
     return MaterializedOutput(
         structured=data,
-        files_written=(target,) if not dry_run else (),
-        notes=f"wrote {output_path} ({len(str(body))} chars)",
+        files_written=(written,) if not dry_run else (),
+        notes=(
+            f"{'staged' if staged else 'wrote'} {output_path} "
+            f"({len(str(body))} chars)"
+        ),
+        pending_targets=(target,) if staged and not dry_run else (),
     )
 
 
@@ -448,6 +526,7 @@ def _edits_apply_to_files(
     dry_run: bool,
     effect_guard: Callable[[], ContextManager[None]],
     effect_recorder: Callable[[Path], None],
+    overlay_root: Path | None = None,
 ) -> MaterializedOutput:
     """APPLY (legacy) — JSON edits envelope.
 
@@ -484,18 +563,26 @@ def _edits_apply_to_files(
         )
         pending.append((target, str(content)))
 
-    applied = [target for target, _content in pending]
+    applied = [
+        _write_target(vault_root, overlay_root, target) for target, _content in pending
+    ]
     if not dry_run:
-        for target, content in pending:
+        for (target, content), written in zip(pending, applied):
             with effect_guard():
                 encoded = content.encode("utf-8")
-                _record_effect(effect_recorder, target, encoded)
-                _atomic_write_bytes(target, encoded)
+                _record_effect(effect_recorder, written, encoded)
+                _atomic_write_bytes(written, encoded)
 
+    staged = overlay_root is not None
     return MaterializedOutput(
         structured=data,
         files_applied=tuple(applied) if not dry_run else (),
-        notes=f"applied {len(applied)} edit(s)",
+        notes=f"{'staged' if staged else 'applied'} {len(applied)} edit(s)",
+        pending_targets=(
+            tuple(target for target, _content in pending)
+            if staged and not dry_run
+            else ()
+        ),
     )
 
 
@@ -511,6 +598,7 @@ def _edits_apply_xml_tags(
     dry_run: bool,
     effect_guard: Callable[[], ContextManager[None]],
     effect_recorder: Callable[[Path], None],
+    overlay_root: Path | None = None,
 ) -> MaterializedOutput:
     """APPLY — XML wire format (preferred over the legacy JSON envelope).
 
@@ -546,18 +634,26 @@ def _edits_apply_xml_tags(
         pending.append((target, content))
         edits_records.append({"file": file_clean, "content": content})
 
-    applied = [target for target, _content in pending]
+    applied = [
+        _write_target(vault_root, overlay_root, target) for target, _content in pending
+    ]
     if not dry_run:
-        for target, content in pending:
+        for (target, content), written in zip(pending, applied):
             with effect_guard():
                 encoded = content.encode("utf-8")
-                _record_effect(effect_recorder, target, encoded)
-                _atomic_write_bytes(target, encoded)
+                _record_effect(effect_recorder, written, encoded)
+                _atomic_write_bytes(written, encoded)
 
+    staged = overlay_root is not None
     return MaterializedOutput(
         structured={"edits": edits_records},
         files_applied=tuple(applied) if not dry_run else (),
-        notes=f"applied {len(applied)} XML edit(s)",
+        notes=f"{'staged' if staged else 'applied'} {len(applied)} XML edit(s)",
+        pending_targets=(
+            tuple(target for target, _content in pending)
+            if staged and not dry_run
+            else ()
+        ),
     )
 
 

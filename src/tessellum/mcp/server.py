@@ -1,4 +1,4 @@
-"""Tessellum MCP server — 12 tools exposing the runtime + skill canonicals.
+"""Tessellum MCP server — 13 tools exposing the runtime + skill canonicals.
 
 The server registers its tools via the MCP Python SDK's decorator API
 (``@server.list_tools()``, ``@server.call_tool()``) and runs over the
@@ -23,11 +23,21 @@ Tool inventory:
 10. ``tessellum_list_jobs`` — list durable runtime jobs
 11. ``tessellum_cancel_job`` — request cooperative cancellation
 12. ``tessellum_retry_job`` — retry a cancelled or dead-letter job
+13. ``tessellum_dks_query`` — invoke the registered ``dks_query``
+    capability and return its three-way decision
 
 The runtime tools are deterministic Python-API wrappers; no LLM call
 on the server side. The skill-canonical tools let the calling agent
 execute the procedure in its own context — the canonical is the
 prompt; the agent supplies the LLM.
+
+``tessellum_dks_query`` is a **thin caller** of the registered capability,
+not a parallel implementation of it: it looks the factory up on the
+runtime capability registry and drives it through ``DKSExecutor``, which
+returns a candidate transaction and never writes. If nothing has
+registered ``dks_query`` the tool says so and stops — there is no
+fallback path, because a second way to answer a query is a second set of
+epistemic rules.
 """
 
 from __future__ import annotations
@@ -258,6 +268,40 @@ def build_server():
                 },
             },
         },
+        {
+            "name": "tessellum_dks_query",
+            "description": (
+                "Invoke the registered dks_query capability on one question. "
+                "Returns a three-way decision: an ANSWER with its support "
+                "chain and locator, a surfaced CONFLICT with both chains, or "
+                "an explicit ABSTENTION with its reason. Proposes effects; "
+                "writes nothing. Requires a registered dks_query capability."
+            ),
+            "inputSchema": {
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                    "query": {"type": "string", "description": "The question"},
+                    "mention": {
+                        "type": "string",
+                        "default": "",
+                        "description": "Entity surface form to resolve (step 1)",
+                    },
+                    "subject_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Resolved subjects for the Tier-A read",
+                    },
+                    "note_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Extra note ids for the memory read",
+                    },
+                    "entity_type": {"type": ["string", "null"]},
+                    "k": {"type": "integer", "default": 20},
+                },
+            },
+        },
     ]
 
     @server.list_tools()
@@ -313,6 +357,8 @@ def _dispatch(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return _tool_cancel_job(**arguments)
     if name == "tessellum_retry_job":
         return _tool_retry_job(**arguments)
+    if name == "tessellum_dks_query":
+        return _tool_dks_query(**arguments)
     raise ValueError(f"unknown tool: {name}")
 
 
@@ -562,6 +608,134 @@ def _tool_cancel_job(job_id: str, root: str = ".") -> dict:
 def _tool_retry_job(job_id: str, root: str = ".") -> dict:
     _paths, store = _runtime(root)
     return _job_dict(store.retry_terminal(job_id))
+
+
+def _chain_dict(chain) -> dict[str, Any]:
+    """One chain — the head claim plus the located steps that license it."""
+    return {
+        "role": chain.role,
+        "claim_id": chain.claim_id,
+        "text": chain.text,
+        "note_id": chain.note_id,
+        "locator": chain.locator,
+        "status": chain.status,
+        "steps": [
+            {
+                "op": step.op,
+                "claim_id": step.claim_id,
+                "text": step.text,
+                "note_id": step.note_id,
+                "locator": step.locator,
+                "status": step.status,
+                "evidence_locator": step.evidence_locator,
+            }
+            for step in chain.steps
+        ],
+    }
+
+
+def _tool_dks_query(
+    query: str,
+    mention: str = "",
+    subject_ids: list[str] | None = None,
+    note_ids: list[str] | None = None,
+    entity_type: str | None = None,
+    k: int = 20,
+) -> dict:
+    """Drive the registered ``dks_query`` capability. A thin caller; never writes.
+
+    The capability is looked up on the runtime registry and invoked through
+    ``DKSExecutor``, which returns a CANDIDATE transaction — the effects are
+    proposals for the commit tail, and this tool renders them rather than
+    applying them. An unregistered capability is reported, not worked around.
+    """
+    from tessellum.dks.capability import DKSExecutor
+    from tessellum.dks.query_protocol import QueryRequest, QueryResult
+    from tessellum.runtime.routing import (
+        DKS_QUERY,
+        CapabilityNotRegistered,
+        get_capability_factory,
+    )
+
+    try:
+        factory = get_capability_factory(DKS_QUERY)
+    except CapabilityNotRegistered as e:
+        return {
+            "error": str(e),
+            "hint": (
+                "register one with tessellum.runtime.routing.register_dks_query"
+                "(factory); nothing registers it by default and there is no "
+                "fallback answer path"
+            ),
+        }
+    request = QueryRequest(
+        query=query,
+        mention=mention,
+        subject_ids=tuple(subject_ids or ()),
+        note_ids=tuple(note_ids or ()),
+        entity_type=entity_type,
+        k=k,
+    )
+    # The episode pins its own snapshot lazily, so the digest is known only after
+    # the invocation; it travels on the result, and a caller holding the memory
+    # boundary uses EpisodeMemory.pinned_candidate to fill the candidate's field.
+    candidate = DKSExecutor(factory()).execute(request)
+    envelope = candidate.result
+    out: dict[str, Any] = {
+        "query": query,
+        "capability": DKS_QUERY,
+        "status": envelope.status,
+        "qualifier": envelope.qualifier,
+        "promotion_eligibility": envelope.promotion_eligibility,
+        "replay_token": envelope.replay_token,
+        "diagnostics": list(envelope.diagnostics),
+        "proposed_effects": [
+            {"kind": effect.kind, "bb_role": effect.bb_role}
+            for effect in envelope.effects
+        ],
+        "wrote_anything": False,
+    }
+    result = envelope.payload
+    if not isinstance(result, QueryResult):
+        return out
+    out.update(
+        {
+            "outcome": result.outcome,
+            "relation": result.relation,
+            "grounded": result.grounded,
+            "answer": _chain_dict(result.answer) if result.answer else None,
+            "conflict": [_chain_dict(chain) for chain in result.conflict],
+            "abstention_reason": result.abstention_reason,
+            "statuses": dict(result.statuses),
+            "memory": {
+                "cache_hit": result.memory.cache_hit,
+                "claims": result.memory.claims,
+                "relations": result.memory.relations,
+                "short_circuited": result.memory.short_circuited,
+            },
+            "refutations": [
+                {
+                    "claim_id": record.claim_id,
+                    "candidate_claim_id": record.candidate_claim_id,
+                    "judged": record.judged,
+                    "incompatible": record.incompatible,
+                    "direction": record.direction,
+                    "produced_edge": record.produced_edge,
+                }
+                for record in result.refutations
+            ],
+            "model_budget": {
+                "relation_namings": result.budget.relation_namings,
+                "claim_reads": result.budget.claim_reads,
+                "refutation_judgements": result.budget.refutation_judgements,
+                "refutation_truncated": result.budget.refutation_truncated,
+                "total": result.budget.total,
+            },
+            "base_snapshot_id": result.base_snapshot_id,
+            "grounding_notice": result.grounding.notice if result.grounding else "",
+        }
+    )
+    return out
 
 
 def _skills_dir() -> Path | None:

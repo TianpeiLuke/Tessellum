@@ -46,7 +46,7 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Mapping, Protocol, Sequence
 
 from tessellum.bb.graph import (
     ArgumentNode,
@@ -294,11 +294,23 @@ class DKSCycleResult:
     differ. Empty for gated cycles."""
 
     grounded_labelling: dict[str, str] = field(default_factory=dict)
-    """Dung grounded labelling over ``arguments``. Maps each
-    argument's FZ to ``"in"`` / ``"out"`` / ``"undec"``. Empty for
-    N=2 cycles (the existing single-edge logic still applies). For
-    N>2, this is the basis of survival selection — surviving
-    arguments are those labelled ``"in"``."""
+    """**HISTORICAL** — the Dung grounded labelling as it stood at the end of
+    THIS cycle, over this cycle's ``arguments`` only. Maps each argument's FZ to
+    ``"in"`` / ``"out"`` / ``"undec"``.
+
+    Retained because it is a public trace-JSON surface and because survival
+    selection inside a cycle (which warrants to carry forward) is a decision
+    about this cycle's arguments. But it is a FROZEN SNAPSHOT of a value that is
+    not stable: an attack appended later can defeat one of these arguments, or
+    defeat its attacker and reinstate it, and this dict will never say so. So it
+    must not be read as a claim's status.
+
+    The corpus-level verdict is COMPUTED, never frozen:
+    :class:`tessellum.dks.status.StatusQuery` labels the whole claim/edge set on
+    demand — over the ``attack`` relation only, with ``supersede`` as a
+    pre-filter and ``support`` as a post-classification — and reports the four
+    statuses (``proposed`` / ``challenged`` / ``warranted`` / ``superseded``).
+    Ask that, not this, for "is this claim warranted now?"."""
 
     rule_revisions: tuple[DKSRuleRevision, ...] = ()
     """All :class:`DKSRuleRevision`s emitted by this cycle.
@@ -333,6 +345,18 @@ class DKSCycleResult:
     - ``_step_argument`` JSON parse — LLM returns unparseable JSON →
       ``_parse_json`` returns ``{}``, the step proceeds with empty
       data."""
+
+    disagreement_diagnostics: tuple[str, ...] = ()
+    """Why step 4 declined to emit an attack edge for a candidate pair.
+
+    One line per candidate pair the evidence-based path (P4) did *not*
+    turn into an edge: the incompatibility judge was unavailable, the
+    two claims were adjudicated compatible, or they were incompatible
+    but the evidence determined no direction. Also records when the
+    per-cycle refutation budget truncated the candidate list.
+
+    Empty on the legacy string-compare path — which never declines, and
+    so never has anything to explain."""
 
     @property
     def folgezettel_nodes(self) -> tuple[str, ...]:
@@ -385,6 +409,11 @@ class DKSCycleResult:
         decide which warrants to carry forward when multiple
         arguments survive the dialectic — the multi-survivor case
         produced by the pairwise contradicts graph in N>2 cycles.
+
+        Historical in the same sense as :attr:`grounded_labelling`: it
+        answers "which of THIS cycle's arguments survived THIS cycle",
+        not "which claims are warranted now". The latter is computed
+        from the claim/edge log by :mod:`tessellum.dks.status`.
         """
         if self.grounded_labelling:
             return tuple(
@@ -539,6 +568,325 @@ _SYSTEM_PROMPT = (
 )
 
 
+# ── Evidence-based incompatibility and direction ──────────────────────────
+#
+# Step 4 historically decided that two arguments disagreed by comparing
+# their claim STRINGS, and decided which of them attacked which from the
+# order the perspectives were generated in. Both inputs to the Dung
+# solver were therefore manufactured: two differently worded claims about
+# compatible facts always produced an attack edge, and the perspective
+# generated second always won it, so the outcome was fixed before the
+# solver ran.
+#
+# This section replaces both inputs with an INJECTED judgement over the
+# arguments' evidence. Deciding whether two claims are incompatible, and
+# which one the evidence defeats, is a judgement about meaning and so
+# needs a model — but the seam is a Protocol, and a deterministic
+# reference implementation (:class:`TableIncompatibilityJudge`) ships
+# alongside the model-backed one for tests and for callers with no model.
+# Three properties are load-bearing:
+#
+# 1. FAIL CLOSED. There is no string-compare fallback. When the judge is
+#    unavailable, raises, or answers unparseably, NO attack edge is
+#    emitted and the reason lands on
+#    ``DKSCycleResult.disagreement_diagnostics``. Absence of adjudicated
+#    evidence is not evidence of disagreement.
+# 2. POSITION-FREE. Candidates are ranked by content, each pair is
+#    canonicalised by content before the judge sees it, and the pairs are
+#    adjudicated in content order — so the edge set does not depend on
+#    the order the perspectives were listed in.
+# 3. BOUNDED MODEL COST. The judge runs against candidate attackers
+#    surfaced for the derived claim, capped per claim
+#    (``max_attack_candidates``) and per cycle (``refutation_budget``) —
+#    never once per pair in the reached set.
+#
+# The section is deliberately free of cycle state so it can be lifted
+# into its own module when ``dks/core.py`` is broken up.
+
+
+DEFAULT_MAX_ATTACK_CANDIDATES: int = 4
+"""Candidate attackers surfaced per derived claim before adjudication.
+
+The ranker returns at most this many candidates for one claim, so the
+judge is asked about plausible refutations rather than about every other
+argument in the reached set."""
+
+DEFAULT_REFUTATION_BUDGET: int = 8
+"""Hard cap on incompatibility judgements per cycle.
+
+The per-claim cap alone still grows with the number of arguments; this is
+the cap that makes the per-cycle model budget a constant. Candidate pairs
+beyond the budget are left unadjudicated (and therefore edge-less), with
+the truncation recorded in
+:attr:`DKSCycleResult.disagreement_diagnostics`."""
+
+
+AttackDirection = Literal["a_attacks_b", "b_attacks_a", "undetermined"]
+"""Which way the evidence points in an adjudicated incompatibility.
+
+``a_attacks_b`` / ``b_attacks_a`` name the two arguments in the order
+they were handed to the judge. ``undetermined`` means the evidence
+establishes that the two claims cannot both hold but does *not* establish
+which one it defeats — in which case the cycle emits no edge rather than
+inventing a direction.
+"""
+
+
+@dataclass(frozen=True)
+class IncompatibilityVerdict:
+    """One adjudicated candidate disagreement.
+
+    ``incompatible=False`` is the fail-closed answer, and the one the
+    old string comparison could never give: differently worded claims
+    about compatible facts are not a disagreement.
+
+    ``rationale`` and ``evidence_locator`` are what make the resulting
+    edge auditable — they carry the *reason* the pair was adjudicated
+    this way into :attr:`DKSContradicts.reason`, where a bare "claim
+    mismatch" used to sit.
+    """
+
+    incompatible: bool
+    direction: AttackDirection = "undetermined"
+    rationale: str = ""
+    evidence_locator: str = ""
+
+
+def _flipped(verdict: IncompatibilityVerdict) -> IncompatibilityVerdict:
+    """The same verdict with its two sides swapped."""
+    if verdict.direction == "a_attacks_b":
+        direction: AttackDirection = "b_attacks_a"
+    elif verdict.direction == "b_attacks_a":
+        direction = "a_attacks_b"
+    else:
+        direction = "undetermined"
+    return IncompatibilityVerdict(
+        incompatible=verdict.incompatible,
+        direction=direction,
+        rationale=verdict.rationale,
+        evidence_locator=verdict.evidence_locator,
+    )
+
+
+class IncompatibilityJudge(Protocol):
+    """Decide whether two arguments' claims are incompatible, and which
+    way the evidence points.
+
+    Called with the two whole :class:`DKSArgument`s rather than their
+    claim strings, because the judgement is over the *evidence*: the
+    Toulmin warrant licensing each claim and the quoted source span each
+    cites.
+
+    Returns ``None`` for "no judgement available" — a backend error, an
+    unparseable answer, a pair outside the judge's competence. The caller
+    treats ``None`` as *no attack edge* and records why; it must never
+    fall back to comparing claim strings, since that fallback is what
+    made every pair disagree.
+    """
+
+    def __call__(
+        self, a: DKSArgument, b: DKSArgument
+    ) -> IncompatibilityVerdict | None:
+        ...
+
+
+@dataclass(frozen=True)
+class TableIncompatibilityJudge:
+    """Deterministic reference judge — an explicit table of adjudications.
+
+    Keyed by the ordered pair of claim texts. A lookup that matches only
+    the reversed pair returns the stored verdict with its two sides
+    swapped, so the judge is symmetric by construction. Pairs absent from
+    the table are reported COMPATIBLE: the reference implementation holds
+    the same fail-closed bias as the model-backed one and can never
+    manufacture a disagreement nobody wrote down.
+
+    This is what tests inject, and what a caller runs when no model is
+    available.
+    """
+
+    verdicts: Mapping[tuple[str, str], IncompatibilityVerdict] = field(
+        default_factory=dict
+    )
+
+    def __call__(
+        self, a: DKSArgument, b: DKSArgument
+    ) -> IncompatibilityVerdict | None:
+        claim_a = a.warrant.claim.strip()
+        claim_b = b.warrant.claim.strip()
+        direct = self.verdicts.get((claim_a, claim_b))
+        if direct is not None:
+            return direct
+        reverse = self.verdicts.get((claim_b, claim_a))
+        if reverse is not None:
+            return _flipped(reverse)
+        return IncompatibilityVerdict(
+            incompatible=False,
+            rationale=(
+                "no adjudicated evidence for this claim pair; "
+                "reported compatible"
+            ),
+        )
+
+
+_INCOMPATIBILITY_PROMPT = (
+    "Step: evidence-based incompatibility check.\n"
+    "Decide (1) whether the two claims below can both hold at once and "
+    "(2) if they cannot, which one the cited evidence defeats. Claims that "
+    "are merely worded differently are NOT a disagreement. Judge the "
+    "evidence, not the phrasing, and answer 'undetermined' rather than "
+    "guessing a direction the evidence does not establish.\n\n"
+    "Claim A: {claim_a}\n"
+    "A's warrant: {warrant_a}\n"
+    "A's evidence: {evidence_a}\n\n"
+    "Claim B: {claim_b}\n"
+    "B's warrant: {warrant_b}\n"
+    "B's evidence: {evidence_b}\n\n"
+    'Return JSON:\n{{"incompatible": true|false, "direction": '
+    '"a_attacks_b|b_attacks_a|undetermined", "rationale": "...", '
+    '"evidence_locator": "<the span that settles it, or empty>"}}'
+)
+
+
+@dataclass(frozen=True)
+class LLMIncompatibilityJudge:
+    """Model-backed judge — one backend call per candidate pair.
+
+    The model *produces the evidence* for the judgement; what to do with
+    it stays with the cycle. On a backend exception, an unparseable
+    response, or a missing ``incompatible`` field this returns ``None``
+    and the caller emits no edge. An out-of-vocabulary ``direction``
+    degrades to ``undetermined``, which also emits no edge — a
+    hallucinated direction must not become an attack.
+    """
+
+    backend: LLMBackend
+    system_prompt: str = _SYSTEM_PROMPT
+
+    def __call__(
+        self, a: DKSArgument, b: DKSArgument
+    ) -> IncompatibilityVerdict | None:
+        prompt = _INCOMPATIBILITY_PROMPT.format(
+            claim_a=a.warrant.claim,
+            warrant_a=a.warrant.warrant,
+            evidence_a=a.evidence,
+            claim_b=b.warrant.claim,
+            warrant_b=b.warrant.warrant,
+            evidence_b=b.evidence,
+        )
+        try:
+            response = self.backend.call(
+                LLMRequest(
+                    system_prompt=self.system_prompt, user_prompt=prompt
+                )
+            )
+        except Exception:  # noqa: BLE001 — an unavailable judge fails closed, it does not raise into the cycle
+            return None
+        data = _parse_json(response.content)
+        if "incompatible" not in data:
+            return None
+        incompatible = _coerce_bool(data["incompatible"])
+        if incompatible is None:
+            return None
+        raw_direction = str(data.get("direction", "undetermined")).strip().lower()
+        direction: AttackDirection = (
+            raw_direction  # type: ignore[assignment]
+            if raw_direction in ("a_attacks_b", "b_attacks_a", "undetermined")
+            else "undetermined"
+        )
+        return IncompatibilityVerdict(
+            incompatible=incompatible,
+            direction=direction,
+            rationale=_get_str(data, "rationale"),
+            evidence_locator=_get_str(data, "evidence_locator", ""),
+        )
+
+
+class CandidateAttackerRanker(Protocol):
+    """Surface the candidate attackers of one derived claim.
+
+    This is what bounds the model budget: the incompatibility judge runs
+    against the candidates this returns, never against every pair in the
+    reached set. Implementations must rank by CONTENT, so the candidate
+    set does not depend on the order the arguments were generated in.
+    """
+
+    def __call__(
+        self, claim: str, candidates: Sequence[DKSArgument], *, k: int
+    ) -> tuple[DKSArgument, ...]:
+        ...
+
+
+@dataclass(frozen=True)
+class LexicalOverlapRanker:
+    """Deterministic, model-free candidate surfacing — token overlap.
+
+    Scores each candidate by Jaccard overlap between its claim's token
+    set and the derived claim's, descending, with the candidate's content
+    key as tiebreak. Nothing is dropped for a low score: the caps are the
+    only thing that drops a candidate, so the recall loss is explicit and
+    budgeted rather than hidden in a threshold.
+
+    This stands in for the retrieval ranker later phases wire in (dense +
+    lexical against the derived claim). The interface is the same, so
+    swapping it does not touch the cycle.
+    """
+
+    def __call__(
+        self, claim: str, candidates: Sequence[DKSArgument], *, k: int
+    ) -> tuple[DKSArgument, ...]:
+        if k <= 0:
+            return ()
+        target = _claim_tokens(claim)
+        ranked = sorted(
+            candidates,
+            key=lambda c: (
+                -_jaccard(target, _claim_tokens(c.warrant.claim)),
+                _argument_content_key(c),
+            ),
+        )
+        return tuple(ranked[:k])
+
+
+def _claim_tokens(text: str) -> frozenset[str]:
+    """Lowercased alphanumeric token set of a claim."""
+    return frozenset(t for t in re.split(r"[^0-9a-z]+", text.lower()) if t)
+
+
+def _jaccard(left: frozenset[str], right: frozenset[str]) -> float:
+    """Jaccard overlap; 0.0 when either side is empty."""
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def _argument_content_key(arg: DKSArgument) -> tuple[str, str, str, str]:
+    """A stable identity for an argument that does not use its position.
+
+    Content first, then the perspective label as a tiebreak — the
+    perspective is unique per cycle (the constructor enforces it) and
+    independent of where in the list it was declared, so this key is
+    invariant under permutation of ``perspectives`` while still telling
+    two same-content arguments apart.
+    """
+    return (
+        arg.warrant.claim.strip(),
+        arg.warrant.warrant.strip(),
+        arg.evidence.strip(),
+        arg.perspective,
+    )
+
+
+def _canonical_pair(
+    x: DKSArgument, y: DKSArgument
+) -> tuple[DKSArgument, DKSArgument]:
+    """Order two arguments by content so the judge sees one fixed
+    presentation of the pair regardless of generation order."""
+    return (
+        (x, y) if _argument_content_key(x) <= _argument_content_key(y) else (y, x)
+    )
+
+
 class DKSCycle:
     """One DKS cycle (full closed loop, short-circuited, or confidence-gated).
 
@@ -556,6 +904,14 @@ class DKSCycle:
 
     Confidence gating is opt-in. Callers who don't pass
     ``confidence_model`` always run the full cycle.
+
+    Step 4's *inputs* are opt-in too. By default "A and B disagree" means
+    their claim strings differ and the attacker is whichever argument was
+    generated second. Pass ``evidence_based_disagreement=True`` (or an
+    explicit ``incompatibility_judge``) to decide both questions from the
+    arguments' evidence instead, under an explicit per-cycle cap on
+    judgements — see the "Evidence-based incompatibility and direction"
+    section above.
     """
 
     def __init__(
@@ -568,6 +924,11 @@ class DKSCycle:
         confidence_threshold: float | None = None,
         retrieval_client: object | None = None,
         semantic_disagreement: bool = False,
+        evidence_based_disagreement: bool = False,
+        incompatibility_judge: IncompatibilityJudge | None = None,
+        candidate_ranker: CandidateAttackerRanker | None = None,
+        max_attack_candidates: int = DEFAULT_MAX_ATTACK_CANDIDATES,
+        refutation_budget: int = DEFAULT_REFUTATION_BUDGET,
         perspectives: tuple[str, ...] = ("conservative", "exploratory"),
         mode: CycleMode = "fresh",
     ) -> None:
@@ -593,6 +954,42 @@ class DKSCycle:
         # Optional LLM-based disagreement detection at step 4. Off by
         # default falls back to local string-compare on claim text.
         self.semantic_disagreement = semantic_disagreement
+        # Evidence-based incompatibility + direction at step 4. DEFAULT
+        # OFF: with neither the flag nor a judge, step 4 runs the legacy
+        # string-compare path and the N>2 builder keeps its
+        # attacker-is-the-later-perspective convention, so existing
+        # callers and traces are unchanged. Supplying a judge implies the
+        # flag (a judge that silently did nothing would be a trap);
+        # setting the flag alone builds an LLMIncompatibilityJudge over
+        # this cycle's backend. When on, it takes precedence over
+        # ``semantic_disagreement`` — the two answer the same question,
+        # and only one of them weighs evidence.
+        if max_attack_candidates < 0:
+            raise ValueError(
+                f"max_attack_candidates must be >= 0; got {max_attack_candidates}"
+            )
+        if refutation_budget < 0:
+            raise ValueError(
+                f"refutation_budget must be >= 0; got {refutation_budget}"
+            )
+        self.evidence_based_disagreement: bool = bool(
+            evidence_based_disagreement
+        ) or (incompatibility_judge is not None)
+        self.max_attack_candidates = max_attack_candidates
+        self.refutation_budget = refutation_budget
+        self.candidate_ranker: CandidateAttackerRanker = (
+            candidate_ranker if candidate_ranker is not None else LexicalOverlapRanker()
+        )
+        self.incompatibility_judge: IncompatibilityJudge | None = None
+        if self.evidence_based_disagreement:
+            self.incompatibility_judge = (
+                incompatibility_judge
+                if incompatibility_judge is not None
+                else LLMIncompatibilityJudge(backend=backend)
+            )
+        # Why step 4 declined a candidate pair. Surfaced on
+        # DKSCycleResult.disagreement_diagnostics.
+        self._disagreement_diagnostics: list[str] = []
         # Multi-perspective debate. The default ("conservative",
         # "exploratory") matches the canonical 2-argument cycle. N>2
         # activates pairwise contradicts + Dung grounded labelling.
@@ -723,6 +1120,7 @@ class DKSCycle:
                 contradicts_edges=(),
                 grounded_labelling={},
                 silent_failures=tuple(self._silent_failures),
+                disagreement_diagnostics=tuple(self._disagreement_diagnostics),
             )
 
         # A0.4 — Dung-IN must be COMPUTED by the solver, not asserted. Build a
@@ -765,6 +1163,7 @@ class DKSCycle:
             grounded_labelling=dict(n2_labels),
             rule_revisions=(revision,),
             silent_failures=tuple(self._silent_failures),
+            disagreement_diagnostics=tuple(self._disagreement_diagnostics),
         )
 
     # ── N>2 perspective dispatch ────────────────────────────────────────
@@ -798,27 +1197,14 @@ class DKSCycle:
             )
             arguments.append(arg)
 
-        # Pairwise step 4: emit a contradicts edge for every (i, j)
-        # pair with i < j where claims differ. B attacks A by
-        # convention (the later perspective is the "attacker").
-        contradicts_edges: list[DKSContradicts] = []
-        for i in range(len(arguments)):
-            for j in range(i + 1, len(arguments)):
-                a_i = arguments[i]
-                a_j = arguments[j]
-                if a_i.warrant.claim.strip() == a_j.warrant.claim.strip():
-                    continue
-                contradicts_edges.append(
-                    DKSContradicts(
-                        attacker_fz=a_j.folgezettel,
-                        attacked_fz=a_i.folgezettel,
-                        reason=(
-                            f"Claim mismatch: {a_i.folgezettel} asserts "
-                            f"{a_i.warrant.claim!r}; "
-                            f"{a_j.folgezettel} asserts {a_j.warrant.claim!r}"
-                        ),
-                    )
-                )
+        # Pairwise step 4. Evidence-based when opted in (the same builder
+        # the N=2 path uses, so the two cannot drift apart again);
+        # otherwise the legacy index-order convention.
+        contradicts_edges: list[DKSContradicts] = list(
+            self._build_attack_edges(arguments)
+            if self.evidence_based_disagreement
+            else self._build_attack_edges_by_order(arguments)
+        )
 
         # Build Dung AF + compute grounded labelling.
         af = DungAF(
@@ -852,6 +1238,7 @@ class DKSCycle:
                 contradicts_edges=tuple(contradicts_edges),
                 grounded_labelling=dict(labels),
                 silent_failures=tuple(self._silent_failures),
+                disagreement_diagnostics=tuple(self._disagreement_diagnostics),
             )
 
         attacked_fz = out_fzs[0]
@@ -918,6 +1305,7 @@ class DKSCycle:
             grounded_labelling=dict(labels),
             rule_revisions=tuple(revisions),
             silent_failures=tuple(self._silent_failures),
+            disagreement_diagnostics=tuple(self._disagreement_diagnostics),
         )
 
     # ── Per-step methods ──────────────────────────────────────────────────
@@ -972,11 +1360,27 @@ class DKSCycle:
     ) -> DKSContradicts | None:
         """Step 4 — detect contradiction between A and B.
 
-        Default: simple string-inequality on the claim text. With
-        ``semantic_disagreement=True``, do one backend call asking
-        "are these claims substantively different?"; fall back to
-        string-compare on parse failure.
+        Two paths:
+
+        - **Evidence-based** (opt-in via ``evidence_based_disagreement``
+          or an explicit ``incompatibility_judge``): the pair is
+          adjudicated by :meth:`_build_attack_edges` — the same builder
+          the N>2 path uses — so an edge appears only when the judge
+          finds the claims incompatible *and* the evidence names a
+          direction.
+        - **Legacy** (default): string-inequality on the claim text, or,
+          with ``semantic_disagreement=True``, one backend call that
+          falls back to string-compare on parse failure. The direction is
+          then fixed by prompt-slot order: B attacks A because B was
+          generated second. Retained unchanged so existing callers and
+          traces keep working; it treats any difference in wording as a
+          disagreement, which is what the evidence-based path exists to
+          replace.
         """
+        if self.evidence_based_disagreement:
+            edges = self._build_attack_edges((arg_a, arg_b))
+            return edges[0] if edges else None
+
         a_claim = arg_a.warrant.claim.strip()
         b_claim = arg_b.warrant.claim.strip()
 
@@ -990,10 +1394,8 @@ class DKSCycle:
 
         if not disagree:
             return None
-        # B attacks A by default (B is the "exploratory" angle
-        # challenging A's "conservative" one). N>2 cycles compute the
-        # attack direction from the pairwise contradicts graph and
-        # Dung labelling instead.
+        # Legacy direction: B attacks A because B is the second prompt
+        # slot, not because the evidence says so.
         return DKSContradicts(
             attacker_fz=arg_b.folgezettel,
             attacked_fz=arg_a.folgezettel,
@@ -1002,6 +1404,167 @@ class DKSCycle:
                 f"B asserts {arg_b.warrant.claim!r}"
             ),
         )
+
+    # ── Step 4, evidence-based (P4) ───────────────────────────────────────
+
+    def _build_attack_edges(
+        self, arguments: Sequence[DKSArgument]
+    ) -> tuple[DKSContradicts, ...]:
+        """Derive step 4's attack edges from evidence, for any N.
+
+        One implementation behind both the N=2 and the N>2 path, so the
+        two cannot diverge again. Four stages, none of which consults an
+        argument's position:
+
+        1. **Surface** candidate attackers for each derived claim through
+           :attr:`candidate_ranker`, capped at
+           :attr:`max_attack_candidates`. The judge is never asked about
+           every pair in the reached set.
+        2. **Canonicalise** each candidate pair by content and
+           de-duplicate it, then adjudicate the pairs in content order,
+           truncated to :attr:`refutation_budget` — the per-cycle cap on
+           model calls.
+        3. **Adjudicate.** An unavailable judge, a compatible pair, and an
+           incompatible pair whose direction the evidence leaves open all
+           yield no edge, each with a recorded reason.
+        4. **Emit** one edge per adjudicated, directed incompatibility,
+           in the same content order.
+
+        Returns an empty tuple when no judge is configured — the caller
+        only reaches this method with the feature opted in, so that case
+        is a defensive fail-closed, not a fallback.
+        """
+        judge = self.incompatibility_judge
+        if judge is None:
+            return ()
+
+        # Stage 1 + 2: content-keyed candidate pairs, de-duplicated.
+        pairs: dict[
+            tuple[tuple[str, ...], tuple[str, ...]],
+            tuple[DKSArgument, DKSArgument],
+        ] = {}
+        for arg in arguments:
+            others = [other for other in arguments if other is not arg]
+            candidates = self.candidate_ranker(
+                arg.warrant.claim, others, k=self.max_attack_candidates
+            )
+            for candidate in candidates:
+                first, second = _canonical_pair(arg, candidate)
+                key = (
+                    _argument_content_key(first),
+                    _argument_content_key(second),
+                )
+                pairs[key] = (first, second)
+
+        ordered = [pairs[key] for key in sorted(pairs)]
+        if len(ordered) > self.refutation_budget:
+            self._disagreement_diagnostics.append(
+                f"refutation budget {self.refutation_budget} reached: "
+                f"{len(ordered) - self.refutation_budget} candidate pair(s) "
+                f"left unadjudicated"
+            )
+            ordered = ordered[: self.refutation_budget]
+
+        # Stage 3 + 4.
+        edges: list[DKSContradicts] = []
+        for first, second in ordered:
+            edge = self._adjudicate_pair(judge, first, second)
+            if edge is not None:
+                edges.append(edge)
+        return tuple(edges)
+
+    def _adjudicate_pair(
+        self,
+        judge: IncompatibilityJudge,
+        first: DKSArgument,
+        second: DKSArgument,
+    ) -> DKSContradicts | None:
+        """Ask the judge about one canonically-ordered pair.
+
+        Returns the attack edge the evidence licenses, or ``None`` —
+        recording why on :attr:`_disagreement_diagnostics` in every
+        ``None`` case, so "no disagreement" is auditable rather than
+        silent. There is no string-compare fallback on any branch.
+        """
+        label = f"{first.folgezettel} vs {second.folgezettel}"
+        try:
+            verdict = judge(first, second)
+        except Exception as e:  # noqa: BLE001 — a raising judge fails closed, like an absent one
+            self._silent_failures.append(
+                f"_adjudicate_pair: {type(e).__name__}: {e}"
+            )
+            self._disagreement_diagnostics.append(
+                f"{label}: judge raised {type(e).__name__} — no attack edge"
+            )
+            return None
+        if verdict is None:
+            self._disagreement_diagnostics.append(
+                f"{label}: no judgement available — no attack edge"
+            )
+            return None
+        why = verdict.rationale or "no rationale given"
+        if not verdict.incompatible:
+            self._disagreement_diagnostics.append(
+                f"{label}: claims are compatible — no attack edge ({why})"
+            )
+            return None
+        if verdict.direction == "undetermined":
+            self._disagreement_diagnostics.append(
+                f"{label}: incompatible, but the evidence determines no "
+                f"direction — no attack edge ({why})"
+            )
+            return None
+        if verdict.direction == "a_attacks_b":
+            attacker, attacked = first, second
+        else:
+            attacker, attacked = second, first
+        locator = (
+            f" [locator: {verdict.evidence_locator}]"
+            if verdict.evidence_locator
+            else ""
+        )
+        return DKSContradicts(
+            attacker_fz=attacker.folgezettel,
+            attacked_fz=attacked.folgezettel,
+            reason=(
+                f"Evidence-based incompatibility: {attacker.folgezettel} "
+                f"asserts {attacker.warrant.claim!r} against "
+                f"{attacked.folgezettel}'s {attacked.warrant.claim!r}; "
+                f"{why}{locator}"
+            ),
+        )
+
+    def _build_attack_edges_by_order(
+        self, arguments: Sequence[DKSArgument]
+    ) -> tuple[DKSContradicts, ...]:
+        """Legacy N>2 step 4 — one edge per (i, j), i < j, whose claim
+        strings differ, with the later perspective named the attacker.
+
+        Kept as the default so existing callers and traces are unchanged.
+        It weighs no evidence: the trigger is claim-string identity and
+        the direction is list position, so permuting ``perspectives``
+        permutes the verdict. :meth:`_build_attack_edges` is the
+        evidence-based replacement.
+        """
+        edges: list[DKSContradicts] = []
+        for i in range(len(arguments)):
+            for j in range(i + 1, len(arguments)):
+                a_i = arguments[i]
+                a_j = arguments[j]
+                if a_i.warrant.claim.strip() == a_j.warrant.claim.strip():
+                    continue
+                edges.append(
+                    DKSContradicts(
+                        attacker_fz=a_j.folgezettel,
+                        attacked_fz=a_i.folgezettel,
+                        reason=(
+                            f"Claim mismatch: {a_i.folgezettel} asserts "
+                            f"{a_i.warrant.claim!r}; "
+                            f"{a_j.folgezettel} asserts {a_j.warrant.claim!r}"
+                        ),
+                    )
+                )
+        return tuple(edges)
 
     def _llm_check_disagreement(self, claim_a: str, claim_b: str) -> bool | None:
         """LLM-based disagreement check.
@@ -1239,6 +1802,25 @@ def _get_str(data: dict, key: str, default: str = "") -> str:
     return str(v) if v is not None else default
 
 
+def _coerce_bool(value: object) -> bool | None:
+    """Read a boolean out of an LLM's JSON; ``None`` when it isn't one.
+
+    Some backends answer ``"true"`` rather than ``true``, so strings are
+    coerced from a closed vocabulary. Anything else returns ``None``,
+    which callers must treat as "no answer" rather than as ``False`` —
+    the two mean different things to a fail-closed gate.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in ("true", "yes", "y", "1"):
+            return True
+        if text in ("false", "no", "n", "0"):
+            return False
+    return None
+
+
 # ── Multi-cycle orchestration ────────────────────────────────────────────
 
 
@@ -1340,6 +1922,11 @@ class DKSRunner:
         confidence_threshold: float | None = None,
         retrieval_client: object | None = None,
         semantic_disagreement: bool = False,
+        evidence_based_disagreement: bool = False,
+        incompatibility_judge: IncompatibilityJudge | None = None,
+        candidate_ranker: CandidateAttackerRanker | None = None,
+        max_attack_candidates: int = DEFAULT_MAX_ATTACK_CANDIDATES,
+        refutation_budget: int = DEFAULT_REFUTATION_BUDGET,
         perspectives: tuple[str, ...] = ("conservative", "exploratory"),
         modes: tuple[CycleMode, ...] = (),
     ) -> None:
@@ -1351,6 +1938,14 @@ class DKSRunner:
         # Retrieval + semantic-disagreement forwarded to each cycle.
         self.retrieval_client = retrieval_client
         self.semantic_disagreement = semantic_disagreement
+        # P4 step-4 configuration, forwarded to each cycle. Default off:
+        # every cycle runs the legacy string-compare path unless the
+        # caller opts in here.
+        self.evidence_based_disagreement = evidence_based_disagreement
+        self.incompatibility_judge = incompatibility_judge
+        self.candidate_ranker = candidate_ranker
+        self.max_attack_candidates = max_attack_candidates
+        self.refutation_budget = refutation_budget
         # Multi-perspective debate forwarded to each cycle.
         self.perspectives = perspectives
         # A0.1 — per-observation allocation mode, aligned positionally to
@@ -1390,6 +1985,11 @@ class DKSRunner:
                 confidence_threshold=self.confidence_threshold,
                 retrieval_client=self.retrieval_client,
                 semantic_disagreement=self.semantic_disagreement,
+                evidence_based_disagreement=self.evidence_based_disagreement,
+                incompatibility_judge=self.incompatibility_judge,
+                candidate_ranker=self.candidate_ranker,
+                max_attack_candidates=self.max_attack_candidates,
+                refutation_budget=self.refutation_budget,
                 perspectives=self.perspectives,
                 mode=obs_mode,
             ).run()
@@ -1468,6 +2068,16 @@ __all__ = [
     "CycleMode",
     "CounterStrength",
     "WarrantChangeKind",
+    "AttackDirection",
+    # Evidence-based step 4 (P4)
+    "DEFAULT_MAX_ATTACK_CANDIDATES",
+    "DEFAULT_REFUTATION_BUDGET",
+    "IncompatibilityVerdict",
+    "IncompatibilityJudge",
+    "TableIncompatibilityJudge",
+    "LLMIncompatibilityJudge",
+    "CandidateAttackerRanker",
+    "LexicalOverlapRanker",
     # Dataclasses
     "DKSObservation",
     "DKSWarrant",

@@ -11,6 +11,11 @@ tessellum dks <observations.jsonl>
     [--mock-responses <responses.json>]
     [--runs-dir <dir>] [--no-trace]
     [--format {human,json}]
+
+# read-only query over the append-only claim/edge log (no cycle runs)
+tessellum dks --claim-log <runtime.db>
+    (--claim-status <id> | --claim-explain <id> | --claim-summary)
+    [--provisional]
 ```
 
 JSONL: one observation per non-blank line. Required string field
@@ -141,6 +146,47 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Use one LLM call at step 4 to check whether claims "
         "substantively disagree, instead of string-compare. Falls back "
         "to string-compare on parse failure. Off by default.",
+    )
+    # Computed-status queries over the append-only claim/edge log. Read-only,
+    # and off unless one of the three mode flags is passed.
+    dks.add_argument(
+        "--claim-status",
+        metavar="CLAIM_ID",
+        default=None,
+        help="Query mode: print the COMPUTED status of one claim in the "
+        "claim/edge log at --claim-log (proposed | challenged | warranted | "
+        "superseded). Recomputed from the edge set on every call — never a "
+        "stored label. Skips the observations run.",
+    )
+    dks.add_argument(
+        "--claim-explain",
+        metavar="CLAIM_ID",
+        default=None,
+        help="Query mode: like --claim-status, plus every incoming support / "
+        "attack / supersede / revise edge with its evidence locator and the "
+        "status of the claim it comes from.",
+    )
+    dks.add_argument(
+        "--claim-summary",
+        action="store_true",
+        help="Query mode: corpus counts by computed status over --claim-log, "
+        "with the edge-set digest the labelling was computed at.",
+    )
+    dks.add_argument(
+        "--claim-log",
+        type=Path,
+        default=None,
+        help="The runtime DB holding the append-only claim/edge log. Required "
+        "by the three query modes above; read-only, nothing is written.",
+    )
+    dks.add_argument(
+        "--provisional",
+        action="store_true",
+        help="With a query mode: compute a verdict whose support/attack chain "
+        "touches a mechanically-located 'stub' claim. Refused by default, "
+        "because most located strings are not truth-apt and printing "
+        "'warranted' for one launders a document title into a verdict. Output "
+        "is labelled PROVISIONAL.",
     )
     # Meta-DKS (schema-mutation runtime)
     dks.add_argument(
@@ -278,6 +324,10 @@ def run_dks_cli(args: argparse.Namespace) -> int:
     # --meta short-circuits to the schema-mutation runtime.
     if args.meta:
         return _run_dks_meta(args)
+
+    # The three claim-query modes short-circuit to the computed-status reader.
+    if args.claim_status or args.claim_explain or args.claim_summary:
+        return _run_dks_claim_status(args)
 
     if args.observations is None:
         print(
@@ -733,7 +783,15 @@ def _serialize_cycle(cycle) -> dict:
             }
             for e in cycle.contradicts_edges
         ],
+        # HISTORICAL. A frozen snapshot of the labelling at the end of this
+        # cycle, over this cycle's arguments only — not a claim's status. An
+        # attack appended later can defeat one of these arguments, or defeat its
+        # attacker and reinstate it, and this dict will never say so. Kept
+        # because the trace shape is a public surface (removing it breaks every
+        # reader); the live verdict is computed on demand from the claim/edge log
+        # by `tessellum dks --claim-status` / `dks.status.StatusQuery`.
         "grounded_labelling": dict(cycle.grounded_labelling),
+        "grounded_labelling_is_historical": True,
         # Silent-failure telemetry
         "silent_failures": list(cycle.silent_failures),
         "surviving_argument_fzs": list(cycle.surviving_argument_fzs),
@@ -790,6 +848,163 @@ def _serialize_run(
             for w in result.final_warrants
         ],
     }
+
+
+# ── claim-status query mode ─────────────────────────────────────────────────
+
+
+def _run_dks_claim_status(args: argparse.Namespace) -> int:
+    """Computed-status queries over the append-only claim/edge log.
+
+    A thin caller of :class:`tessellum.dks.status.StatusQuery`: it folds the log,
+    labels the ``attack`` relation, and prints the four-status verdict. Strictly
+    read-only — a status is a pure function of the edge set, so there is nothing
+    to store and nothing here that could store it.
+
+    Fails closed over stubs. A verdict whose chain touches a mechanically-located
+    claim is REFUSED (exit 2) unless ``--provisional`` is passed, in which case
+    the answer carries a leading PROVISIONAL warning.
+
+    Exit codes: 0 on a printed verdict, 2 on a missing/unreadable log, an
+    unknown claim, or a refused provisional verdict.
+    """
+    import sqlite3
+
+    from tessellum.dks.status import (
+        ProvisionalStatusError,
+        StatusQuery,
+        UnknownClaimError,
+    )
+    from tessellum.runtime.claim_log import ClaimLog
+
+    if args.claim_log is None:
+        print(
+            "tessellum dks: --claim-status/--claim-explain/--claim-summary need "
+            "--claim-log <runtime.db>",
+            file=sys.stderr,
+        )
+        return 2
+    log_path = args.claim_log.expanduser().resolve()
+    if not log_path.is_file():
+        print(
+            f"tessellum dks: {log_path} does not exist or is not a file",
+            file=sys.stderr,
+        )
+        return 2
+
+    # ClaimLog(path) rather than ClaimLog.open(path): `open` runs the schema
+    # script, which would CREATE tables. A query must not write, so a DB without
+    # the log tables is reported as an error instead of being migrated.
+    query = StatusQuery(ClaimLog(log_path))
+    try:
+        if args.claim_explain:
+            explanation = query.explain(
+                args.claim_explain, allow_provisional=args.provisional
+            )
+            if args.output_format == "json":
+                verdict = explanation.verdict
+                print(
+                    json.dumps(
+                        {
+                            "claim_id": verdict.claim_id,
+                            "status": verdict.status,
+                            "dung_label": verdict.label,
+                            "acceptance": verdict.acceptance.status,
+                            "provisional": verdict.provisional,
+                            "stub_chain": list(verdict.stub_chain),
+                            "edgeset_digest": explanation.digest,
+                            "edges": [
+                                {
+                                    "op": e.op,
+                                    "src": e.src,
+                                    "src_status": e.src_status,
+                                    "evidence_locator": e.evidence_locator,
+                                    "origin": e.origin,
+                                }
+                                for group in (
+                                    explanation.supports,
+                                    explanation.attacks,
+                                    explanation.supersessions,
+                                    explanation.revisions,
+                                )
+                                for e in group
+                            ],
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                print(explanation.render())
+            return 0
+
+        if args.claim_status:
+            verdict = query.status(args.claim_status, allow_provisional=args.provisional)
+            if args.output_format == "json":
+                print(
+                    json.dumps(
+                        {
+                            "claim_id": verdict.claim_id,
+                            "status": verdict.status,
+                            "dung_label": verdict.label,
+                            "acceptance": verdict.acceptance.status,
+                            "provisional": verdict.provisional,
+                            "stub_chain": list(verdict.stub_chain),
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                if verdict.provisional:
+                    print(
+                        f"PROVISIONAL: {len(verdict.stub_chain)} claim(s) in this "
+                        "chain have provenance='stub' — this verdict is not "
+                        "trustworthy."
+                    )
+                print(verdict.status)
+            return 0
+
+        table = query.table()
+        summary = table.summary()
+        if args.output_format == "json":
+            print(
+                json.dumps(
+                    {
+                        "claims": len(table.statuses),
+                        "edgeset_digest": table.digest,
+                        "by_status": summary,
+                        "provisional_claims": sorted(
+                            cid for cid, v in table.statuses.items() if v.provisional
+                        ),
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(f"claims: {len(table.statuses)} | edge-set digest: {table.digest}")
+            for name, count in sorted(summary.items(), key=lambda kv: -kv[1]):
+                print(f"  {name:11} {count}")
+            provisional = sorted(
+                cid for cid, v in table.statuses.items() if v.provisional
+            )
+            if provisional:
+                print(
+                    f"  {len(provisional)} verdict(s) are PROVISIONAL (their chain "
+                    "touches a 'stub' claim)"
+                )
+        return 0
+    except UnknownClaimError as e:
+        print(f"tessellum dks: {e}", file=sys.stderr)
+        return 2
+    except ProvisionalStatusError as e:
+        print(f"tessellum dks: REFUSED: {e}", file=sys.stderr)
+        return 2
+    except sqlite3.Error as e:
+        print(
+            f"tessellum dks: {log_path} is not a runtime DB with a claim/edge "
+            f"log ({e}). Nothing was written.",
+            file=sys.stderr,
+        )
+        return 2
 
 
 # ── --report mode ───────────────────────────────────────────────────────────

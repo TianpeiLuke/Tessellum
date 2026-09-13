@@ -1,0 +1,224 @@
+{
+  "version": "1.0",
+  "question_set": "example_component_stewardship",
+  "description": "A small INVENTED question set that exercises the harness end to end: four answerable role questions (two of them multi-hop) and four questions where abstention is the correct response, one per abstention reason the schema admits. The subject matter — a catalogue of software components and the teams accountable for them — is fictional and carries no real organisation, team, service or person. It is a fixture for the code, NOT an evaluation corpus: `labelling` is `synthetic_fixture`, so `arms.py` refuses to admit or refuse a phase from it.",
+  "labelling": "synthetic_fixture",
+  "answer_path": "arm 1 (status quo) is an external answer path and is not present in this repository — see README.md",
+  "questions": [
+    {
+      "qid": "q001",
+      "question": "Which team maintains parser-core?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "parser-core",
+        "entity_id": "component:parser_core",
+        "entity_type": "component"
+      },
+      "abstain": false,
+      "expected": {
+        "answer": "Team Aurora",
+        "aliases": [
+          "Aurora"
+        ],
+        "locator": {
+          "note_id": "catalog/parser_core.md",
+          "field": "maintainer",
+          "line": 6
+        }
+      },
+      "hops": [
+        {
+          "locator": {
+            "note_id": "catalog/parser_core.md",
+            "field": "maintainer",
+            "line": 6
+          },
+          "required": true,
+          "note": "The authored field. Single hop: the node-first read should settle this one."
+        }
+      ],
+      "note": "The easy case. If the whole set looked like this, node-first would clear it and nothing expensive is admitted."
+    },
+    {
+      "qid": "q002",
+      "question": "Which team maintains ledger-sync?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "ledger-sync",
+        "entity_id": "component:ledger_sync",
+        "entity_type": "component"
+      },
+      "abstain": false,
+      "expected": {
+        "answer": "Team Basalt",
+        "aliases": [
+          "Basalt"
+        ],
+        "locator": {
+          "note_id": "catalog/ledger_sync.md",
+          "field": "maintainer",
+          "line": 7
+        }
+      },
+      "hops": [
+        {
+          "locator": {
+            "note_id": "catalog/ledger_sync.md",
+            "field": "maintainer",
+            "line": 7
+          },
+          "required": true
+        }
+      ],
+      "conflation_traps": [
+        {
+          "relation": "author",
+          "value": "Team Cinder",
+          "locator": {
+            "note_id": "catalog/ledger_sync.md",
+            "field": "author",
+            "line": 4
+          }
+        }
+      ],
+      "note": "The conflation case: the note's own author is stated three lines above the maintainer, and a path that ranks notes rather than reading a named field answers with the author. Graded as `conflated`, separately from a plain miss."
+    },
+    {
+      "qid": "q003",
+      "question": "Which team maintains signal-router?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "signal-router",
+        "entity_id": "component:signal_router",
+        "entity_type": "component"
+      },
+      "abstain": true,
+      "abstain_reason": "field_absent",
+      "hops": [],
+      "note": "The entity resolves and its note exists, but records no maintainer. Abstain; do not fall back to whoever the surrounding prose mentions most."
+    },
+    {
+      "qid": "q004",
+      "question": "Which team maintains the router?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "router",
+        "entity_id": null,
+        "entity_type": "component"
+      },
+      "abstain": true,
+      "abstain_reason": "ambiguous_entity",
+      "note": "Two catalogue entries answer to 'router' (signal-router, route-planner). Return candidates or abstain; never pick one."
+    },
+    {
+      "qid": "q005",
+      "question": "Which team maintains invoice-mailer?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "invoice-mailer",
+        "entity_id": null,
+        "entity_type": "component"
+      },
+      "abstain": true,
+      "abstain_reason": "entity_unresolvable",
+      "note": "No such component in the catalogue. An arm that answers here has invented an entity."
+    },
+    {
+      "qid": "q006",
+      "question": "Which team maintains the component parser-core uses for schema validation?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "the component parser-core uses for schema validation",
+        "entity_id": "component:schema_guard",
+        "entity_type": "component"
+      },
+      "abstain": false,
+      "expected": {
+        "answer": "Team Cinder",
+        "aliases": [
+          "Cinder"
+        ],
+        "locator": {
+          "note_id": "catalog/schema_guard.md",
+          "field": "maintainer",
+          "line": 6
+        }
+      },
+      "hops": [
+        {
+          "locator": {
+            "note_id": "catalog/parser_core.md",
+            "line": 12
+          },
+          "required": true,
+          "bridge": true,
+          "note": "States that parser-core validates schemas through schema-guard. Suppress this line and the question is unanswerable — which is what the shortcut control checks."
+        },
+        {
+          "locator": {
+            "note_id": "catalog/schema_guard.md",
+            "field": "maintainer",
+            "line": 6
+          },
+          "required": true
+        }
+      ],
+      "note": "Two hops. The bridge is a prose sentence in one note, not a field, so no single authored read reaches it."
+    },
+    {
+      "qid": "q007",
+      "question": "Which team maintains route-planner?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "route-planner",
+        "entity_id": "component:route_planner",
+        "entity_type": "component"
+      },
+      "abstain": true,
+      "abstain_reason": "superseded_only",
+      "note": "The only maintainer on record carries a closed validity interval and names no successor. Answering returns a former holder of the role with full confidence — the failure a role fact without a validity interval produces."
+    },
+    {
+      "qid": "q008",
+      "question": "Which team maintains the component ledger-sync publishes its checkpoints to?",
+      "relation": "maintainer",
+      "target": {
+        "surface": "the component ledger-sync publishes its checkpoints to",
+        "entity_id": "component:archive_vault",
+        "entity_type": "component"
+      },
+      "abstain": false,
+      "expected": {
+        "answer": "Team Ember",
+        "aliases": [
+          "Ember"
+        ],
+        "locator": {
+          "note_id": "catalog/archive_vault.md",
+          "field": "maintainer",
+          "line": 6
+        }
+      },
+      "hops": [
+        {
+          "locator": {
+            "note_id": "catalog/ledger_sync.md",
+            "line": 15
+          },
+          "required": true,
+          "bridge": true,
+          "note": "States that ledger-sync publishes checkpoints to archive-vault."
+        },
+        {
+          "locator": {
+            "note_id": "catalog/archive_vault.md",
+            "field": "maintainer",
+            "line": 6
+          },
+          "required": true
+        }
+      ],
+      "note": "A second multi-hop question, so the connected-reasoning denominator is not one question wide."
+    }
+  ]
+}

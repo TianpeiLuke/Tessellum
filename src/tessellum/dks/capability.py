@@ -10,6 +10,10 @@ Three pieces (all here, all pure — no runtime import, no vault write):
 
 - ``Capability`` — the port: ``invoke(request) -> CapabilityResult``. The
   runtime depends on THIS protocol; DKS never depends on the runtime.
+- ``EFFECT_KINDS`` + ``validate_effect_kind`` — the closed vocabulary
+  ``CapabilityEffect.kind`` is checked against **at ingestion**. The field stays
+  a free-form ``str`` (it is a published contract); what the query-time protocol
+  needed was a validator, not an enum.
 - ``CapabilityResult`` — a **warrant-bearing** envelope: status, effects,
   diagnostics, promotion_eligibility, the Toulmin ``warrant`` + calibrated
   ``qualifier``, and a ``replay_token``. P4 validators consume the *warrant*
@@ -27,15 +31,15 @@ Three pieces (all here, all pure — no runtime import, no vault write):
 
 The runtime registers ``dks_inquiry`` as a capability keyed on this port so the
 supervisor drives the kernel through the SAME commit tail as ``native_digestion``
-— adding a deployed capability (Athelas-Conv) later is a new adapter with zero
-kernel change.
+— adding a deployed-model capability later is a new adapter with zero kernel
+change.
 """
 
 from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import Any, Iterable, Literal, Protocol, runtime_checkable
 
 from tessellum.dks.core import (
     DKSCycleResult,
@@ -59,10 +63,65 @@ class CapabilityEffect:
     into the substrate's ``NoteIntentGraph``. The kernel never writes — it
     proposes effects the deterministic promotion path renders."""
 
-    kind: str          # "note" | "edge" | "warrant" | ...
+    kind: str          # one of EFFECT_KINDS — validated at INGESTION, see below
     folgezettel: str   # target FZ (or edge source for a relation)
     bb_role: str = ""  # empirical_observation | argument | counter_argument | ...
     payload: dict[str, Any] = field(default_factory=dict)
+
+
+# ── the effect-kind vocabulary, validated at ingestion ──────────────────────
+
+EFFECT_KINDS: frozenset[str] = frozenset(
+    {
+        "note",      # a vault note the compiler renders into a NoteIntentGraph
+        "edge",      # an operator edge on the append-only claim/edge log
+        "warrant",   # a revised rule, with its supersession
+        "claim",     # a claim row on the append-only claim/edge log
+        "relation",  # a row of the Tier-A relations cache (a projection)
+    }
+)
+"""The closed set of effect kinds a renderer knows how to store.
+
+``CapabilityEffect.kind`` stays a free-form ``str`` — the field is part of a
+published contract and a ``Literal`` would break every caller that composes one
+— so the discipline is a **validated vocabulary at ingestion** instead: whoever
+ingests effects calls :func:`validate_effect_kind` and a kind nobody can render
+is refused there rather than silently dropped downstream.
+
+Growing this set is a phase's decision, not a convenience: a new kind means a
+renderer that stores it exists. ``kind`` is checked here and nowhere in
+:class:`CapabilityEffect`'s constructor, so existing construction sites are
+unaffected."""
+
+
+class EffectKindError(ValueError):
+    """Raised when an effect names a kind no renderer can store."""
+
+
+def validate_effect_kind(kind: str) -> str:
+    """Return ``kind`` if it is in :data:`EFFECT_KINDS`, else refuse.
+
+    Returns the kind so it can be used inline at the construction site, which is
+    where the mistake is cheapest to see."""
+    if kind not in EFFECT_KINDS:
+        raise EffectKindError(
+            f"unknown effect kind {kind!r}; known: {sorted(EFFECT_KINDS)}"
+        )
+    return kind
+
+
+def validate_effects(
+    effects: Iterable[CapabilityEffect],
+) -> tuple[CapabilityEffect, ...]:
+    """Validate a whole batch's kinds — the ingestion-side check.
+
+    Fail-closed on the batch: one un-renderable effect refuses the batch rather
+    than being skipped, because a partially applied proposal is the failure mode
+    the single-write-boundary discipline exists to prevent."""
+    validated = tuple(effects)
+    for effect in validated:
+        validate_effect_kind(effect.kind)
+    return validated
 
 
 @dataclass(frozen=True)
@@ -209,7 +268,12 @@ class DKSCandidate:
 
     Deterministic downstream code (P3's compiler + the substrate's publication
     path) turns this into a promoted vault transaction; the executor itself
-    never touches the vault."""
+    never touches the vault.
+
+    ``base_snapshot_id`` **is** the read-at-snapshot pin, and it is the only one:
+    a query-time episode fills it with the edge-set digest it pinned its reads
+    to (see ``memory_port.EpisodeMemory.pinned_candidate``) rather than carrying
+    a second pin of its own."""
 
     result: CapabilityResult
     base_snapshot_id: str | None
@@ -249,6 +313,10 @@ __all__ = [
     "CapabilityEffect",
     "CapabilityResult",
     "Capability",
+    "EFFECT_KINDS",
+    "EffectKindError",
+    "validate_effect_kind",
+    "validate_effects",
     "adapt_cycle_result",
     "adapt_run_result",
     "DKSCandidate",

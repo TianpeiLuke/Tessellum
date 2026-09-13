@@ -59,6 +59,22 @@ AcceptanceStatus = Literal[
     "undecided",             # Dung-`undec`
 ]
 
+INDEPENDENT_VALIDATION_AVAILABLE: bool = False
+"""Whether an EXOGENOUS check exists that can promote Dung-`in` to ``accepted``.
+
+Hard-wired ``False``, and it is not a placeholder to flip casually: the
+independent validator is ``validation.validate_claims``, which is written and
+behaviour-tested but not wired to anything, so no claim in this system has
+actually passed a check outside the dialectic. While this is ``False`` every
+surviving claim is ``dialectically_adequate`` — nothing is ever ``accepted`` —
+which is the honest state and the fail-closed one.
+
+:mod:`tessellum.dks.status` reads it as the ``independently_validated`` argument
+to :func:`acceptance_from_labelling` rather than deciding for itself, so the day a
+validator is wired there is exactly one line to change and one meaning to it.
+The acceptance test for the ``accepted`` branch belongs to that phase.
+"""
+
 
 @dataclass(frozen=True)
 class AcceptanceVerdict:
@@ -81,7 +97,23 @@ def acceptance_from_labelling(
     check (P4); absent that it is ``dialectically_adequate`` — surviving the
     dialectic is necessary but not sufficient for truth (Dung-`in` no longer
     self-certifies). `out` → defeated; `undec`/absent → undecided. Warrant
-    precision comes from grounded acceptance, not from a type walk."""
+    precision comes from grounded acceptance, not from a type walk.
+
+    **This is a SECOND AXIS, not the corpus status set.** The query-time
+    protocol's verdict is the four computed statuses in
+    :mod:`tessellum.dks.status` (``proposed`` / ``challenged`` / ``warranted`` /
+    ``superseded``), a pure function of the claim/edge set. This vocabulary
+    cannot express two of them — it has no reading for "unattacked but
+    unsupported" or "replaced by a later claim" — and it exposes ``undecided``,
+    which that verdict deliberately folds into ``challenged`` because a live
+    unresolved dispute and a defeated claim answer a question the same way. So
+    the two compose rather than compete: the status axis says what the edge set
+    computes, and this axis records whether an *exogenous* check also passed.
+    Both read the same Dung label, so they can never disagree about survival.
+
+    ``independently_validated`` stays a caller's argument for that reason — see
+    :data:`INDEPENDENT_VALIDATION_AVAILABLE` for the value the status module
+    passes and why it is currently ``False``."""
     label = grounded_labelling.get(argument_fz, "undec")
     if label == "in":
         status: AcceptanceStatus = (
@@ -159,6 +191,7 @@ __all__ = [
     "DungLabel",
     "AcceptanceStatus",
     "AcceptanceVerdict",
+    "INDEPENDENT_VALIDATION_AVAILABLE",
     "acceptance_from_labelling",
     "InquiryMoveKind",
     "InquiryMove",

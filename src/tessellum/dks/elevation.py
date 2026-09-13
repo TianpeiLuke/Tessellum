@@ -10,7 +10,11 @@ Ships (pure structure):
   9-capability profile (ABSENT → VALIDATED); the certificate is issued ONLY by
   validators that are NOT the reasoning backend (the mover-is-never-the-judge
   rule, P3), moving a sufficiently-mature inquiry into `UNDERSTOOD_WATCHING`
-  with ranked future questions + invalidation triggers. It is REVOCABLE.
+  with ranked future questions + invalidation triggers. It is REVOCABLE — and
+  ``tessellum.dks.demotion``'s periodic re-derivation gate is what fires those
+  triggers: it revokes with a reason, and a wrongly-demoted claim is restored
+  only by a re-issued certificate (the same mover-is-never-the-judge rule,
+  applied to the recovery).
 - A7.2 **hand-designed `V(q)` question value first** — a value-of-information
   score ranking candidate questions/moves; run + audited before any learning.
 - A7.3 **the anti-hacking reward CONSTRUCTION (b4a)** — reward computed over a
@@ -73,6 +77,11 @@ class DeepUnderstandingCertificate:
     ``issuer`` must be an independent validator id — NOT the reasoning backend.
     ``ranked_future_questions`` + ``invalidation_triggers`` accompany the move
     into ``UNDERSTOOD_WATCHING`` (understood-but-watching, not final closure).
+
+    ``revoked_reason`` / ``revoked_at`` record WHY and WHEN an invalidation
+    trigger fired, which the periodic re-derivation gate fills in when it demotes
+    a claim: a revocation with no reason is indistinguishable from a certificate
+    that was never issued, and a demotion nobody can explain cannot be appealed.
     """
 
     inquiry_id: str
@@ -81,6 +90,8 @@ class DeepUnderstandingCertificate:
     ranked_future_questions: tuple[str, ...] = ()
     invalidation_triggers: tuple[str, ...] = ()
     revoked: bool = False
+    revoked_reason: str = ""
+    revoked_at: float | None = None
 
 
 class CertificateError(Exception):
@@ -122,13 +133,25 @@ def issue_certificate(
     )
 
 
-def revoke(cert: DeepUnderstandingCertificate) -> DeepUnderstandingCertificate:
+def revoke(
+    cert: DeepUnderstandingCertificate,
+    *,
+    reason: str = "",
+    at: float | None = None,
+) -> DeepUnderstandingCertificate:
     """Revoke a certificate (A7.1 — certificates are revocable when an
-    invalidation trigger fires)."""
+    invalidation trigger fires).
+
+    Returns a NEW certificate rather than mutating this one, so the attestation
+    that was issued is still readable after it is withdrawn — revocation is an
+    additional record, never an erasure. ``reason`` names the trigger and ``at``
+    the caller's timestamp (injected: this module keeps no clock); both default to
+    empty so an existing caller is unaffected."""
     return DeepUnderstandingCertificate(
         inquiry_id=cert.inquiry_id, issuer=cert.issuer, profile=cert.profile,
         ranked_future_questions=cert.ranked_future_questions,
         invalidation_triggers=cert.invalidation_triggers, revoked=True,
+        revoked_reason=reason, revoked_at=at,
     )
 
 

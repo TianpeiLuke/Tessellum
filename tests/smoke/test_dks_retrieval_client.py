@@ -119,12 +119,26 @@ def test_hit_fields_propagate_from_hybrid(indexed_db):
 # ── R-Cross defensive half: no mutating API ─────────────────────────────────
 
 
-def test_client_exposes_only_search(indexed_db):
+def test_client_exposes_only_reads(indexed_db):
     """The client has no `index`, `update`, `delete`, etc. — P never
-    mutates D through this surface."""
+    mutates D through this surface.
+
+    The allowed surface is enumerated rather than open-ended: `search` ranks
+    notes and `expand_links` walks the authored link graph, both READS of the
+    same index, and adding either did not give P a way to write. Anything else
+    appearing here is a new capability that has to be argued for, so the list is
+    exact and a mutating verb is refused by name as well — a method called
+    `reindex` would still be a write however read-only its docstring claimed to
+    be."""
     client = RetrievalClient(indexed_db)
     public = {name for name in dir(client) if not name.startswith("_")}
-    # Allowed public surface: db_path + search. Nothing else.
-    assert public == {"db_path", "search"}, (
-        f"unexpected public surface on RetrievalClient: {public - {'db_path', 'search'}}"
+    allowed = {"db_path", "search", "expand_links"}
+    assert public == allowed, (
+        f"unexpected public surface on RetrievalClient: {public - allowed}"
     )
+    assert not {
+        name
+        for name in public
+        for verb in ("index", "insert", "update", "delete", "write", "commit", "upsert")
+        if verb in name
+    }
