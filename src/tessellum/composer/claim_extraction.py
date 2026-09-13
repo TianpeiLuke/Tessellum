@@ -24,14 +24,22 @@ Design (honest + fail-closed):
 - **No provenance → no claims.** A note with no cited sources yields an empty
   claim list, which ``certify`` treats fail-closed (empty → abstain): an
   unsourced note is never auto-grounded.
-- **Claim ids: two schemes, the positional one still the default.** The
-  original ``{note_id}:c{index}`` scheme is positional, so inserting a sentence
-  renumbers every later claim and no downstream counter can recognise a claim
-  twice. ``claim_id_scheme="derivation"`` instead mints the insertion-stable
-  ``derivation_id`` from :mod:`tessellum.dks.claim_identity` (a content hash
-  over ``(note_id, span_locator)``). It is **opt-in**: the positional scheme
-  stays the default until the phases that consume derived-claim identity are
-  measured and admitted.
+- **Claim ids: the positional scheme is still the default.** The original
+  ``{note_id}:c{index}`` scheme is positional, so inserting a sentence renumbers
+  every later claim and no downstream counter can recognise a claim twice. Two
+  content-derived schemes are offered instead, one per identity level in
+  :mod:`tessellum.dks.claim_identity`:
+
+  * ``claim_id_scheme="evidence"`` — the **evidence occurrence**
+    ``(note_id, span_locator, source_note_hash)``: one id per located sentence,
+    insertion-stable because the locator is a content anchor.
+  * ``claim_id_scheme="proposition"`` — the **proposition version**, keyed on the
+    sentence's own content rather than its place. Two byte-identical sentences in
+    one note therefore share an id, because they state the same proposition; a
+    consumer that needs one row per *location* wants ``"evidence"``.
+
+  Both are **opt-in**: the positional scheme stays the default until the phases
+  that consume derived-claim identity are measured and admitted.
 
 Pure: no clock, no randomness, no I/O.
 """
@@ -45,16 +53,24 @@ from tessellum.composer.knowledge_plan import ClaimProvenance
 from tessellum.composer.lexical_scorer import _content_tokens
 from tessellum.composer.semantic_certificate import Claim, FailureClass
 
-ClaimIdScheme = Literal["index", "derivation"]
+ClaimIdScheme = Literal["index", "evidence", "proposition", "derivation"]
 """How :func:`extract_claims` mints a ``claim_id``.
 
 - ``"index"`` — the historical ``{note_id}:c{index}``. Positional: an inserted
   sentence renumbers every later claim, so recurrence is uncountable across
   edits. Still the default (nothing may change behaviour on an existing path
   before the plan's own gates run).
-- ``"derivation"`` — the ``derivation_id`` content hash over
-  ``(note_id, span_locator)``. Insertion-stable, model-free, and blind to the
-  claim's wording, so a paraphrase does not fork the claim."""
+- ``"evidence"`` — the **evidence-occurrence** id: a content hash over
+  ``(note_id, span_locator, source_note_hash)``, with a content-anchored
+  locator, so an insertion above a sentence leaves its id alone. It identifies a
+  *located string at a source version*, not a claim: never key feedback, a
+  warrant or a recurrence count on it.
+- ``"proposition"`` — the **proposition-version** id: a content hash over the
+  sentence's declared content, which is the level feedback and recurrence must
+  key on. Location-free, so it survives an edit elsewhere in the note; two
+  byte-identical sentences share it.
+- ``"derivation"`` — the legacy spelling of ``"evidence"``, kept because that is
+  what the scheme was called when it identified (wrongly) a *claim*."""
 
 # Separator joining a note's distinct source refs into one Claim.source_ref.
 # The C3 span resolver splits on this to resolve + concatenate the cited spans.
@@ -165,24 +181,42 @@ def _joined_source_ref(provenance: tuple[ClaimProvenance, ...]) -> str:
 
 
 def claim_ids_for_sentences(
-    sentences: list[str], *, note_id: str, scheme: ClaimIdScheme,
+    sentences: list[str],
+    *,
+    note_id: str,
+    scheme: ClaimIdScheme,
+    source_note_hash: str = "",
 ) -> list[str]:
     """The ``claim_id`` for each extracted sentence, under ``scheme`` — pure.
 
-    ``"index"`` reproduces the historical positional ids byte-for-byte;
-    ``"derivation"`` delegates to the P0 identity module, which addresses each
-    sentence by a digest of its own content so an insertion above it changes no
-    later id.
+    ``"index"`` reproduces the historical positional ids byte-for-byte. The two
+    content-derived schemes delegate to the P0 identity module, at the identity
+    level their name says: ``"evidence"`` (and its legacy spelling
+    ``"derivation"``) addresses each sentence by a digest of its own content plus
+    ``source_note_hash``, so an insertion above it changes no later id;
+    ``"proposition"`` keys on the sentence's content alone, which is the level a
+    feedback or recurrence counter must use.
+
+    ``source_note_hash`` pins the source version an evidence occurrence was read
+    at. It defaults to unpinned because a write-time extractor has the body but
+    not a committed version; a caller that will *count* these ids should pass
+    ``claim_identity.note_version_hash(body)``.
 
     The ``dks.claim_identity`` import is function-local on purpose: ``dks``
     depends on ``composer`` (``autonomy``/``compiler``/``validation``), so a
     module-level import here would close a package-level cycle."""
     if scheme == "index":
         return [f"{note_id}:c{i}" for i, _ in enumerate(sentences)]
-    if scheme == "derivation":
-        from tessellum.dks.claim_identity import derivation_ids_for_spans
+    if scheme in ("evidence", "derivation"):
+        from tessellum.dks.claim_identity import evidence_occurrence_ids_for_spans
 
-        return derivation_ids_for_spans(note_id, sentences)
+        return evidence_occurrence_ids_for_spans(
+            note_id, sentences, source_note_hash=source_note_hash
+        )
+    if scheme == "proposition":
+        from tessellum.dks.claim_identity import proposition_version_id
+
+        return [proposition_version_id(sentence) for sentence in sentences]
     raise ValueError(f"unknown claim_id_scheme {scheme!r}")
 
 
@@ -193,6 +227,7 @@ def extract_claims(
     failure_class: FailureClass = "grounding",
     note_id: str = "note",
     claim_id_scheme: ClaimIdScheme = "index",
+    source_note_hash: str = "",
 ) -> list[Claim]:
     """Extract checkable :class:`Claim` s from a written note (C2) — pure.
 
@@ -202,9 +237,10 @@ def extract_claims(
     provenance yields ``[]`` (``certify`` → fail-closed abstain). Many claims
     per note is the invariant; only their ``claim_id`` scheme is negotiable.
 
-    ``claim_id`` s are stable + deterministic under both schemes, but only
-    ``"derivation"`` is stable under an EDIT (see :data:`ClaimIdScheme`); it is
-    opt-in, and ``"index"`` remains the default.
+    ``claim_id`` s are stable + deterministic under every scheme, but only the
+    content-derived ones survive an EDIT (see :data:`ClaimIdScheme`); they are
+    opt-in, and ``"index"`` remains the default. ``source_note_hash`` is used
+    only by the ``"evidence"`` scheme, which it pins to a source version.
 
     ``failure_class`` defaults to ``"grounding"`` (the class this lexical proxy
     checks); coverage/duplicate/edge-relevance claims are produced by their own
@@ -214,7 +250,10 @@ def extract_claims(
     src = _joined_source_ref(provenance)
     sentences = split_sentences(body)
     ids = claim_ids_for_sentences(
-        sentences, note_id=note_id, scheme=claim_id_scheme,
+        sentences,
+        note_id=note_id,
+        scheme=claim_id_scheme,
+        source_note_hash=source_note_hash,
     )
     return [
         Claim(claim_id=cid, text=sentence, source_ref=src,

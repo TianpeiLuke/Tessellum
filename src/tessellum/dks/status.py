@@ -13,8 +13,14 @@ and ``support`` after it:
 
 1. **Pre-filter — ``supersede``.** A superseded claim LEAVES the framework: it
    is not labelled ``out``, because being replaced is not being defeated. A
-   ``supersede(b' → b)`` counts when ``b'`` is not ``out`` in a first
-   provisional pass, so a defeated claim cannot retire a live one.
+   ``supersede(b' → b)`` counts **only when ``b'`` itself computes as
+   ``warranted``** in a first provisional pass — Dung ``in`` *and* carrying a
+   support edge — so an unresolved replacement can never withdraw the current
+   claim. The weaker rule ("``b'`` is merely not ``out`` in the provisional
+   pass") is **rejected**, and both counter-fixtures say why: an *unsupported*
+   ``b'`` is ``proposed``, and a *mutually attacked* ``b'`` is ``challenged``,
+   yet either would silently retire ``b`` under the weak rule. A claim may only
+   be replaced by one that has itself survived and is grounded.
 2. **The fixed point — ``attack`` only.** The ``op='attack'`` subset is
    projected into a :class:`~tessellum.dks.dung.DungAF` and labelled by
    :func:`~tessellum.dks.dung.grounded_labelling`, which is correct, live and
@@ -26,6 +32,15 @@ and ``support`` after it:
    claim have the SAME consequence for answering, and exposing "undecided" as a
    third answer invites a caller to act on it; ``in`` **with** a support edge →
    ``warranted``; ``in`` **without** one → ``proposed``.
+
+**A computed label is not a verified answer.** Layer 3 asks whether a support edge
+*exists*, not whether the support *grounds* — so this labelling correctly reports
+``warranted`` for a conclusion whose necessary premise has been defeated, and for
+two claims that support only each other. Those are properties of the attack-only
+semantics, not bugs in it, and the answer gate therefore needs a second, separate
+check: :mod:`tessellum.dks.support_dependency`, which propagates defeat across
+necessary premises and refuses circular support. Nothing in this module may be
+read as "this claim is grounded".
 
 ``revise`` carries no force in the labelling. That is not an omission: the
 asymmetric carry-over rule (kept supports are re-asserted as new edges, incoming
@@ -94,8 +109,9 @@ Status = Literal["proposed", "challenged", "warranted", "superseded"]
 - ``"challenged"`` — a live attack survives (Dung ``out`` *or* ``undec``). Both
   chains are worth surfacing; neither is an answer.
 - ``"proposed"`` — unattacked but ungrounded: nothing supports it yet.
-- ``"superseded"`` — replaced by a later claim, so it left the framework. The
-  current claim is the head of the supersession chain.
+- ``"superseded"`` — replaced by a later claim that is itself ``warranted``, so
+  it left the framework. The current claim is the head of the supersession
+  chain; a replacement that is not warranted retires nothing.
 """
 
 STATUSES: frozenset[str] = frozenset(
@@ -304,7 +320,16 @@ class ClaimStatus:
     def answerable(self) -> bool:
         """``True`` only for a non-provisional ``warranted`` claim — the single
         status a caller may answer from. ``challenged`` surfaces the conflict;
-        ``proposed`` and ``superseded`` abstain."""
+        ``proposed`` and ``superseded`` abstain.
+
+        **Necessary, not sufficient.** This is the *dialectical* half of the answer
+        gate. The attack-only labelling checks that a claim survived criticism and
+        that something supports it; it cannot check that the support actually
+        grounds it, so it admits a conclusion whose necessary premise is defeated
+        and admits circular support. The other half is
+        :func:`tessellum.dks.support_dependency.is_grounded`, and the full gate is
+        :func:`tessellum.dks.support_dependency.is_answerable`.
+        """
         return self.status == "warranted" and not self.provisional
 
 
@@ -345,27 +370,65 @@ def attack_pairs(edges: Iterable[EdgeView]) -> tuple[tuple[str, str], ...]:
     return tuple((e.src, e.dst) for e in edges if e.op == ATTACK)
 
 
-def superseded_claims(
+def supported_claims(edges: Iterable[EdgeView]) -> frozenset[str]:
+    """The claims carrying at least one incoming ``support`` edge.
+
+    Layer 3 reads this to tell ``warranted`` from ``proposed``, and layer 1 reads
+    it because "``b'`` is warranted" is a *status*, not a Dung label — a
+    surviving-but-ungrounded replacement is ``proposed`` and may not retire
+    anything.
+    """
+    return frozenset(edge.dst for edge in edges if edge.op == SUPPORT)
+
+
+def provisionally_warranted(
     edges: Iterable[EdgeView], provisional_labels: Mapping[str, DungLabel]
+) -> frozenset[str]:
+    """Layer 1's input: the claims that compute as ``warranted`` in the FIRST
+    pass — before any supersession has been applied.
+
+    ``warranted`` is Dung ``in`` **and** supported, which is exactly layer 3's
+    rule (:func:`classify`) minus the supersession it is about to decide. The
+    provisional pass is unavoidable and deliberately shallow: the pre-filter's
+    input cannot be the final labelling, because the final labelling is what the
+    pre-filter produces. One pass is enough for the rule the design states —
+    "``b`` is superseded when ``b'`` is warranted" — since a replacement whose
+    own warrant depends on a supersession it is itself performing is precisely
+    the circularity this refuses to resolve in its favour.
+    """
+    supported = supported_claims(edges)
+    return frozenset(
+        claim_id
+        for claim_id, label in provisional_labels.items()
+        if label == "in" and claim_id in supported
+    )
+
+
+def superseded_claims(
+    edges: Iterable[EdgeView], warranted_claims: Iterable[str]
 ) -> dict[str, str]:
     """Layer 1, the pre-filter: ``claim_id -> the claim that retired it``.
 
-    A ``supersede`` counts only when its source is not ``out`` in
-    ``provisional_labels`` — the first pass, run before any claim has left the
-    framework — so a defeated claim cannot retire a live one. Ties go to the
-    later log position: the most recent supersession names the successor.
+    A ``supersede`` counts **only when its source is in ``warranted_claims``** —
+    the provisionally warranted set from :func:`provisionally_warranted`. So a
+    replacement that is defeated (``challenged``), still disputed (also
+    ``challenged``, via ``undec``) or ungrounded (``proposed``) retires nothing.
+    Ties go to the later log position: the most recent *counting* supersession
+    names the successor.
 
-    A supersession whose source is not in the snapshot at all still counts (it is
-    not ``out``). That is only reachable from a PARTIAL fold — the log's own
-    foreign key forbids it — and counting is the conservative reading for a
-    reader: retiring a claim withdraws an answer, while ignoring the edge would
-    keep answering from a claim something already replaced.
+    A supersession whose source is not in the snapshot at all therefore does NOT
+    count — it cannot be shown warranted. That inverts the earlier reading, and
+    the inversion is the point: an absent replacement is an *unverifiable* one,
+    and withdrawing the current claim on an unverifiable replacement is how a
+    partial fold silently deletes an answer. Such a fold is only reachable by
+    reading around the log's own foreign key.
     """
+    warranted = frozenset(warranted_claims)
     retired: dict[str, tuple[int, str]] = {}
     for edge in edges:
         if edge.op != SUPERSEDE:
             continue
-        if provisional_labels.get(edge.src) == "out":
+        if edge.src not in warranted:
             continue
         current = retired.get(edge.dst)
         if current is None or edge.seq > current[0]:
@@ -405,9 +468,10 @@ def compute_statuses(view: EdgeSetView) -> StatusTable:
     attacks = attack_pairs(edges)
 
     # Layer 1 — the pre-filter needs a provisional pass first: a supersession
-    # only counts when the superseding claim is not itself defeated.
+    # only counts when the superseding claim itself computes as `warranted`
+    # there (Dung `in` AND supported), never merely "not defeated".
     provisional = grounded_labelling(DungAF(arguments=claim_ids, attacks=attacks))
-    retired = superseded_claims(edges, provisional)
+    retired = superseded_claims(edges, provisionally_warranted(edges, provisional))
 
     # Layer 2 — the fixed point, over the attack relation ONLY, with the
     # superseded claims absent. `grounded_labelling` silently ignores attacks
@@ -743,6 +807,8 @@ __all__ = [
     "compute_statuses",
     "edgeset_digest",
     "explain",
+    "provisionally_warranted",
     "status",
     "superseded_claims",
+    "supported_claims",
 ]

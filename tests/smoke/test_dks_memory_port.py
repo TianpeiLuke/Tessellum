@@ -18,6 +18,12 @@ never imports ``runtime``), the content-id parity that makes a staged edge able
 to name a staged claim, the Tier-A validity filter, the effect-kind vocabulary
 validated at ingestion, and the reuse of ``base_snapshot_id`` as the one pin.
 
+And one property that is about the code rather than the boundary: the labeller
+here **delegates** to :mod:`tessellum.dks.status` instead of re-deriving the
+three layers. It used to re-derive them, which is how one wrong ``supersede``
+pre-filter came to be shipped twice; the test that used to check the duplicate
+now checks that there is no duplicate.
+
 The final section covers the narrower materializer gap the phase owns: a vault
 write inside an episode is recoverable but VISIBLE, so a vault-reading step can
 observe uncommitted output. Those tests live here rather than beside the other
@@ -73,6 +79,7 @@ from tessellum.dks.memory_port import (
     effect_for_proposal,
     grounded_status_labeller,
 )
+from tessellum.dks.status import EdgeSet, compute_statuses
 from tessellum.runtime.claim_log import (
     ClaimDraft,
     ClaimLog,
@@ -794,9 +801,21 @@ def test_explain_flags_a_chain_that_touches_a_stub(tmp_path: Path) -> None:
     assert _episode(log).explain(subject.claim_id).provisional is True
 
 
-def test_the_reference_labeller_is_attack_only_with_a_supersede_prefilter(
+def test_the_labeller_delegates_to_the_one_status_implementation(
     tmp_path: Path,
 ) -> None:
+    """There is ONE three-layer verdict, and this boundary calls it.
+
+    This test used to treat :func:`grounded_status_labeller` as its own reference
+    implementation of the three layers, and that framing is what let the defect
+    live twice: the boundary and the status module each derived the ``supersede``
+    pre-filter, and both derived the rejected version of it. The property under
+    test is therefore no longer "the labeller reimplements the layers correctly"
+    but "the labeller does not reimplement them at all" — asserted two ways, by
+    agreeing with :func:`compute_statuses` row for row on a corpus exercising all
+    four statuses, and structurally, because agreement on one corpus is a
+    coincidence a second copy could reproduce.
+    """
     log, evidence_id, subject_id = _seed_supported_claim(tmp_path)
 
     # A support edge changes the CLASSIFICATION, never a Dung label.
@@ -819,11 +838,25 @@ def test_the_reference_labeller_is_attack_only_with_a_supersede_prefilter(
     assert _episode(log).status(subject_id) == "challenged"
 
     # Superseding the attacker takes it OUT OF THE FRAMEWORK — being replaced is
-    # not being defeated — and the claim it attacked is reinstated.
+    # not being defeated — and the claim it attacked is reinstated. The
+    # replacement has to be WARRANTED first, so it is supported before the
+    # supersession lands; an unsupported replacement is the negative case below.
     replacement = _claim("replacement", "The inputs were identical after all.", note_id=NOTE_B)
+    ground = _claim("ground", "Both runs list the same input digest.", note_id=NOTE_B)
     third = _episode(log)
-    third.stage(replacement)
+    third.stage(
+        replacement,
+        ground,
+        EdgeProposal(
+            op="support",
+            src=ground.claim_id,
+            dst=replacement.claim_id,
+            origin="query",
+            evidence_locator=f"{NOTE_B}#h2:Claim",
+        ),
+    )
     third.append_batch()
+    assert _episode(log).status(replacement.claim_id) == "warranted"
     log.supersede(
         superseding_claim_id=replacement.claim_id,
         superseded_claim_id=attacker.claim_id,
@@ -834,6 +867,53 @@ def test_the_reference_labeller_is_attack_only_with_a_supersede_prefilter(
     final = _episode(log)
     assert final.status(attacker.claim_id) == "superseded"
     assert final.status(subject_id) == "warranted"
+
+    # Row for row, the boundary's labels ARE the status module's verdicts — on a
+    # corpus that now carries all four statuses.
+    claims, edges = log.read_claims(), log.read_edges()
+    delegated = grounded_status_labeller(claims, edges)
+    table = compute_statuses(EdgeSet(claims=tuple(claims), edges=tuple(edges)))
+    assert delegated == {
+        claim_id: verdict.status for claim_id, verdict in table.statuses.items()
+    }
+    assert set(delegated.values()) >= {"warranted", "proposed", "superseded"}
+
+    # And structurally: the boundary must not carry a second copy of the layers.
+    source = MEMORY_PORT_SOURCE.read_text(encoding="utf-8")
+    assert "compute_statuses" in source
+    assert "grounded_labelling" not in source
+    assert "DungAF" not in source
+
+
+def test_an_unsupported_replacement_retires_nothing_at_the_boundary(
+    tmp_path: Path,
+) -> None:
+    """The corrected pre-filter, seen through the boundary's own read call.
+
+    The replacement is appended with no support edge, so it computes as
+    ``proposed`` and its supersession does not count. Under the rejected rule
+    ``proposed`` was "not ``out``" and the boundary reported the superseded claim
+    as gone — a claim withdrawn by an assertion nothing stood behind. This is the
+    delegation earning its keep: one fix, both surfaces.
+    """
+    log, _evidence_id, subject_id = _seed_supported_claim(tmp_path)
+    replacement = _claim(
+        "bare-replacement", "The run was inconclusive.", note_id=NOTE_B
+    )
+    memory = _episode(log)
+    memory.stage(replacement)
+    memory.append_batch()
+    log.supersede(
+        superseding_claim_id=replacement.claim_id,
+        superseded_claim_id=subject_id,
+        origin="query",
+        evidence_locator=f"{NOTE_B}#h2:Claim",
+    )
+
+    after = _episode(log)
+    assert after.status(replacement.claim_id) == "proposed"
+    assert after.status(subject_id) != "superseded"
+    assert after.status(subject_id) == "warranted"
 
 
 def test_the_labeller_is_a_pure_function_of_the_edge_set(tmp_path: Path) -> None:

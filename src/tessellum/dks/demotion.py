@@ -43,10 +43,66 @@ Trigger                            Fires when
                                    fell under :data:`DemotionPolicy.independence_floor`
 =================================  ====================================================
 
+**Three triggers, but FIVE outcomes — and re-derivation does not prove truth.**
+The triggers above say only that the gate *looked and found something*. What the
+finding MEANS is a separate question, and collapsing every finding into "the
+claim is false" overstates what this protocol can establish: a frozen model can
+reproduce a source's **error** perfectly consistently, and it can fail to
+reproduce one of **several legitimate** abstractions of the same sources.
+Re-derivation tests **reproducibility and fidelity**, not world truth, causal
+validity or transfer. So every trigger is classified into one of five
+:data:`OUTCOMES`, each carrying whether it is *conclusive*:
+
+============================  ============  ==========================================
+Outcome                       Conclusive?   What the gate actually found
+============================  ============  ==========================================
+``stale_evidence``            depends       the evidence behind the claim is no longer
+                                            the evidence it was promoted on — the
+                                            corroborating contexts fell below the floor
+                                            (conclusive), or a cited span moved or
+                                            vanished, or the claim is no longer in the
+                                            snapshot the gate could read (inconclusive)
+``failed_reproduction``       yes           the cited evidence is there and the claim
+                                            did not come back out of it
+``surviving_contradiction``   depends       conclusive once the labelling **settles**
+                                            against the claim; a live undecided dispute
+                                            (Dung ``undec``) has settled nothing
+``grounding_failure``         yes           there is nothing to derive from: the claim
+                                            cites no usable evidence at all
+``failed_generalisation``     no            the regeneration disagrees with the claim
+                                            while BOTH stay inside the cited sources —
+                                            two legitimate abstractions, and the
+                                            arithmetic cannot prefer one
+============================  ============  ==========================================
+
+**Where the signal is inconclusive the gate QUARANTINES or REQUESTS REVIEW — it
+does not demote.** That is the third state this module owes its callers, and the
+reason is that a demotion asserts something the gate has not established. The
+:data:`DISPOSITIONS` are therefore four, not two:
+
+* ``demote`` — at least one conclusive outcome. The actions below apply.
+* ``quarantine`` — the claim is **withheld** pending a re-check, with the reason
+  recorded in the ledger. Nothing is appended to the log, no certificate is
+  revoked, and ``promotion_eligibility`` is ``needs_validation``. The remedy is
+  mechanical: re-run the gate once the base or the labelling settles.
+* ``request_review`` — the gate has a finding it cannot adjudicate arithmetically
+  (a failed generalisation) and an independent judgement is needed. Also withheld,
+  also recorded, also nothing appended.
+* ``hold`` — nothing fired. The claim keeps its standing.
+
+**And "attacked" does not mean "retracted."** An attack can itself be defeated:
+reinstatement is deliberately part of the status design, and because the status
+is a pure function of the edge set the gate gets it for free — a claim whose
+attacker is itself defeated reads ``warranted`` again, so the contradiction
+trigger never fires on it. The trigger is a **surviving** contradiction after the
+labelling settles, not the mere existence of an attack edge.
+
 **Nothing is ever deleted.** The three actions are **down-rank**, **flag** and
 **supersede-with-timestamp** — never a hard delete, and never a mutation. A
-retraction is an **append**: a constructed retraction claim plus one operator
-edge (``attack`` for a flag, ``supersede`` for a supersession), rendered as
+retraction is an **append**: a constructed retraction claim plus its operator
+edge (``attack`` for a flag; ``supersede`` for a supersession, which also appends
+the claim that GROUNDS it, because the pre-filter admits a replacement only when
+the replacement is itself warranted), rendered as
 :class:`~tessellum.dks.capability.CapabilityEffect` records that the commit tail
 writes. The gate itself writes nothing, and it flips
 ``promotion_eligibility`` to ``ineligible`` rather than removing anything.
@@ -121,7 +177,91 @@ TRIGGERS: frozenset[str] = frozenset(
 )
 """All three, and exactly three. A fourth would need its own arithmetic and its
 own action; reliability (η) and the open-correction flag belong to the promotion
-gate, which is a different decision made at a different time."""
+gate, which is a different decision made at a different time.
+
+A trigger is *the gate looked and found something*, not *the claim is false* —
+what the finding means is an :data:`OUTCOMES` classification, and an inconclusive
+one quarantines instead of demoting."""
+
+# ── the outcome vocabulary: what a trigger's finding actually MEANS ──────────
+
+DemotionOutcomeKind = Literal[
+    "stale_evidence",
+    "failed_reproduction",
+    "surviving_contradiction",
+    "grounding_failure",
+    "failed_generalisation",
+]
+"""The five findings the gate distinguishes, instead of collapsing them into
+"false". See the module docstring's table for what each one establishes."""
+
+OUTCOME_STALE_EVIDENCE: str = "stale_evidence"
+OUTCOME_FAILED_REPRODUCTION: str = "failed_reproduction"
+OUTCOME_SURVIVING_CONTRADICTION: str = "surviving_contradiction"
+OUTCOME_GROUNDING_FAILURE: str = "grounding_failure"
+OUTCOME_FAILED_GENERALISATION: str = "failed_generalisation"
+
+OUTCOMES: frozenset[str] = frozenset(
+    {
+        OUTCOME_STALE_EVIDENCE,
+        OUTCOME_FAILED_REPRODUCTION,
+        OUTCOME_SURVIVING_CONTRADICTION,
+        OUTCOME_GROUNDING_FAILURE,
+        OUTCOME_FAILED_GENERALISATION,
+    }
+)
+"""Five outcomes over three triggers. The counts differ because one trigger can
+mean several things: a re-derivation that did not come back may be a reproduction
+failure, a grounding failure, a legitimate alternative abstraction, or a check run
+against evidence that has since moved — and only two of those four refute the
+claim."""
+
+Disposition = Literal["hold", "demote", "quarantine", "request_review"]
+"""What the gate DOES with a review, once the outcomes are classified."""
+
+DISPOSITION_HOLD: str = "hold"
+DISPOSITION_DEMOTE: str = "demote"
+DISPOSITION_QUARANTINE: str = "quarantine"
+DISPOSITION_REQUEST_REVIEW: str = "request_review"
+
+DISPOSITIONS: frozenset[str] = frozenset(
+    {
+        DISPOSITION_HOLD,
+        DISPOSITION_DEMOTE,
+        DISPOSITION_QUARANTINE,
+        DISPOSITION_REQUEST_REVIEW,
+    }
+)
+
+WITHHOLDING_DISPOSITIONS: frozenset[str] = frozenset(
+    {DISPOSITION_QUARANTINE, DISPOSITION_REQUEST_REVIEW}
+)
+"""The two dispositions that stop a claim answering WITHOUT retracting it. Both
+record a reason; neither appends to the log and neither revokes a certificate."""
+
+DISPOSITION_PRECEDENCE: Mapping[str, int] = {
+    DISPOSITION_HOLD: 0,
+    DISPOSITION_QUARANTINE: 1,
+    DISPOSITION_REQUEST_REVIEW: 2,
+    DISPOSITION_DEMOTE: 3,
+}
+"""Precedence when several outcomes disagree.
+
+``demote`` wins outright: one conclusive refutation is not softened by an
+unrelated open question. Between the two withholding dispositions,
+``request_review`` outranks ``quarantine`` because it escalates to a judgement a
+re-check cannot supply."""
+
+
+def strongest_disposition(dispositions: Iterable[str]) -> Disposition:
+    """The severest disposition among several outcomes; ``hold`` for none."""
+    worst: Disposition = "hold"
+    for disposition in dispositions:
+        if disposition not in DISPOSITIONS:
+            raise ValueError(f"unknown demotion disposition: {disposition!r}")
+        if DISPOSITION_PRECEDENCE[disposition] > DISPOSITION_PRECEDENCE[worst]:
+            worst = disposition  # type: ignore[assignment]
+    return worst
 
 DemotionAction = Literal["down_rank", "flag", "supersede_with_timestamp"]
 """What a demotion DOES. Deletion is deliberately not among them.
@@ -131,10 +271,11 @@ DemotionAction = Literal["down_rank", "flag", "supersede_with_timestamp"]
   was contradicted; its evidence base merely thinned.
 - ``flag`` — an appended ``attack``. The claim becomes ``challenged``, so the
   read flow surfaces the conflict instead of answering from it.
-- ``supersede_with_timestamp`` — an appended ``supersede`` carrying the check
-  time in the retraction claim's own text. The claim becomes ``superseded``, so
-  the read flow abstains, and the timestamp is in the log rather than in a
-  mutable column somebody has to keep true.
+- ``supersede_with_timestamp`` — an appended ``supersede``, plus the claim that
+  grounds it (see :func:`retraction_proposals`), carrying the check time in the
+  retraction claim's own text. The claim becomes ``superseded``, so the read flow
+  abstains, and the timestamp is in the log rather than in a mutable column
+  somebody has to keep true.
 """
 
 ACTIONS: frozenset[str] = frozenset(
@@ -157,7 +298,20 @@ abstain, so all three are equally "no longer answerable"."""
 
 STATUS_UNKNOWN: str = "unknown"
 """What a status source reports for a claim the log no longer holds. Treated as a
-flip: a promoted claim that cannot be found is not a claim that still answers."""
+flip: a promoted claim that cannot be found is not a claim that still answers.
+
+It is a flip, but an INCONCLUSIVE one: not finding a claim is a finding about the
+read, not about the claim, so it quarantines rather than retracting (a gate that
+retracts what it cannot see would retract on a partial fold)."""
+
+STATUS_UNSUPPORTED: str = "proposed"
+"""The computed status of a claim nothing supports. A promoted claim that has
+fallen back to it lost its support edges — stale evidence, not a contradiction."""
+
+_UNDECIDED_LABEL: str = "undec"
+"""The Dung label for a dispute the grounded labelling could not resolve. The one
+label that means *the labelling has not settled*, and therefore the one that turns
+a contradiction finding inconclusive."""
 
 ORIGIN_DEMOTION: str = "demotion"
 """``edges.origin`` for a retraction appended by this gate.
@@ -175,10 +329,29 @@ collide with the claim it retracts."""
 RECOVERY_SECTION: str = "recovery"
 """Locator section scoping a recovery's derivation."""
 
+GROUNDING_SECTION: str = "retraction_finding"
+"""Locator section scoping the claim that GROUNDS a supersession.
+
+A ``supersede`` counts only from a replacement that is itself warranted, so the
+retraction needs a support edge or it retires nothing. The supporting claim states
+the gate's finding — its own section, so it can collide with neither the retraction
+nor the claim being retracted."""
+
 # ── the arithmetic constants ────────────────────────────────────────────────
 
 REGENERATION_FLOOR: float = 0.6
 """Token-overlap floor at which a regeneration counts as the same claim."""
+
+SOURCE_SUPPORT_FLOOR: float = 0.5
+"""Fraction of a statement's tokens that must appear in the cited sources for the
+statement to count as *staying inside the evidence* (:func:`source_support`).
+
+This is what separates a **failed generalisation** from a **failed
+reproduction**. When a regeneration disagrees with the promoted claim but both are
+above this floor, the model produced a different abstraction of the same sources
+rather than a refutation, and the arithmetic has no basis for preferring either —
+so the gate asks for review instead of demoting. Expect a deployment to re-fit it;
+like :data:`REGENERATION_FLOOR` it is a lexical proxy, not a semantic judgement."""
 
 INDEPENDENCE_FLOOR: int = 2
 """The promotion criteria's "≥ 2 independent contexts", read as a demotion floor:
@@ -394,17 +567,58 @@ class CurrentStatusSource(Protocol):
     def status_of(self, claim_id: str) -> str: ...
 
 
+@runtime_checkable
+class ClaimLabelSource(Protocol):
+    """OPTIONAL companion port: the Dung label underneath the status.
+
+    Optional because the four computed statuses deliberately merge ``out`` and
+    ``undec`` into ``challenged`` — a defeated claim and a live unresolved dispute
+    have the same consequence for *answering*, which is what the status is for. But
+    they have opposite consequences for *retracting*: ``out`` is a contradiction
+    that survived the labelling, and ``undec`` is a contradiction that settled
+    nothing. A status source that can report the label lets the gate quarantine the
+    second instead of demoting it; one that cannot is read fail-closed (see
+    :func:`claim_label`).
+    """
+
+    def label_of(self, claim_id: str) -> str | None: ...
+
+
+def claim_label(statuses: object, claim_id: str) -> str | None:
+    """The Dung label behind a status, when the source can report one.
+
+    Duck-typed, so a deployment's own status source is not forced to grow a method
+    to keep working. ``None`` means *not reported*, which the classification reads
+    as "no reason to think the labelling is unsettled" — the fail-closed direction
+    for a contradiction, because treating an unreported label as ``undec`` would
+    quarantine every real refutation."""
+    reader = getattr(statuses, "label_of", None)
+    if reader is None:
+        return None
+    try:
+        label = reader(claim_id)
+    except StatusError:
+        return None
+    return None if label is None else str(label)
+
+
 @dataclass(frozen=True)
 class StaticStatusSource:
     """Deterministic reference :class:`CurrentStatusSource` over a mapping.
 
     An absent claim reports :data:`STATUS_UNKNOWN`, which the contradiction check
-    reads as a flip."""
+    reads as a flip. ``labels`` is the optional :class:`ClaimLabelSource` half and
+    defaults to empty, so a caller that does not care about the ``out`` / ``undec``
+    distinction constructs this exactly as before."""
 
     statuses: Mapping[str, str] = field(default_factory=dict)
+    labels: Mapping[str, str] = field(default_factory=dict)
 
     def status_of(self, claim_id: str) -> str:
         return self.statuses.get(claim_id, STATUS_UNKNOWN)
+
+    def label_of(self, claim_id: str) -> str | None:
+        return self.labels.get(claim_id)
 
 
 class _Verdict(Protocol):
@@ -435,13 +649,29 @@ class VerdictQueryStatusSource:
     allow_provisional: bool = True
 
     def status_of(self, claim_id: str) -> str:
+        verdict = self._verdict(claim_id)
+        return STATUS_UNKNOWN if verdict is None else verdict.status
+
+    def label_of(self, claim_id: str) -> str | None:
+        """The Dung label behind the status — the ``out`` / ``undec`` distinction.
+
+        Read off the same verdict object the status came from, so the label and the
+        status can never disagree. ``None`` for a claim the status phase refuses or
+        does not hold, and ``None`` for a superseded claim, which was never
+        labelled because it left the framework before the fixed point ran."""
+        verdict = self._verdict(claim_id)
+        if verdict is None:
+            return None
+        label = getattr(verdict, "label", None)
+        return None if label is None else str(label)
+
+    def _verdict(self, claim_id: str) -> _Verdict | None:
         try:
-            verdict = self.query.status(
+            return self.query.status(
                 claim_id, allow_provisional=self.allow_provisional
             )
         except StatusError:
-            return STATUS_UNKNOWN
-        return verdict.status
+            return None
 
 
 @runtime_checkable
@@ -539,7 +769,15 @@ class PromotedClaimRecord:
 
     Shipped so the gate is exercisable before consolidation exists, and so the
     fields the gate depends on are written down in one place the promotion phase
-    can satisfy structurally."""
+    can satisfy structurally.
+
+    ``source_hashes`` is ``(locator, content_hash)`` per cited span **as it read at
+    promotion time**, and it is the handle :func:`check_evidence_freshness` needs. It
+    is deliberately NOT added to :class:`PromotionRecordView`: the protocol is what
+    the promotion phase must satisfy, and a record that cannot supply
+    promotion-time hashes must still be checkable — it simply gets no staleness
+    finding, which the freshness check says out loud rather than reading as
+    "fresh"."""
 
     claim_id: str
     derivation_id: str
@@ -553,6 +791,7 @@ class PromotedClaimRecord:
     last_checked_at: float | None = None
     base_snapshot_id: str = ""
     certificate: DeepUnderstandingCertificate | None = None
+    source_hashes: tuple[tuple[str, str], ...] = ()
 
 
 # ── step 1 + 2: suppression, and the frozen model ──────────────────────────
@@ -662,6 +901,23 @@ def agreement(left: str, right: str) -> float:
     return 2 * len(a & b) / (len(a) + len(b))
 
 
+def source_support(text: str, sources_text: str) -> float:
+    """Fraction of ``text``'s tokens that appear in the cited sources, in ``[0, 1]``.
+
+    ASYMMETRIC on purpose, and that is the difference from :func:`agreement`: the
+    question is not "do these two say the same thing" but "does this statement stay
+    inside the evidence it was derived from", and a long source span that says much
+    more than the statement is not thereby less supportive. Dice would charge a
+    statement for its sources' length and mark every short claim ungrounded.
+
+    An empty statement is unsupported (``0.0``), not vacuously supported: the gate
+    must never read silence as grounding."""
+    tokens = tokenize(text)
+    if not tokens:
+        return 0.0
+    return len(tokens & tokenize(sources_text)) / len(tokens)
+
+
 @dataclass(frozen=True)
 class RegenerationCheck:
     """Trigger 1: did the claim come back out of its own sources?
@@ -669,7 +925,14 @@ class RegenerationCheck:
     ``exact`` is normalised-text equality and ``score`` the overlap ratio;
     ``regenerated`` is the gate's answer and it is a pure comparison against a
     floor. ``model_id`` / ``frozen_at`` travel with the finding so a demotion
-    names the model that produced it."""
+    names the model that produced it.
+
+    ``claim_support`` and ``regeneration_support`` are the second pair of numbers,
+    and they are what keeps a failure from being read as a refutation: they measure
+    (:func:`source_support`) how much of the promoted claim and of the regeneration
+    stay inside the cited spans. Both above ``support_floor`` with the two
+    disagreeing is the **two legitimate abstractions** shape, which is inconclusive
+    rather than false."""
 
     regenerated: bool
     exact: bool
@@ -681,10 +944,39 @@ class RegenerationCheck:
     frozen_at: float
     source_count: int
     reason: str
+    claim_support: float = 0.0
+    regeneration_support: float = 0.0
+    support_floor: float = SOURCE_SUPPORT_FLOOR
+    sourced_characters: int = 0
 
     @property
     def failed(self) -> bool:
         return not self.regenerated
+
+    @property
+    def ungrounded(self) -> bool:
+        """``True`` when there was nothing to derive from at all.
+
+        No cited spans, or cited spans with no text in them. Distinct from a
+        reproduction failure, where the evidence IS there and the claim did not come
+        back out of it — one is a missing-evidence defect, the other a finding about
+        the claim."""
+        return self.source_count == 0 or self.sourced_characters == 0
+
+    @property
+    def alternative_abstraction(self) -> bool:
+        """``True`` when the regeneration disagrees but both stay in the sources.
+
+        The frozen model produced a *different* abstraction of the same evidence
+        rather than a contradiction of the claim, and the arithmetic has no basis
+        for preferring either one — so this is the inconclusive case."""
+        return (
+            self.failed
+            and not self.abstained
+            and not self.ungrounded
+            and self.claim_support >= self.support_floor
+            and self.regeneration_support >= self.support_floor
+        )
 
 
 def check_regeneration(
@@ -693,6 +985,7 @@ def check_regeneration(
     model: ReDerivationModel,
     sources: Sequence[CitedSource],
     floor: float = REGENERATION_FLOOR,
+    support_floor: float = SOURCE_SUPPORT_FLOOR,
     question: str = "",
 ) -> RegenerationCheck:
     """Run the three-step protocol for one claim and compare arithmetically.
@@ -701,8 +994,16 @@ def check_regeneration(
     call the injected model exactly once, then decide with :func:`agreement`. No
     cited sources at all is a failure without a model call: there is nothing to
     regenerate from, and calling a model to confirm that would only add cost and
-    variance."""
+    variance.
+
+    Two extra numbers come back with the verdict, both from
+    :func:`source_support`: how much of the promoted claim and how much of the
+    regeneration stay inside the cited spans. They cost nothing (the tokens are
+    already computed) and they are what lets the classification tell a reproduction
+    failure from one of several legitimate abstractions."""
     model_id, frozen_at = require_frozen(model)
+    sources_text = " ".join(source.text for source in sources)
+    claim_support = source_support(record.text, sources_text)
     if not sources:
         return RegenerationCheck(
             regenerated=False,
@@ -715,9 +1016,13 @@ def check_regeneration(
             frozen_at=frozen_at,
             source_count=0,
             reason="the promoted claim cites no sources, so it cannot regenerate",
+            claim_support=claim_support,
+            support_floor=support_floor,
+            sourced_characters=0,
         )
     request = build_request(record, sources, question=question)
     output = model.re_derive(request)
+    sourced_characters = len(sources_text.strip())
     if output.abstained:
         return RegenerationCheck(
             regenerated=False,
@@ -733,6 +1038,9 @@ def check_regeneration(
                 "the frozen model abstained from the cited sources"
                 + (f": {output.detail}" if output.detail else "")
             ),
+            claim_support=claim_support,
+            support_floor=support_floor,
+            sourced_characters=sourced_characters,
         )
     score = agreement(record.text, output.text)
     exact = normalize_span_text(record.text) == normalize_span_text(output.text)
@@ -751,6 +1059,10 @@ def check_regeneration(
             f"regeneration agreement {score:.3f} "
             f"{'>=' if regenerated else '<'} floor {floor:.3f}"
         ),
+        claim_support=claim_support,
+        regeneration_support=source_support(output.text, sources_text),
+        support_floor=support_floor,
+        sourced_characters=sourced_characters,
     )
 
 
@@ -772,20 +1084,45 @@ class StatusFlipCheck:
     status_at_promotion: str
     status_now: str
     reason: str
+    label: str | None = None
+
+    @property
+    def settled(self) -> bool:
+        """``False`` only when the labelling reports the dispute UNDECIDED.
+
+        A Dung ``undec`` claim sits in a live cycle of attacks that the grounded
+        labelling could not resolve either way, so "attacked" is all that is known
+        about it — and *"attacked" does not mean "retracted"*. Every other label,
+        and an unreported one, is treated as settled: the gate must not quarantine a
+        real refutation merely because a status source declined to expose its
+        internals."""
+        return self.label != _UNDECIDED_LABEL
+
+    @property
+    def unknown(self) -> bool:
+        """``True`` when the status source could not find the claim at all."""
+        return self.status_now == STATUS_UNKNOWN
 
 
 def check_status_flip(
     record: PromotionRecordView, statuses: CurrentStatusSource
 ) -> StatusFlipCheck:
-    """Compare the promoted status with the computed one now. Model-free."""
+    """Compare the promoted status with the computed one now. Model-free.
+
+    Reads the Dung label too when the source can report one
+    (:func:`claim_label`), because the ``challenged`` status merges a defeated
+    claim with an undecided one and only the first is a *surviving*
+    contradiction."""
     now = statuses.status_of(record.claim_id)
     was_answerable = record.status_at_promotion in ANSWERABLE_STATUSES
     is_answerable = now in ANSWERABLE_STATUSES
     flipped = was_answerable and not is_answerable
     improved = is_answerable and not was_answerable
+    label = claim_label(statuses, record.claim_id)
     if flipped:
         reason = (
             f"status flipped out of answerable: {record.status_at_promotion} → {now}"
+            + (f" (label {label})" if label else "")
         )
     elif improved:
         reason = f"status improved: {record.status_at_promotion} → {now}"
@@ -797,6 +1134,7 @@ def check_status_flip(
         status_at_promotion=record.status_at_promotion,
         status_now=now,
         reason=reason,
+        label=label,
     )
 
 
@@ -843,6 +1181,109 @@ def check_independence(
     )
 
 
+# ── the base the check ran against: is it still the base it cited? ─────────
+
+
+@dataclass(frozen=True)
+class EvidenceFreshnessCheck:
+    """Whether the cited evidence is still the evidence the claim was promoted on.
+
+    Not a fourth trigger — it fires no demotion. It is the reading that keeps the
+    other findings honest: the protocol asks *does this claim come back out of the
+    sources it cited*, so if those sources are no longer the ones it cited, then a
+    pass and a failure are both answers about a **different base**. Neither
+    certifies nor refutes, which is why staleness quarantines.
+
+    ``compared`` is how many cited spans could be checked at all: a record with no
+    promotion-time hashes reports ``0`` and ``stale=False``, and the ``reason``
+    says the check could not be made rather than that the evidence is fresh."""
+
+    stale: bool
+    compared: int
+    moved: tuple[str, ...] = ()
+    missing: tuple[str, ...] = ()
+    reason: str = ""
+
+
+UNVERIFIABLE_FRESHNESS: EvidenceFreshnessCheck = EvidenceFreshnessCheck(
+    stale=False,
+    compared=0,
+    reason=(
+        "no promotion-time source hashes on the record, so staleness cannot be "
+        "judged; the gate reports that rather than reading it as fresh"
+    ),
+)
+"""The freshness reading for a record that carries no promotion-time hashes."""
+
+
+def _recorded_source_hashes(record: PromotionRecordView) -> dict[str, str]:
+    """``locator -> content_hash`` as recorded at promotion, or ``{}``.
+
+    Read through ``getattr`` because ``source_hashes`` is deliberately absent from
+    :class:`PromotionRecordView` — see :class:`PromotedClaimRecord`. Accepts a
+    mapping or a sequence of pairs, since a replayed export naturally carries the
+    latter."""
+    recorded = getattr(record, "source_hashes", ())
+    if isinstance(recorded, Mapping):
+        items: Iterable[tuple[str, str]] = recorded.items()
+    else:
+        items = tuple(recorded or ())
+    return {
+        str(locator): str(digest) for locator, digest in items if locator and digest
+    }
+
+
+def check_evidence_freshness(
+    record: PromotionRecordView, sources: Sequence[CitedSource]
+) -> EvidenceFreshnessCheck:
+    """Compare each cited span's content hash with the one recorded at promotion.
+
+    A span whose hash changed **moved**; one recorded at promotion and absent now
+    is **missing**. Either makes the re-derivation a check against a base the claim
+    was not promoted on. A span the record has no hash for is skipped rather than
+    assumed unchanged — a hash nobody recorded is not evidence of anything."""
+    recorded = _recorded_source_hashes(record)
+    if not recorded:
+        return UNVERIFIABLE_FRESHNESS
+    present = {source.locator for source in sources}
+    moved = tuple(
+        sorted(
+            source.locator
+            for source in sources
+            if recorded.get(source.locator)
+            and source.content_hash
+            and source.content_hash != recorded[source.locator]
+        )
+    )
+    missing = tuple(sorted(locator for locator in recorded if locator not in present))
+    compared = sum(
+        1
+        for source in sources
+        if source.locator in recorded and source.content_hash
+    )
+    stale = bool(moved or missing)
+    if not stale:
+        reason = f"{compared} cited span(s) unchanged since promotion"
+    else:
+        parts = []
+        if moved:
+            parts.append(f"{len(moved)} span(s) changed ({', '.join(moved)})")
+        if missing:
+            parts.append(f"{len(missing)} span(s) gone ({', '.join(missing)})")
+        reason = (
+            "the cited base moved since promotion: "
+            + "; ".join(parts)
+            + " — a re-derivation against a changed base measures the base"
+        )
+    return EvidenceFreshnessCheck(
+        stale=stale,
+        compared=compared,
+        moved=moved,
+        missing=missing,
+        reason=reason,
+    )
+
+
 # ── the policy and the schedule ────────────────────────────────────────────
 
 
@@ -860,9 +1301,14 @@ class DemotionPolicy:
       now defeats it, and a claim the log itself contradicts must stop answering;
     * **independence below floor** down-ranks — the claim was not contradicted,
       its evidence base thinned, so it keeps answering and sorts last.
+
+    An action applies only to a **conclusive** outcome. An inconclusive finding
+    quarantines or requests review, and neither appends anything, so neither has an
+    action — see :func:`classify_outcomes`.
     """
 
     regeneration_floor: float = REGENERATION_FLOOR
+    source_support_floor: float = SOURCE_SUPPORT_FLOOR
     independence_floor: int = INDEPENDENCE_FLOOR
     interval_days: float = DEFAULT_INTERVAL_DAYS
     action_on_rederivation_failure: DemotionAction = "flag"
@@ -881,6 +1327,237 @@ class DemotionPolicy:
 
 DEFAULT_DEMOTION_POLICY: DemotionPolicy = DemotionPolicy()
 """Flag on failure, supersede on contradiction, down-rank on thin independence."""
+
+
+# ── what the finding MEANS: five outcomes, and the inconclusive ones ────────
+
+
+@dataclass(frozen=True)
+class DemotionOutcome:
+    """One classified finding: what it was, whether it settles anything, what to do.
+
+    Separate from the trigger that produced it because one trigger means several
+    things — a re-derivation that did not come back may be a reproduction failure, a
+    grounding failure, a legitimate alternative abstraction, or a check run against
+    evidence that has since moved. ``conclusive`` is the field that keeps the gate
+    from asserting what it has not established, and ``reason`` is what makes a
+    quarantine appealable: an inconclusive finding recorded without a reason is
+    indistinguishable from a silent demotion."""
+
+    kind: DemotionOutcomeKind
+    conclusive: bool
+    disposition: Disposition
+    reason: str
+    trigger: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in OUTCOMES:
+            raise ValueError(f"unknown demotion outcome: {self.kind!r}")
+        if self.disposition not in DISPOSITIONS:
+            raise ValueError(f"unknown demotion disposition: {self.disposition!r}")
+        if self.conclusive != (self.disposition == DISPOSITION_DEMOTE):
+            raise ValueError(
+                f"outcome {self.kind!r} is {'conclusive' if self.conclusive else 'inconclusive'} "
+                f"but dispositioned {self.disposition!r}: only a conclusive outcome "
+                "may demote, and a conclusive one may not be withheld instead"
+            )
+
+
+def _finding(
+    kind: DemotionOutcomeKind,
+    *,
+    conclusive: bool,
+    disposition: Disposition,
+    detail: str,
+    trigger: str | None = None,
+) -> DemotionOutcome:
+    """One outcome, with a reason that names the trigger AND the classification.
+
+    Both names are in the string on purpose: the trigger is what a scheduled sweep
+    reports on, the outcome is what an appeal argues about, and a reason carrying
+    only one of them forces whoever reads the ledger to guess the other."""
+    prefix = f"{trigger} → {kind}" if trigger else kind
+    return DemotionOutcome(
+        kind=kind,
+        conclusive=conclusive,
+        disposition=disposition,
+        reason=f"{prefix}: {detail}",
+        trigger=trigger,
+    )
+
+
+def classify_outcomes(
+    *,
+    regeneration: RegenerationCheck,
+    status_flip: StatusFlipCheck,
+    independence: IndependenceCheck,
+    freshness: EvidenceFreshnessCheck = UNVERIFIABLE_FRESHNESS,
+) -> tuple[DemotionOutcome, ...]:
+    """Turn the four checks into the five distinguished outcomes. Pure arithmetic.
+
+    The whole point of this function is the *asymmetry* it introduces: a demoting
+    outcome has to be earned, while an inconclusive one is the default reading of an
+    ambiguous signal. Four ambiguities are recognised, and none of them demotes:
+
+    1. **The base moved.** Staleness is checked first because it conditions the
+       regeneration reading: if the cited spans are not the ones the claim was
+       promoted on, the regeneration — pass or fail — is about a different base, so
+       no reproduction outcome is emitted at all.
+    2. **The dispute is undecided.** A ``challenged`` status whose Dung label is
+       ``undec`` is an unresolved cycle, not a survived attack.
+    3. **The claim is not in the snapshot.** An unknown status is a finding about
+       the read.
+    4. **Two legitimate abstractions.** A regeneration that disagrees with the claim
+       while both stay inside the cited sources
+       (:attr:`RegenerationCheck.alternative_abstraction`) is the case the counter
+       raised, and a lexical comparison cannot adjudicate it.
+
+    One conclusive reading does outrank staleness: a claim that now cites **nothing
+    usable** is a grounding failure whatever moved, because a promoted claim with no
+    evidence must not answer and the citation is the claim's own property rather than
+    something the gate read off elsewhere.
+
+    Ordered to mirror the trigger table, so a review's outcomes read in the same
+    order every time.
+    """
+    outcomes: list[DemotionOutcome] = []
+
+    if freshness.stale and not regeneration.failed:
+        outcomes.append(
+            _finding(
+                "stale_evidence",
+                conclusive=False,
+                disposition="quarantine",
+                detail=(
+                    f"{freshness.reason}. The claim did regenerate, but against a "
+                    "base it was not promoted on, so the pass certifies nothing "
+                    "either"
+                ),
+            )
+        )
+
+    if regeneration.failed:
+        if regeneration.ungrounded:
+            outcomes.append(
+                _finding(
+                    "grounding_failure",
+                    conclusive=True,
+                    disposition="demote",
+                    detail=regeneration.reason,
+                    trigger=TRIGGER_REDERIVATION_FAILURE,
+                )
+            )
+        elif freshness.stale:
+            outcomes.append(
+                _finding(
+                    "stale_evidence",
+                    conclusive=False,
+                    disposition="quarantine",
+                    detail=(
+                        f"the re-derivation failed ({regeneration.reason}) against a "
+                        f"base that has moved since promotion — {freshness.reason}. "
+                        "The failure is held pending a re-check rather than read as a "
+                        "refutation"
+                    ),
+                    trigger=TRIGGER_REDERIVATION_FAILURE,
+                )
+            )
+        elif regeneration.alternative_abstraction:
+            outcomes.append(
+                _finding(
+                    "failed_generalisation",
+                    conclusive=False,
+                    disposition="request_review",
+                    detail=(
+                        f"the regeneration disagrees with the claim "
+                        f"({regeneration.reason}) while BOTH stay inside the cited "
+                        f"sources (claim {regeneration.claim_support:.3f}, "
+                        f"regeneration {regeneration.regeneration_support:.3f} >= "
+                        f"support floor {regeneration.support_floor:.3f}) — two "
+                        "legitimate abstractions of the same evidence, which the "
+                        "arithmetic cannot choose between"
+                    ),
+                    trigger=TRIGGER_REDERIVATION_FAILURE,
+                )
+            )
+        else:
+            outcomes.append(
+                _finding(
+                    "failed_reproduction",
+                    conclusive=True,
+                    disposition="demote",
+                    detail=regeneration.reason,
+                    trigger=TRIGGER_REDERIVATION_FAILURE,
+                )
+            )
+
+    if status_flip.flipped:
+        if status_flip.unknown:
+            outcomes.append(
+                _finding(
+                    "stale_evidence",
+                    conclusive=False,
+                    disposition="quarantine",
+                    detail=(
+                        f"{status_flip.reason} — the gate cannot find the claim it "
+                        "was asked about, which is a finding about the read and not "
+                        "about the claim"
+                    ),
+                    trigger=TRIGGER_CONTRADICTION,
+                )
+            )
+        elif not status_flip.settled:
+            outcomes.append(
+                _finding(
+                    "surviving_contradiction",
+                    conclusive=False,
+                    disposition="quarantine",
+                    detail=(
+                        f"{status_flip.reason} — the labelling has NOT settled "
+                        f"({_UNDECIDED_LABEL}), so the attack has not been shown to "
+                        "survive; attacked is not retracted"
+                    ),
+                    trigger=TRIGGER_CONTRADICTION,
+                )
+            )
+        elif status_flip.status_now == STATUS_UNSUPPORTED:
+            outcomes.append(
+                _finding(
+                    "stale_evidence",
+                    conclusive=True,
+                    disposition="demote",
+                    detail=(
+                        f"{status_flip.reason} — nothing supports the claim any more"
+                    ),
+                    trigger=TRIGGER_CONTRADICTION,
+                )
+            )
+        else:
+            outcomes.append(
+                _finding(
+                    "surviving_contradiction",
+                    conclusive=True,
+                    disposition="demote",
+                    detail=(
+                        f"{status_flip.reason} — the labelling settled against the "
+                        "claim"
+                    ),
+                    trigger=TRIGGER_CONTRADICTION,
+                )
+            )
+
+    if independence.below_floor:
+        outcomes.append(
+            _finding(
+                "stale_evidence",
+                conclusive=True,
+                disposition="demote",
+                detail=independence.reason,
+                trigger=TRIGGER_INDEPENDENCE_BELOW_FLOOR,
+            )
+        )
+
+    return tuple(outcomes)
 
 
 def strongest_action(actions: Iterable[str]) -> DemotionAction | None:
@@ -986,6 +1663,11 @@ class DemotionReview:
     nothing is still evidence the gate ran. ``effects`` are *proposed*: the
     retraction reaches the log through the commit tail, and this object touches
     nothing.
+
+    ``triggers`` says what the gate FOUND; ``outcomes`` says what each finding
+    means and whether it settles anything; ``disposition`` is what follows. The
+    three are deliberately separate, because a trigger that fires on an
+    inconclusive signal must not be able to demote just by having fired.
     """
 
     claim_id: str
@@ -994,7 +1676,9 @@ class DemotionReview:
     regeneration: RegenerationCheck
     status_flip: StatusFlipCheck
     independence: IndependenceCheck
+    freshness: EvidenceFreshnessCheck = UNVERIFIABLE_FRESHNESS
     triggers: tuple[str, ...] = ()
+    outcomes: tuple[DemotionOutcome, ...] = ()
     action: DemotionAction | None = None
     proposals: tuple[Proposal, ...] = ()
     effects: tuple[CapabilityEffect, ...] = ()
@@ -1003,8 +1687,55 @@ class DemotionReview:
     reasons: tuple[str, ...] = ()
 
     @property
+    def disposition(self) -> Disposition:
+        """What the gate does: ``demote``, ``quarantine``, ``request_review``, ``hold``.
+
+        Computed from the outcomes rather than from the triggers, which is the whole
+        correction: a trigger that fired on an inconclusive signal withholds the
+        claim and records why, and it does not retract."""
+        return strongest_disposition(outcome.disposition for outcome in self.outcomes)
+
+    @property
     def demoted(self) -> bool:
-        return bool(self.triggers)
+        """``True`` only for a conclusive finding. A trigger firing is not enough."""
+        return self.disposition == DISPOSITION_DEMOTE
+
+    @property
+    def quarantined(self) -> bool:
+        """``True`` when the claim is withheld pending a mechanical re-check."""
+        return self.disposition == DISPOSITION_QUARANTINE
+
+    @property
+    def review_requested(self) -> bool:
+        """``True`` when the finding needs a judgement the arithmetic cannot make."""
+        return self.disposition == DISPOSITION_REQUEST_REVIEW
+
+    @property
+    def withheld(self) -> bool:
+        """``True`` for either withholding disposition: not answering, not retracted.
+
+        The state the gate was missing. A withheld claim keeps its standing in the
+        log — nothing was appended against it — but a read flow must not answer from
+        it while the question is open."""
+        return self.disposition in WITHHOLDING_DISPOSITIONS
+
+    @property
+    def outcome_kinds(self) -> tuple[str, ...]:
+        """The distinct outcomes, sorted — the review's finding in one line."""
+        return tuple(sorted({outcome.kind for outcome in self.outcomes}))
+
+    @property
+    def outcome_reasons(self) -> tuple[str, ...]:
+        """One recorded reason per outcome, in outcome order.
+
+        This is what "quarantine **with a recorded reason**" means concretely: a
+        withheld claim carries the same explanation a demoted one does."""
+        return tuple(outcome.reason for outcome in self.outcomes)
+
+    @property
+    def inconclusive(self) -> tuple[DemotionOutcome, ...]:
+        """The outcomes that did not settle anything."""
+        return tuple(outcome for outcome in self.outcomes if not outcome.conclusive)
 
     @property
     def retracted(self) -> bool:
@@ -1012,19 +1743,27 @@ class DemotionReview:
 
         A ``down_rank`` demotes standing without appending an epistemic act, so
         it is a demotion that is not a retraction — the distinction matters to a
-        reader deciding whether the claim still answers."""
+        reader deciding whether the claim still answers. A quarantine appends
+        nothing either, for the stronger reason that nothing was established."""
         return bool(self.proposals)
 
     @property
     def promotion_eligibility(self) -> PromotionEligibility:
         """The verdict in the vocabulary that already exists, not a parallel one.
 
-        ``ineligible`` once any trigger fired. Otherwise ``eligible`` in the sense
-        the contract defines — *"structurally sound; may proceed to gated
-        promotion"* — which is emphatically not a promotion: this gate is one
-        condition, and recurrence, reliability, stability, entailment and dedup
-        are all still ahead of the claim."""
-        return "ineligible" if self.demoted else "eligible"
+        ``ineligible`` on a conclusive finding. ``needs_validation`` while the claim
+        is withheld — *"requires an independent validator verdict"* is exactly what a
+        quarantine or a review request is asking for, and it is fail-closed: a
+        withheld claim is not promotable. Otherwise ``eligible`` in the sense the
+        contract defines — *"structurally sound; may proceed to gated promotion"* —
+        which is emphatically not a promotion: this gate is one condition, and
+        recurrence, reliability, stability, entailment and dedup are all still ahead
+        of the claim."""
+        if self.demoted:
+            return "ineligible"
+        if self.withheld:
+            return "needs_validation"
+        return "eligible"
 
 
 def retraction_proposals(
@@ -1035,7 +1774,7 @@ def retraction_proposals(
     at: float,
     reasons: Sequence[str] = (),
 ) -> tuple[Proposal, ...]:
-    """Render a demotion as an APPEND: a retraction claim plus one edge.
+    """Render a demotion as an APPEND: a retraction claim plus its edges.
 
     ``flag`` appends an ``attack`` (the claim becomes ``challenged``);
     ``supersede_with_timestamp`` appends a ``supersede`` and carries the check
@@ -1044,10 +1783,21 @@ def retraction_proposals(
     returns ``()``: standing is a projection, and demoting a projection is not an
     epistemic act.
 
-    The retraction's derivation is keyed on the retracted claim under
-    :data:`RETRACTION_SECTION`, so re-running the gate at the same check time
-    replays onto the same rows, while a later check re-renders the same
-    derivation — a retraction revises rather than multiplies.
+    **A supersession also appends its own grounding, and a flag does not.** The
+    pre-filter admits a ``supersede`` only from a replacement that itself computes
+    as ``warranted`` — Dung ``in`` *and* supported — because *"a claim may only be
+    replaced by one that has itself survived and is grounded"*. An unsupported
+    retraction is ``proposed``, so a bare ``supersede`` would retire nothing and the
+    strongest action would be silently inert. The fixed point asks nothing of an
+    attacker, so a ``flag`` needs no grounding claim and does not get one. The
+    grounding claim states the *finding* (the gate's arithmetic) and the retraction
+    states the *act*, which is the division the operator system already draws
+    between evidence and epistemic move.
+
+    Both derivations are keyed on the retracted claim under distinct locator
+    sections, so re-running the gate at the same check time replays onto the same
+    rows, while a later check re-renders the same derivations — a retraction revises
+    rather than multiplies.
     """
     if action not in ACTIONS:
         raise ValueError(f"unknown demotion action: {action!r}")
@@ -1074,16 +1824,47 @@ def retraction_proposals(
         operator=operator,
         bb_role="retraction",
     )
-    return (
-        retraction,
+    proposals: list[Proposal] = [retraction]
+    if operator == "supersede":
+        grounding = ClaimProposal(
+            derivation_id=derivation_id(
+                record.note_id,
+                anchor_locator(
+                    f"retraction_finding:{record.claim_id}",
+                    section=GROUNDING_SECTION,
+                ),
+            ),
+            text=(
+                f"The re-derivation gate's check of {record.claim_id} at "
+                f"t={_timestamp(at)} found {', '.join(triggers) or 'no trigger'}: "
+                f"{detail}."
+            ),
+            note_id=record.note_id,
+            locator=locator,
+            provenance="constructed",
+            operator="support",
+            bb_role="retraction_finding",
+        )
+        proposals.append(grounding)
+        proposals.append(
+            EdgeProposal(
+                op="support",
+                src=grounding.claim_id,
+                dst=retraction.claim_id,
+                origin=ORIGIN_DEMOTION,
+                evidence_locator=locator,
+            )
+        )
+    proposals.append(
         EdgeProposal(
             op=operator,
             src=retraction.claim_id,
             dst=record.claim_id,
             origin=ORIGIN_DEMOTION,
             evidence_locator=locator,
-        ),
+        )
     )
+    return tuple(proposals)
 
 
 class ReDerivationGate:
@@ -1136,14 +1917,24 @@ class ReDerivationGate:
         Every trigger runs even when an earlier one fired: a demotion should
         report every reason it happened, and re-running the gate to discover the
         second reason would cost another model call for information already
-        available."""
+        available.
+
+        Then every finding is CLASSIFIED (:func:`classify_outcomes`), and only a
+        conclusive one demotes. An inconclusive finding leaves the claim withheld
+        with its reason recorded: no retraction is proposed, no certificate is
+        revoked, and ``promotion_eligibility`` is ``needs_validation`` — because a
+        gate that demoted on an ambiguous signal would be asserting something it has
+        not established."""
+        sources = tuple(self._sources.cited_sources(record.claim_id))
         regeneration = check_regeneration(
             record,
             model=self._model,
-            sources=self._sources.cited_sources(record.claim_id),
+            sources=sources,
             floor=self._policy.regeneration_floor,
+            support_floor=self._policy.source_support_floor,
             question=question,
         )
+        freshness = check_evidence_freshness(record, sources)
         flip = check_status_flip(record, self._statuses)
         independence = check_independence(
             record, self._independence, floor=self._policy.independence_floor
@@ -1163,21 +1954,48 @@ class ReDerivationGate:
                 f"{TRIGGER_INDEPENDENCE_BELOW_FLOOR}: {independence.reason}"
             )
 
-        action = strongest_action(
-            self._policy.action_for(trigger) for trigger in triggers
+        outcomes = classify_outcomes(
+            regeneration=regeneration,
+            status_flip=flip,
+            independence=independence,
+            freshness=freshness,
         )
+        disposition = strongest_disposition(
+            outcome.disposition for outcome in outcomes
+        )
+        demoting = tuple(outcome for outcome in outcomes if outcome.conclusive)
+
+        action: DemotionAction | None = None
         proposals: tuple[Proposal, ...] = ()
-        if action is not None:
-            proposals = retraction_proposals(
-                record, action=action, triggers=triggers, at=now, reasons=reasons
-            )
         revoked = None
-        if triggers and record.certificate is not None:
-            revoked = revoke(
-                record.certificate,
-                reason="; ".join(reasons),
-                at=now,
+        if disposition == DISPOSITION_DEMOTE:
+            action = strongest_action(
+                self._policy.action_for(outcome.trigger)
+                for outcome in demoting
+                if outcome.trigger is not None
             )
+            demoting_reasons = tuple(outcome.reason for outcome in demoting)
+            demoting_triggers = tuple(
+                dict.fromkeys(
+                    outcome.trigger
+                    for outcome in demoting
+                    if outcome.trigger is not None
+                )
+            )
+            if action is not None:
+                proposals = retraction_proposals(
+                    record,
+                    action=action,
+                    triggers=demoting_triggers,
+                    at=now,
+                    reasons=demoting_reasons,
+                )
+            if record.certificate is not None:
+                revoked = revoke(
+                    record.certificate,
+                    reason="; ".join(demoting_reasons),
+                    at=now,
+                )
         return DemotionReview(
             claim_id=record.claim_id,
             derivation_id=record.derivation_id,
@@ -1185,7 +2003,9 @@ class ReDerivationGate:
             regeneration=regeneration,
             status_flip=flip,
             independence=independence,
+            freshness=freshness,
             triggers=tuple(triggers),
+            outcomes=outcomes,
             action=action,
             proposals=proposals,
             effects=tuple(effect_for_proposal(p) for p in proposals),
@@ -1214,6 +2034,10 @@ class ReDerivationGate:
         demoting it again would append a second retraction of the same act — and
         ``force`` re-checks everything, which is what a caller re-running after a
         recovery wants.
+
+        A **quarantined** claim is deliberately NOT skipped. Quarantine means the
+        gate could not conclude, so the next scheduled pass is exactly the remedy:
+        once the base or the labelling settles, the same claim is classified again.
         """
         history = ledger or DemotionLedger()
         reviews: list[DemotionReview] = []
@@ -1228,7 +2052,9 @@ class ReDerivationGate:
                 continue
             reviews.append(self.review(record, now=now, question=question))
         entries = tuple(
-            entry_for_review(review) for review in reviews if review.demoted
+            entry_for_review(review)
+            for review in reviews
+            if review.disposition != DISPOSITION_HOLD
         )
         return DemotionSweep(
             checked_at=now,
@@ -1259,31 +2085,107 @@ class DemotionSweep:
         )
 
     @property
+    def quarantined(self) -> tuple[str, ...]:
+        """Withheld pending a re-check — found something, concluded nothing."""
+        return tuple(
+            sorted(review.claim_id for review in self.reviews if review.quarantined)
+        )
+
+    @property
+    def review_requested(self) -> tuple[str, ...]:
+        """Withheld pending a judgement the arithmetic cannot make."""
+        return tuple(
+            sorted(
+                review.claim_id for review in self.reviews if review.review_requested
+            )
+        )
+
+    @property
+    def withheld(self) -> tuple[str, ...]:
+        """Every claim this pass stopped answering from WITHOUT retracting."""
+        return tuple(
+            sorted(review.claim_id for review in self.reviews if review.withheld)
+        )
+
+    @property
     def effects(self) -> tuple[CapabilityEffect, ...]:
-        """Every proposed retraction effect, claims before edges within a review."""
+        """Every proposed retraction effect, claims before edges within a review.
+
+        A withheld claim contributes none: nothing is appended for a finding the
+        gate could not conclude."""
         return tuple(effect for review in self.reviews for effect in review.effects)
 
     def by_trigger(self) -> dict[str, tuple[str, ...]]:
-        """Which claims each trigger fired on — the sweep's own report."""
+        """Which claims each trigger fired on — the sweep's own report.
+
+        Every claim the trigger fired on, demoted or withheld: this reports what the
+        gate FOUND, and reading it as a demotion list is the conflation the outcome
+        classification exists to prevent (use :attr:`demoted` for that)."""
         out: dict[str, list[str]] = {trigger: [] for trigger in sorted(TRIGGERS)}
         for review in self.reviews:
             for trigger in review.triggers:
                 out[trigger].append(review.claim_id)
         return {trigger: tuple(sorted(ids)) for trigger, ids in out.items()}
 
+    def by_outcome(self) -> dict[str, tuple[str, ...]]:
+        """Which claims each of the five outcomes was found on — the honest report.
+
+        The counterpart to :meth:`by_trigger`: one trigger produces several outcomes,
+        and this is the axis on which "how many claims did we actually refute" can be
+        answered."""
+        out: dict[str, list[str]] = {outcome: [] for outcome in sorted(OUTCOMES)}
+        for review in self.reviews:
+            for kind in review.outcome_kinds:
+                out[kind].append(review.claim_id)
+        return {kind: tuple(sorted(ids)) for kind, ids in out.items()}
+
+    def by_disposition(self) -> dict[str, tuple[str, ...]]:
+        """Which claims each disposition applied to, ``hold`` included."""
+        out: dict[str, list[str]] = {
+            disposition: [] for disposition in sorted(DISPOSITIONS)
+        }
+        for review in self.reviews:
+            out[review.disposition].append(review.claim_id)
+        return {
+            disposition: tuple(sorted(ids)) for disposition, ids in out.items()
+        }
+
 
 # ── the ledger: append-only, and the only thing a recovery reads ───────────
 
-LedgerEntryKind = Literal["demotion", "recovery"]
+LedgerEntryKind = Literal["demotion", "recovery", "quarantine", "review_requested"]
+"""The four acts the history records.
+
+``quarantine`` and ``review_requested`` are the withholding acts, and they are in
+the SAME sequence as the demotions for the reason the two kinds always were: a
+reason recorded somewhere else is a reason nobody reads next to the demotion it
+was an alternative to. They are not standing acts (see
+:data:`STANDING_ENTRY_KINDS`) — a withheld claim is not a demoted claim."""
+
+STANDING_ENTRY_KINDS: frozenset[str] = frozenset({"demotion", "recovery"})
+"""The kinds that decide whether a claim is currently demoted.
+
+A quarantine row does not: it records that the gate looked and could not conclude,
+which must not read as a demotion and must not discharge one either. Without this
+distinction a quarantine appended after a demotion would silently reinstate the
+claim — the recovery path is the only thing allowed to do that, and it needs a
+certificate."""
+
+WITHHOLDING_ENTRY_KINDS: Mapping[str, LedgerEntryKind] = {
+    DISPOSITION_QUARANTINE: "quarantine",
+    DISPOSITION_REQUEST_REVIEW: "review_requested",
+}
+"""Disposition → the ledger kind that records it."""
 
 
 @dataclass(frozen=True)
 class DemotionEntry:
-    """One immutable row of the demotion history — a demotion or a recovery.
+    """One immutable row of the demotion history — a demotion, recovery, quarantine
+    or review request.
 
-    Both kinds share one ordered sequence rather than living in two tables,
-    because "is this claim demoted right now" is a question about the LATEST act
-    and answering it from two sequences invites the two to disagree."""
+    All kinds share one ordered sequence rather than living in separate tables,
+    because "is this claim demoted right now" is a question about the LATEST
+    standing act and answering it from several sequences invites them to disagree."""
 
     kind: LedgerEntryKind
     claim_id: str
@@ -1295,6 +2197,7 @@ class DemotionEntry:
     validator: str = ""
     reasons: tuple[str, ...] = ()
     detail: str = ""
+    outcomes: tuple[str, ...] = ()
 
     @property
     def entry_id(self) -> str:
@@ -1306,28 +2209,42 @@ class DemotionEntry:
             self.derivation_id,
             _timestamp(self.at),
             "|".join(self.triggers),
+            "|".join(self.outcomes),
             self.action or "",
             self.retraction_claim_id,
             self.validator,
         )
 
+    @property
+    def withholding(self) -> bool:
+        """``True`` for a quarantine or a review request: withheld, not retracted."""
+        return self.kind in WITHHOLDING_ENTRY_KINDS.values()
+
 
 def entry_for_review(review: DemotionReview) -> DemotionEntry:
-    """The ledger row for a demoting review."""
-    if not review.demoted:
+    """The ledger row for a review that found something — demoting or not.
+
+    A quarantine and a review request are recorded too, because "quarantine **with
+    a recorded reason**" is only true if the reason lands somewhere append-only. A
+    review that found nothing is refused: a passing review is reported, not logged."""
+    if review.disposition == DISPOSITION_HOLD:
         raise ValueError(
             f"review of {review.claim_id} demoted nothing; there is no entry to "
             "record (a passing review is reported, not logged as a demotion)"
         )
+    kind: LedgerEntryKind = WITHHOLDING_ENTRY_KINDS.get(
+        review.disposition, "demotion"
+    )
     return DemotionEntry(
-        kind="demotion",
+        kind=kind,
         claim_id=review.claim_id,
         derivation_id=review.derivation_id,
         at=review.checked_at,
         triggers=review.triggers,
         action=review.action,
         retraction_claim_id=review.retraction_claim_id,
-        reasons=review.reasons,
+        reasons=review.reasons + review.outcome_reasons,
+        outcomes=review.outcome_kinds,
     )
 
 
@@ -1368,10 +2285,35 @@ class DemotionLedger:
         history = self.history_for(claim_id)
         return history[-1] if history else None
 
+    def latest_standing_act(self, claim_id: str) -> DemotionEntry | None:
+        """The claim's most recent act that CHANGED its standing.
+
+        Demotions and recoveries only. A quarantine is a recorded finding, not a
+        change of standing: reading it as one would let a later inconclusive review
+        discharge an earlier demotion without the certificate the recovery path
+        requires."""
+        standing = [
+            entry
+            for entry in self.history_for(claim_id)
+            if entry.kind in STANDING_ENTRY_KINDS
+        ]
+        return standing[-1] if standing else None
+
     def is_demoted(self, claim_id: str) -> bool:
-        """Whether the claim's most recent act was a demotion."""
-        latest = self.latest(claim_id)
+        """Whether the claim's most recent STANDING act was a demotion."""
+        latest = self.latest_standing_act(claim_id)
         return latest is not None and latest.kind == "demotion"
+
+    def is_quarantined(self, claim_id: str) -> bool:
+        """Whether the claim is currently withheld without having been demoted.
+
+        The third state: the gate looked, could not conclude, recorded why, and
+        appended nothing against the claim. A demoted claim is never also reported
+        quarantined — the stronger act stands."""
+        if self.is_demoted(claim_id):
+            return False
+        latest = self.latest(claim_id)
+        return latest is not None and latest.withholding
 
     def demoted_claim_ids(self) -> tuple[str, ...]:
         return tuple(
@@ -1382,6 +2324,27 @@ class DemotionLedger:
                     if self.is_demoted(entry.claim_id)
                 }
             )
+        )
+
+    def quarantined_claim_ids(self) -> tuple[str, ...]:
+        """Every claim currently withheld pending a re-check or a review."""
+        return tuple(
+            sorted(
+                {
+                    entry.claim_id
+                    for entry in self.entries
+                    if self.is_quarantined(entry.claim_id)
+                }
+            )
+        )
+
+    def reasons_for(self, claim_id: str) -> tuple[str, ...]:
+        """Every recorded reason about one claim, in the order they were recorded.
+
+        What makes a withholding appealable: the reason a claim stopped answering is
+        readable off the history without re-running the gate."""
+        return tuple(
+            reason for entry in self.history_for(claim_id) for reason in entry.reasons
         )
 
     def __len__(self) -> int:
@@ -1578,26 +2541,41 @@ def as_capability_result(review: DemotionReview) -> CapabilityResult:
     The retraction leaves as ``effects`` for the commit tail to render, and
     ``promotion_eligibility`` carries the verdict in the vocabulary that already
     exists. ``warrant`` is ``None`` because a demotion licenses no conclusion: it
-    withdraws one."""
+    withdraws one — and a withholding licenses even less.
+
+    ``status`` is ``ok`` for a withheld claim as well as a demoted one: something
+    happened and a caller must see it. ``empty`` is reserved for the gate finding
+    nothing, and the ``qualifier`` names the disposition so a quarantine can never
+    be mistaken for a retraction by a reader who only skims."""
+    if review.demoted:
+        qualifier = (
+            f"demoted ({', '.join(review.outcome_kinds)}) by "
+            f"{', '.join(review.triggers)} (action: {review.action})"
+        )
+    elif review.withheld:
+        qualifier = (
+            f"{review.disposition}: {', '.join(review.outcome_kinds)} — the gate "
+            "found something and concluded nothing, so the claim is withheld and "
+            "NOT retracted; nothing was appended and no certificate was revoked"
+        )
+    else:
+        qualifier = "re-derivation gate passed; no trigger fired"
     return CapabilityResult(
-        status="ok" if review.demoted else "empty",
+        status="empty" if review.disposition == DISPOSITION_HOLD else "ok",
         effects=review.effects,
-        diagnostics=review.reasons,
+        diagnostics=review.reasons + review.outcome_reasons,
         promotion_eligibility=review.promotion_eligibility,
         warrant=None,
-        qualifier=(
-            f"demoted by {', '.join(review.triggers)} "
-            f"(action: {review.action})"
-            if review.demoted
-            else "re-derivation gate passed; no trigger fired"
-        ),
+        qualifier=qualifier,
         replay_token=_content_id(
             "dks:",
             "demotion",
             review.claim_id,
             review.derivation_id,
             _timestamp(review.checked_at),
+            review.disposition,
             "|".join(review.triggers),
+            "|".join(review.outcome_kinds),
             review.action or "",
         ),
         payload=review,
@@ -1632,19 +2610,31 @@ __all__ = [
     "ACTION_SEVERITY",
     "ANSWERABLE_STATUSES",
     "CitedSource",
+    "ClaimLabelSource",
     "CurrentStatusSource",
     "DEFAULT_DEMOTION_POLICY",
     "DEFAULT_INTERVAL_DAYS",
+    "DISPOSITIONS",
+    "DISPOSITION_DEMOTE",
+    "DISPOSITION_HOLD",
+    "DISPOSITION_PRECEDENCE",
+    "DISPOSITION_QUARANTINE",
+    "DISPOSITION_REQUEST_REVIEW",
     "DemotionAction",
     "DemotionEntry",
     "DemotionError",
     "DemotionLedger",
+    "DemotionOutcome",
+    "DemotionOutcomeKind",
     "DemotionPolicy",
     "DemotionReview",
     "DemotionSweep",
     "DemotionTrigger",
+    "Disposition",
+    "EvidenceFreshnessCheck",
     "FrozenModelError",
     "FrozenReDerivationModel",
+    "GROUNDING_SECTION",
     "GateNotArmedError",
     "INDEPENDENCE_DEVIATION",
     "INDEPENDENCE_FLOOR",
@@ -1653,6 +2643,12 @@ __all__ = [
     "LedgerEntryKind",
     "ORIGIN_DEMOTION",
     "ORIGIN_RECOVERY",
+    "OUTCOMES",
+    "OUTCOME_FAILED_GENERALISATION",
+    "OUTCOME_FAILED_REPRODUCTION",
+    "OUTCOME_GROUNDING_FAILURE",
+    "OUTCOME_STALE_EVIDENCE",
+    "OUTCOME_SURVIVING_CONTRADICTION",
     "PromotedClaimRecord",
     "PromotionRecordView",
     "REGENERATION_COMPARISON_DEVIATION",
@@ -1667,7 +2663,10 @@ __all__ = [
     "RecoveryOutcome",
     "RegenerationCheck",
     "SECONDS_PER_DAY",
+    "SOURCE_SUPPORT_FLOOR",
+    "STANDING_ENTRY_KINDS",
     "STATUS_UNKNOWN",
+    "STATUS_UNSUPPORTED",
     "ScriptedReDerivationModel",
     "SourceReader",
     "StaticIndependenceSource",
@@ -1680,15 +2679,21 @@ __all__ = [
     "TRIGGER_INDEPENDENCE_BELOW_FLOOR",
     "TRIGGER_REDERIVATION_FAILURE",
     "TrialEventView",
+    "UNVERIFIABLE_FRESHNESS",
     "USE_EVENT_KINDS",
     "VerdictQuery",
     "VerdictQueryStatusSource",
+    "WITHHOLDING_DISPOSITIONS",
+    "WITHHOLDING_ENTRY_KINDS",
     "agreement",
     "as_capability_result",
     "build_request",
+    "check_evidence_freshness",
     "check_independence",
     "check_regeneration",
     "check_status_flip",
+    "claim_label",
+    "classify_outcomes",
     "down_rank_order",
     "due_at",
     "due_records",
@@ -1702,6 +2707,8 @@ __all__ = [
     "require_frozen",
     "require_suppression",
     "retraction_proposals",
+    "source_support",
     "strongest_action",
+    "strongest_disposition",
     "tokenize",
 ]

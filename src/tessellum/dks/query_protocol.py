@@ -11,14 +11,16 @@ module already built rather than a re-implementation:
 3    name the relation the query asks       :class:`RelationNamer` (a MODEL seam)
 4    derive the claim(s) WITH LOCATORS      :class:`ClaimDeriver` (a MODEL seam)
 5    attempt the bounded refutation         :class:`~tessellum.dks.core.IncompatibilityJudge`
-6    decide — three ways                    :func:`decide`, over computed status
+6    validate the support DEPENDENCIES      :func:`~tessellum.dks.support_dependency.validate_support_dependencies`
+7    decide — three ways                    :func:`decide`, over status AND (6)
 ===  =====================================  ===================================
 
 **The decision is three-way, and STATUS is the gate.** Not a scorer threshold, and
 not answer-or-abstain — collapsing the middle case is what makes a system that
 knows about a live dispute either assert one side of it or say nothing:
 
-- ``warranted`` → **answer**, citing the support chain and the locator.
+- ``warranted`` **and the support-dependency validator passing** → **answer**,
+  citing the support chain and the locator.
 - ``challenged`` → **surface the conflict**, returning BOTH chains
   (:attr:`QueryResult.conflict`). This is neither an answer nor an abstention,
   and it is the outcome a scorer-threshold gate cannot express.
@@ -28,6 +30,25 @@ Status comes from :mod:`tessellum.dks.status` — the attack-only fixed point wi
 ``supersede`` as a pre-filter and ``support`` as a post-classification — so the
 verdict this protocol acts on is graph arithmetic and stays replayable. No model
 decides an outcome anywhere in this module.
+
+**``warranted`` is NECESSARY, NOT SUFFICIENT — the second half of the gate.** The
+labelling runs over the ``attack`` relation only and checks ``support`` afterwards
+as "has at least one supporter", so it admits two graphs that must not be answered
+from: a conclusion whose *necessary premise* has been defeated, and a pair of
+claims that support only each other. Both compute as ``warranted`` and both are
+reproduced as fixtures in this phase's tests. So the answer arm additionally
+requires :func:`~tessellum.dks.support_dependency.is_grounded` — the separate,
+model-free dependency validator, run over the SAME snapshot the labelling was
+computed over and read from :attr:`QueryResult.dependency`. It gates the **answer**
+arm only: a ``challenged`` claim is ungrounded by construction (it was defeated),
+and hiding that dispute behind an abstention would destroy the information the
+conflict outcome exists to hand back.
+
+Two different "grounding" words meet in this module, and they are not the same
+check. :class:`GroundingRecord` is the **certificate** — does the cited span
+entail the claim? — and it gates *admission to the log*. ``dependency`` is the
+:class:`~tessellum.dks.support_dependency.GroundingVerdict` — does a chain of
+surviving evidence actually reach this claim? — and it gates *answering*.
 
 **The certificate is a grounding PRE-CONDITION, not a second verdict.** It answers
 one question — does the cited span entail the claim? — and its only power is to
@@ -126,6 +147,13 @@ from tessellum.dks.ontology import AcceptanceVerdict, acceptance_from_labelling
 from tessellum.dks.reach import ReachResult, SeededReach
 from tessellum.dks.resolve_entity import EntityResolver, Resolution
 from tessellum.dks.status import ClaimStatus, EdgeSet, StatusTable, compute_statuses
+from tessellum.dks.support_dependency import (
+    CONSERVATIVE_SUPPORT_KINDS,
+    GroundingTable,
+    GroundingVerdict,
+    SupportKindResolver,
+    validate_support_dependencies,
+)
 from tessellum.dks.validation import (
     A7_5_UNCALIBRATED_NOTICE,
     ClaimTypeRouter,
@@ -173,6 +201,16 @@ ABSTAIN_UNGROUNDED: str = "no_locator_or_support_chain"
 ABSTAIN_GROUNDING: str = "grounding_precondition_failed"
 ABSTAIN_PROVISIONAL: str = "verdict_chain_touches_a_stub"
 ABSTAIN_STATUS: str = "status_not_answerable"
+ABSTAIN_DEPENDENCY: str = "support_dependency_not_grounded"
+"""Recorded when a ``warranted`` claim FAILS the support-dependency validator.
+
+Its own reason code, distinct from :data:`ABSTAIN_UNGROUNDED`, because the two
+refusals are different facts about the corpus: ``ABSTAIN_UNGROUNDED`` means the
+derivation cited nothing, while this means it cited something whose own chain does
+not survive — a defeated necessary premise, a fallen line of evidence, a support
+cycle or a changed source version. The validator's reasons ride out on
+:attr:`QueryResult.dependency` and in the diagnostics, so which one it was is never
+lost."""
 
 # ── edge origins for the two acts this phase performs ───────────────────────
 
@@ -741,6 +779,7 @@ def decide(
     provisional: bool,
     has_locator: bool,
     has_support: bool,
+    dependency_validated: bool,
 ) -> Decision:
     """Map a computed status onto one of the three outcomes. Pure; no model.
 
@@ -752,14 +791,29 @@ def decide(
     2. **A stub in the chain refuses a verdict.** A ``stub`` claim is a string
        located mechanically, and most such strings are not truth-apt as written,
        so neither answering from one nor surfacing a dispute over one is honest.
-    3. ``warranted`` answers, ``challenged`` surfaces the conflict, everything
-       else abstains with its status recorded.
+    3. ``warranted`` **and** ``dependency_validated`` answers; ``challenged``
+       surfaces the conflict; everything else abstains with its status recorded.
+
+    ``dependency_validated`` is
+    :attr:`~tessellum.dks.support_dependency.GroundingVerdict.grounded` for this
+    claim, and it is a **required** argument precisely so no caller can reproduce
+    the gate this function used to be: ``warranted`` alone admits a conclusion
+    resting on a defeated necessary premise and admits a mutually-supporting pair,
+    because the labelling runs over ``attack`` only and reads ``support`` as mere
+    presence. A default here would let that gate back in silently.
+
+    The validator gates the **answer** arm alone. A ``challenged`` claim is
+    ungrounded by construction — the labelling defeated it — so consulting the
+    validator there would convert every surfaceable conflict into an abstention
+    and throw away the one outcome that hands a reader both sides.
     """
     if not has_locator or not has_support:
         return Decision("abstain", ABSTAIN_UNGROUNDED)
     if provisional:
         return Decision("abstain", ABSTAIN_PROVISIONAL)
     if status == ANSWERING_STATUS:
+        if not dependency_validated:
+            return Decision("abstain", ABSTAIN_DEPENDENCY)
         return Decision("answer")
     if status == CONFLICT_STATUS:
         return Decision("conflict")
@@ -866,6 +920,18 @@ class QueryResult:
     reach: ReachResult | None = None
     statuses: Mapping[str, str] = field(default_factory=dict)
     grounding: GroundingRecord | None = None
+    dependency: GroundingVerdict | None = None
+    """The support-dependency verdict for the deciding claim — the OTHER half of
+    the answer gate, and not the same thing as ``grounding``.
+
+    ``grounding`` is the entailment certificate deciding *admission*;
+    ``dependency`` is the model-free validator deciding whether a surviving chain
+    of evidence actually reaches this claim. ``None`` on the paths that never got
+    as far as a labelling. When an answer was refused for
+    :data:`ABSTAIN_DEPENDENCY`, this is where the reasons are — a defeated
+    necessary premise, a fallen evidential group, a support cycle, or a changed
+    cited source version."""
+
     validation: IndependentValidation | None = None
     acceptance: AcceptanceVerdict | None = None
     budget: ModelBudget = field(default_factory=ModelBudget)
@@ -943,6 +1009,14 @@ class QueryProtocol:
             ``mention`` and no ``resolution``.
         grounding: the admission pre-condition. **Default OFF.**
         validation: the independent validator. **Default OFF.**
+        support_kinds: how a ``support`` edge bears on its target, for the
+            dependency validator. Conservative by default — every edge reads as
+            ``necessary``, which can only *withhold* an answer. **Not** a
+            default-off flag: the validator always runs, because ``warranted``
+            alone is not an answer gate.
+        current_note_hashes: what an index rebuild computed, so a claim citing a
+            span whose note has changed cannot ground an answer. ``None`` means
+            no rebuild has reported, which asserts nothing stale.
         max_attack_candidates: refutation cap per derived claim.
         refutation_budget: refutation cap per query.
         short_circuit_on: memory statuses that answer without deriving.
@@ -960,6 +1034,8 @@ class QueryProtocol:
         resolver: EntityResolver | None = None,
         grounding: GroundingPolicy | None = None,
         validation: ValidationPolicy | None = None,
+        support_kinds: SupportKindResolver = CONSERVATIVE_SUPPORT_KINDS,
+        current_note_hashes: Mapping[str, str] | None = None,
         max_attack_candidates: int = DEFAULT_MAX_ATTACK_CANDIDATES,
         refutation_budget: int = DEFAULT_REFUTATION_BUDGET,
         short_circuit_on: frozenset[str] = SHORT_CIRCUIT_STATUSES,
@@ -973,6 +1049,10 @@ class QueryProtocol:
         self.resolver = resolver
         self.grounding = grounding or GroundingPolicy()
         self.validation = validation or ValidationPolicy()
+        self.support_kinds = support_kinds
+        self.current_note_hashes = (
+            dict(current_note_hashes) if current_note_hashes else None
+        )
         self.max_attack_candidates = max_attack_candidates
         self.refutation_budget = refutation_budget
         self.short_circuit_on = short_circuit_on
@@ -1103,11 +1183,15 @@ class QueryProtocol:
             )
         self.memory.stage(*admitted)
 
-        table = self._statuses(admitted)
+        table, dependencies = self._label(admitted)
         statuses = {
             claim_id: verdict.status for claim_id, verdict in table.statuses.items()
         }
-        head, verdict = self._head_claim(derived, table)
+        head, verdict = self._head_claim(derived, table, dependencies)
+        dependency = dependencies.verdict(head.claim_id) if head is not None else None
+        if dependency is not None and not dependency.grounded:
+            for reason in dependency.reasons:
+                diagnostics.append(f"dependency:{reason}")
         decision = decide(
             verdict.status if verdict else "unknown",
             provisional=bool(verdict and verdict.provisional),
@@ -1117,6 +1201,10 @@ class QueryProtocol:
             # cannot license an answer, so counting proposals here would let a
             # refused citation pass for a citation.
             has_support=bool(verdict and verdict.supporters),
+            # The other half of the gate: a surviving chain of evidence has to
+            # actually REACH this claim. `warranted` admits a defeated necessary
+            # premise and admits circular support, so it cannot answer alone.
+            dependency_validated=bool(dependency and dependency.grounded),
         )
         answer: Chain | None = None
         conflict: tuple[Chain, ...] = ()
@@ -1149,6 +1237,7 @@ class QueryProtocol:
             reach=reached,
             statuses=statuses,
             grounding=grounding_record,
+            dependency=dependency,
             validation=validation,
             acceptance=self._acceptance(verdict, validation),
             budget=budget,
@@ -1181,17 +1270,27 @@ class QueryProtocol:
 
         The model budget of this path is zero: no relation is named, no note is
         read and no refutation is attempted, which is the whole point of
-        consulting memory before deriving."""
-        table = self._statuses(())
+        consulting memory before deriving.
+
+        The dependency validator runs here too. A memoized ``warranted`` claim is
+        exactly as exposed to a since-defeated premise as a freshly derived one —
+        more so, because time has passed — so a cache hit is not a route around
+        the answer gate."""
+        table, dependencies = self._label(())
         verdict = table.get(candidate.claim_id)
         status = verdict.status if verdict else candidate.status
         provisional = bool(verdict and verdict.provisional)
         chain = self._chain(candidate.claim_id, table, (), role="derived")
+        dependency = dependencies.verdict(candidate.claim_id)
+        if not dependency.grounded:
+            for reason in dependency.reasons:
+                diagnostics.append(f"dependency:{reason}")
         decision = decide(
             status,
             provisional=provisional,
             has_locator=bool(candidate.locator),
             has_support=bool(chain.supports),
+            dependency_validated=dependency.grounded,
         )
         conflict: tuple[Chain, ...] = ()
         answer: Chain | None = None
@@ -1220,6 +1319,7 @@ class QueryProtocol:
                 claim_id=candidate.claim_id,
             ),
             statuses={candidate.claim_id: status},
+            dependency=dependency,
             diagnostics=tuple(diagnostics),
             base_snapshot_id=self.memory.base_snapshot_id,
         )
@@ -1348,8 +1448,8 @@ class QueryProtocol:
 
     # ── status over the snapshot PLUS this episode's admitted batch ──────────
 
-    def _statuses(self, staged: Sequence[Proposal]) -> StatusTable:
-        """Label the pinned snapshot together with the episode's own batch.
+    def _fold(self, staged: Sequence[Proposal]) -> EdgeSet:
+        """The pinned snapshot together with the episode's own batch, as one view.
 
         The derived claim is by construction NOT in the pinned snapshot — rule 4
         makes staged records unreadable — so a decision drawn from the snapshot
@@ -1357,8 +1457,11 @@ class QueryProtocol:
         consequence-check made explicit: the evidence the claim cites comes from
         the snapshot, and only the claim and its own edges come from the batch, so
         nothing here lets the episode read its own conclusion as third-party
-        evidence. The verdict is still pure graph arithmetic over the same three
-        layers the log's own labelling uses.
+        evidence.
+
+        One view, built once, so the labelling and the dependency validator cannot
+        be computed over different snapshots and disagree about which graph they
+        were answering about.
         """
         snapshot = self.memory.snapshot
         seq = max(
@@ -1374,19 +1477,54 @@ class QueryProtocol:
                 claims.append(_PendingClaimRow.of(proposal, seq))
             else:
                 edges.append(_PendingEdgeRow.of(proposal, seq))
-        return compute_statuses(EdgeSet(claims=tuple(claims), edges=tuple(edges)))
+        return EdgeSet(claims=tuple(claims), edges=tuple(edges))
+
+    def _label(
+        self, staged: Sequence[Proposal]
+    ) -> tuple[StatusTable, GroundingTable]:
+        """BOTH halves of the answer gate, over one view. Pure graph arithmetic.
+
+        The labelling is the three layers the log's own status query uses; the
+        dependency validator is the separate least fixed point over the
+        grounding-relevant ``support`` subgraph, and it is handed the labelling
+        rather than recomputing it — passing ``statuses`` is what makes "defeated
+        premise" and "defeated claim" the same fact rather than two.
+        """
+        view = self._fold(staged)
+        table = compute_statuses(view)
+        dependencies = validate_support_dependencies(
+            view,
+            kinds=self.support_kinds,
+            current_note_hashes=self.current_note_hashes,
+            statuses=table,
+        )
+        return table, dependencies
 
     def _head_claim(
-        self, derived: Sequence[DerivedClaim], table: StatusTable
+        self,
+        derived: Sequence[DerivedClaim],
+        table: StatusTable,
+        dependencies: GroundingTable,
     ) -> tuple[DerivedClaim | None, ClaimStatus | None]:
-        """Which derived claim decides the episode — the most answerable one."""
-        best: tuple[int, str] | None = None
+        """Which derived claim decides the episode — the most answerable one.
+
+        Status first, then grounding: among claims the labelling ranks equally, a
+        claim whose evidence chain survives is preferred, so a query that derived
+        one grounded and one ungrounded ``warranted`` claim answers from the
+        grounded one instead of abstaining on the other. Both tiebreaks are
+        content-stable, so the choice is deterministic.
+        """
+        best: tuple[int, int, str] | None = None
         chosen: DerivedClaim | None = None
         verdict: ClaimStatus | None = None
         for claim in derived:
             found = table.get(claim.claim_id)
             status = found.status if found else "unknown"
-            key = (_STATUS_PREFERENCE.get(status, 9), claim.claim_id)
+            key = (
+                _STATUS_PREFERENCE.get(status, 9),
+                0 if dependencies.is_grounded(claim.claim_id) else 1,
+                claim.claim_id,
+            )
             if best is None or key < best:
                 best, chosen, verdict = key, claim, found
         return chosen, verdict
@@ -1816,6 +1954,7 @@ def _proposal_id(proposal: Proposal) -> str:
 
 __all__ = [
     "ABSTAINING_STATUSES",
+    "ABSTAIN_DEPENDENCY",
     "ABSTAIN_GROUNDING",
     "ABSTAIN_NOT_ADMISSIBLE",
     "ABSTAIN_NO_CLAIM",

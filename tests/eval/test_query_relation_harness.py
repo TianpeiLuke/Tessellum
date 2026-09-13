@@ -7,17 +7,24 @@ name below:
 - the harness runs end to end on the example question set with stub arms and
   produces a verdict object (``TestEndToEnd``);
 - the admission rule REFUSES arm 3 when its gain over arm 2 sits inside the
-  noise floor (``TestAdmissionRule.test_refuses_gain_inside_the_noise_floor``);
+  uncertainty THIS harness estimates for it
+  (``TestAdmissionRule.test_refuses_a_gain_inside_the_harnesss_own_uncertainty``);
 - the ordering control detects an order-dependent gain — a fixture whose gain
   exists under one ordering and vanishes under the other is rejected
-  (``TestAdmissionRule.test_rejects_a_gain_that_only_holds_under_one_ordering``).
+  (``TestAdmissionRule.test_rejects_a_gain_that_only_holds_under_one_ordering``);
+- the historical build-noise interval is asymmetric, reference-only, never a
+  default threshold, and never rendered as ± (``TestHistoricalInterval``);
+- the paired estimate is deterministic for a fixed seed
+  (``TestPairedUncertainty``).
 
 Everything here is deterministic and calls no model.
 """
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
+import statistics
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -560,21 +567,147 @@ class TestModelBudget:
         assert (b.total, b2.total) == (0, 3)
 
 
-class TestNoiseFloor:
-    def test_the_constant_and_its_provenance_travel_together(self):
-        assert M.BUILD_NOISE_FLOOR == 0.047
-        prov = M.BUILD_NOISE_FLOOR_PROVENANCE
-        assert "[-0.047, +0.018]" in prov
-        assert "not a significance threshold" in prov
+class TestHistoricalInterval:
+    """The imported figure is kept as the asymmetric interval it is, and is
+    reference-only: it is the default threshold of nothing."""
 
-    def test_it_is_a_parameter_at_the_admission_call_site(self):
-        # A floor measured on THIS harness must be able to replace the imported
-        # one without editing the rule.
-        base = {f"q{i:02d}" for i in range(10)}
-        report = _ab_report(base, base | {"q10"}, n=20)  # 0.50 -> 0.55, a +0.05 gain
-        assert all(g.gain == pytest.approx(0.05) for g in A.p11_verdict(report).per_ordering)
-        assert A.p11_verdict(report, noise_floor=0.10).admitted is False
-        assert A.p11_verdict(report, noise_floor=0.01).admitted is True
+    def test_it_is_an_asymmetric_interval_not_a_plus_minus_figure(self):
+        iv = M.HISTORICAL_BUILD_NOISE_INTERVAL
+        assert (iv.low, iv.high) == (-0.047, 0.018)
+        assert iv.symmetric is False  # there is no "±0.047" form of this
+        assert iv.render() == "[-0.047, +0.018]"
+        assert not hasattr(iv, "plus_minus")
+
+    def test_its_provenance_records_why_it_does_not_transfer(self):
+        prov = M.HISTORICAL_BUILD_NOISE_INTERVAL.provenance.lower()
+        for token in ("proxy", "mismatch", "37-document", "not a significance threshold"):
+            assert token in prov, token
+        # measured on a build-noise probe, so it does not transfer to this harness
+        assert M.HISTORICAL_BUILD_NOISE_INTERVAL.transfers_to("fixed-vault lookup") is False
+
+    def test_the_old_scalar_constant_is_gone(self):
+        # `BUILD_NOISE_FLOOR = 0.047` was the shape that invited the misuse: a
+        # single number, importable as a threshold, with the asymmetry discarded.
+        assert not hasattr(M, "BUILD_NOISE_FLOOR")
+        assert not hasattr(A, "BUILD_NOISE_FLOOR")
+
+    def test_it_is_not_the_default_threshold_of_the_admission_rule(self):
+        defaults = {
+            p.name: p.default
+            for p in inspect.signature(A.admission_verdict).parameters.values()
+        }
+        assert defaults["min_gain"] is None
+        assert 0.047 not in [d for d in defaults.values() if isinstance(d, float)]
+        # and no verdict field carries it either
+        base = {f"q{i:02d}" for i in range(40)}
+        v = A.p11_verdict(_ab_report(base, base | {f"q{i:02d}" for i in range(40, 45)}))
+        assert v.min_gain is None
+        assert "0.047" not in v.render()
+
+    def test_no_verdict_or_report_renders_a_plus_minus(self):
+        base = {f"q{i:02d}" for i in range(40)}
+        report = _ab_report(base, base | {f"q{i:02d}" for i in range(40, 45)})
+        assert "±" not in A.p11_verdict(report).render()
+        assert "±" not in A.render_report(report)
+        assert "±" not in A.p2_verdict(report, target=0.5).render()
+
+    def test_a_caller_may_impose_an_extra_floor_explicitly(self):
+        """If a caller wants an absolute floor — even this one — they pass it."""
+        base = {f"q{i:02d}" for i in range(40)}
+        report = _ab_report(base, base | {f"q{i:02d}" for i in range(40, 45)})  # +0.10
+        assert A.p11_verdict(report).admitted is True  # the paired bar alone
+        floor = abs(M.HISTORICAL_BUILD_NOISE_INTERVAL.low)  # 0.047, passed explicitly
+        assert A.p11_verdict(report, min_gain=floor).admitted is True
+        strict = A.p11_verdict(report, min_gain=0.20)
+        assert strict.admitted is False
+        assert strict.min_gain == 0.20
+        assert all(g.clears_uncertainty for g in strict.per_ordering)
+        assert all(g.clears_min_gain is False for g in strict.per_ordering)
+        assert any("caller-supplied floor" in r for r in strict.reasons)
+
+
+class TestPairedUncertainty:
+    """The harness's own uncertainty: paired per question, seeded, replayable."""
+
+    def _diffs(self, metric="grounding_rate", *, n=50, extra=5):
+        base = {f"q{i:02d}" for i in range(20)}
+        cand = base | {f"q{i:02d}" for i in range(20, 20 + extra)}
+        qs = _set([_question(f"q{i:02d}") for i in range(n)])
+        b = A.run_arm(A.ARM_NODE_FIRST, _scripted_arm(base), qs, "as_given").metrics
+        c = A.run_arm(A.ARM_DERIVATION, _scripted_arm(cand), qs, "as_given").metrics
+        return M.paired_differences(metric, [b], [c])
+
+    def test_pairs_per_question_and_the_difference_is_the_gain(self):
+        d = self._diffs()
+        assert d.n == 50 and d.unpaired_qids == ()
+        assert sum(1 for x in d.differences if x > 0) == 5
+        assert d.mean == pytest.approx(0.10)
+
+    def test_the_per_question_decomposition_reproduces_the_aggregate_rate(self):
+        qs = M.load_question_set(EXAMPLE)
+        met = A.run_arm(
+            A.ARM_NODE_FIRST,
+            A.node_first_arm(A.oracle_resolver(qs), A.oracle_field_reader(qs)),
+            qs,
+            "as_given",
+        ).metrics
+        for name in M.PAIRABLE_METRICS:
+            scores = M.per_question_scores(met, name)
+            if not scores:
+                continue
+            assert statistics.fmean(scores.values()) == pytest.approx(
+                M.metric_value(met, name)
+            ), name
+
+    def test_a_metric_with_an_arm_chosen_denominator_is_refused_not_mispaired(self):
+        d = self._diffs()
+        assert "grounded_precision" in M.UNPAIRABLE_METRICS
+        with pytest.raises(M.NotPairable):
+            M.paired_differences("grounded_precision", [], [])
+        with pytest.raises(KeyError):
+            M.paired_differences("no_such_metric", [], [])
+        assert d.metric == "grounding_rate"
+
+    def test_the_bootstrap_is_deterministic_for_a_fixed_seed(self):
+        d = self._diffs()
+        one = M.paired_uncertainty(d, seed=4242)
+        two = M.paired_uncertainty(d, seed=4242)
+        assert (one.ci_low, one.ci_high) == (two.ci_low, two.ci_high)
+        assert one == two
+        assert one.seed == 4242 and one.resamples == M.DEFAULT_BOOTSTRAP_RESAMPLES
+        # the point estimate and the standard error do not depend on the seed at all
+        other = M.paired_uncertainty(d, seed=99)
+        assert other.mean_difference == pytest.approx(one.mean_difference)
+        assert other.standard_error == pytest.approx(one.standard_error)
+
+    def test_the_standard_error_method_agrees_in_sign_and_ignores_the_seed(self):
+        d = self._diffs()
+        se = M.paired_uncertainty(d, method=M.PAIRED_STANDARD_ERROR, seed=1)
+        assert se == M.paired_uncertainty(d, method=M.PAIRED_STANDARD_ERROR, seed=2)
+        assert se.resamples == 0 and se.seed == 0
+        assert se.excludes_zero is True  # +0.10 over 50 questions
+        assert se.standard_error == pytest.approx(
+            se.stdev_difference / len(d.differences) ** 0.5
+        )
+
+    def test_a_gain_of_one_question_does_not_exclude_zero(self):
+        d = self._diffs(extra=1)  # +0.02 over 50 questions
+        unc = M.paired_uncertainty(d)
+        assert unc.mean_difference == pytest.approx(0.02)
+        assert unc.ci_low <= 0.0 and unc.excludes_zero is False
+
+    def test_the_interval_is_reported_as_two_bounds_never_as_a_margin(self):
+        unc = M.paired_uncertainty(self._diffs())
+        assert "±" not in unc.render()
+        assert unc.render().startswith("95% CI [")
+        assert unc.ci_low < unc.mean_difference < unc.ci_high
+
+    def test_an_unknown_method_or_confidence_is_rejected(self):
+        d = self._diffs()
+        with pytest.raises(ValueError, match="unknown method"):
+            M.paired_uncertainty(d, method="vibes")
+        with pytest.raises(ValueError, match="confidence"):
+            M.paired_uncertainty(d, confidence=1.5)
 
 
 class TestSummaryStatistics:
@@ -746,8 +879,12 @@ def _ab_report(baseline_correct, candidate_correct, *, n=50, **kw):
 
 
 class TestAdmissionRule:
-    def test_refuses_gain_inside_the_noise_floor(self):
-        """40/50 vs 41/50 is a +0.02 gain: inside ±0.047, so REFUSED."""
+    def test_refuses_a_gain_inside_the_harnesss_own_uncertainty(self):
+        """40/50 vs 41/50 is a +0.02 gain: ONE question of fifty flipped.
+
+        The paired interval on the mean difference includes zero, so the gain has
+        not been separated from this harness's own uncertainty — which is the bar,
+        rather than any figure imported from another experiment."""
         base = {f"q{i:02d}" for i in range(40)}
         cand = {f"q{i:02d}" for i in range(41)}
         v = A.p11_verdict(_ab_report(base, cand))
@@ -755,17 +892,33 @@ class TestAdmissionRule:
         assert v.baseline_arm == A.ARM_NODE_FIRST
         gains = {g.ordering: g for g in v.per_ordering}
         assert all(g.gain == pytest.approx(0.02) for g in gains.values())
-        assert all(not g.clears_floor for g in gains.values())
-        assert any("does not clear" in r for r in v.reasons)
+        assert all(not g.clears_uncertainty for g in gains.values())
+        for g in gains.values():
+            assert g.n_pairs == 50
+            assert g.uncertainty.ci_low <= 0.0 <= g.uncertainty.ci_high
+            assert g.uncertainty.mean_difference == pytest.approx(g.gain)
+        assert any("lies inside this harness's paired" in r for r in v.reasons)
         assert "REFUSED" in v.render()
 
-    def test_admits_a_gain_that_clears_the_floor_under_every_ordering(self):
+    def test_admits_a_gain_outside_the_uncertainty_under_every_ordering(self):
         base = {f"q{i:02d}" for i in range(40)}
         cand = {f"q{i:02d}" for i in range(45)}
         v = A.p11_verdict(_ab_report(base, cand))
         assert v.admitted is True and v.reasons == ()
         assert all(g.gain == pytest.approx(0.10) for g in v.per_ordering)
+        assert all(g.uncertainty.ci_low > 0.0 for g in v.per_ordering)
+        assert v.method == A.PAIRED_BOOTSTRAP and v.confidence == 0.95
         assert "ADMITTED" in v.render()
+
+    def test_a_verdict_is_reproducible_from_its_recorded_seed(self):
+        base = {f"q{i:02d}" for i in range(40)}
+        report = _ab_report(base, {f"q{i:02d}" for i in range(45)})
+        first = A.p11_verdict(report)
+        again = A.p11_verdict(report, seed=first.seed)
+        assert [g.uncertainty.ci_low for g in first.per_ordering] == [
+            g.uncertainty.ci_low for g in again.per_ordering
+        ]
+        assert first.render() == again.render()
 
     def test_rejects_a_gain_that_only_holds_under_one_ordering(self):
         """The order-artifact fixture: a gain under one ordering, none under the other.
@@ -789,13 +942,13 @@ class TestAdmissionRule:
         )
         gains = {g.ordering: g for g in A.p11_verdict(report).per_ordering}
         assert gains["as_given"].gain == pytest.approx(0.20)
-        assert gains["as_given"].clears_floor is True
+        assert gains["as_given"].clears_uncertainty is True
         assert gains["reversed"].gain == pytest.approx(0.0)
-        assert gains["reversed"].clears_floor is False
+        assert gains["reversed"].clears_uncertainty is False
 
         v = A.p11_verdict(report)
         assert v.admitted is False
-        assert any("reversed" in r and "does not clear" in r for r in v.reasons)
+        assert any("reversed" in r and "lies inside" in r for r in v.reasons)
         # and the same arms with the ordering control switched off would have
         # passed — which is the point of running more than one ordering.
         one_ordering = A.run_ab(
@@ -844,20 +997,31 @@ class TestAdmissionRule:
         assert v.admitted is False
         assert any("scored run" in r for r in v.reasons)
 
-    def test_run_variance_is_subtracted_from_the_gain_before_the_floor(self):
-        """A noisy arm's gain is discounted by the observed spread."""
-        s_base = M.summarise("grounding_rate", [0.50, 0.50, 0.50])
-        s_cand = M.summarise("grounding_rate", [0.40, 0.55, 0.70])
-        gain = s_cand.mean - s_base.mean
-        assert gain == pytest.approx(0.05)  # would clear a bare ±0.047 floor
-        assert gain - (s_base.stdev + s_cand.stdev) < M.BUILD_NOISE_FLOOR
+    def test_run_spread_is_reported_and_not_subtracted_from_the_gain(self):
+        """The run-to-run spread is a REPORTED quantity, not an interval.
+
+        Subtracting it from the gain was an invented margin — the code that did it
+        said so itself ("not a confidence interval") — and it is gone. The spread
+        is still carried on every ordering, because the plan requires repeated runs
+        with their variance reported; the DECISION is made by the paired estimate."""
+        base = {f"q{i:02d}" for i in range(40)}
+        v = A.p11_verdict(_ab_report(base, {f"q{i:02d}" for i in range(45)}))
+        g = v.per_ordering[0]
+        assert not hasattr(g, "variance_margin")
+        assert not hasattr(g, "clears_floor")
+        assert (g.baseline_stdev, g.candidate_stdev) == (0.0, 0.0)  # deterministic arms
+        assert g.n_runs == 3
+        assert g.uncertainty is not None and g.uncertainty.n_pairs == 50
+        assert "run sd" in v.render()
 
     def test_refuses_an_unjustified_rise_in_abstention(self):
         # The candidate answers MORE questions correctly and also withholds more
-        # of the answerable ones: the gain is real and the abstention guard still
-        # refuses, because the plan requires both halves to hold.
+        # of the answerable ones: the gain is outside the paired uncertainty and
+        # the abstention guard still refuses, because the plan requires both
+        # halves to hold. The rise is judged against ITS OWN paired standard
+        # error, not against a threshold from elsewhere.
         qs = _set(
-            [_question(f"q{i:02d}") for i in range(10)]
+            [_question(f"q{i:02d}") for i in range(40)]
             + [_question(f"n{i}", abstain=True, reason="field_absent") for i in range(4)]
         )
         wrong_answer = M.AnswerAttempt(
@@ -868,13 +1032,14 @@ class TestAdmissionRule:
             def answer(question, *, suppressed=()):
                 if question.abstain:
                     return M.AnswerAttempt(qid=question.qid, outcome="abstained")
-                if question.qid in {f"q{i:02d}" for i in range(6)}:
+                if question.qid in {f"q{i:02d}" for i in range(24)}:
                     return M.AnswerAttempt(
                         qid=question.qid,
                         outcome="answered",
                         answer=question.expected.answer,
                         locators=(question.expected.locator,),
                     )
+                # answers anyway, wrongly and with no locator: never abstains
                 return M.AnswerAttempt(
                     qid=question.qid, outcome="answered", answer=wrong_answer.answer
                 )
@@ -885,15 +1050,19 @@ class TestAdmissionRule:
             qs,
             {
                 A.ARM_NODE_FIRST: loose_factory,
-                A.ARM_DERIVATION: _scripted_arm({f"q{i:02d}" for i in range(8)}),
+                A.ARM_DERIVATION: _scripted_arm({f"q{i:02d}" for i in range(32)}),
             },
             runs=3,
             orderings=("as_given", "reversed"),
         )
         v = A.p11_verdict(report)
-        assert any(g.gain > M.BUILD_NOISE_FLOOR for g in v.per_ordering)
+        # 24/40 -> 32/40: a +0.20 gain, and it does clear the paired uncertainty
+        assert all(g.gain == pytest.approx(0.20) for g in v.per_ordering)
+        assert all(g.clears_uncertainty for g in v.per_ordering)
+        # ... and the verdict still refuses, on the abstention half alone
         assert v.admitted is False
         assert any("abstention on answerable" in r for r in v.reasons)
+        assert any("paired standard error" in r for r in v.reasons)
 
     def test_refuses_a_candidate_that_broke_its_model_budget(self):
         base = {f"q{i:02d}" for i in range(40)}
@@ -921,9 +1090,12 @@ class TestAdmissionRule:
             runs=3,
         )
         v = A.p11_verdict(report)
-        assert all(g.clears_floor for g in v.per_ordering)  # the oracle wins big
+        assert all(g.gain == pytest.approx(0.5) for g in v.per_ordering)  # oracle wins big
         assert v.admitted is False
         assert any("synthetic_fixture" in r for r in v.reasons)
+        # the example set is also too small to support a paired estimate at all,
+        # which is a second, independent reason it cannot decide a phase
+        assert any("paired question(s)" in r for r in v.reasons)
 
     def test_p11_cannot_be_pointed_at_the_flattering_baseline(self):
         report = _ab_report({"q00"}, {"q00", "q01"})
@@ -1035,7 +1207,9 @@ class TestEndToEnd:
         assert len(report.orderings) == 3
         assert report.unavailable and A.ARM_STATUS_QUO in report.unavailable
         assert report.settings["n_should_abstain"] == 4
-        assert report.settings["noise_floor"] == M.BUILD_NOISE_FLOOR
+        # the report carries NO threshold: the bar is estimated at admission time
+        assert "noise_floor" not in report.settings
+        assert report.settings["uncertainty"] == "paired per question at admission time"
 
         node = report.aggregate(A.ARM_NODE_FIRST, "as_given")
         deriv = report.aggregate(A.ARM_DERIVATION, "as_given")

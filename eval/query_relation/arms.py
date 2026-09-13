@@ -27,14 +27,25 @@ The three arms
 
 The admission rule, encoded rather than described
 -------------------------------------------------
-Arm 3 is admitted only if it beats **arm 2** — not arm 1 — outside the noise
-floor. That is enforced by :func:`admission_verdict`, which raises on a P11
-comparison whose baseline is not the node-first arm, so the cheap baseline
-cannot be swapped out for the flattering one. On top of the floor the rule
-requires, and refuses without:
+Arm 3 is admitted only if it beats **arm 2** — not arm 1 — by more than THIS
+harness's own estimated uncertainty. That is enforced by
+:func:`admission_verdict`, which raises on a P11 comparison whose baseline is not
+the node-first arm, so the cheap baseline cannot be swapped out for the
+flattering one.
 
-  * n repeated runs per arm, with the run-to-run spread REPORTED and subtracted
-    from the gain before it is compared with the floor;
+The bar is a **paired** estimate, computed here and nowhere else: both arms
+answer the same questions, so the per-question difference is taken and the
+uncertainty of ITS mean is estimated (paired bootstrap by default, seeded and
+therefore replayable; the paired standard error is reported alongside). A gain
+whose interval includes zero has not been separated from this harness's own
+noise. No figure is imported from another experiment for this purpose — see
+``metrics.HISTORICAL_BUILD_NOISE_INTERVAL`` for the one that exists, why it is
+asymmetric, and why it is reference-only.
+
+On top of that the rule requires, and refuses without:
+
+  * n repeated runs per arm, with the run-to-run spread REPORTED (it is a
+    reported quantity, not an ad-hoc subtraction from the gain);
   * at least two question orderings, with the gain required to hold under EVERY
     one of them (a gain that exists under one ordering and vanishes under
     another is an order artifact, and the literature this plan cites found
@@ -42,6 +53,10 @@ requires, and refuses without:
   * no unjustified rise in abstention on the answerable questions;
   * no per-query model-budget violation, since an arm that outspends its cap has
     not won at matched cost.
+
+A caller who wants an ADDITIONAL absolute floor — a practical-significance
+level, or a figure from some other experiment they are prepared to defend —
+passes ``min_gain=`` explicitly. There is no default.
 
 Arms are built by FACTORIES so every run and every ordering gets a fresh arm: an
 arm that carries a cache would otherwise leak a warm state across runs, which is
@@ -89,8 +104,6 @@ _m = _load_sibling("metrics.py", "query_relation_metrics")
 metrics = _m
 
 # Re-exported so a caller needs one import for the harness.
-BUILD_NOISE_FLOOR = _m.BUILD_NOISE_FLOOR
-BUILD_NOISE_FLOOR_PROVENANCE = _m.BUILD_NOISE_FLOOR_PROVENANCE
 PRIMARY_METRIC = _m.PRIMARY_METRIC
 METRIC_NAMES = _m.METRIC_NAMES
 AnswerAttempt = _m.AnswerAttempt
@@ -106,6 +119,27 @@ load_question_set = _m.load_question_set
 metric_value = _m.metric_value
 score_arm = _m.score_arm
 summarise = _m.summarise
+
+# The paired estimator: the harness's own uncertainty, and the historical
+# interval it deliberately does NOT use as a threshold.
+HISTORICAL_BUILD_NOISE_INTERVAL = _m.HISTORICAL_BUILD_NOISE_INTERVAL
+MeasuredInterval = _m.MeasuredInterval
+NotPairable = _m.NotPairable
+PairedDifferences = _m.PairedDifferences
+PairedUncertainty = _m.PairedUncertainty
+PAIRABLE_METRICS = _m.PAIRABLE_METRICS
+PAIRED_BOOTSTRAP = _m.PAIRED_BOOTSTRAP
+PAIRED_METHODS = _m.PAIRED_METHODS
+PAIRED_STANDARD_ERROR = _m.PAIRED_STANDARD_ERROR
+DEFAULT_BOOTSTRAP_RESAMPLES = _m.DEFAULT_BOOTSTRAP_RESAMPLES
+DEFAULT_BOOTSTRAP_SEED = _m.DEFAULT_BOOTSTRAP_SEED
+DEFAULT_CONFIDENCE = _m.DEFAULT_CONFIDENCE
+MIN_PAIRED_QUESTIONS = _m.MIN_PAIRED_QUESTIONS
+UNPAIRABLE_METRICS = _m.UNPAIRABLE_METRICS
+check_pairable = _m.check_pairable
+paired_differences = _m.paired_differences
+paired_uncertainty = _m.paired_uncertainty
+per_question_scores = _m.per_question_scores
 
 ARM_STATUS_QUO = "arm1_status_quo"
 ARM_NODE_FIRST = "arm2_node_first"
@@ -683,8 +717,9 @@ def run_ab(
             "runs_per_arm": runs,
             "orderings": list(orderings),
             "ablation": ablate,
-            "noise_floor": BUILD_NOISE_FLOOR,
-            "noise_floor_provenance": BUILD_NOISE_FLOOR_PROVENANCE,
+            # No threshold is carried in the report: the bar is estimated at
+            # admission time, from these runs, by pairing per question.
+            "uncertainty": "paired per question at admission time",
         },
         runs=tuple(all_runs),
         aggregates=tuple(aggregates),
@@ -698,11 +733,18 @@ def run_ab(
 class OrderingGain:
     """The candidate's gain over the baseline under one ordering.
 
-    ``variance_margin`` is the gain less the two arms' run-to-run spreads. It is
-    a deliberately conservative margin and NOT a confidence interval: with three
-    runs there is no distributional claim to make, and a gain that does not
-    survive subtracting the observed spread has not been separated from run
-    noise."""
+    Three separate quantities, kept separate on purpose:
+
+      * ``gain`` — the difference of the two arms' mean metric values;
+      * ``baseline_stdev`` / ``candidate_stdev`` — the run-to-run spread of each
+        arm, REPORTED because the plan requires repeated runs with their variance
+        reported. It is not subtracted from the gain: a spread over three runs is
+        not an interval, and pretending it is one was the previous mistake here;
+      * ``uncertainty`` — the paired estimate the decision actually uses, over
+        per-question differences on this ordering's runs.
+
+    ``clears_uncertainty`` is the uncertainty test alone. ``clears_min_gain`` is
+    ``None`` unless the caller supplied an explicit extra floor."""
 
     ordering: str
     baseline_mean: float
@@ -711,36 +753,52 @@ class OrderingGain:
     candidate_stdev: float
     n_runs: int
     gain: float
-    variance_margin: float
-    clears_floor: bool
+    n_pairs: int
+    uncertainty: PairedUncertainty | None
+    clears_uncertainty: bool
+    clears_min_gain: bool | None = None
 
 
 @dataclass(frozen=True)
 class AdmissionVerdict:
-    """The decision object. ``admitted`` is fail-closed: any reason refuses."""
+    """The decision object. ``admitted`` is fail-closed: any reason refuses.
+
+    ``min_gain`` is ``None`` in the default configuration: the only bar is the
+    paired uncertainty estimated on this harness. A caller may supply an extra
+    absolute floor, and it is recorded here when they do."""
 
     phase: str
     metric: str
     baseline_arm: str
     candidate_arm: str
-    noise_floor: float
+    method: str
+    confidence: float
+    seed: int
     admitted: bool
     per_ordering: tuple[OrderingGain, ...]
     reasons: tuple[str, ...]
+    min_gain: float | None = None
 
     def render(self) -> str:
+        bar = (
+            f"bar = this harness's paired {self.confidence:.0%} CI "
+            f"({self.method}, seed {self.seed})"
+        )
+        if self.min_gain is not None:
+            bar += f" and a caller-supplied floor of {self.min_gain:+.3f}"
         head = (
             f"{self.phase}: {self.candidate_arm} vs {self.baseline_arm} on "
-            f"{self.metric}, floor ±{self.noise_floor:.3f} → "
-            f"{'ADMITTED' if self.admitted else 'REFUSED'}"
+            f"{self.metric}, {bar} → {'ADMITTED' if self.admitted else 'REFUSED'}"
         )
-        rows = [
-            f"   {g.ordering:<22} base {g.baseline_mean:+.3f}±{g.baseline_stdev:.3f}  "
-            f"cand {g.candidate_mean:+.3f}±{g.candidate_stdev:.3f}  "
-            f"gain {g.gain:+.3f}  margin {g.variance_margin:+.3f}  "
-            f"{'clears' if g.clears_floor else 'INSIDE FLOOR'}"
-            for g in self.per_ordering
-        ]
+        rows = []
+        for g in self.per_ordering:
+            ci = g.uncertainty.render() if g.uncertainty else "no paired estimate"
+            rows.append(
+                f"   {g.ordering:<22} base {g.baseline_mean:+.3f} (run sd "
+                f"{g.baseline_stdev:.3f})  cand {g.candidate_mean:+.3f} (run sd "
+                f"{g.candidate_stdev:.3f})  gain {g.gain:+.3f}  paired {ci}  "
+                f"{'clears' if g.clears_uncertainty else 'INSIDE UNCERTAINTY'}"
+            )
         why = [f"   - {r}" for r in self.reasons]
         return "\n".join([head, *rows, *why])
 
@@ -754,6 +812,15 @@ _PHASE_PAIRS = {
 }
 
 
+def _arm_runs(report: ABReport, arm: str, ordering: str) -> list[ArmMetrics]:
+    """The scored runs of one arm under one ordering, in run order."""
+    return [
+        r.metrics
+        for r in report.runs
+        if r.arm == arm and r.ordering == ordering and r.metrics is not None
+    ]
+
+
 def admission_verdict(
     report: ABReport,
     *,
@@ -761,7 +828,12 @@ def admission_verdict(
     candidate: str | None = None,
     baseline: str | None = None,
     metric: str = PRIMARY_METRIC,
-    noise_floor: float = BUILD_NOISE_FLOOR,
+    min_gain: float | None = None,
+    method: str = PAIRED_BOOTSTRAP,
+    confidence: float = DEFAULT_CONFIDENCE,
+    resamples: int = DEFAULT_BOOTSTRAP_RESAMPLES,
+    seed: int = DEFAULT_BOOTSTRAP_SEED,
+    min_pairs: int = MIN_PAIRED_QUESTIONS,
     min_runs: int = MIN_RUNS,
     min_orderings: int = MIN_ORDERINGS,
     abstention_guard: bool = True,
@@ -771,7 +843,18 @@ def admission_verdict(
 
     ``phase`` fixes which arms may be compared. Passing a baseline other than
     the one the phase names raises, so the encoded rule cannot be relaxed by a
-    keyword argument at the call site."""
+    keyword argument at the call site.
+
+    The gain is compared against a paired uncertainty estimated on THIS report:
+    per-question differences between the two arms under the same ordering, and
+    a seeded interval on their mean. There is no imported threshold and no
+    default absolute floor; ``min_gain`` adds one only if a caller asks for it.
+
+    The two guards read in opposite directions on purpose, and both directions
+    point at refusal. A GAIN must be demonstrated — its whole interval above
+    zero. A HARM (abstention rising on answerable questions) refuses on weaker
+    evidence: a rise larger than one paired standard error is enough, because
+    the burden of proof sits with the candidate either way."""
     if phase not in _PHASE_PAIRS:
         raise ValueError(f"unknown phase {phase!r}; expected one of {', '.join(_PHASE_PAIRS)}")
     want_candidate, want_baseline = _PHASE_PAIRS[phase]
@@ -815,8 +898,23 @@ def admission_verdict(
                 "report a spread"
             )
         gain = c.mean - b.mean
-        margin = gain - (b.stdev + c.stdev)
-        clears = margin > noise_floor
+        base_runs = _arm_runs(report, baseline, ordering)
+        cand_runs = _arm_runs(report, candidate, ordering)
+        diffs = paired_differences(metric, base_runs, cand_runs)
+        unc = (
+            paired_uncertainty(
+                diffs,
+                method=method,
+                confidence=confidence,
+                resamples=resamples,
+                seed=seed,
+            )
+            if diffs.n
+            else None
+        )
+        enough_pairs = diffs.n >= min_pairs
+        clears = bool(unc is not None and enough_pairs and unc.excludes_zero)
+        clears_min_gain = None if min_gain is None else gain > min_gain
         gains.append(
             OrderingGain(
                 ordering=ordering,
@@ -826,24 +924,57 @@ def admission_verdict(
                 candidate_stdev=c.stdev,
                 n_runs=n_runs,
                 gain=gain,
-                variance_margin=margin,
-                clears_floor=clears,
+                n_pairs=diffs.n,
+                uncertainty=unc,
+                clears_uncertainty=clears,
+                clears_min_gain=clears_min_gain,
             )
         )
-        if not clears:
+        if diffs.unpaired_qids:
             reasons.append(
-                f"{ordering}: gain {gain:+.3f} (margin {margin:+.3f} after the "
-                f"run spread) does not clear the ±{noise_floor:.3f} noise floor"
+                f"{ordering}: {len(diffs.unpaired_qids)} question(s) were scored for "
+                f"only one arm ({', '.join(diffs.unpaired_qids[:3])}); the paired "
+                "estimate cannot cover them"
+            )
+        if unc is None:
+            reasons.append(
+                f"{ordering}: no per-question pair for {metric}; nothing to estimate "
+                "an uncertainty from"
+            )
+        elif not enough_pairs:
+            reasons.append(
+                f"{ordering}: {diffs.n} paired question(s); {min_pairs} required before "
+                "a paired estimate says anything a single question could not"
+            )
+        elif not clears:
+            reasons.append(
+                f"{ordering}: gain {gain:+.3f} lies inside this harness's paired "
+                f"{unc.render()} ({unc.method}), so it is not separated from the "
+                "harness's own uncertainty"
+            )
+        if clears_min_gain is False:
+            reasons.append(
+                f"{ordering}: gain {gain:+.3f} does not exceed the caller-supplied "
+                f"floor of {min_gain:+.3f}"
             )
         if abstention_guard:
-            b_abs = base.summary("abstained_on_answerable") if base else None
-            c_abs = cand.summary("abstained_on_answerable") if cand else None
-            if b_abs and c_abs and b_abs.measured and c_abs.measured:
-                rise = c_abs.mean - b_abs.mean
-                if rise > noise_floor:
+            rise_diffs = paired_differences(
+                "abstained_on_answerable", base_runs, cand_runs
+            )
+            if rise_diffs.n:
+                rise_unc = paired_uncertainty(
+                    rise_diffs,
+                    method=method,
+                    confidence=confidence,
+                    resamples=resamples,
+                    seed=seed,
+                )
+                rise = rise_unc.mean_difference
+                if rise > 0.0 and rise > rise_unc.standard_error:
                     reasons.append(
                         f"{ordering}: abstention on answerable questions rose "
-                        f"{rise:+.3f} over {baseline}, beyond the floor"
+                        f"{rise:+.3f} over {baseline}, more than the paired standard "
+                        f"error of that rise ({rise_unc.standard_error:.3f})"
                     )
     if budget_guard:
         breaches = sorted(
@@ -867,15 +998,19 @@ def admission_verdict(
         metric=metric,
         baseline_arm=baseline,
         candidate_arm=candidate,
-        noise_floor=noise_floor,
+        method=method,
+        confidence=confidence,
+        seed=seed if method == PAIRED_BOOTSTRAP else 0,
         admitted=not reasons,
         per_ordering=tuple(gains),
         reasons=tuple(reasons),
+        min_gain=min_gain,
     )
 
 
 def p11_verdict(report: ABReport, **kwargs) -> AdmissionVerdict:
-    """P11: arm 3 is admitted only if it beats **arm 2** outside the floor."""
+    """P11: arm 3 is admitted only if it beats **arm 2** by more than this
+    harness's own paired uncertainty."""
     return admission_verdict(report, phase="P11", **kwargs)
 
 
@@ -1018,7 +1153,11 @@ REPORTED_METRICS: tuple[tuple[str, str], ...] = (
 
 
 def render_report(report: ABReport) -> str:
-    """The per-arm table: every metric the phase must report, mean ± run spread.
+    """The per-arm table: every metric the phase must report, with its run spread.
+
+    Cells read ``mean sd<spread>``. Not ``mean ± spread``: a ± in this harness's
+    output has already been read once as an interval it was not, and the only
+    interval here is the paired one on the verdict, which is asymmetric.
 
     An arm that did not run gets one NOT RUN line and no numbers, so the table
     cannot be skim-read as though every arm were measured."""
@@ -1026,11 +1165,7 @@ def render_report(report: ABReport) -> str:
     lines = [
         f"{report.question_set}   labelling={report.labelling}"
         + ("   [FIXTURE: no phase decision may rest on this]" if report.is_fixture else ""),
-        "   ".join(
-            f"{k}={v}"
-            for k, v in report.settings.items()
-            if k not in ("noise_floor_provenance", "orderings")
-        ),
+        "   ".join(f"{k}={v}" for k, v in report.settings.items() if k != "orderings"),
         f"orderings: {', '.join(str(o) for o in report.orderings)}",
         "",
         f"{'arm':<{width}}  {'ordering':<20}{'runs':>5}"
@@ -1043,7 +1178,9 @@ def render_report(report: ABReport) -> str:
         cells = []
         for name, _ in REPORTED_METRICS:
             s = a.summary(name)
-            cells.append(f"{s.mean:>11.3f}±{s.stdev:<5.3f}" if s and s.measured else f"{'—':>18}")
+            cells.append(
+                f"{s.mean:>10.3f} sd{s.stdev:<5.3f}" if s and s.measured else f"{'—':>18}"
+            )
         lines.append(f"{a.arm:<{width}}  {a.ordering:<20}{a.n_runs:>5}" + "".join(cells))
     controlled = {
         r.metrics.connected.shortcut_controlled for r in report.runs if r.metrics is not None
@@ -1083,6 +1220,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     ap.add_argument("--runs", type=int, default=DEFAULT_RUNS)
     ap.add_argument("--target", type=float, default=None, help="P2's preregistered target")
+    ap.add_argument(
+        "--seed",
+        type=int,
+        default=DEFAULT_BOOTSTRAP_SEED,
+        help="seed for the paired bootstrap, so a verdict replays exactly",
+    )
+    ap.add_argument(
+        "--method",
+        choices=PAIRED_METHODS,
+        default=PAIRED_BOOTSTRAP,
+        help="paired uncertainty estimator (default: %(default)s)",
+    )
+    ap.add_argument(
+        "--min-gain",
+        type=float,
+        default=None,
+        help="OPTIONAL extra absolute floor on the gain, on top of the paired "
+        "uncertainty. There is no default: no figure from another experiment is "
+        "imported as a threshold here",
+    )
     ap.add_argument("--json", type=Path, help="write the report + verdicts here")
     args = ap.parse_args(argv)
 
@@ -1113,8 +1270,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         },
         runs=args.runs,
     )
-    p2 = p2_verdict(report, target=args.target)
-    p11 = p11_verdict(report)
+    stats = {"method": args.method, "seed": args.seed, "min_gain": args.min_gain}
+    p2 = p2_verdict(report, target=args.target, **stats)
+    p11 = p11_verdict(report, **stats)
     print(render_report(report))
     print()
     print(p2.render())

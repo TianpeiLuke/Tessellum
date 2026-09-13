@@ -10,8 +10,12 @@ Covers each clause of the phase's acceptance line:
 2. Appending a ``support`` edge **never changes any Dung label** — only the
    post-classification (``proposed`` → ``warranted``).
 3. A **superseded claim leaves the framework**: it is not labelled ``out``
-   (being replaced is not being defeated), its attacks stop counting, and a
-   supersession from a defeated claim does not count at all.
+   (being replaced is not being defeated), and its attacks stop counting — but
+   only when the replacement itself computes as ``warranted``. The pre-filter's
+   rule gets four fixtures of its own, three of them regressions against the
+   rejected reading ("the replacement is merely not ``out``"): an **unsupported**
+   replacement, a **mutually attacked** one and a **defeated** one all retire
+   nothing, and an ungrounded later row loses the tie to a warranted earlier one.
 4. The per-cycle frozen labelling is **marked historical** — in the cycle
    result's own docstring and on the public trace-JSON surface.
 
@@ -174,16 +178,23 @@ def test_the_four_statuses_are_a_function_of_the_edge_set() -> None:
     both ``undec``. A live unresolved dispute answers a question the same way a
     defeated claim does, so exposing a third "undecided" verdict would only
     invite a caller to treat it as a weak yes.
+
+    ``new`` carries its own support edge, which is what makes its supersession of
+    ``old`` count at all: the pre-filter admits a supersession only from a claim
+    that computes as ``warranted``. That support edge is therefore load-bearing
+    for this fixture, not decoration — see the two counter-fixtures below for
+    what happens without it.
     """
     view = _set(
         (_C("w"), _C("s"), _C("p"), _C("d"), _C("k"), _C("old"), _C("new"),
-         _C("m1"), _C("m2")),
+         _C("ns"), _C("m1"), _C("m2")),
         (
             _E("support", "s", "w", 1),
             _E("attack", "k", "d", 2),
-            _E("supersede", "new", "old", 3),
-            _E("attack", "m1", "m2", 4),
-            _E("attack", "m2", "m1", 5),
+            _E("support", "ns", "new", 3),
+            _E("supersede", "new", "old", 4),
+            _E("attack", "m1", "m2", 5),
+            _E("attack", "m2", "m1", 6),
         ),
     )
     table = compute_statuses(view)
@@ -191,6 +202,7 @@ def test_the_four_statuses_are_a_function_of_the_edge_set() -> None:
     assert got["w"] == "warranted"
     assert got["p"] == "proposed"
     assert got["d"] == "challenged"
+    assert got["new"] == "warranted"  # the replacement earned the supersession
     assert got["old"] == "superseded"
     assert got["m1"] == got["m2"] == "challenged"
     assert table.labels["m1"] == table.labels["m2"] == "undec"
@@ -346,14 +358,24 @@ def test_a_superseded_claim_leaves_the_framework(tmp_path: Path) -> None:
     discharge the attack, because a retired claim neither attacks nor is
     labelled. Being replaced is not being defeated, so ``b``'s Dung label is
     absent rather than ``out``.
+
+    The successor is supported first, and that is a precondition rather than
+    set-dressing: only a ``warranted`` replacement retires anything.
     """
     log = _log(tmp_path)
     a = log.append_claim(_claim("a"))
     b = log.append_claim(_claim("b"))
     successor = log.append_claim(_claim("successor"))
+    ground = log.append_claim(_claim("ground"))
     log.append_edge(EdgeDraft("attack", b.claim_id, a.claim_id, ORIGIN_QUERY))
+    log.append_edge(
+        EdgeDraft(
+            "support", ground.claim_id, successor.claim_id, ORIGIN_QUERY, "note-g#L1"
+        )
+    )
     query = StatusQuery(log)
     assert query.status(a.claim_id).status == "challenged"
+    assert query.status(successor.claim_id).status == "warranted"
 
     log.supersede(
         superseding_claim_id=successor.claim_id,
@@ -371,9 +393,67 @@ def test_a_superseded_claim_leaves_the_framework(tmp_path: Path) -> None:
     assert table.statuses[a.claim_id].status == "proposed"  # reinstated, unsupported
 
 
+# ── the pre-filter's rule: only a WARRANTED replacement retires anything ─────
+
+
+def test_an_unsupported_supersede_does_not_retire_the_current_claim() -> None:
+    """A2's first counter-fixture, and the rule it establishes.
+
+    ``new`` supersedes ``old`` and nothing supports ``new``, so ``new`` computes
+    as ``proposed`` — surviving, but ungrounded. The rejected pre-filter asked
+    only whether the replacement was *not* ``out``, which ``proposed`` satisfies,
+    so ``old`` came back ``superseded``: an unsupported assertion silently
+    withdrew the current answer. The rule is ``warranted``, so nothing is
+    retired here and both claims stay in the framework.
+    """
+    view = _set(
+        (_C("old"), _C("new")),
+        (_E("supersede", "new", "old", 1),),
+    )
+    table = compute_statuses(view)
+    assert table.statuses["new"].status == "proposed"  # survives, but ungrounded
+    assert table.statuses["old"].status != "superseded"
+    assert table.statuses["old"].status == "proposed"
+    assert table.statuses["old"].superseded_by is None
+    assert "old" in table.live
+    assert table.labels["old"] == "in"  # still labelled: it never left
+
+
+def test_a_mutually_attacked_supersede_does_not_retire_the_current_claim() -> None:
+    """A2's second counter-fixture: an unresolved dispute retires nothing.
+
+    ``new`` and ``old`` attack each other with no defender, so the fixed point
+    leaves both ``undec`` and ``new`` computes as ``challenged``. ``new`` IS
+    supported here, which isolates the variable: the supersession fails on the
+    live dispute alone, not on missing support. Under the rejected rule ``undec``
+    was "not ``out``" and ``old`` was retired by a claim the corpus had not
+    settled — the replacement would have won its own dispute by removing the
+    other side.
+    """
+    view = _set(
+        (_C("old"), _C("new"), _C("ns")),
+        (
+            _E("support", "ns", "new", 1),
+            _E("attack", "new", "old", 2),
+            _E("attack", "old", "new", 3),
+            _E("supersede", "new", "old", 4),
+        ),
+    )
+    table = compute_statuses(view)
+    assert table.labels["new"] == table.labels["old"] == "undec"
+    assert table.statuses["new"].status == "challenged"
+    assert table.statuses["old"].status != "superseded"
+    assert table.statuses["old"].status == "challenged"
+    assert table.statuses["old"].superseded_by is None
+    assert "old" in table.live
+
+
 def test_a_supersede_from_a_defeated_claim_does_not_count() -> None:
-    """The pre-filter's provisional pass is what stops a defeated claim retiring
-    a live one — ``r`` is ``out``, so its supersession of ``b`` is ignored."""
+    """A defeated claim retires nothing either — ``r`` is ``out``.
+
+    The weakest case of the same rule, and the only one the rejected pre-filter
+    also got right.
+    """
     view = _set(
         (_C("b"), _C("r"), _C("x")),
         (
@@ -389,17 +469,49 @@ def test_a_supersede_from_a_defeated_claim_does_not_count() -> None:
 
 
 def test_the_latest_supersession_names_the_successor() -> None:
-    """Two supersessions of one claim: the later log position wins, so "current"
-    is well defined rather than dependent on read order."""
+    """Two COUNTING supersessions of one claim: the later log position wins, so
+    "current" is well defined rather than dependent on read order.
+
+    Both replacements are supported, because a supersession that does not count
+    cannot break a tie: with the pre-filter's rule in force, "latest" is the
+    latest *warranted* replacement.
+    """
     view = _set(
-        (_C("b"), _C("first"), _C("second")),
+        (_C("b"), _C("first"), _C("second"), _C("g1"), _C("g2")),
         (
-            _E("supersede", "first", "b", 1),
-            _E("supersede", "second", "b", 2),
+            _E("support", "g1", "first", 1),
+            _E("support", "g2", "second", 2),
+            _E("supersede", "first", "b", 3),
+            _E("supersede", "second", "b", 4),
         ),
     )
     table = compute_statuses(view)
+    assert table.statuses["first"].status == table.statuses["second"].status
+    assert table.statuses["second"].status == "warranted"
     assert table.statuses["b"].superseded_by == "second"
+
+
+def test_an_ungrounded_replacement_loses_the_tie_to_a_warranted_one() -> None:
+    """Log position only orders the supersessions that count.
+
+    ``late`` is appended after ``early`` and is unsupported, so it never enters
+    the pre-filter; ``early`` is warranted, so it names the successor even though
+    a later row also claims to replace ``b``. Under the rejected rule the answer
+    was ``late`` — the newest row won regardless of whether anything stood
+    behind it.
+    """
+    view = _set(
+        (_C("b"), _C("early"), _C("late"), _C("g")),
+        (
+            _E("support", "g", "early", 1),
+            _E("supersede", "early", "b", 2),
+            _E("supersede", "late", "b", 3),
+        ),
+    )
+    table = compute_statuses(view)
+    assert table.statuses["late"].status == "proposed"
+    assert table.statuses["b"].status == "superseded"
+    assert table.statuses["b"].superseded_by == "early"
 
 
 # ── the stub refusal ────────────────────────────────────────────────────────
@@ -499,11 +611,13 @@ def test_acceptance_is_a_second_axis_and_nothing_is_accepted_yet() -> None:
     """
     assert INDEPENDENT_VALIDATION_AVAILABLE is False
     view = _set(
-        (_C("w"), _C("s"), _C("p"), _C("d"), _C("k"), _C("old"), _C("new")),
+        (_C("w"), _C("s"), _C("p"), _C("d"), _C("k"), _C("old"), _C("new"),
+         _C("ns")),
         (
             _E("support", "s", "w", 1),
             _E("attack", "k", "d", 2),
-            _E("supersede", "new", "old", 3),
+            _E("support", "ns", "new", 3),  # only a warranted claim supersedes
+            _E("supersede", "new", "old", 4),
         ),
     )
     table = compute_statuses(view)

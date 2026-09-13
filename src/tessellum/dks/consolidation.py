@@ -26,8 +26,8 @@ neither has a permissive default:
 **Six conditions, all parameterised, all fail-closed** (:class:`ConsolidationPolicy`):
 
 ===================== ===========================================================
-recurrence            ``>= 3`` occurrences of one ``derivation_id``
-independent contexts  ``>= 2``, counted over **episodes** — see the caveat below
+recurrence            ``>= 3`` derivations of one **proposition version**
+independent contexts  ``>= 2`` **origin-distinct** episodes — see below
 reliability           ``η = (n_pass + 1) / (n_trial + 2) >= 0.8``, probationary
                       below, and **no open correction flag**
 stability             the answer unchanged across a dwell window of 7–14 days
@@ -37,6 +37,16 @@ dedup                 prior-art retrieval — embedding pre-filter at top-k ≈ 
                       append-vs-create
 ===================== ===========================================================
 
+**Which identity each condition counts, since there are three.** Recurrence, the
+trial history ``η`` is read from, and the dedup key all key on the **proposition
+version** (:func:`~tessellum.dks.claim_identity.feedback_subject_id`), never on an
+evidence occurrence: several propositions can be read out of one span, so a store
+keyed on the located string hands a *changed* proposition the *replaced* one's
+feedback history — which is
+:data:`~tessellum.dks.claim_identity.TRIAL_HISTORY_SUBJECT_RULE`, obeyed here
+rather than restated. A revision therefore mints a new
+``proposition_id`` and starts with **no** history of its own.
+
 The arithmetic (counting, ``η``, the dwell span, the cosine pre-filter, the
 threshold comparison) is deterministic and stays that way. Three steps are
 genuinely judgements about meaning and each is an **injected seam** with a
@@ -44,16 +54,24 @@ deterministic reference implementation: :class:`EntailmentJudge`,
 :class:`DedupJudge` and :class:`PromotionProseAuthor`. No network call is
 hard-coded anywhere in this module.
 
-**The independence term is a recorded weakening, not a solved criterion.** Until
-the cross-span fact layer lands a claim has exactly one source span by
-construction, so "independent contexts" is read over *episodes that independently
-derived the same* ``derivation_id`` rather than over distinct sources. The
-promotion criteria are explicit that *the independence term, not the count,
+**The independence term is ORIGIN-distinct, and it is still a recorded
+weakening.** Until the cross-span fact layer lands, "independent contexts" cannot
+mean distinct *sources*, so it is read over episodes that independently derived
+the same proposition version. Episode distinctness is **not** independence on its
+own, and counting episode ids is the failure this module is written against: ten
+restatements of one self-authored claim carry ten episode ids and one origin, and
+they must count **once**. So every :class:`DerivationOccurrence` carries a
+:class:`ClaimOrigin`, two derivations corroborate only when they fall in
+different episodes *and* trace to disjoint origin ancestries
+(:func:`independence_measurement`), and an occurrence with **no** declared origin
+is not counted at all. Origin dependencies **survive the commit boundary**: a
+derivation off a claim this system promoted earlier inherits that claim's origins
+through :func:`origin_after_promotion` instead of presenting as fresh evidence.
+The promotion criteria are explicit that *the independence term, not the count,
 carries the evidential weight, and in a single-author corpus a naive recurrence
-counter counts your own habits of description*. Every
-:class:`PromotionRecord` carries
-:data:`~tessellum.dks.claim_identity.FACT_ID_DEVIATION` so no consumer adopts
-the weaker reading silently.
+counter counts your own habits of description*. Every :class:`PromotionRecord`
+carries :data:`~tessellum.dks.claim_identity.FACT_ID_DEVIATION` and its origin
+ids, so no consumer adopts the weaker reading silently.
 
 **Promotion is coexistence, not supersession.** What a promoted claim produces is
 an *additive* grounded block that competes at read time, scoped to the target
@@ -105,7 +123,11 @@ from tessellum.dks.capability import (
     PromotionEligibility,
     validate_effect_kind,
 )
-from tessellum.dks.claim_identity import FACT_ID_DEVIATION, normalize_span_text
+from tessellum.dks.claim_identity import (
+    FACT_ID_DEVIATION,
+    TRIAL_HISTORY_SUBJECT_RULE,
+    normalize_span_text,
+)
 from tessellum.dks.memory_tiers import (
     RELIABILITY_FLOOR,
     RESOLVED_ORIGIN,
@@ -158,6 +180,23 @@ qualifier-stripping failure mode with a different name."""
 
 INDEPENDENCE_BASIS_EPISODES: str = "episodes"
 INDEPENDENCE_BASIS_FACTS: str = "facts"
+"""The basis names the **context key** an occurrence is grouped under — its
+episode, or its ``fact_id`` once a resolver has assigned one. Origin-distinctness
+(:data:`INDEPENDENCE_ORIGIN_RULE`) applies under either basis: it is a second
+condition on the count, not an alternative to it."""
+
+INDEPENDENCE_ORIGIN_RULE: str = (
+    "Independence is ORIGIN-DISTINCT, not episode-distinct. Two derivations "
+    "corroborate only when they fall in different episodes AND trace to disjoint "
+    "origin ancestries; repeated derivations tracing to one origin never "
+    "corroborate, however many episode ids they carry. Ten restatements of one "
+    "self-authored claim are one witness. Origin dependencies survive the commit "
+    "boundary: a derivation off a claim this system promoted earlier inherits "
+    "that claim's origins (origin_after_promotion) instead of presenting as "
+    "fresh evidence. An occurrence with no declared origin is UNATTRIBUTED and "
+    "is not counted -- an untracked origin cannot be shown to be a distinct one."
+)
+"""The A9 rule this module implements, stated once so a consumer can cite it."""
 
 ENTAILMENT_CALIBRATION_CAVEAT: str = (
     "The entailment gate is UN-CALIBRATED: the shipped grounding certificate is "
@@ -228,6 +267,8 @@ already has prose, so a new note would be a duplicate."""
 
 REASON_DERIVED_TOO_FEW_TIMES: str = "recurrence_below_floor"
 REASON_TOO_FEW_CONTEXTS: str = "independent_contexts_below_floor"
+REASON_SHARED_ORIGIN: str = "occurrences_trace_to_one_origin"
+REASON_ORIGIN_UNATTRIBUTED: str = "occurrence_without_a_declared_origin"
 REASON_ETA_BELOW_FLOOR: str = "reliability_below_floor"
 REASON_OPEN_CORRECTION: str = "open_correction_flag"
 REASON_INSIDE_DWELL_WINDOW: str = "inside_dwell_window"
@@ -355,9 +396,12 @@ UNRUN_PROMOTION_AB: PromotionABGate = PromotionABGate(
 
 @dataclass(frozen=True)
 class EntailmentRequest:
-    """One entailment question: does this cited span entail this claim?"""
+    """One entailment question: does this cited span entail this claim?
 
-    derivation_id: str
+    Keyed by proposition version, like every other subject here: the question is
+    about what is asserted, not about the located string it was read from."""
+
+    proposition_id: str
     claim_text: str
     locator: str
     span_text: str
@@ -530,9 +574,13 @@ class DedupDecision:
 
 @dataclass(frozen=True)
 class DedupRequest:
-    """The candidate and its shortlist, as a dedup judge sees them."""
+    """The candidate and its shortlist, as a dedup judge sees them.
 
-    derivation_id: str
+    Keyed on the **proposition version**: prior art is prior art for what the
+    claim asserts, so a revision must face the gate afresh rather than inherit the
+    replaced wording's dedup verdict."""
+
+    proposition_id: str
     claim_text: str
     shortlist: tuple[PriorArtMatch, ...]
 
@@ -577,7 +625,7 @@ class LinkBeforeCreateJudge:
 class ProseRequest:
     """What an author is given, and everything it must carry through."""
 
-    derivation_id: str
+    proposition_id: str
     claim_text: str
     qualifiers: tuple["Qualifier", ...]
     locators: tuple[str, ...]
@@ -619,10 +667,153 @@ class AdditiveProseAuthor:
         if request.locators:
             parts.append("Grounded in " + "; ".join(request.locators) + ".")
         parts.append(
-            f"({self.marker}: {request.derivation_id}; origin={RESOLVED_ORIGIN}; "
+            f"({self.marker}: {request.proposition_id}; origin={RESOLVED_ORIGIN}; "
             "coexists with the authored text — nothing above was rewritten.)"
         )
         return "\n".join(parts)
+
+
+# ── origin: what the independence term has to be distinct OVER ──────────────
+
+AUTHORED_ORIGIN: str = "authored"
+"""An origin in authored prose — the ``authored`` half of the origin vocabulary
+the Tier-A ``relations`` rows and ``edges.origin`` already use. Restated here
+rather than imported for the reason the operator vocabulary is: the column that
+mirrors it lives in the runtime, which ``dks`` may not import."""
+
+OriginKind = Literal["authored", "resolved"]
+"""``authored`` — the derivation read human-authored prose. ``resolved`` — it read
+a claim **this system** promoted earlier, so it is not fresh evidence about the
+world; it is the system quoting itself."""
+
+ORIGIN_KINDS: frozenset[str] = frozenset({AUTHORED_ORIGIN, RESOLVED_ORIGIN})
+
+PROVENANCE_LOCATED: str = "stub"
+PROVENANCE_CONSTRUCTED: str = "constructed"
+ORIGIN_PROVENANCES: frozenset[str] = frozenset(
+    {"", PROVENANCE_LOCATED, PROVENANCE_CONSTRUCTED}
+)
+"""``claims.provenance`` as the log's closed set writes it, plus ``""`` for an
+origin whose provenance the caller did not state. Mirrored rather than imported,
+for the same boundary reason as :data:`AUTHORED_ORIGIN`."""
+
+
+@dataclass(frozen=True)
+class ClaimOrigin:
+    """Where one derivation ULTIMATELY traces to — the independence term's unit.
+
+    The plan's A9 correction in one object: *do not count episode ids as
+    independent contexts; track origin, or ten restatements will look like ten
+    witnesses.* An episode id says **when** a derivation happened, which is not
+    evidence about the world; an origin says **what it read**.
+
+    - ``origin_id`` — the source's identity. :func:`corpus_origin` builds it from
+      a note at a source version and :func:`self_authored_origin` from the
+      promoted claim's proposition version, so the two can never collide.
+    - ``kind`` — ``authored`` or ``resolved`` (:class:`OriginKind`).
+    - ``provenance`` — ``claims.provenance`` for the claim this traces to. This is
+      the field that must be *inherited* rather than reset across a promotion: a
+      derivation off a self-authored claim is ``constructed``, and saying so is
+      what stops it presenting as fresh.
+    - ``inherited`` — the ancestor origin ids this one depends on. **This is what
+      survives the commit boundary**: a promoted claim's own origins ride into
+      every later derivation off it, so such a derivation can never corroborate
+      the sources that produced it.
+
+    Sameness is by :attr:`ancestry` overlap, not by equality: two origins that
+    share any ancestor are one dependency, because a shared dependency is exactly
+    what independence means the absence of."""
+
+    origin_id: str
+    kind: OriginKind = "authored"
+    provenance: str = ""
+    inherited: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.origin_id.strip():
+            raise ValueError("an origin needs a non-empty origin_id")
+        if self.kind not in ORIGIN_KINDS:
+            raise ValueError(
+                f"unknown origin kind {self.kind!r}; the vocabulary is "
+                f"{sorted(ORIGIN_KINDS)}"
+            )
+        if self.provenance not in ORIGIN_PROVENANCES:
+            raise ValueError(
+                f"unknown provenance {self.provenance!r}; claims.provenance is "
+                f"the closed set {sorted(ORIGIN_PROVENANCES - {''})}"
+            )
+        object.__setattr__(
+            self,
+            "inherited",
+            tuple(
+                sorted(
+                    {
+                        ancestor
+                        for ancestor in self.inherited
+                        if ancestor and ancestor != self.origin_id
+                    }
+                )
+            ),
+        )
+
+    @property
+    def ancestry(self) -> tuple[str, ...]:
+        """This origin and every ancestor it inherited — sorted, de-duplicated.
+
+        The set independence is computed over. It is never empty, so an origin
+        always constrains the count rather than silently dropping out of it."""
+        return tuple(sorted({self.origin_id, *self.inherited}))
+
+    @property
+    def self_authored(self) -> bool:
+        """``True`` when the derivation read this system's own earlier claim."""
+        return self.kind == RESOLVED_ORIGIN
+
+    def depends_on(self, other: ClaimOrigin) -> bool:
+        """Whether the two share an ancestor — i.e. cannot corroborate."""
+        return bool(set(self.ancestry) & set(other.ancestry))
+
+
+def corpus_origin(
+    note_id: str, *, source_note_hash: str = "", provenance: str = ""
+) -> ClaimOrigin:
+    """The origin of a derivation that read AUTHORED prose: a note at a version.
+
+    The **span locator is deliberately not in the key**. One note is one
+    authorial act, so two spans of one note are one origin and two derivations
+    reading different paragraphs of the same note do not corroborate each other.
+    Counting spans instead would reinstate the failure this rule exists to stop,
+    one level down: *in a single-author corpus a naive recurrence counter counts
+    your own habits of description.*
+
+    ``source_note_hash`` enters the key because a *later version* of a note is a
+    genuinely later reading — the same distinction the evidence-occurrence
+    identity draws."""
+    if not note_id.strip():
+        raise ValueError("a corpus origin needs a non-empty note_id")
+    return ClaimOrigin(
+        origin_id=f"{AUTHORED_ORIGIN}:{note_id}@{source_note_hash}",
+        kind="authored",
+        provenance=provenance,
+    )
+
+
+def self_authored_origin(
+    proposition_id: str, *, inherited: Sequence[str] = ()
+) -> ClaimOrigin:
+    """The origin of a derivation that read a claim THIS SYSTEM authored.
+
+    ``provenance`` is ``constructed`` because that is what the claim it read was,
+    and ``inherited`` carries that claim's own origins forward. Both together are
+    the reason a restatement cannot present as fresh evidence."""
+    if not proposition_id.strip():
+        raise ValueError("a self-authored origin needs a non-empty proposition_id")
+    return ClaimOrigin(
+        origin_id=f"{RESOLVED_ORIGIN}:{proposition_id}",
+        kind="resolved",
+        provenance=PROVENANCE_CONSTRUCTED,
+        inherited=tuple(inherited),
+    )
 
 
 # ── the candidate ───────────────────────────────────────────────────────────
@@ -649,12 +840,23 @@ class Qualifier:
 
 @dataclass(frozen=True)
 class DerivationOccurrence:
-    """One episode's derivation of a claim — the unit recurrence counts.
+    """One episode's derivation of a proposition — the unit recurrence counts.
 
     ``answer_hash`` is what the stability window compares: the same claim
     derived three times with three different answers is not stable, however often
     it recurred. ``span_text`` is what the entailment gate reads, and it is per
-    occurrence because each derivation cites its own span."""
+    occurrence because each derivation cites its own span.
+
+    ``origin`` is what the *independence* term counts, and it is the field whose
+    absence made the criterion vacuous: with only ``episode_id`` to go on, ten
+    restatements of one self-authored claim measured as ten independent contexts.
+    ``None`` is representable and honest — an **unattributed** occurrence, which
+    is therefore not counted (:data:`INDEPENDENCE_ORIGIN_RULE`) rather than
+    counted as fresh.
+
+    ``proposition_id`` is optional and only ever *checked*: when set it must equal
+    the candidate's, so occurrences of a superseded proposition cannot be folded
+    into its replacement's counts."""
 
     claim_id: str
     episode_id: str
@@ -663,6 +865,8 @@ class DerivationOccurrence:
     locator: str = ""
     span_text: str = ""
     fact_id: str = ""
+    origin: ClaimOrigin | None = None
+    proposition_id: str = ""
 
     def __post_init__(self) -> None:
         if not self.claim_id:
@@ -671,6 +875,16 @@ class DerivationOccurrence:
             raise ValueError("an occurrence needs an episode_id")
         if self.at < 0:
             raise ValueError(f"an occurrence needs at >= 0, got {self.at}")
+
+    @property
+    def attributed(self) -> bool:
+        """Whether this occurrence declares where it traced to."""
+        return self.origin is not None
+
+    @property
+    def origin_ancestry(self) -> tuple[str, ...]:
+        """The origin ids this occurrence depends on; empty when unattributed."""
+        return () if self.origin is None else self.origin.ancestry
 
 
 @dataclass(frozen=True)
@@ -681,9 +895,16 @@ class PromotionCandidate:
     a store. ``neighbourhood_text`` is the authored text the additive block will
     sit *beside* — supplied so the reviewed diff can be rendered over the
     neighbourhood alone, which is what makes the writeback scope checkable rather
-    than declared."""
+    than declared.
 
-    derivation_id: str
+    ``proposition_id`` — **not** an evidence-occurrence id — is the subject of
+    every count here: recurrence, the trial history ``η`` is read from, the dedup
+    key and the promotion record all key on it, per
+    :data:`~tessellum.dks.claim_identity.TRIAL_HISTORY_SUBJECT_RULE`. Keying on
+    the located string instead is what let a changed proposition inherit the
+    replaced one's feedback history."""
+
+    proposition_id: str
     claim_text: str
     target: PromotionTarget
     target_note_id: str
@@ -701,8 +922,8 @@ class PromotionCandidate:
     valid_to: str | None = None
 
     def __post_init__(self) -> None:
-        if not self.derivation_id:
-            raise ValueError("a candidate needs a derivation_id")
+        if not self.proposition_id:
+            raise ValueError("a candidate needs a proposition_id")
         if not self.claim_text.strip():
             raise ValueError("a candidate needs claim text")
         if self.target not in PROMOTION_TARGETS:
@@ -711,10 +932,22 @@ class PromotionCandidate:
             raise ValueError("a candidate needs a target_note_id")
         if not self.occurrences:
             raise ValueError("a candidate needs at least one occurrence")
+        foreign = tuple(
+            o.proposition_id
+            for o in self.occurrences
+            if o.proposition_id and o.proposition_id != self.proposition_id
+        )
+        if foreign:
+            raise ValueError(
+                f"candidate {self.proposition_id!r} was given occurrences of "
+                f"another proposition version {sorted(set(foreign))}; folding them "
+                "in would count one proposition's derivations toward another's "
+                f"recurrence and feedback. {TRIAL_HISTORY_SUBJECT_RULE}"
+            )
 
     @property
     def recurrence(self) -> int:
-        """How many times the claim was derived — occurrences, not episodes."""
+        """How many times the proposition was derived — derivations, not episodes."""
         return len(self.occurrences)
 
     @property
@@ -723,8 +956,26 @@ class PromotionCandidate:
 
     @property
     def context_ids(self) -> tuple[str, ...]:
-        """The distinct episodes that derived it — the independence term's basis."""
+        """The distinct episodes that derived it — the independence term's *basis*.
+
+        The basis, not the count: episodes are grouped by origin before anything
+        is counted (:func:`independence_measurement`)."""
         return tuple(sorted({o.episode_id for o in self.occurrences}))
+
+    @property
+    def origin_ids(self) -> tuple[str, ...]:
+        """Every origin the occurrences trace to, **inherited ancestors included**.
+
+        What the promotion record carries and what has to survive the commit
+        boundary, so a later derivation off the promoted claim inherits it."""
+        return tuple(
+            sorted({a for o in self.occurrences for a in o.origin_ancestry})
+        )
+
+    @property
+    def unattributed_occurrences(self) -> int:
+        """Occurrences with no declared origin — a hole, reported not hidden."""
+        return sum(1 for o in self.occurrences if not o.attributed)
 
     @property
     def fact_ids(self) -> tuple[str, ...]:
@@ -845,37 +1096,153 @@ def evaluate_recurrence(
     )
 
 
+def _context_key(
+    occurrence: DerivationOccurrence, policy: ConsolidationPolicy
+) -> str:
+    """The occurrence's context under the policy's basis, namespaced.
+
+    Over facts only when a resolver has actually assigned one; an absent
+    ``fact_id`` means *unresolved*, never "a distinct fact", so an unresolved
+    occurrence falls back to its episode rather than being counted as
+    diversity."""
+    if policy.independence_over == INDEPENDENCE_BASIS_FACTS and occurrence.fact_id:
+        return f"fact:{occurrence.fact_id}"
+    return f"episode:{occurrence.episode_id}"
+
+
+@dataclass(frozen=True)
+class IndependenceMeasurement:
+    """The independence term with its workings shown, not just its total.
+
+    ``count`` is what the floor is compared against; the rest is what a reviewer
+    needs to see *why* it is that number — how many contexts went in, how many
+    origins they collapsed onto, and how many occurrences declared no origin at
+    all."""
+
+    count: int
+    context_keys: tuple[str, ...]
+    origin_ids: tuple[str, ...]
+    unattributed: int
+    basis: str
+
+    @property
+    def collapsed_by_origin(self) -> bool:
+        """Whether sharing an origin cost the candidate contexts it had counted.
+
+        The A9 signature: many contexts, one witness."""
+        return self.count < len(self.context_keys)
+
+
+def independence_measurement(
+    candidate: PromotionCandidate, policy: ConsolidationPolicy
+) -> IndependenceMeasurement:
+    """Count **origin-distinct** contexts. Pure arithmetic, order-independent.
+
+    An independent context is an equivalence class of occurrences under two
+    relations, both of which defeat corroboration:
+
+    1. *shares a context* — the same episode (or the same ``fact_id`` under the
+       facts basis). One episode deriving a claim three times is one context.
+    2. *shares an origin ancestor* — :attr:`ClaimOrigin.ancestry` overlaps. This
+       is the A9 rule: repeated derivations tracing to one origin never
+       corroborate, however many episode ids they carry, and because a promoted
+       claim's origins are inherited (:func:`origin_after_promotion`) the rule
+       holds **across the commit boundary** too.
+
+    Both relations only ever *merge* classes, so the count is monotone in what is
+    known: learning that two derivations share an origin can lower it and can
+    never raise it. Occurrences with **no** declared origin are excluded rather
+    than counted — an untracked origin cannot be shown to be a distinct one — and
+    they are reported in :attr:`IndependenceMeasurement.unattributed` so the hole
+    stays visible.
+
+    Implemented as a union-find whose roots are chosen lexicographically, so the
+    classes do not depend on the order the occurrences arrived in and a replayed
+    batch measures the same number."""
+    parent: dict[str, str] = {}
+
+    def find(node: str) -> str:
+        parent.setdefault(node, node)
+        root = node
+        while parent[root] != root:
+            root = parent[root]
+        while parent[node] != root:
+            parent[node], node = root, parent[node]
+        return root
+
+    def union(left: str, right: str) -> None:
+        left_root, right_root = find(left), find(right)
+        if left_root == right_root:
+            return
+        low, high = sorted((left_root, right_root))
+        parent[high] = low
+
+    context_keys: list[str] = []
+    origins: set[str] = set()
+    for occurrence in candidate.occurrences:
+        if not occurrence.attributed:
+            continue
+        key = _context_key(occurrence, policy)
+        context_keys.append(key)
+        for ancestor in occurrence.origin_ancestry:
+            origins.add(ancestor)
+            union(key, f"origin:{ancestor}")
+    return IndependenceMeasurement(
+        count=len({find(key) for key in context_keys}),
+        context_keys=tuple(sorted(set(context_keys))),
+        origin_ids=tuple(sorted(origins)),
+        unattributed=candidate.unattributed_occurrences,
+        basis=policy.independence_over,
+    )
+
+
 def independence_count(
     candidate: PromotionCandidate, policy: ConsolidationPolicy
 ) -> int:
-    """The independence term, over the basis the policy names.
-
-    Over episodes by default, because the cross-span fact layer is deferred and
-    a claim therefore has exactly one source span by construction. Over facts
-    only when a resolver has actually assigned them; an absent ``fact_id`` means
-    *unresolved*, never "a distinct fact", so unresolved occurrences fall back to
-    their episodes rather than being counted as diversity."""
-    if policy.independence_over == INDEPENDENCE_BASIS_FACTS and candidate.fact_ids:
-        return len(candidate.fact_ids)
-    return len(candidate.context_ids)
+    """The independence term as one number — see :func:`independence_measurement`."""
+    return independence_measurement(candidate, policy).count
 
 
 def evaluate_independence(
-    candidate: PromotionCandidate, policy: ConsolidationPolicy
+    candidate: PromotionCandidate,
+    policy: ConsolidationPolicy,
+    *,
+    measurement: IndependenceMeasurement | None = None,
 ) -> ConditionOutcome:
-    """Independent contexts against the floor — see :func:`independence_count`."""
-    count = independence_count(candidate, policy)
+    """Origin-distinct contexts against the floor.
+
+    Failing names *which* way it failed, because they are different findings: too
+    few contexts to begin with, contexts that collapsed onto one origin (the A9
+    case — a restatement is not a witness), or occurrences that never said where
+    they came from.
+
+    ``measurement`` lets a caller that already measured pass it in rather than
+    recompute it; omitted, it is measured here."""
+    if measurement is None:
+        measurement = independence_measurement(candidate, policy)
+    count = measurement.count
     passed = count >= policy.min_independent_contexts
+    reasons: list[str] = []
+    if not passed:
+        reasons.append(REASON_TOO_FEW_CONTEXTS)
+        if measurement.collapsed_by_origin:
+            reasons.append(REASON_SHARED_ORIGIN)
+        if measurement.unattributed:
+            reasons.append(REASON_ORIGIN_UNATTRIBUTED)
     return ConditionOutcome(
         name="independence",
         passed=passed,
         measured=float(count),
         threshold=float(policy.min_independent_contexts),
         detail=(
-            f"{count} independent {policy.independence_over}; "
+            f"{count} origin-distinct context(s) from "
+            f"{len(measurement.context_keys)} {policy.independence_over} over "
+            f"{len(measurement.origin_ids)} origin(s), "
+            f"{measurement.unattributed} unattributed occurrence(s); "
+            "ORIGIN-DISTINCT — " + INDEPENDENCE_ORIGIN_RULE + " "
             "WEAKENED CRITERION — " + FACT_ID_DEVIATION
         ),
-        reasons=() if passed else (REASON_TOO_FEW_CONTEXTS,),
+        reasons=tuple(reasons),
     )
 
 
@@ -957,7 +1324,7 @@ def evaluate_grounding(
             continue
         verdict = judge.entails(
             EntailmentRequest(
-                derivation_id=candidate.derivation_id,
+                proposition_id=candidate.proposition_id,
                 claim_text=candidate.claim_text,
                 locator=locator,
                 span_text=span,
@@ -1039,7 +1406,7 @@ def evaluate_dedup(
     shortlist = prior_art_shortlist(candidate, index, policy)
     decision = judge.decide(
         DedupRequest(
-            derivation_id=candidate.derivation_id,
+            proposition_id=candidate.proposition_id,
             claim_text=candidate.claim_text,
             shortlist=shortlist,
         )
@@ -1146,13 +1513,16 @@ class DemotionHandle:
     than asserted: ``cited_spans`` is what a frozen model is given when the claim
     is suppressed (re-derivation failure), ``source_claim_ids`` +
     ``base_snapshot_id`` are what a status flip is read against (contradiction),
-    and ``context_ids`` is what the independence floor is recomputed over."""
+    and ``context_ids`` **with** ``origin_ids`` are what the independence floor is
+    recomputed over — episodes alone would let a re-derivation off the promoted
+    claim look like a fresh witness and hold the floor up on its own."""
 
-    derivation_id: str
+    proposition_id: str
     source_claim_ids: tuple[str, ...]
     cited_locators: tuple[str, ...]
     cited_spans: tuple[str, ...]
     context_ids: tuple[str, ...]
+    origin_ids: tuple[str, ...]
     eta: float
     base_snapshot_id: str
     target: PromotionTarget
@@ -1163,10 +1533,11 @@ class DemotionHandle:
     def is_sufficient(self) -> bool:
         """Whether all three triggers have their inputs. Fail-closed on any gap."""
         return bool(
-            self.derivation_id
+            self.proposition_id
             and self.source_claim_ids
             and self.cited_spans
             and self.context_ids
+            and self.origin_ids
             and self.base_snapshot_id
             and self.target_note_id
         )
@@ -1179,9 +1550,12 @@ class PromotionRecord:
     Without it demotion has nothing to grab, which is why it is assembled before
     any effect is and why :meth:`demotion_handle` is asserted sufficient rather
     than assumed. ``independence_caveat`` travels with every record so the
-    weakened independence term cannot be adopted silently downstream."""
+    weakened independence term cannot be adopted silently downstream, and
+    ``origin_ids`` travels with it so the *next* derivation off this claim can
+    inherit them (:func:`origin_after_promotion`) — the commit boundary is exactly
+    where origin dependencies get lost if the record does not carry them."""
 
-    derivation_id: str
+    proposition_id: str
     source_claim_ids: tuple[str, ...]
     occurrence_count: int
     context_ids: tuple[str, ...]
@@ -1201,8 +1575,11 @@ class PromotionRecord:
     prior_art_considered: tuple[str, ...] = ()
     reviewer_id: str = ""
     reasoning_backend_id: str = ""
+    origin_ids: tuple[str, ...] = ()
+    independent_contexts: int = 0
     independence_basis: str = INDEPENDENCE_BASIS_EPISODES
     independence_caveat: str = FACT_ID_DEVIATION
+    independence_origin_rule: str = INDEPENDENCE_ORIGIN_RULE
     entailment_caveat: str = ENTAILMENT_CALIBRATION_CAVEAT
     origin: str = RESOLVED_ORIGIN
 
@@ -1210,9 +1587,10 @@ class PromotionRecord:
     def record_id(self) -> str:
         """Content address — a replayed batch proposes the same record."""
         return _content_id(
-            self.derivation_id,
+            self.proposition_id,
             *self.source_claim_ids,
             *self.context_ids,
+            *self.origin_ids,
             self.base_snapshot_id,
             self.promoted_text_hash,
             self.target,
@@ -1221,11 +1599,12 @@ class PromotionRecord:
 
     def demotion_handle(self) -> DemotionHandle:
         return DemotionHandle(
-            derivation_id=self.derivation_id,
+            proposition_id=self.proposition_id,
             source_claim_ids=self.source_claim_ids,
             cited_locators=self.cited_locators,
             cited_spans=self.cited_spans,
             context_ids=self.context_ids,
+            origin_ids=self.origin_ids,
             eta=self.eta,
             base_snapshot_id=self.base_snapshot_id,
             target=self.target,
@@ -1241,10 +1620,12 @@ class PromotionRecord:
         """A JSON-shaped rendering for an effect payload. No behaviour."""
         return {
             "record_id": self.record_id,
-            "derivation_id": self.derivation_id,
+            "proposition_id": self.proposition_id,
             "source_claim_ids": list(self.source_claim_ids),
             "occurrence_count": self.occurrence_count,
             "context_ids": list(self.context_ids),
+            "origin_ids": list(self.origin_ids),
+            "independent_contexts": self.independent_contexts,
             "observed_at": list(self.observed_at),
             "cited_locators": list(self.cited_locators),
             "cited_spans": list(self.cited_spans),
@@ -1266,9 +1647,26 @@ class PromotionRecord:
             "reasoning_backend_id": self.reasoning_backend_id,
             "independence_basis": self.independence_basis,
             "independence_caveat": self.independence_caveat,
+            "independence_origin_rule": self.independence_origin_rule,
             "entailment_caveat": self.entailment_caveat,
             "origin": self.origin,
         }
+
+
+def origin_after_promotion(record: PromotionRecord) -> ClaimOrigin:
+    """The origin a LATER derivation off this promoted claim **must** carry.
+
+    This is the commit boundary, and it is one-way: once a claim is promoted, the
+    system can read it back, but reading it back is not new evidence. The origin
+    returned is ``resolved``, its provenance is ``constructed``, and it inherits
+    the record's own ``origin_ids`` — so a restatement can corroborate neither the
+    promoted claim nor any of the sources that produced it, and ten restatements
+    still measure one independent context.
+
+    A caller assembling candidates from the log builds occurrences this way for
+    anything derived off promoted prose. Nothing here reads a store: the record is
+    the only input, which is why it had to carry the origins in the first place."""
+    return self_authored_origin(record.proposition_id, inherited=record.origin_ids)
 
 
 # ── the reviewed diff ───────────────────────────────────────────────────────
@@ -1366,7 +1764,7 @@ class PromotionVerdict:
     gets the measurement and nothing renderable, which is the whole point of
     keeping the guards at the batch and the arithmetic here."""
 
-    derivation_id: str
+    proposition_id: str
     eligibility: PromotionEligibility
     lifecycle: PromotionLifecycle
     conditions: tuple[ConditionOutcome, ...]
@@ -1425,16 +1823,17 @@ def evaluate_candidate(
     dedup_judge = dedup if dedup is not None else LinkBeforeCreateJudge()
     author = prose_author if prose_author is not None else AdditiveProseAuthor()
     trials = history if history is not None else TrialHistory(
-        subject_id=candidate.derivation_id, subject_kind="promoted_claim"
+        subject_id=candidate.proposition_id, subject_kind="promoted_claim"
     )
 
     grounding, entail_verdicts = evaluate_grounding(candidate, judge)
     dedup_outcome, dedup_decision, shortlist = evaluate_dedup(
         candidate, index, dedup_judge, policy
     )
+    independence = independence_measurement(candidate, policy)
     conditions = (
         evaluate_recurrence(candidate, policy),
-        evaluate_independence(candidate, policy),
+        evaluate_independence(candidate, policy, measurement=independence),
         evaluate_reliability(trials, policy),
         evaluate_stability(candidate, policy),
         grounding,
@@ -1457,7 +1856,7 @@ def evaluate_candidate(
         locators = candidate.cited_locators
         promoted_text = author.author(
             ProseRequest(
-                derivation_id=candidate.derivation_id,
+                proposition_id=candidate.proposition_id,
                 claim_text=candidate.claim_text,
                 qualifiers=candidate.qualifiers,
                 locators=locators,
@@ -1467,7 +1866,7 @@ def evaluate_candidate(
         )
         verify_qualifiers_intact(promoted_text, candidate.qualifiers, locators)
         record = PromotionRecord(
-            derivation_id=candidate.derivation_id,
+            proposition_id=candidate.proposition_id,
             source_claim_ids=candidate.source_claim_ids,
             occurrence_count=candidate.recurrence,
             context_ids=candidate.context_ids,
@@ -1487,6 +1886,8 @@ def evaluate_candidate(
             prior_art_considered=tuple(m.entry.entry_id for m in shortlist),
             reviewer_id=reviewer_id,
             reasoning_backend_id=reasoning_backend_id,
+            origin_ids=candidate.origin_ids,
+            independent_contexts=independence.count,
             independence_basis=policy.independence_over,
         )
         diff = PromotionDiff(
@@ -1497,7 +1898,7 @@ def evaluate_candidate(
             record=record,
         )
     return PromotionVerdict(
-        derivation_id=candidate.derivation_id,
+        proposition_id=candidate.proposition_id,
         eligibility=eligibility,
         lifecycle=lifecycle,
         conditions=conditions,
@@ -1540,7 +1941,8 @@ def effects_for_promotion(
         payload={
             "promotion_record": record.as_payload(),
             "record_id": record.record_id,
-            "derivation_id": candidate.derivation_id,
+            "proposition_id": candidate.proposition_id,
+            "origin_ids": list(record.origin_ids),
             "text": diff.added_text,
             "provenance": "constructed",
             "origin": RESOLVED_ORIGIN,
@@ -1769,12 +2171,16 @@ def run_consolidation_batch(
     Only past all four are effects assembled — a refused guard raises, it does
     not return a batch with a warning in it.
 
-    ``η`` comes from the Tier-B tally: either an explicit ``histories`` mapping
-    or a :class:`~tessellum.dks.memory_tiers.QueryCacheSource` read by
-    ``derivation_id`` with ``subject_kind='promoted_claim'`` (a revision
-    preserves its ``derivation_id``, so a revised claim inherits its own trial
-    history instead of restarting at the fail-closed prior). With neither, every
-    candidate scores the no-history ``η`` of 0.5 and stays probationary."""
+    ``η`` comes from the Tier-B tally: either an explicit ``histories`` mapping or
+    a :class:`~tessellum.dks.memory_tiers.QueryCacheSource`, both read by
+    **``proposition_id``** with ``subject_kind='promoted_claim'``. That is the
+    correction :data:`~tessellum.dks.claim_identity.TRIAL_HISTORY_SUBJECT_RULE`
+    states: keying on the evidence occurrence handed a *revised* proposition the
+    replaced one's pass/fail record, because both are read out of the same located
+    string. A revision now starts at the fail-closed prior instead, and carrying
+    anything forward is an explicit logged decision elsewhere. With no history at
+    all every candidate scores the no-history ``η`` of 0.5 and stays
+    probationary."""
     gate = require_promotion_enabled(enabled=enabled, ab_gate=ab_gate)
     require_human_sign_off(sign_off_policy)
     require_independent_reviewer(
@@ -1832,22 +2238,29 @@ def _history_for(
     histories: Mapping[str, TrialHistory] | None,
     source: QueryCacheSource | None,
 ) -> TrialHistory:
-    if histories is not None and candidate.derivation_id in histories:
-        return histories[candidate.derivation_id]
+    """The Tier-B tally for this candidate, keyed on the PROPOSITION version.
+
+    Never on an evidence-occurrence id: several propositions can be read out of
+    one span, so that key hands a changed proposition the replaced one's history
+    (:data:`~tessellum.dks.claim_identity.TRIAL_HISTORY_SUBJECT_RULE`)."""
+    if histories is not None and candidate.proposition_id in histories:
+        return histories[candidate.proposition_id]
     if source is not None:
         return source.trial_history(
-            candidate.derivation_id, subject_kind="promoted_claim"
+            candidate.proposition_id, subject_kind="promoted_claim"
         )
     return TrialHistory(
-        subject_id=candidate.derivation_id, subject_kind="promoted_claim"
+        subject_id=candidate.proposition_id, subject_kind="promoted_claim"
     )
 
 
 __all__ = [
+    "AUTHORED_ORIGIN",
     "AdditiveProseAuthor",
     "AuthorityCapError",
     "BUILD_NOISE_FLOOR",
     "CONDITIONS",
+    "ClaimOrigin",
     "ConditionName",
     "ConditionOutcome",
     "ConsolidationBatch",
@@ -1875,15 +2288,22 @@ __all__ = [
     "HumanReviewRequest",
     "INDEPENDENCE_BASIS_EPISODES",
     "INDEPENDENCE_BASIS_FACTS",
+    "INDEPENDENCE_ORIGIN_RULE",
+    "IndependenceMeasurement",
     "LinkBeforeCreateJudge",
     "MIN_AB_ORDERINGS",
     "MIN_AB_RUNS_PER_ARM",
     "MIN_INDEPENDENT_CONTEXTS",
     "MIN_RECURRENCE",
     "MoverIsJudgeError",
+    "ORIGIN_KINDS",
+    "ORIGIN_PROVENANCES",
+    "OriginKind",
     "PROMOTION_ENABLED_BY_DEFAULT",
     "PROMOTION_STAGE",
     "PROMOTION_TARGETS",
+    "PROVENANCE_CONSTRUCTED",
+    "PROVENANCE_LOCATED",
     "PriorArtEntry",
     "PriorArtIndex",
     "PriorArtMatch",
@@ -1914,6 +2334,8 @@ __all__ = [
     "REASON_NO_RENDERER",
     "REASON_NO_SOURCE_SPAN",
     "REASON_OPEN_CORRECTION",
+    "REASON_ORIGIN_UNATTRIBUTED",
+    "REASON_SHARED_ORIGIN",
     "REQUIRED_REGRESSION_CLASSES",
     "SCOPE_NEIGHBOURHOOD",
     "SECONDS_PER_DAY",
@@ -1921,6 +2343,7 @@ __all__ = [
     "StaticPriorArtIndex",
     "UNRUN_PROMOTION_AB",
     "UncalibratedEntailmentJudge",
+    "corpus_origin",
     "cosine",
     "effects_for_promotion",
     "evaluate_candidate",
@@ -1932,14 +2355,17 @@ __all__ = [
     "evaluate_renderable",
     "evaluate_stability",
     "independence_count",
+    "independence_measurement",
     "lifecycle_for",
     "missing_locators",
     "missing_qualifiers",
+    "origin_after_promotion",
     "prior_art_shortlist",
     "require_authority",
     "require_human_sign_off",
     "require_independent_reviewer",
     "require_promotion_enabled",
     "run_consolidation_batch",
+    "self_authored_origin",
     "verify_qualifiers_intact",
 ]

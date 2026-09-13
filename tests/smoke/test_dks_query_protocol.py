@@ -8,14 +8,23 @@ One test (or one group) per clause of the phase's acceptance line:
 2. NEVER AN UNGROUNDED ASSERTION: every asserted chain carries a locator and a
    located support step, across all three outcomes, and a derivation that cites
    nothing structurally cannot answer.
-3. REFUTATION IS ATTEMPTED and recorded as an ``attack`` edge — including the
-   attempt that finds compatibility, since "no attack edge" from an adjudicated
-   pair and "no attack edge" because nobody looked are different states.
+3. A FAILED REFUTATION PRODUCES AN EXECUTION RECORD AND NO ``attack`` EDGE; a
+   successful one produces the edge WITH its evidence locator. The attempt is
+   recorded either way, because "no attack edge" from an adjudicated compatible
+   pair and "no attack edge" because nobody looked are different states — but a
+   recorder must never invent an epistemic act to prove that it ran, so an
+   unrefuted claim leaves the attack relation untouched.
 4. THE ABSTENTION RATE IS BOUNDED. The bound test is written so that an
    abstain-always implementation FAILS it, and the companion test proves that by
    running one.
 5. A MEMORY HIT SHORT-CIRCUITS DERIVATION — with the model seams wired to raise
    if called, so the short-circuit is proved rather than reported.
+6. A CLAIM THAT IS ``warranted`` BUT FAILS THE SUPPORT-DEPENDENCY VALIDATOR IS
+   NOT ANSWERED. The attack-only labelling is a dialectical check, not a grounded
+   justification: it admits a conclusion whose necessary premise has been defeated
+   and admits a mutually-supporting pair. Both graphs are built END TO END through
+   the protocol — the labelling is asserted to say ``warranted``, and the episode
+   is asserted to abstain anyway.
 
 Plus the properties those clauses rest on: the grounding pre-condition is
 default-OFF and un-calibrated (an enabled uncalibrated gate abstains on
@@ -54,6 +63,7 @@ from tessellum.dks.memory_port import (
     NoteHit,
 )
 from tessellum.dks.query_protocol import (
+    ABSTAIN_DEPENDENCY,
     ABSTAIN_GROUNDING,
     ABSTAIN_NO_CLAIM,
     ABSTAIN_NO_REACH,
@@ -86,6 +96,13 @@ from tessellum.dks.query_protocol import (
 )
 from tessellum.dks.reach import HopBudget, MappingLinkBackend, SeededReach
 from tessellum.dks.resolve_entity import EntityResolver, Resolution
+from tessellum.dks.status import EdgeSet
+from tessellum.dks.support_dependency import (
+    REASON_CYCLIC_SUPPORT,
+    REASON_DEFEATED,
+    REASON_NECESSARY_PREMISE_NOT_GROUNDED,
+    grounding_verdict,
+)
 from tessellum.dks.validation import (
     A7_5_UNCALIBRATED_NOTICE,
     UNCALIBRATED_DOMAIN,
@@ -217,6 +234,7 @@ def _grounded_draft(
 def _protocol(
     log: ClaimLog,
     *,
+    query: str = QUERY,
     drafts: tuple[DerivedClaimDraft, ...] = (),
     verdicts: dict[tuple[str, str], IncompatibilityVerdict] | None = None,
     hits: dict[str, tuple[NoteHit, ...]] | None = None,
@@ -234,9 +252,9 @@ def _protocol(
         reach=_reach(extra=extra_links),
         namer=namer
         or TableRelationNamer(
-            {QUERY: RelationNaming(RELATION, "the query asks which part holds it")}
+            {query: RelationNaming(RELATION, "the query asks which part holds it")}
         ),
-        deriver=deriver or TableClaimDeriver({QUERY: drafts}),
+        deriver=deriver or TableClaimDeriver({query: drafts}),
         judge=TableIncompatibilityJudge(verdicts or {}),
         resolver=resolver,
         grounding=grounding,
@@ -245,8 +263,8 @@ def _protocol(
     )
 
 
-def _request(**kwargs) -> QueryRequest:
-    return QueryRequest(query=QUERY, resolution=_resolution(), **kwargs)
+def _request(*, query: str = QUERY, **kwargs) -> QueryRequest:
+    return QueryRequest(query=query, resolution=_resolution(), **kwargs)
 
 
 def _seed_rival(log: ClaimLog) -> tuple[str, str]:
@@ -511,27 +529,90 @@ def test_no_outcome_ever_asserts_without_a_locator_and_a_support_chain(
 
 def test_status_is_the_gate_and_a_stub_chain_refuses_a_verdict() -> None:
     """The decision function, exhaustively — no scorer appears in it."""
-    grounded = {"provisional": False, "has_locator": True, "has_support": True}
-    assert decide("warranted", **grounded).outcome == "answer"
-    assert decide("challenged", **grounded).outcome == "conflict"
+    validated = {
+        "provisional": False,
+        "has_locator": True,
+        "has_support": True,
+        "dependency_validated": True,
+    }
+    assert decide("warranted", **validated).outcome == "answer"
+    assert decide("challenged", **validated).outcome == "conflict"
     for status in ("proposed", "superseded", "unknown"):
-        decision = decide(status, **grounded)
+        decision = decide(status, **validated)
         assert decision.outcome == "abstain"
         assert decision.reason == f"{ABSTAIN_STATUS}:{status}"
     # grounding is checked FIRST: a warranted claim with nothing cited abstains
     assert (
-        decide("warranted", provisional=False, has_locator=False, has_support=True).reason
+        decide(
+            "warranted",
+            provisional=False,
+            has_locator=False,
+            has_support=True,
+            dependency_validated=True,
+        ).reason
         == ABSTAIN_UNGROUNDED
     )
     assert (
-        decide("warranted", provisional=False, has_locator=True, has_support=False).reason
+        decide(
+            "warranted",
+            provisional=False,
+            has_locator=True,
+            has_support=False,
+            dependency_validated=True,
+        ).reason
         == ABSTAIN_UNGROUNDED
     )
     # and a stub anywhere in the chain refuses the verdict rather than laundering it
     assert (
-        decide("warranted", provisional=True, has_locator=True, has_support=True).outcome
+        decide(
+            "warranted",
+            provisional=True,
+            has_locator=True,
+            has_support=True,
+            dependency_validated=True,
+        ).outcome
         == "abstain"
     )
+
+
+def test_warranted_alone_is_not_the_answer_gate() -> None:
+    """``warranted`` is NECESSARY, NOT SUFFICIENT — the flipped clause.
+
+    An earlier version of this file asserted that ``decide("warranted", ...)``
+    answers on the strength of the status alone. That is the gate the attack-only
+    labelling cannot support: it checks that a claim survived criticism and that
+    *something* supports it, never that the support grounds it. So the answer arm
+    also requires the dependency validator, and there is deliberately no default
+    for that argument — a caller cannot omit its way back to the old gate."""
+    refused = decide(
+        "warranted",
+        provisional=False,
+        has_locator=True,
+        has_support=True,
+        dependency_validated=False,
+    )
+
+    assert refused.outcome == "abstain"
+    assert refused.reason == ABSTAIN_DEPENDENCY
+    # a distinct reason from "cited nothing": this claim DID cite, and what it
+    # cited is what failed.
+    assert refused.reason != ABSTAIN_UNGROUNDED
+    # the validator gates the ANSWER arm only — a challenged claim still surfaces
+    # its conflict, because an abstention would destroy the dispute.
+    assert (
+        decide(
+            "challenged",
+            provisional=False,
+            has_locator=True,
+            has_support=True,
+            dependency_validated=False,
+        ).outcome
+        == "conflict"
+    )
+    with pytest.raises(TypeError):
+        decide(  # type: ignore[call-arg]
+            "warranted", provisional=False, has_locator=True, has_support=True
+        )
 
 
 def test_the_three_way_partition_covers_every_computed_status() -> None:
@@ -592,7 +673,247 @@ def test_derivation_is_confined_to_the_notes_the_reach_reached(
     assert f"derivation:note_not_reached:{NOTE_UNREACHED}" in result.diagnostics
 
 
-# ── clause 3: the refutation is attempted, and recorded as an attack edge ────
+# ── clause 6: `warranted` is NECESSARY, NOT SUFFICIENT ──────────────────────
+#
+# The two graphs the attack-only labelling reports as `warranted` and must not be
+# answered from, each built END TO END through the protocol. Both are seeded into
+# the real log: a claim id is a content address on both sides of the boundary, so
+# re-stating the derivation's own cited span as a log row yields the same id the
+# episode will stage — which is what lets a fixture put an edge on the derived
+# claim's PREMISE before the episode runs.
+
+
+COUNTER_TEXT = "The retention rule was withdrawn; no component holds it."
+PEER_TEXT = "The archival component is the retention holder of record."
+
+
+def _seeded_premise_draft() -> ClaimDraft:
+    """The derivation's own cited span, as a pre-existing log row."""
+    evidence = derive_claim(_grounded_draft()).grounding_claims[0]
+    return ClaimDraft(
+        derivation_id=evidence.derivation_id,
+        text=evidence.text,
+        note_id=evidence.note_id,
+        locator=evidence.locator,
+        provenance=evidence.provenance,
+        source_note_hash=evidence.source_note_hash,
+    )
+
+
+def _defeated_premise_graph(log: ClaimLog) -> tuple[str, str, str]:
+    """``premise`` supports ``conclusion``; ``counter`` defeats ``premise``."""
+    conclusion = derive_claim(_grounded_draft())
+    premise = _seeded_premise_draft()
+    counter = ClaimDraft(
+        derivation_id="derivation-counter",
+        text=COUNTER_TEXT,
+        note_id=NOTE_B,
+        locator="anchor||counter|0",
+        provenance="constructed",
+        source_note_hash="hash-b",
+    )
+    log.append(
+        (
+            premise,
+            counter,
+            EdgeDraft(
+                op="attack",
+                src=counter.claim_id,
+                dst=premise.claim_id,
+                origin="authored",
+                evidence_locator="anchor||counter|0",
+            ),
+        )
+    )
+    return conclusion.claim_id, premise.claim_id, counter.claim_id
+
+
+def _circular_support_graph(log: ClaimLog) -> tuple[str, str, str]:
+    """``premise`` and ``peer`` support only each other — no external anchor."""
+    conclusion = derive_claim(_grounded_draft())
+    premise = _seeded_premise_draft()
+    peer = ClaimDraft(
+        derivation_id="derivation-peer",
+        text=PEER_TEXT,
+        note_id=NOTE_B,
+        locator="anchor||peer|0",
+        provenance="constructed",
+        source_note_hash="hash-b",
+    )
+    log.append(
+        (
+            premise,
+            peer,
+            EdgeDraft(
+                op="support",
+                src=peer.claim_id,
+                dst=premise.claim_id,
+                origin="authored",
+                evidence_locator="anchor||peer|0",
+            ),
+            EdgeDraft(
+                op="support",
+                src=premise.claim_id,
+                dst=peer.claim_id,
+                origin="authored",
+                evidence_locator=premise.locator,
+            ),
+        )
+    )
+    return conclusion.claim_id, premise.claim_id, peer.claim_id
+
+
+def test_a_warranted_conclusion_on_a_defeated_premise_is_not_answered(
+    tmp_path: Path,
+) -> None:
+    """A supported conclusion does not inherit the defeat of its premise.
+
+    The labelling is right and unchanged — it runs over ``attack`` only and reads
+    ``support`` as mere presence. What it cannot say is whether the support
+    *grounds* the conclusion, so the answer arm asks the dependency validator too
+    and this episode abstains with the premise named."""
+    log = _log(tmp_path)
+    conclusion_id, premise_id, _counter_id = _defeated_premise_graph(log)
+    protocol = _protocol(log, drafts=(_grounded_draft(),))
+
+    result = protocol.ask(_request())
+
+    # the LABELLING admits it — this is the finding, reproduced rather than fixed
+    assert result.statuses[conclusion_id] == ANSWERING_STATUS
+    assert result.statuses[premise_id] == CONFLICT_STATUS
+    # ...and nothing is answered from it
+    assert result.outcome == "abstain"
+    assert result.abstention_reason == ABSTAIN_DEPENDENCY
+    assert result.answer is None
+    assert result.conflict == ()
+    assert result.dependency is not None
+    assert not result.dependency.grounded
+    assert REASON_NECESSARY_PREMISE_NOT_GROUNDED in result.dependency.reasons
+    assert result.dependency.failed_premises == (premise_id,)
+    # the refusal is auditable, not just recorded as a code
+    assert f"dependency:{REASON_NECESSARY_PREMISE_NOT_GROUNDED}" in result.diagnostics
+    view = EdgeSet(claims=log.read_claims(), edges=log.read_edges())
+    assert REASON_DEFEATED in grounding_verdict(view, premise_id).reasons
+
+
+def test_a_warranted_claim_standing_on_circular_support_is_not_answered(
+    tmp_path: Path,
+) -> None:
+    """Support existence alone admits circular justification.
+
+    Two claims that support only each other are both ``warranted``, and a
+    conclusion resting on either of them is too. None of the three rests on
+    anything, so the episode abstains and the cycle is named."""
+    log = _log(tmp_path)
+    conclusion_id, premise_id, peer_id = _circular_support_graph(log)
+    protocol = _protocol(log, drafts=(_grounded_draft(),))
+
+    result = protocol.ask(_request())
+
+    # all three compute as warranted — the labelling cannot see the cycle
+    assert result.statuses[conclusion_id] == ANSWERING_STATUS
+    assert result.statuses[premise_id] == ANSWERING_STATUS
+    assert result.statuses[peer_id] == ANSWERING_STATUS
+    # ...and nothing is answered from a pair that stands only on itself
+    assert result.outcome == "abstain"
+    assert result.abstention_reason == ABSTAIN_DEPENDENCY
+    assert result.answer is None
+    assert result.dependency is not None
+    assert not result.dependency.grounded
+    assert result.dependency.failed_premises == (premise_id,)
+    # the cycle is DIAGNOSED, not merely refused
+    view = EdgeSet(claims=log.read_claims(), edges=log.read_edges())
+    cycle = grounding_verdict(view, premise_id)
+    assert not cycle.grounded
+    assert REASON_CYCLIC_SUPPORT in cycle.reasons
+    assert set(cycle.cycle) == {premise_id, peer_id}
+
+
+def _memoized_claim_on_a_defeated_premise(log: ClaimLog) -> tuple[str, str]:
+    """A memoized ``warranted`` claim whose only premise has since been defeated.
+
+    The premise and its defeater sit on ``NOTE_A`` and the memoized claim on
+    ``NOTE_B``, so the note-level memory read surfaces exactly one candidate and
+    the short-circuit is deterministic."""
+    premise = ClaimDraft(
+        derivation_id="derivation-memo-premise",
+        text=EVIDENCE_SPAN,
+        note_id=NOTE_A,
+        locator="anchor||memo-premise|0",
+        provenance="constructed",
+        source_note_hash="hash-a",
+    )
+    counter = ClaimDraft(
+        derivation_id="derivation-memo-counter",
+        text=COUNTER_TEXT,
+        note_id=NOTE_A,
+        locator="anchor||memo-counter|0",
+        provenance="constructed",
+        source_note_hash="hash-a",
+    )
+    memoized = ClaimDraft(
+        derivation_id="derivation-memoized",
+        text=ANSWER_TEXT,
+        note_id=NOTE_B,
+        locator="anchor||memoized|0",
+        provenance="constructed",
+        source_note_hash="hash-b",
+    )
+    log.append(
+        (
+            premise,
+            counter,
+            memoized,
+            EdgeDraft(
+                op="support",
+                src=premise.claim_id,
+                dst=memoized.claim_id,
+                origin="authored",
+                evidence_locator="anchor||memo-premise|0",
+            ),
+            EdgeDraft(
+                op="attack",
+                src=counter.claim_id,
+                dst=premise.claim_id,
+                origin="authored",
+                evidence_locator="anchor||memo-counter|0",
+            ),
+        )
+    )
+    return memoized.claim_id, premise.claim_id
+
+
+def test_a_memory_hit_is_not_a_route_around_the_dependency_gate(
+    tmp_path: Path,
+) -> None:
+    """The cache-read path decides through the SAME gate.
+
+    A memoized ``warranted`` claim is at least as exposed to a since-defeated
+    premise as a freshly derived one, so the short-circuit still consults the
+    validator — and still derives nothing when it refuses."""
+    log = _log(tmp_path)
+    memoized_id, premise_id = _memoized_claim_on_a_defeated_premise(log)
+    memory = _episode(log, hits={QUERY: (NoteHit(NOTE_B, "note-b", 1.0),)})
+    protocol = QueryProtocol(
+        memory=memory,
+        reach=_reach(),
+        namer=_RaisingNamer(),      # must never be called
+        deriver=_RaisingDeriver(),  # must never be called
+    )
+
+    result = protocol.ask(_request())
+
+    assert result.memory.short_circuited  # memory DID decide the episode
+    assert result.memory.claim_id == memoized_id
+    assert result.statuses[memoized_id] == ANSWERING_STATUS  # the label still says so
+    assert result.outcome == "abstain"
+    assert result.abstention_reason == ABSTAIN_DEPENDENCY
+    assert result.dependency is not None and not result.dependency.grounded
+    assert result.dependency.failed_premises == (premise_id,)
+    assert result.budget.total == 0  # and nothing was derived to get there
+
+
+# ── clause 3: a failed refutation records the attempt and emits NO edge ──────
 
 
 def test_refutation_is_recorded_as_an_attack_edge_with_a_locator(
@@ -755,26 +1076,94 @@ def test_an_empty_question_set_is_not_a_passing_measurement() -> None:
     assert OutcomeTally().abstention_rate == 0.0
 
 
-@pytest.mark.skip(
-    reason="blocked on P2: the question set the bound is stated over, and the "
-    "grounding-rate / connected-reasoning metrics beside it, are the "
-    "measurement harness P2 builds and has not run. The two tests above bound "
-    "the rate on a local question set with the same falsifiability property, "
-    "so the mechanism is covered; the CORPUS-level number is not."
+# ── clause 4b: the bound over a MULTI-QUESTION FIXTURE (not a measurement) ───
+#
+# What follows is a FIXTURE, and saying so is the point. The outcome of each
+# question is authored here — three located answers, one surfaced conflict, two
+# abstentions for two different reasons — so the number below bounds the rate the
+# protocol computes over an authored distribution and NOTHING ELSE. It is not a
+# corpus measurement, and it must not be quoted as one.
+#
+# What is genuinely missing, stated as the missing thing rather than as a phase
+# name: (a) an EXTERNAL ANSWER PATH over a real vault — the answer path this
+# protocol would be compared against lives in another package, and the wiring
+# between them (an `ask` tool over the boundary) does not exist here; and (b)
+# HUMAN LABELS for what a correct located answer is, without which the grounding
+# rate and the connected-reasoning rate cannot be scored at all and an LLM judge
+# would only move the unlabelled question one layer down. Neither is a code gap in
+# this repository, and no synthetic fixture substitutes for either.
+
+FIXTURE_QUESTIONS: tuple[str, ...] = (
+    "which component holds the retention rule",
+    "which component applies retention on write",
+    "which component owns the retention schedule",
+    "which component records the retention decision",
+    "which component publishes the retention report",
+    "which component archives the retention log",
 )
-def test_the_abstention_rate_on_the_p2_question_set_is_bounded() -> None:
-    from tessellum.eval.question_sets import load_ownership_question_set  # type: ignore
 
-    protocol_results = [
-        _protocol(_log(Path(question.workspace)), drafts=question.drafts).ask(
-            QueryRequest(query=question.text, mention=question.mention)
+
+def _fixture_question_set(tmp_path: Path) -> list[QueryResult]:
+    """Six distinct queries with an authored outcome each, one log apiece."""
+    logs = [_log(tmp_path / f"fixture-{index}") for index in range(6)]
+    _seed_rival(logs[3])  # the corpus already disagrees on question 4
+    answerable = [
+        _protocol(log, query=query, drafts=(_grounded_draft(),)).ask(
+            _request(query=query)
         )
-        for question in load_ownership_question_set()
+        for log, query in zip(logs[:3], FIXTURE_QUESTIONS[:3])
     ]
-    tally = tally_outcomes(protocol_results)
+    conflicted = _protocol(
+        logs[3],
+        query=FIXTURE_QUESTIONS[3],
+        drafts=(_grounded_draft(),),
+        verdicts=_rival_defeats_answer(),
+    ).ask(_request(query=FIXTURE_QUESTIONS[3]))
+    uncited = _protocol(
+        logs[4],
+        query=FIXTURE_QUESTIONS[4],
+        drafts=(_grounded_draft(groundings=False),),
+    ).ask(_request(query=FIXTURE_QUESTIONS[4]))
+    unnamed = _protocol(
+        logs[5],
+        query=FIXTURE_QUESTIONS[5],
+        drafts=(_grounded_draft(),),
+        namer=TableRelationNamer({}),
+    ).ask(_request(query=FIXTURE_QUESTIONS[5]))
+    return [*answerable, conflicted, uncited, unnamed]
 
-    assert tally.total > 0
+
+def test_the_abstention_rate_over_the_fixture_question_set_is_bounded(
+    tmp_path: Path,
+) -> None:
+    """The bound, over six distinct queries — a FIXTURE, honestly labelled.
+
+    The falsifiability guard travels with it: the same six queries run through a
+    protocol that derives nothing must FAIL the same bound, so a passing number
+    here cannot be produced by abstaining."""
+    results = _fixture_question_set(tmp_path)
+    tally = tally_outcomes(results)
+
+    assert tally.total == len(FIXTURE_QUESTIONS) == 6
+    assert (tally.answers, tally.conflicts, tally.abstentions) == (3, 1, 2)
+    assert {result.query for result in results} == set(FIXTURE_QUESTIONS)
+    assert tally.abstention_rate == pytest.approx(1 / 3)
     assert tally.within_abstention_bound(0.5)
+    assert tally.decided_rate == pytest.approx(2 / 3)
+    # the two abstentions are for two DIFFERENT recorded reasons, never a blank
+    reasons = {r.abstention_reason for r in results if r.outcome == "abstain"}
+    assert reasons == {ABSTAIN_UNGROUNDED, ABSTAIN_NO_RELATION}
+
+    abstain_always = [
+        _protocol(_log(tmp_path / f"empty-{index}"), query=query, drafts=()).ask(
+            _request(query=query)
+        )
+        for index, query in enumerate(FIXTURE_QUESTIONS)
+    ]
+    empty = tally_outcomes(abstain_always)
+
+    assert empty.abstention_rate == 1.0
+    assert not empty.within_abstention_bound(0.5)
 
 
 # ── clause 5: a memory hit short-circuits derivation ────────────────────────
@@ -798,6 +1187,9 @@ def test_a_memory_hit_answers_without_deriving_anything(tmp_path: Path) -> None:
     assert result.memory.cache_hit
     assert result.memory.claim_id in {evidence_id, rival_id}
     assert result.answer is not None and result.answer.locator
+    # the cache path ran the dependency validator too, and it passed: the rival's
+    # own premise is anchored and undefeated.
+    assert result.dependency is not None and result.dependency.grounded
     # the model budget of a cache hit is zero — that is the point of consulting
     # memory before deriving.
     assert result.budget == ModelBudget()

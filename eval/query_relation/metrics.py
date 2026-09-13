@@ -38,8 +38,12 @@ visible, and this module is exactly those three plus the cost counter:
                             than asserted.
 
 Also here: the question-set data model and loader, because every metric above is
-defined against it, and the ±0.047 build-noise floor as a named constant with its
-provenance attached.
+defined against it, and the harness's OWN uncertainty estimator — a paired
+difference over questions, because both arms answer the same questions, so the
+question is the pairing unit and the (large) between-question spread drops out of
+the estimate. The historical build-noise interval from a different experiment is
+kept as a reference object with its provenance and is deliberately not the
+default threshold of anything; see :data:`HISTORICAL_BUILD_NOISE_INTERVAL`.
 
 What this module is not
 -----------------------
@@ -59,6 +63,7 @@ asserts the two implementations agree so the convention cannot drift silently.
 from __future__ import annotations
 
 import json
+import random
 import re
 import statistics
 import string
@@ -67,34 +72,81 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Mapping, Sequence
 
-# ─────────────────────────────────────────────────────── the noise floor ────
+# ─────────────────────────── the imported figure, as a reference object only ────
 
-# The pooled build-noise floor the plan requires every gain to clear.
-#
-# Provenance, because a bare 0.047 invites misuse: it comes from ONE experiment
-# that built the same digestion plan TWICE with a stochastic writer over a
-# 37-document source and answered the same question set against both builds. The
-# pooled per-question interval was [-0.047, +0.018] (about ±0.05 on the polarity
-# stratum), with a reader-model mismatch recorded in the source. So it measures
-# how much a metric moves when NOTHING but the writer's sampling changes.
-#
-# Two limits ride along with it, and both are honoured here rather than argued
-# away. (1) It is a FLOOR, not a significance test: clearing it says a gain is
-# larger than one known noise source, not that it is real — which is why this
-# harness also requires the gain to hold across repeated runs and under more
-# than one question ordering. (2) It was measured on a different task (a reader
-# over freshly built notes), so applying it to a grounding rate or a
-# connected-reasoning rate on a FIXED corpus is an import, not a derivation; a
-# floor estimated on this harness should replace it as soon as one exists.
-# `noise_floor` is a parameter everywhere it is used for exactly that reason.
-BUILD_NOISE_FLOOR = 0.047
 
-BUILD_NOISE_FLOOR_PROVENANCE = (
-    "Two stochastic builds of one digestion plan over a 37-document source, "
-    "scored with one reader on one question set: pooled per-question interval "
-    "[-0.047, +0.018], reader-model mismatch recorded. A floor on one known "
-    "noise source, measured on a DIFFERENT task (reader-over-fresh-notes) than "
-    "the fixed-corpus rates it is applied to here; not a significance threshold."
+@dataclass(frozen=True)
+class MeasuredInterval:
+    """An interval somebody measured, kept as an INTERVAL.
+
+    The type exists to make one specific mistake impossible: collapsing a
+    measured ``[low, high]`` into a single ``±h`` number and then using that
+    number as a significance threshold. An asymmetric interval has no ``±``
+    form, so this class has no such attribute and renders as two bounds.
+
+    ``task`` records what was measured. :meth:`transfers_to` is deliberately
+    exact-match and deliberately pessimistic: an interval measured on one task
+    is evidence about that task, and carrying it to another one is an import,
+    not a derivation."""
+
+    low: float
+    high: float
+    task: str
+    provenance: str
+
+    @property
+    def symmetric(self) -> bool:
+        """True only for an interval that really is ±h about zero."""
+        return abs(self.low + self.high) < 1e-12
+
+    @property
+    def width(self) -> float:
+        return self.high - self.low
+
+    def contains(self, value: float) -> bool:
+        return self.low <= value <= self.high
+
+    def transfers_to(self, task: str) -> bool:
+        return task == self.task
+
+    def render(self) -> str:
+        return f"[{self.low:+.3f}, {self.high:+.3f}]"
+
+
+# REFERENCE ONLY. This is the pooled interval from the resume/noise experiment,
+# and it is not the default threshold of any decision in this package — nothing
+# here reads it unless a caller passes a value derived from it explicitly.
+#
+# What it is: ONE experiment built the same digestion plan TWICE with a
+# stochastic writer over a 37-document source, scored both builds with a PROXY
+# model, and recorded a model mismatch against the model the plan targets. The
+# pooled per-question interval was [-0.047, +0.018].
+#
+# Why it cannot be a threshold here, in three parts. (1) It is ASYMMETRIC: there
+# is no "±0.047", and writing one silently widens the positive side by 2.6x.
+# (2) It was measured on a DIFFERENT task — a reader over two freshly built note
+# sets, with build-to-build writer sampling as the only varying factor. This
+# harness reads a FIXED vault and measures a grounding rate, a
+# connected-reasoning rate and an abstention rate, none of which that experiment
+# observed. (3) A proxy model with a stated mismatch bounds the noise of that
+# proxy on that task, not of this arm on this one.
+#
+# What it is good for: it motivates REPEATED MEASUREMENT, which is why this
+# harness requires n runs per arm and more than one question ordering. For a bar
+# to compare a gain against, use `paired_uncertainty` below — estimated on this
+# harness, from these arms, over these questions.
+HISTORICAL_BUILD_NOISE_INTERVAL = MeasuredInterval(
+    low=-0.047,
+    high=0.018,
+    task="one reader over two stochastically rebuilt note sets (build-noise probe)",
+    provenance=(
+        "Two stochastic builds of one digestion plan over a 37-document source, "
+        "scored with a PROXY model against a stated model mismatch: pooled "
+        "per-question interval [-0.047, +0.018] — asymmetric, not a ± figure. "
+        "Reference only: it motivates repeated measurement and is NOT a "
+        "significance threshold for this harness's fixed-vault lookup, grounding "
+        "or connected-reasoning rates, which are a different task."
+    ),
 )
 
 # ────────────────────────────────────────────────── the model-cost invariant ────
@@ -569,6 +621,10 @@ class Graded:
     hops_complete: bool
     budget: ModelBudget
     budget_violations: tuple[str, ...] = ()
+    # carried from the question so a per-question row knows which denominators it
+    # belongs to without the question set in hand — the paired estimator needs
+    # exactly that, and the trap denominator is a property of the SET, not the arm
+    has_conflation_traps: bool = False
 
     @property
     def answered(self) -> bool:
@@ -634,6 +690,7 @@ def grade(
         hops_complete=bool(required) and cited == len(required),
         budget=attempt.budget,
         budget_violations=pol.violations(attempt.budget),
+        has_conflation_traps=bool(question.conflation_traps),
     )
 
 
@@ -783,6 +840,11 @@ class ArmMetrics:
     model_calls_max: int
     budget_violations: tuple[str, ...]
     graded: tuple[Graded, ...] = field(default_factory=tuple, repr=False)
+    # the bridge-ablated re-ask, graded. Kept per question rather than only folded
+    # into `connected` because the paired estimator needs the shortcut control at
+    # the question level: without it a per-question connected score would silently
+    # degrade to chain completeness.
+    ablated_graded: tuple[Graded, ...] = field(default_factory=tuple, repr=False)
 
 
 def score_arm(
@@ -841,6 +903,7 @@ def score_arm(
         model_calls_max=max((b.total for b in budgets), default=0),
         budget_violations=tuple(violations),
         graded=rows,
+        ablated_graded=tuple(ablated_graded.values()),
     )
 
 
@@ -908,4 +971,289 @@ def summarise(metric: str, values: Sequence[float]) -> MetricSummary:
         stdev=statistics.stdev(kept) if len(kept) > 1 else 0.0,
         n=len(kept),
         n_missing=len(values) - len(kept),
+    )
+
+
+# ──────────────────────────── paired uncertainty, estimated on THIS harness ────
+# The arms answer the SAME questions, so the question is the pairing unit: score
+# each question under each arm, take the per-question DIFFERENCE, and estimate the
+# uncertainty of the mean of those differences. Pairing is what makes the estimate
+# usable at these sizes — the between-question spread (some questions are easy,
+# some are unanswerable) is far larger than the between-arm effect and is
+# identical for both arms, so it cancels instead of drowning the signal.
+#
+# Two estimators, both reported, both deterministic:
+#   paired_bootstrap        resample the per-question differences with
+#                           replacement and take percentiles of the resampled
+#                           means. The default. Deterministic because the RNG is
+#                           seeded from a passed-in `seed`, which is recorded on
+#                           the result — an unseeded estimator could not be
+#                           replayed and a replayed run must reproduce its bar.
+#   paired_standard_error   mean ± z·(stdev/sqrt(n)) on the differences. Cheap,
+#                           seed-independent, and reported alongside so a
+#                           bootstrap interval that disagrees with it is visible.
+#
+# What this is NOT: a claim about the population of all role questions. It is the
+# uncertainty of THIS mean difference on THIS question set, which is the quantity
+# the admission rule needs and the only one this harness can estimate.
+
+# A paired estimate over a handful of questions cannot separate a gain from one
+# question flipping, whatever the interval says. This is a structural minimum on
+# the arithmetic, not a power calculation.
+MIN_PAIRED_QUESTIONS = 10
+
+PAIRED_BOOTSTRAP = "paired_bootstrap"
+PAIRED_STANDARD_ERROR = "paired_standard_error"
+PAIRED_METHODS: tuple[str, ...] = (PAIRED_BOOTSTRAP, PAIRED_STANDARD_ERROR)
+
+DEFAULT_CONFIDENCE = 0.95
+DEFAULT_BOOTSTRAP_RESAMPLES = 1000
+# Any fixed value would do; what matters is that it is fixed, passed in, and
+# REPORTED on the result, so a verdict can be recomputed exactly.
+DEFAULT_BOOTSTRAP_SEED = 20260912
+
+# Metrics whose denominator is a property of the QUESTION SET, so both arms are
+# scored over the same questions and a per-question difference is defined.
+PAIRABLE_METRICS: tuple[str, ...] = (
+    "grounding_rate",
+    "ungrounded_answer_rate",
+    "conflation_rate",
+    "conflict_rate",
+    "connected_reasoning_rate",
+    "abstained_on_deserving",
+    "abstained_on_answerable",
+    "model_calls_per_query",
+)
+
+# Metrics whose denominator is chosen by the ARM (or which are not per-question
+# quantities at all). Pairing them would compare two different question sets, so
+# they are refused rather than silently mispaired.
+UNPAIRABLE_METRICS: tuple[str, ...] = (
+    "grounded_precision",  # denominator: the answers this arm chose to give
+    "abstention_precision",  # denominator: the abstentions this arm chose to take
+    "calibration_gap",  # a difference of two strata rates, not a question score
+)
+
+
+class NotPairable(ValueError):
+    """Raised for a metric that has no per-question observation to pair."""
+
+
+def check_pairable(metric: str) -> None:
+    """Raise unless ``metric`` has a per-question observation to pair.
+
+    Checked on the metric NAME alone, so an empty run list still rejects a
+    metric that could never have been paired — a silent empty result there would
+    read as "no difference"."""
+    if metric in UNPAIRABLE_METRICS:
+        raise NotPairable(
+            f"{metric!r} has an arm-chosen denominator, so there is no shared "
+            "per-question unit to pair; pair one of: " + ", ".join(PAIRABLE_METRICS)
+        )
+    if metric not in PAIRABLE_METRICS:
+        raise KeyError(f"unknown metric {metric!r}; pairable: {', '.join(PAIRABLE_METRICS)}")
+
+
+def per_question_scores(metrics: ArmMetrics, metric: str) -> dict[str, float]:
+    """One arm's per-question observation of ``metric``, keyed by qid.
+
+    Only the questions in that metric's denominator appear — a grounding-rate
+    score is defined on the answerable questions, an ``abstained_on_deserving``
+    score on the deserving ones — so the mean of the returned values reproduces
+    the aggregate rate exactly, and the keys are directly pairable across arms.
+
+    ``connected_reasoning_rate`` uses the ablated re-ask recorded on the arm; a
+    question whose re-ask is missing is scored on chain completeness alone, the
+    same caveat ``ConnectedReasoning.shortcut_controlled`` reports."""
+    check_pairable(metric)
+    ablated = {g.qid: g for g in metrics.ablated_graded}
+    out: dict[str, float] = {}
+    for g in metrics.graded:
+        if metric == "grounding_rate":
+            if g.should_abstain:
+                continue
+            out[g.qid] = float(g.grounded)
+        elif metric == "ungrounded_answer_rate":
+            out[g.qid] = float(g.answered and not g.grounded)
+        elif metric == "conflation_rate":
+            if not g.has_conflation_traps:
+                continue
+            out[g.qid] = float(g.conflated)
+        elif metric == "conflict_rate":
+            out[g.qid] = float(g.outcome == "conflict")
+        elif metric == "connected_reasoning_rate":
+            if not g.multi_hop:
+                continue
+            a = ablated.get(g.qid)
+            shortcut = bool(a is not None and a.answer_correct)
+            out[g.qid] = float(g.grounded and g.hops_complete and not shortcut)
+        elif metric == "abstained_on_deserving":
+            if not g.should_abstain:
+                continue
+            out[g.qid] = float(g.abstained)
+        elif metric == "abstained_on_answerable":
+            if g.should_abstain:
+                continue
+            out[g.qid] = float(g.abstained)
+        else:  # model_calls_per_query — a count, not a share
+            out[g.qid] = float(g.budget.total)
+    return out
+
+
+@dataclass(frozen=True)
+class PairedDifferences:
+    """Per-question candidate-minus-baseline differences on one metric.
+
+    ``unpaired_qids`` names questions one arm scored and the other did not. They
+    are dropped from the estimate and reported, never filled in with a zero: a
+    question only one arm attempted is a harness fault, and a zero difference
+    would claim the arms tied on it."""
+
+    metric: str
+    qids: tuple[str, ...]
+    differences: tuple[float, ...]
+    baseline_runs: int
+    candidate_runs: int
+    unpaired_qids: tuple[str, ...] = ()
+
+    @property
+    def n(self) -> int:
+        return len(self.differences)
+
+    @property
+    def mean(self) -> float:
+        return statistics.fmean(self.differences) if self.differences else float("nan")
+
+
+def paired_differences(
+    metric: str,
+    baseline: Sequence[ArmMetrics],
+    candidate: Sequence[ArmMetrics],
+) -> PairedDifferences:
+    """Pair two arms question by question over their repeated runs.
+
+    Each arm's per-question score is first averaged over ITS runs (so repeated
+    measurement reduces the per-question noise it exists to reduce), and the
+    difference is then taken per question. Order of the runs is irrelevant and no
+    run is paired with a particular run of the other arm — the arms are not
+    coupled run-to-run, only question-to-question."""
+    check_pairable(metric)
+
+    def per_arm(runs: Sequence[ArmMetrics]) -> dict[str, float]:
+        acc: dict[str, list[float]] = {}
+        for m in runs:
+            for qid, value in per_question_scores(m, metric).items():
+                acc.setdefault(qid, []).append(value)
+        return {qid: statistics.fmean(values) for qid, values in acc.items()}
+
+    b, c = per_arm(baseline), per_arm(candidate)
+    shared = tuple(sorted(set(b) & set(c)))
+    return PairedDifferences(
+        metric=metric,
+        qids=shared,
+        differences=tuple(c[q] - b[q] for q in shared),
+        baseline_runs=len(baseline),
+        candidate_runs=len(candidate),
+        unpaired_qids=tuple(sorted(set(b) ^ set(c))),
+    )
+
+
+@dataclass(frozen=True)
+class PairedUncertainty:
+    """The uncertainty of the mean per-question difference, estimated here.
+
+    ``ci_low``/``ci_high`` bound the MEAN DIFFERENCE, so ``excludes_zero`` is the
+    honest reading of "the gain is outside this harness's uncertainty". The
+    interval is not assumed symmetric and is never rendered as ±."""
+
+    metric: str
+    method: str
+    n_pairs: int
+    baseline_runs: int
+    candidate_runs: int
+    mean_difference: float
+    stdev_difference: float
+    standard_error: float
+    ci_low: float
+    ci_high: float
+    confidence: float = DEFAULT_CONFIDENCE
+    resamples: int = 0
+    seed: int = 0
+    unpaired: int = 0
+
+    @property
+    def measured(self) -> bool:
+        return self.n_pairs > 0
+
+    @property
+    def excludes_zero(self) -> bool:
+        """True iff the whole interval sits strictly above zero."""
+        return self.measured and self.ci_low > 0.0
+
+    def render(self) -> str:
+        return (
+            f"{self.confidence:.0%} CI [{self.ci_low:+.3f}, {self.ci_high:+.3f}] "
+            f"over {self.n_pairs} paired question(s)"
+        )
+
+
+def _percentile(sorted_values: Sequence[float], q: float) -> float:
+    """Nearest-rank percentile of an already-sorted sample."""
+    if not sorted_values:
+        return float("nan")
+    idx = int(round(q * (len(sorted_values) - 1)))
+    return sorted_values[min(len(sorted_values) - 1, max(0, idx))]
+
+
+def paired_uncertainty(
+    differences: PairedDifferences,
+    *,
+    method: str = PAIRED_BOOTSTRAP,
+    confidence: float = DEFAULT_CONFIDENCE,
+    resamples: int = DEFAULT_BOOTSTRAP_RESAMPLES,
+    seed: int = DEFAULT_BOOTSTRAP_SEED,
+) -> PairedUncertainty:
+    """Estimate the uncertainty of the mean paired difference.
+
+    ``paired_bootstrap`` resamples the differences with replacement using a
+    ``random.Random(seed)`` and takes percentiles of the resampled means; the
+    same seed and the same differences always give the same interval, which is
+    what makes a verdict replayable. ``paired_standard_error`` uses
+    mean ± z·stdev/sqrt(n) instead and ignores the seed. The standard error is
+    computed and reported either way."""
+    if method not in PAIRED_METHODS:
+        raise ValueError(f"unknown method {method!r}; expected one of {', '.join(PAIRED_METHODS)}")
+    if not 0.0 < confidence < 1.0:
+        raise ValueError(f"confidence must be in (0, 1); got {confidence}")
+    d = differences.differences
+    n = len(d)
+    mean = statistics.fmean(d) if n else float("nan")
+    stdev = statistics.stdev(d) if n > 1 else 0.0
+    se = stdev / (n**0.5) if n else float("nan")
+    if not n:
+        low = high = float("nan")
+    elif method == PAIRED_BOOTSTRAP:
+        rng = random.Random(seed)
+        means = sorted(statistics.fmean(rng.choices(d, k=n)) for _ in range(max(1, resamples)))
+        alpha = 1.0 - confidence
+        low = _percentile(means, alpha / 2)
+        high = _percentile(means, 1.0 - alpha / 2)
+    else:
+        z = statistics.NormalDist().inv_cdf(1.0 - (1.0 - confidence) / 2)
+        low, high = mean - z * se, mean + z * se
+    return PairedUncertainty(
+        metric=differences.metric,
+        method=method,
+        n_pairs=n,
+        baseline_runs=differences.baseline_runs,
+        candidate_runs=differences.candidate_runs,
+        mean_difference=mean,
+        stdev_difference=stdev,
+        standard_error=se,
+        ci_low=low,
+        ci_high=high,
+        confidence=confidence,
+        resamples=resamples if method == PAIRED_BOOTSTRAP else 0,
+        seed=seed if method == PAIRED_BOOTSTRAP else 0,
+        unpaired=len(differences.unpaired_qids),
     )

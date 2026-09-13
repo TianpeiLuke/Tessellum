@@ -105,8 +105,8 @@ from tessellum.dks.capability import (
     validate_effect_kind,
 )
 from tessellum.dks.claim_identity import anchor_locator, derivation_id
-from tessellum.dks.dung import DungAF, grounded_labelling
 from tessellum.dks.retrieval_client import RetrievalClient
+from tessellum.dks.status import EdgeSet, compute_statuses
 
 
 class MemoryPortError(RuntimeError):
@@ -432,9 +432,11 @@ class StatusLabeller(Protocol):
     """Port for the computed labelling — injected, and model-free by design.
 
     Status is what the system acts and abstains on, so a model must never decide
-    it: a model's verdict is not replayable and cannot be audited. The default
-    is :func:`grounded_status_labeller`; the status phase's implementation
-    replaces it by injection, not by an edit here."""
+    it: a model's verdict is not replayable and cannot be audited. The default is
+    :func:`grounded_status_labeller`, which delegates to
+    :func:`~tessellum.dks.status.compute_statuses` — the port stays here so a
+    caller can inject a *narrower* or instrumented reading, never a second copy
+    of the three-layer rule."""
 
     def __call__(
         self, claims: Sequence[ClaimRow], edges: Sequence[EdgeRow]
@@ -456,7 +458,7 @@ class LogAppendPort(Protocol):
     ) -> int: ...
 
 
-# ── the reference labeller (three layers, in order) ─────────────────────────
+# ── the labeller: ONE implementation, delegated to ──────────────────────────
 
 
 def grounded_status_labeller(
@@ -464,65 +466,31 @@ def grounded_status_labeller(
 ) -> dict[str, str]:
     """The four statuses, computed from the edge set. Pure; no model.
 
-    Three layers, in the order the design requires — and *not* one fixed point
-    over the whole edge set, which would treat support and supersession as
-    attacks and forfeit the least-fixed-point guarantee the solver is used for:
+    **This is an adapter, not a second implementation.** It projects the log rows
+    onto :class:`~tessellum.dks.status.EdgeSet` and returns
+    :func:`~tessellum.dks.status.compute_statuses`' verdict per claim, because
+    the three-layer rule (``supersede`` pre-filter → attack-only fixed point →
+    ``support`` post-classification) is subtle enough that two copies of it
+    become two *different* rules the first time either is corrected. They did:
+    both copies shipped the rejected pre-filter, in which a supersession counted
+    whenever the replacement was merely not ``out``, so an unsupported or still
+    disputed replacement silently withdrew the current claim. One implementation
+    means one place to fix.
 
-    1. **Pre-filter — ``supersede``.** A supersession counts when the
-       superseding claim is not ``out`` in a first provisional pass; the
-       superseded claim then leaves the framework entirely. Being replaced is
-       not being defeated.
-    2. **The fixed point — ``attack`` only.** The ``attack`` projection is
-       handed to the shipped :func:`~tessellum.dks.dung.grounded_labelling`
-       unchanged.
-    3. **Post-classification — ``support``.** ``in`` with a support edge is
-       ``warranted``; ``in`` without one is ``proposed``; anything else
-       (``out`` or ``undec``) is ``challenged``.
+    The projection is free: :class:`ClaimRow` and :class:`EdgeRow` already carry
+    everything :class:`~tessellum.dks.status.ClaimView` and
+    :class:`~tessellum.dks.status.EdgeView` read, so the ports are satisfied
+    structurally with no conversion layer.
 
-    ``revise`` carries no force in the labelling: it records that one claim
-    answers an attack on another, and the keep/drop and carry consequences are
-    real logged edges rather than inferences drawn here.
-
-    This is the deterministic *reference* implementation for the
-    :class:`StatusLabeller` port, so the boundary is usable and testable before
-    the status phase lands its own; that phase's extra policy — refusing to
-    report a verdict whose chain touches a ``stub`` — is surfaced here as
-    :attr:`Explanation.provisional` rather than duplicated as a decision.
+    This remains the deterministic *default* for the :class:`StatusLabeller`
+    port, so the boundary is usable with no configuration. The status module's
+    extra policy — refusing to report a verdict whose chain touches a ``stub`` —
+    is deliberately not applied here: the flag travels on
+    :attr:`Explanation.provisional`, and refusing is a query-surface decision
+    rather than a labelling one.
     """
-    claim_ids = tuple(record.claim_id for record in claims)
-    attacks = tuple((edge.src, edge.dst) for edge in edges if edge.op == "attack")
-    supported = {edge.dst for edge in edges if edge.op == "support"}
-
-    provisional = grounded_labelling(DungAF(arguments=claim_ids, attacks=attacks))
-    superseded = {
-        edge.dst
-        for edge in edges
-        if edge.op == "supersede" and provisional.get(edge.src) != "out"
-    }
-    live = tuple(claim_id for claim_id in claim_ids if claim_id not in superseded)
-    live_set = set(live)
-    labels = grounded_labelling(
-        DungAF(
-            arguments=live,
-            attacks=tuple(
-                (src, dst)
-                for src, dst in attacks
-                if src in live_set and dst in live_set
-            ),
-        )
-    )
-
-    statuses: dict[str, str] = {}
-    for claim_id in claim_ids:
-        if claim_id in superseded:
-            statuses[claim_id] = "superseded"
-        elif labels.get(claim_id) != "in":
-            statuses[claim_id] = "challenged"
-        elif claim_id in supported:
-            statuses[claim_id] = "warranted"
-        else:
-            statuses[claim_id] = "proposed"
-    return statuses
+    table = compute_statuses(EdgeSet(claims=tuple(claims), edges=tuple(edges)))
+    return {claim_id: verdict.status for claim_id, verdict in table.statuses.items()}
 
 
 # ── what the protocol stages ────────────────────────────────────────────────

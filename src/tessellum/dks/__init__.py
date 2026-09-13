@@ -36,7 +36,9 @@ Public-API capability map:
     (:mod:`~tessellum.dks.claim_identity`), the entity registry and its
     resolver (:mod:`~tessellum.dks.entity_registry`,
     :mod:`~tessellum.dks.resolve_entity`), the computed status over the
-    attack relation (:mod:`~tessellum.dks.status`), the three-call
+    attack relation (:mod:`~tessellum.dks.status`) with the separate
+    support-dependency validator that a computed label does *not*
+    establish (:mod:`~tessellum.dks.support_dependency`), the three-call
     memory boundary (:mod:`~tessellum.dks.memory_port`), bounded reach
     (:mod:`~tessellum.dks.reach`), the memory tiers
     (:mod:`~tessellum.dks.memory_tiers`), the three-way query decision
@@ -185,22 +187,47 @@ from tessellum.dks.dung import (
     grounded_labelling,
 )
 from tessellum.dks.claim_identity import (
-    # QP0 — derived-claim identity: deterministic `derivation_id`, the
-    # specified-not-built `fact_id` layer, and insertion-stable locators
+    # QP0 — derived-claim identity: THREE identities, not one. An evidence
+    # occurrence is a located string at a source version; a proposition
+    # version is what feedback and recurrence key on; a derivation event
+    # connects a premise set to a proposition version at an episode. The
+    # cross-span `fact_id` layer stays specified-not-built, and the merge
+    # it would perform is fail-safe (refuse) rather than fail-open.
     FACT_ID_DEVIATION,
+    FAIL_SAFE_MERGE_RULE,
+    TRIAL_HISTORY_SUBJECT_RULE,
+    UNPINNED_SOURCE_VERSION,
     ClaimRendering,
+    DerivationEvent,
     DerivedClaimIdentity,
+    EvidenceOccurrence,
     FactIdentityResolver,
     LocatorKind,
+    PairsInput,
+    Polarity,
+    PropositionCoalescence,
+    PropositionVersion,
+    RefusedMerge,
+    ScriptedFactIdentity,
     SpanLocator,
     UnresolvedFactIdentity,
     anchor_locator,
     char_range_locator,
+    coalesce_propositions,
+    derivation_event,
+    derivation_event_id,
     derivation_id,
     derivation_ids_for_spans,
+    evidence_occurrence,
+    evidence_occurrence_id,
+    evidence_occurrence_ids_for_spans,
+    feedback_subject_id,
     identify,
     locators_for_spans,
     normalize_span_text,
+    note_version_hash,
+    proposition_version,
+    proposition_version_id,
     text_hash,
 )
 from tessellum.dks.entity_registry import (
@@ -285,7 +312,39 @@ from tessellum.dks.status import (
     compute_statuses,
     edgeset_digest,
     explain,
+    provisionally_warranted,
     superseded_claims,
+    supported_claims,
+)
+from tessellum.dks.support_dependency import (
+    # QP5's second half — the dependency validator that sits OUTSIDE the
+    # labelling. `warranted` is a dialectical verdict; it admits a defeated
+    # necessary premise and admits circular support. `is_grounded` answers
+    # the other question, and `is_answerable` is the conjunction the answer
+    # gate actually needs. Support kinds are declared through a port, not
+    # by widening the append-only log. Its per-reason constants stay on
+    # the submodule (`dks.support_dependency.REASON_CYCLIC_SUPPORT`, …),
+    # as `memory_port`'s and `consolidation`'s already do.
+    CONSERVATIVE_SUPPORT_KINDS,
+    CONTRIBUTORY,
+    EVIDENTIAL,
+    NECESSARY,
+    SUPPORT_KINDS,
+    ConservativeSupportKinds,
+    DeclaredSupportKinds,
+    GroundingClaimView,
+    GroundingTable,
+    GroundingValidator,
+    GroundingVerdict,
+    SupportKind,
+    SupportKindError,
+    SupportKindResolver,
+    grounding_digest,
+    grounding_verdict,
+    is_answerable,
+    is_grounded,
+    support_premises,
+    validate_support_dependencies,
 )
 from tessellum.dks.memory_port import (
     # QP6 — the three-call protocol↔memory boundary: retrieve /
@@ -412,7 +471,10 @@ from tessellum.dks.memory_tiers import (
 )
 from tessellum.dks.query_protocol import (
     # QP8 — the query entry: consult memory, reach, name the relation,
-    # derive with locators, refute, then decide THREE ways on status
+    # derive with locators, refute, then decide THREE ways on status —
+    # and `warranted` alone never answers: the support-dependency
+    # validator must pass too. The abstain reasons, this phase's
+    # `ABSTAIN_DEPENDENCY` included, stay on `dks.query_protocol`.
     DEFAULT_ABSTENTION_BOUND,
     DEFAULT_MEMORY_K,
     OUTCOMES,
@@ -449,26 +511,52 @@ from tessellum.dks.query_protocol import (
 from tessellum.dks.demotion import (
     # QP10 — the periodic re-derivation gate and its THREE triggers.
     # Suppress the claim, hand a FROZEN model only its cited sources,
-    # compare arithmetically; demotion is an append, never a delete
+    # compare arithmetically; demotion is an append, never a delete.
+    # Re-derivation tests REPRODUCIBILITY, not truth, so the five
+    # distinguished outcomes route to four dispositions — an inconclusive
+    # signal quarantines or requests review instead of demoting.
+    # `demotion.OUTCOMES` (the five outcome kinds) is deliberately NOT
+    # re-exported: `OUTCOMES` at package level is already QP8's three
+    # query decisions. Reach it as `dks.demotion.OUTCOMES`.
     ACTIONS,
     DEFAULT_DEMOTION_POLICY,
     DEFAULT_INTERVAL_DAYS,
+    DISPOSITIONS,
+    DISPOSITION_DEMOTE,
+    DISPOSITION_HOLD,
+    DISPOSITION_QUARANTINE,
+    DISPOSITION_REQUEST_REVIEW,
     INDEPENDENCE_FLOOR,
+    OUTCOME_FAILED_GENERALISATION,
+    OUTCOME_FAILED_REPRODUCTION,
+    OUTCOME_GROUNDING_FAILURE,
+    OUTCOME_STALE_EVIDENCE,
+    OUTCOME_SURVIVING_CONTRADICTION,
     REGENERATION_FLOOR,
+    SOURCE_SUPPORT_FLOOR,
+    STANDING_ENTRY_KINDS,
     TRIGGERS,
     TRIGGER_CONTRADICTION,
     TRIGGER_INDEPENDENCE_BELOW_FLOOR,
     TRIGGER_REDERIVATION_FAILURE,
+    UNVERIFIABLE_FRESHNESS,
+    WITHHOLDING_DISPOSITIONS,
+    WITHHOLDING_ENTRY_KINDS,
     CitedSource,
+    ClaimLabelSource,
     CurrentStatusSource,
     DemotionAction,
     DemotionEntry,
     DemotionError,
     DemotionLedger,
+    DemotionOutcome,
+    DemotionOutcomeKind,
     DemotionPolicy,
     DemotionReview,
     DemotionSweep,
     DemotionTrigger,
+    Disposition,
+    EvidenceFreshnessCheck,
     FrozenModelError,
     FrozenReDerivationModel,
     GateNotArmedError,
@@ -497,9 +585,12 @@ from tessellum.dks.demotion import (
     agreement,
     as_capability_result,
     build_request,
+    check_evidence_freshness,
     check_independence,
     check_regeneration,
     check_status_flip,
+    claim_label,
+    classify_outcomes,
     due_records,
     entry_for_review,
     independence_from_events,
@@ -510,12 +601,18 @@ from tessellum.dks.demotion import (
     require_frozen,
     require_suppression,
     retraction_proposals,
+    source_support,
     strongest_action,
+    strongest_disposition,
 )
 from tessellum.dks.consolidation import (
     # QP12 — gate (ii), the reviewed promotion batch. Ships REFUSING to
     # run: promotion is off by default, the promotion A/B is unrun, and
-    # sign-off must be requested with use_human=True
+    # sign-off must be requested with use_human=True. The independence
+    # term counts ORIGIN-distinct contexts, not episode ids — a claim
+    # promoted by this system carries its origin forward, so restating
+    # it never corroborates it.
+    AUTHORED_ORIGIN,
     BUILD_NOISE_FLOOR,
     CONDITIONS,
     DEFAULT_CONSOLIDATION_POLICY,
@@ -528,17 +625,23 @@ from tessellum.dks.consolidation import (
     HARD_CONDITIONS,
     INDEPENDENCE_BASIS_EPISODES,
     INDEPENDENCE_BASIS_FACTS,
+    INDEPENDENCE_ORIGIN_RULE,
     MIN_AB_ORDERINGS,
     MIN_AB_RUNS_PER_ARM,
     MIN_INDEPENDENT_CONTEXTS,
     MIN_RECURRENCE,
+    ORIGIN_KINDS,
+    ORIGIN_PROVENANCES,
     PROMOTION_ENABLED_BY_DEFAULT,
     PROMOTION_TARGETS,
+    PROVENANCE_CONSTRUCTED,
+    PROVENANCE_LOCATED,
     QUALIFIER_KINDS,
     REQUIRED_REGRESSION_CLASSES,
     UNRUN_PROMOTION_AB,
     AdditiveProseAuthor,
     AuthorityCapError,
+    ClaimOrigin,
     ConditionName,
     ConditionOutcome,
     ConsolidationBatch,
@@ -556,8 +659,10 @@ from tessellum.dks.consolidation import (
     EntailmentVerdict,
     HumanGateError,
     HumanReviewRequest,
+    IndependenceMeasurement,
     LinkBeforeCreateJudge,
     MoverIsJudgeError,
+    OriginKind,
     PriorArtEntry,
     PriorArtIndex,
     PriorArtMatch,
@@ -577,6 +682,7 @@ from tessellum.dks.consolidation import (
     StaticEntailmentJudge,
     StaticPriorArtIndex,
     UncalibratedEntailmentJudge,
+    corpus_origin,
     effects_for_promotion,
     evaluate_candidate,
     evaluate_dedup,
@@ -587,15 +693,18 @@ from tessellum.dks.consolidation import (
     evaluate_renderable,
     evaluate_stability,
     independence_count,
+    independence_measurement,
     lifecycle_for,
     missing_locators,
     missing_qualifiers,
+    origin_after_promotion,
     prior_art_shortlist,
     require_authority,
     require_human_sign_off,
     require_independent_reviewer,
     require_promotion_enabled,
     run_consolidation_batch,
+    self_authored_origin,
     verify_qualifiers_intact,
 )
 from tessellum.dks.meta import (
@@ -745,21 +854,42 @@ __all__ = [
     "SCHEMA_EDIT_PROPOSAL_KIND",
     "load_event_log",
     "write_event_log",
-    # Query-time protocol (QP0) — derived-claim identity
+    # Query-time protocol (QP0) — the three derived-claim identities
     "FACT_ID_DEVIATION",
+    "FAIL_SAFE_MERGE_RULE",
+    "TRIAL_HISTORY_SUBJECT_RULE",
+    "UNPINNED_SOURCE_VERSION",
     "ClaimRendering",
+    "DerivationEvent",
     "DerivedClaimIdentity",
+    "EvidenceOccurrence",
     "FactIdentityResolver",
     "LocatorKind",
+    "PairsInput",
+    "Polarity",
+    "PropositionCoalescence",
+    "PropositionVersion",
+    "RefusedMerge",
+    "ScriptedFactIdentity",
     "SpanLocator",
     "UnresolvedFactIdentity",
     "anchor_locator",
     "char_range_locator",
+    "coalesce_propositions",
+    "derivation_event",
+    "derivation_event_id",
     "derivation_id",
     "derivation_ids_for_spans",
+    "evidence_occurrence",
+    "evidence_occurrence_id",
+    "evidence_occurrence_ids_for_spans",
+    "feedback_subject_id",
     "identify",
     "locators_for_spans",
     "normalize_span_text",
+    "note_version_hash",
+    "proposition_version",
+    "proposition_version_id",
     "text_hash",
     # QP1 — entity registry + the O(N) authored relations seed
     "ANY_OBJECT_TYPE",
@@ -832,7 +962,32 @@ __all__ = [
     "compute_statuses",
     "edgeset_digest",
     "explain",
+    "provisionally_warranted",
     "superseded_claims",
+    "supported_claims",
+    # QP5's second half — the support-dependency validator, outside the
+    # labelling: `warranted` AND `is_grounded`, i.e. `is_answerable`
+    "CONSERVATIVE_SUPPORT_KINDS",
+    "CONTRIBUTORY",
+    "EVIDENTIAL",
+    "NECESSARY",
+    "SUPPORT_KINDS",
+    "ConservativeSupportKinds",
+    # (`REASON_*` diagnoses stay on `dks.support_dependency`.)
+    "DeclaredSupportKinds",
+    "GroundingClaimView",
+    "GroundingTable",
+    "GroundingValidator",
+    "GroundingVerdict",
+    "SupportKind",
+    "SupportKindError",
+    "SupportKindResolver",
+    "grounding_digest",
+    "grounding_verdict",
+    "is_answerable",
+    "is_grounded",
+    "support_premises",
+    "validate_support_dependencies",
     # QP6 — the three-call protocol↔memory boundary
     "CLAIM_ELIGIBLE_BLOCKS",
     "EVIDENCE_ONLY_BLOCKS",
@@ -947,6 +1102,7 @@ __all__ = [
     "tally_trials",
     "unpack_embedding",
     # QP8 — the query entry and its three-way decision
+    # (`ABSTAIN_*` reasons stay on `dks.query_protocol`.)
     "DEFAULT_ABSTENTION_BOUND",
     "DEFAULT_MEMORY_K",
     "OUTCOMES",
@@ -979,26 +1135,48 @@ __all__ = [
     "derive_claim",
     "refute",
     "tally_outcomes",
-    # QP10 — the re-derivation gate and its three triggers
+    # QP10 — the re-derivation gate: three triggers, FIVE distinguished
+    # outcomes, four dispositions. `demotion.OUTCOMES` is not flattened
+    # up here — `OUTCOMES` is QP8's; reach it as `dks.demotion.OUTCOMES`
     "ACTIONS",
     "DEFAULT_DEMOTION_POLICY",
     "DEFAULT_INTERVAL_DAYS",
+    "DISPOSITIONS",
+    "DISPOSITION_DEMOTE",
+    "DISPOSITION_HOLD",
+    "DISPOSITION_QUARANTINE",
+    "DISPOSITION_REQUEST_REVIEW",
     "INDEPENDENCE_FLOOR",
+    "OUTCOME_FAILED_GENERALISATION",
+    "OUTCOME_FAILED_REPRODUCTION",
+    "OUTCOME_GROUNDING_FAILURE",
+    "OUTCOME_STALE_EVIDENCE",
+    "OUTCOME_SURVIVING_CONTRADICTION",
     "REGENERATION_FLOOR",
+    "SOURCE_SUPPORT_FLOOR",
+    "STANDING_ENTRY_KINDS",
     "TRIGGERS",
     "TRIGGER_CONTRADICTION",
     "TRIGGER_INDEPENDENCE_BELOW_FLOOR",
     "TRIGGER_REDERIVATION_FAILURE",
+    "UNVERIFIABLE_FRESHNESS",
+    "WITHHOLDING_DISPOSITIONS",
+    "WITHHOLDING_ENTRY_KINDS",
     "CitedSource",
+    "ClaimLabelSource",
     "CurrentStatusSource",
     "DemotionAction",
     "DemotionEntry",
     "DemotionError",
     "DemotionLedger",
+    "DemotionOutcome",
+    "DemotionOutcomeKind",
     "DemotionPolicy",
     "DemotionReview",
     "DemotionSweep",
     "DemotionTrigger",
+    "Disposition",
+    "EvidenceFreshnessCheck",
     "FrozenModelError",
     "FrozenReDerivationModel",
     "GateNotArmedError",
@@ -1027,9 +1205,12 @@ __all__ = [
     "agreement",
     "as_capability_result",
     "build_request",
+    "check_evidence_freshness",
     "check_independence",
     "check_regeneration",
     "check_status_flip",
+    "claim_label",
+    "classify_outcomes",
     "due_records",
     "entry_for_review",
     "independence_from_events",
@@ -1040,8 +1221,12 @@ __all__ = [
     "require_frozen",
     "require_suppression",
     "retraction_proposals",
+    "source_support",
     "strongest_action",
-    # QP12 — the reviewed promotion batch (ships refusing to run)
+    "strongest_disposition",
+    # QP12 — the reviewed promotion batch (ships refusing to run), with
+    # the independence term counted over ORIGIN-distinct contexts
+    "AUTHORED_ORIGIN",
     "BUILD_NOISE_FLOOR",
     "CONDITIONS",
     "DEFAULT_CONSOLIDATION_POLICY",
@@ -1054,17 +1239,23 @@ __all__ = [
     "HARD_CONDITIONS",
     "INDEPENDENCE_BASIS_EPISODES",
     "INDEPENDENCE_BASIS_FACTS",
+    "INDEPENDENCE_ORIGIN_RULE",
     "MIN_AB_ORDERINGS",
     "MIN_AB_RUNS_PER_ARM",
     "MIN_INDEPENDENT_CONTEXTS",
     "MIN_RECURRENCE",
+    "ORIGIN_KINDS",
+    "ORIGIN_PROVENANCES",
     "PROMOTION_ENABLED_BY_DEFAULT",
     "PROMOTION_TARGETS",
+    "PROVENANCE_CONSTRUCTED",
+    "PROVENANCE_LOCATED",
     "QUALIFIER_KINDS",
     "REQUIRED_REGRESSION_CLASSES",
     "UNRUN_PROMOTION_AB",
     "AdditiveProseAuthor",
     "AuthorityCapError",
+    "ClaimOrigin",
     "ConditionName",
     "ConditionOutcome",
     "ConsolidationBatch",
@@ -1082,8 +1273,10 @@ __all__ = [
     "EntailmentVerdict",
     "HumanGateError",
     "HumanReviewRequest",
+    "IndependenceMeasurement",
     "LinkBeforeCreateJudge",
     "MoverIsJudgeError",
+    "OriginKind",
     "PriorArtEntry",
     "PriorArtIndex",
     "PriorArtMatch",
@@ -1103,6 +1296,7 @@ __all__ = [
     "StaticEntailmentJudge",
     "StaticPriorArtIndex",
     "UncalibratedEntailmentJudge",
+    "corpus_origin",
     "effects_for_promotion",
     "evaluate_candidate",
     "evaluate_dedup",
@@ -1113,14 +1307,17 @@ __all__ = [
     "evaluate_renderable",
     "evaluate_stability",
     "independence_count",
+    "independence_measurement",
     "lifecycle_for",
     "missing_locators",
     "missing_qualifiers",
+    "origin_after_promotion",
     "prior_art_shortlist",
     "require_authority",
     "require_human_sign_off",
     "require_independent_reviewer",
     "require_promotion_enabled",
     "run_consolidation_batch",
+    "self_authored_origin",
     "verify_qualifiers_intact",
 ]
